@@ -6,6 +6,8 @@ failure is classified the same way in a report as in CI.
 
 from __future__ import annotations
 
+import re
+
 import hashlib
 from pathlib import Path
 
@@ -143,6 +145,8 @@ _CHECKS = (
     ("stretch", "P2", "maxEdgeStretch"),
     ("span-drop", "P1", "maxSpanDropMm"),
 )
+#: Meshes that bridge the thighs when she sits, so the span gate applies to them.
+_SPANS = re.compile(r"\b(skirt|dress|gown|chemise|slip)\b", re.I)
 
 
 def issue_id(kind: str, *parts: str) -> str:
@@ -182,6 +186,20 @@ def assess_metrics(garments: list | None, limits: dict | None = None) -> dict:
     for garment in garments or []:
         after = (garment or {}).get("after") or {}
         name = (garment or {}).get("name") or ""
+        # A skirt or dress whose span drop was not reported has not passed the span gate: it
+        # was never measured. On 2026-11-13 the worker stopped reporting maxSpanDropMm and the
+        # A-line's seated hoop read "gate ok"; a missing number must read as a miss.
+        if _SPANS.search(name) and not isinstance(after.get("maxSpanDropMm"), (int, float)):
+            findings.append(
+                {
+                    "code": "span-not-measured",
+                    "severity": "P1",
+                    "garment": name,
+                    "metric": "maxSpanDropMm",
+                    "value": "missing",
+                    "limit": lim["maxSpanDropMm"],
+                }
+            )
         for code, severity, metric in _CHECKS:
             value = after.get(metric)
             if isinstance(value, (int, float)) and value > lim[metric]:

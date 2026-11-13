@@ -64,6 +64,32 @@ uploads a full run. Pull requests run the offline tests only. The weekly
 schedule captures shipped looks and does not generate. A catalog dispatch must
 set `allow_generation` or the job refuses to start.
 
+### The whole catalog, adult garments included
+
+Forge's public catalog leaves out the 43 templates it marks `requiresAdult`
+(swimwear and underwear), so a run against the public Space photographs 62
+of 105. In development, run a local Forge with an admin password, sign in once,
+and hand the token file to the runner. Every garment is then listed and made,
+the restricted ones on the library avatar the operator declared adult
+(`fem-vroid` for `fem_vroid.vrm`). The app is unchanged; Forge still applies its
+own policy.
+
+```bash
+# Forge checkout, once: WARDROBE_ADMIN_PASSWORD from a file, never typed in a command
+WARDROBE_ADMIN_PASSWORD="$(cat ~/.forge-admin)" python -m uvicorn apps.api.main:app --port 8090
+curl -s -X POST localhost:8090/v1/admin/session -H 'content-type: application/json' \
+  -d "{\"password\":\"$(cat ~/.forge-admin)\"}" | python -c 'import json,sys;print(json.load(sys.stdin)["token"])' > ~/.forge-token
+
+python audits/wardrobe_sitting_desk/capture.py --source catalog --avatar fem_vroid.vrm \
+  --url http://127.0.0.1:8080/ --forge-url http://127.0.0.1:8090 \
+  --forge-admin-token-file ~/.forge-token --out /tmp/wardrobe-full --resume
+```
+
+`print_matrix.py` will not write into a folder that already has a
+`catalog-matrix.csv`; give each run its own `--out`. It judges every pose again
+from the stored worker numbers, so a skirt or dress whose span drop was never
+reported reads `span-not-measured`, not a pass.
+
 `--only` is a substring, and an exact name wins when one exists. Several looks
 can share a name, so a retest passes `--look-key` with the rail's
 `data-look-key`.

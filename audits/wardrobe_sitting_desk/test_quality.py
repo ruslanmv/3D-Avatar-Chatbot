@@ -104,6 +104,17 @@ class QualityTest(unittest.TestCase):
         self.assertEqual(gate["issues"][0]["metric"], "maxPenetrationMm")
         self.assertEqual(gate["issues"][0]["severity"], "P1")
 
+    def test_a_skirt_without_a_span_number_is_a_miss_not_a_pass(self):
+        gate = assess_metrics(
+            [
+                {"name": "Black A-Line Dress [x]", "after": {"maxPenetrationMm": 0, "maxEdgeStretch": 2.88}},
+                {"name": "Black Tee [x]", "after": {"maxPenetrationMm": 0, "maxEdgeStretch": 1.1}},
+            ]
+        )
+        self.assertFalse(gate["ok"])
+        self.assertEqual([i["code"] for i in gate["issues"]], ["span-not-measured"])
+        self.assertEqual(gate["issues"][0]["garment"], "Black A-Line Dress [x]")
+
 
 if __name__ == "__main__":
     unittest.main()

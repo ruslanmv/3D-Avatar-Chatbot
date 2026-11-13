@@ -22,6 +22,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -373,6 +374,87 @@ window.__auditReadCloth = () => {
 """
 
 
+# The full catalog. Forge's public GET /v1/catalog/garments leaves out every template it marks
+# requiresAdult (swimwear and underwear: 43 of 105 on 2026-11-13), so an audit of the public list
+# never photographs them. A development Forge with WARDROBE_ADMIN_PASSWORD set lists and makes them
+# for an admin session, and makes them only on the library route, for an avatar the operator
+# declared adult. --include-restricted does exactly what the Studio's admin session does, from the
+# outside: it adds the admin header to the app's Forge requests, asks the catalog for the
+# restricted templates, and sends a restricted garment's customize to the library avatar. The
+# product code is unchanged; the policy still decides on Forge.
+ADMIN_HEADER = "X-Wardrobe-Admin"
+
+
+def with_restricted(url: str) -> str:
+    """The catalog URL with includeRestricted=true, keeping any query it already has."""
+    parts = urllib.parse.urlsplit(url)
+    query = [(k, v) for k, v in urllib.parse.parse_qsl(parts.query) if k != "includeRestricted"]
+    query.append(("includeRestricted", "true"))
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query)))
+
+
+def rewrite_customize(body: dict, restricted_ids: set, library_slug: str | None) -> dict | None:
+    """A restricted garment goes to the declared library avatar; anything else is left alone."""
+    if not library_slug or body.get("templateId") not in restricted_ids:
+        return None
+    out = {k: v for k, v in body.items() if k != "avatar"}
+    out["librarySlug"] = library_slug
+    return out
+
+
+def library_slug_for(avatar: str | None) -> str | None:
+    """fem_vroid.vrm -> fem-vroid, the slug Forge's library uses for the bundled file."""
+    if not avatar:
+        return None
+    return re.sub(r"[^a-z0-9]+", "-", Path(avatar).stem.lower()).strip("-") or None
+
+
+def admin_token(opts) -> str | None:
+    # A token file alone turns the full catalog on: in development that is the point of having one.
+    if not (getattr(opts, "include_restricted", False) or getattr(opts, "forge_admin_token_file", None)):
+        return None
+    if not opts.forge_admin_token_file:
+        raise SystemExit("--include-restricted needs --forge-admin-token-file (a Forge admin session token)")
+    token = Path(opts.forge_admin_token_file).read_text().strip()
+    if not token:
+        raise SystemExit("--forge-admin-token-file is empty")
+    return token
+
+
+def install_full_catalog(context, opts, token: str) -> set:
+    """Route the app's Forge requests through the admin session. Returns the restricted ids."""
+    forge = opts.forge_url.rstrip("/")
+    payload = fetch_catalog(forge, admin_token=token)
+    restricted = {
+        g.get("id") for c in payload.get("categories") or [] for g in c.get("garments") or [] if g.get("requiresAdult")
+    }
+    slug_ = opts.library_slug or library_slug_for(opts.avatar)
+
+    def handle(route, request):
+        if request.method == "OPTIONS":
+            return route.continue_()
+        headers = dict(request.headers)
+        headers[ADMIN_HEADER] = token
+        url = request.url
+        post_data = None
+        path = urllib.parse.urlsplit(url).path
+        if request.method == "GET" and path.endswith("/v1/catalog/garments"):
+            url = with_restricted(url)
+        elif request.method == "POST" and path.endswith("/v1/catalog/customize"):
+            try:
+                changed = rewrite_customize(json.loads(request.post_data or "{}"), restricted, slug_)
+            except json.JSONDecodeError:
+                changed = None
+            if changed is not None:
+                post_data = json.dumps(changed)
+                headers["content-type"] = "application/json"
+        route.continue_(url=url, headers=headers, post_data=post_data)
+
+    context.route(re.compile("^" + re.escape(forge) + "/"), handle)
+    print(f"Full catalog: {len(restricted)} restricted templates, made on library avatar {slug_!r}")
+    return restricted
+
+
 def context_init_script(opts) -> str:
     cfg = json.dumps({"forge": opts.forge_url, "avatar": opts.avatar})
     return (
@@ -583,9 +665,13 @@ def entry_complete(out: Path, entry: dict, views: list[str], poses: list[str]) -
     return True
 
 
-def fetch_catalog(forge_url: str, timeout: int = 60) -> dict:
+def fetch_catalog(forge_url: str, timeout: int = 60, admin_token: str | None = None) -> dict:
     url = forge_url.rstrip("/") + "/v1/catalog/garments"
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    headers = {"Accept": "application/json"}
+    if admin_token:
+        url = with_restricted(url)
+        headers[ADMIN_HEADER] = admin_token
+    request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -678,7 +764,7 @@ def write_readiness(out: Path, summary: dict, note: str) -> None:
 def run_inventory(opts, out: Path) -> int:
     forge = opts.forge_url or DEFAULT_FORGE
     try:
-        payload = fetch_catalog(forge)
+        payload = fetch_catalog(forge, admin_token=admin_token(opts) if opts.forge_url else None)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         save_json(out / "fatal-error.json", {"error": f"{type(exc).__name__}: {exc}", "failureClass": "infrastructure"})
         print(f"FATAL: {exc}", file=sys.stderr)
@@ -732,6 +818,13 @@ def parse_args(argv=None):
     parser.add_argument("--cloth-timeout", type=int, default=30, help="Seconds to wait for cloth correction")
     parser.add_argument("--settle-ms", type=int, default=400, help="Render stabilization per image, after cloth is ready")
     parser.add_argument("--delay", type=float, default=2.0, help="Pause between Forge jobs, seconds")
+    parser.add_argument(
+        "--include-restricted",
+        action="store_true",
+        help="Also capture the templates Forge marks requiresAdult (needs --forge-url and an admin token)",
+    )
+    parser.add_argument("--forge-admin-token-file", help="File holding a Forge admin session token. Never a CLI value.")
+    parser.add_argument("--library-slug", help="Library avatar restricted garments are made on. Default: from --avatar")
     parser.add_argument("--resume", action="store_true", help="Skip completed entries in --out")
     parser.add_argument("--headful", action="store_true")
     parser.add_argument("--only", help="Capture only entries whose name contains this text. An exact name wins.")
@@ -822,6 +915,11 @@ def main(argv=None) -> int:
     try:
         controller, browser, context = playwright_browser(opts, width, height)
         context.add_init_script(context_init_script(opts))
+        token = admin_token(opts)
+        if token:
+            if not opts.forge_url:
+                raise SystemExit("--include-restricted needs --forge-url: a local Forge with an admin password")
+            install_full_catalog(context, opts, token)
         page = context.new_page()
         page.audit_url = opts.url
         if opts.cloth == "off":

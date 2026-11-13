@@ -33,6 +33,9 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from quality import assess_metrics  # noqa: E402
+
 POSES = ("standing", "sittingDesk", "sittingWide", "sittingCrossed")
 VIEWS = ("front", "right", "back", "left")
 POSE_LABEL = {
@@ -110,6 +113,10 @@ def pose_findings(entry: dict, pose: str) -> list[dict]:
     captured = (entry.get("poses") or {}).get(pose) or {}
     if not isinstance(captured, dict):
         return []
+    # Judge again from the worker's own numbers when they were stored, so a run captured before
+    # a gate change reads by today's gate (a skirt with no span number is a miss, not a pass).
+    if captured.get("metrics"):
+        return list(assess_metrics(captured["metrics"])["issues"])
     return list((captured.get("gate") or {}).get("issues") or [])
 
 
@@ -321,6 +328,7 @@ def parse_args(argv=None):
     parser.add_argument("--out", type=Path, required=True, help="Directory for the CSV and contact sheets")
     parser.add_argument("--baseline-csv", type=Path, help="Previous CSV. Exit 1 on a regression.")
     parser.add_argument("--no-sheets", action="store_true", help="Write the CSV only")
+    parser.add_argument("--overwrite", action="store_true", help="Replace a CSV already in --out")
     return parser.parse_args(argv)
 
 
@@ -328,6 +336,10 @@ def main(argv=None) -> int:
     opts = parse_args(argv)
     if not opts.run:
         print("print_matrix needs --run <capture-directory>", file=sys.stderr)
+        return 2
+    # A dated report is history: the documented 2026-11-08 rerun wrote straight over it.
+    if (opts.out / "catalog-matrix.csv").exists() and not opts.overwrite:
+        print(f"{opts.out} already has a catalog-matrix.csv. Pick a new --out, or pass --overwrite.", file=sys.stderr)
         return 2
     manifest_path = opts.run / "manifest.json"
     if not manifest_path.is_file():

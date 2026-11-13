@@ -12,12 +12,35 @@ from capture import (  # noqa: E402
     CLOTH_OBSERVER_JS,
     VIEWS,
     context_init_script,
+    library_slug_for,
+    rewrite_customize,
+    with_restricted,
     matching_items,
     metric_findings,
     parse_args,
     report,
     slug,
 )
+
+
+class FullCatalogTest(unittest.TestCase):
+    def test_the_catalog_url_asks_for_restricted_templates_once(self):
+        url = with_restricted("http://127.0.0.1:8090/v1/catalog/garments?category=underwear&includeRestricted=false")
+        self.assertIn("category=underwear", url)
+        self.assertEqual(url.count("includeRestricted"), 1)
+        self.assertTrue(url.endswith("includeRestricted=true"))
+
+    def test_only_a_restricted_garment_moves_to_the_library_avatar(self):
+        body = {"avatar": {"url": "x.vrm"}, "prompt": "p", "templateId": "under-lingerie-set-v1"}
+        moved = rewrite_customize(body, {"under-lingerie-set-v1"}, "fem-vroid")
+        self.assertEqual(moved["librarySlug"], "fem-vroid")
+        self.assertNotIn("avatar", moved)
+        self.assertIsNone(rewrite_customize({**body, "templateId": "tee-basic-v1"}, {"under-lingerie-set-v1"}, "fem-vroid"))
+        self.assertIsNone(rewrite_customize(body, {"under-lingerie-set-v1"}, None))
+
+    def test_the_bundled_file_names_its_library_slug(self):
+        self.assertEqual(library_slug_for("fem_vroid.vrm"), "fem-vroid")
+        self.assertIsNone(library_slug_for(None))
 
 
 class CaptureHelpersTest(unittest.TestCase):
