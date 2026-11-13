@@ -32,6 +32,8 @@ const TogetherPanel = (() => {
     'use strict';
 
     const PANEL_ID = 'nexus-bd-together-panel';
+    /** AX21. The mark before each Private style's name; a heart for any style not listed. */
+    const PRESET_MARK = Object.freeze({ sensual: '✧', mature: '✦' });
 
     /**
      * B36. The activity contract and the failure copy, from the module system or the window,
@@ -957,7 +959,7 @@ const TogetherPanel = (() => {
             const style = doc.createElement('style');
             style.id = styleId;
             style.textContent =
-                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}.nexus-private-scene-art{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:9px;margin-bottom:6px;background:var(--venue-tint,rgba(255,255,255,.06))}';
+                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-preset.is-locked{opacity:.5;cursor:default;border-style:dashed}.nexus-private-preset.is-locked:hover{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.05)}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}.nexus-private-scene-art{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:9px;margin-bottom:6px;background:var(--venue-tint,rgba(255,255,255,.06))}';
             (doc.head || doc.documentElement).appendChild(style);
         }
 
@@ -980,7 +982,7 @@ const TogetherPanel = (() => {
             shell.className = 'nexus-private-setup';
             const kicker = doc.createElement('div');
             kicker.className = 'nexus-private-setup-kicker';
-            kicker.textContent = '🔐 PRIVATE';
+            kicker.textContent = this._privateWord('card.kicker', '🔐 PRIVATE');
             shell.appendChild(kicker);
             if (step) {
                 const dots = doc.createElement('div');
@@ -1012,13 +1014,15 @@ const TogetherPanel = (() => {
                 again.className = 'nexus-private-again';
                 again.dataset.privateLast = '1';
                 const kicker = doc.createElement('small');
-                kicker.textContent = 'Last time';
+                kicker.textContent = this._privateWord('setup.last', 'Last time');
                 const summary = doc.createElement('div');
                 summary.className = 'nexus-private-again-summary';
                 summary.textContent = [
                     last.preset.label,
                     last.sceneLabel,
-                    last.soundtrack === 'none' ? 'No music' : 'Auto music',
+                    last.soundtrack === 'none'
+                        ? this._privateWord('setup.musicNo', 'No music')
+                        : this._privateWord('setup.musicChosen', 'Music selected'),
                 ]
                     .filter(Boolean)
                     .join(' · ');
@@ -1027,7 +1031,7 @@ const TogetherPanel = (() => {
                 go.type = 'button';
                 go.className = 'nexus-private-begin';
                 go.dataset.action = 'private-again';
-                go.textContent = 'Continue like last time →';
+                go.textContent = this._privateWord('setup.continue', 'Continue like last time →');
                 go.addEventListener('click', () => {
                     activity.prepareInput = { ...last.preset };
                     activity.sceneChoice = last.scene;
@@ -1039,13 +1043,13 @@ const TogetherPanel = (() => {
                 shell.appendChild(again);
                 const or = doc.createElement('p');
                 or.className = 'nexus-private-or';
-                or.textContent = 'or';
+                or.textContent = this._privateWord('setup.or', 'or');
                 shell.appendChild(or);
             }
 
             const lead = doc.createElement('p');
             lead.className = 'nexus-private-setup-lead';
-            lead.textContent = 'How should this feel?';
+            lead.textContent = this._privateWord('setup.question', 'How should this feel?');
             shell.appendChild(lead);
 
             const grid = doc.createElement('div');
@@ -1061,11 +1065,40 @@ const TogetherPanel = (() => {
                 option.type = 'button';
                 option.className = 'nexus-private-preset';
                 option.dataset.preset = input.id;
-                option.innerHTML = `<strong>${input.id === 'sensual' ? '✧' : '♡'} ${input.label}</strong><span></span>`;
-                option.querySelector('span').textContent = descriptions[input.id] || input.note || '';
+                // Use text content, not interpolated HTML, for localized style names.
+                option.innerHTML = '<strong></strong><span></span>';
+                option.querySelector('strong').textContent =
+                    `${PRESET_MARK[input.id] || '♡'} ${this._privateWord(`preset.name.${input.id}`, input.label)}`;
+                option.querySelector('span').textContent = this._privateWord(
+                    `preset.note.${input.id}`,
+                    descriptions[input.id] || input.note || ''
+                );
                 // Selecting *is* continuing. A separate Continue button would be a second tap
                 // that carries no new information, and the prefetch wants the mood now.
                 option.addEventListener('click', () => activity && activity.chooseMood(input));
+                grid.appendChild(option);
+            }
+            // AX21. A style this site has not unlocked is shown, locked, with the one true reason.
+            // Hidden, nobody knew a fourth step existed; a disabled card says it does and what it
+            // waits for. It is a real disabled button: no listener, so nothing here can start it.
+            const lockedPresets =
+                presets.length && activity && typeof activity.lockedInputs === 'function'
+                    ? activity.lockedInputs()
+                    : [];
+            for (const input of lockedPresets) {
+                const option = doc.createElement('button');
+                option.type = 'button';
+                option.disabled = true;
+                option.className = 'nexus-private-preset is-locked';
+                option.dataset.presetLocked = input.id;
+                option.innerHTML = '<strong></strong><span></span>';
+                option.querySelector('strong').textContent =
+                    `${PRESET_MARK[input.id] || '♡'} ${this._privateWord(`preset.name.${input.id}`, input.label)}`;
+                option.querySelector('span').textContent =
+                    `${this._privateWord(`preset.note.${input.id}`, input.note || '')} · 🔒 ${this._privateWord(
+                        `preset.locked.${input.why}`,
+                        input.why === 'age' ? 'Requires age verification' : 'Not enabled on this site'
+                    )}`;
                 grid.appendChild(option);
             }
             shell.appendChild(grid);
@@ -1075,15 +1108,22 @@ const TogetherPanel = (() => {
                 locked.className = 'nexus-private-locked';
                 locked.dataset.privateLocked = '1';
                 locked.textContent =
-                    (activity && activity.prompt) || (contract && contract.prompt) || 'Private is unavailable.';
+                    (activity && activity.prompt) ||
+                    (contract && contract.prompt) ||
+                    this._privateWord('setup.unavailable', 'Private is unavailable.');
                 shell.appendChild(locked);
             }
 
             const safety = doc.createElement('div');
             safety.className = 'nexus-private-safety';
-            safety.textContent = 'You control the pace. Nothing here is added to Playground History.';
+            safety.textContent = this._privateWord(
+                'setup.privacy',
+                'You control the pace. Nothing here is added to public history.'
+            );
             shell.appendChild(safety);
-            shell.appendChild(this._button('Back', 'nexus-bd-together-option', () => this.back()));
+            shell.appendChild(
+                this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () => this.back())
+            );
             this.root.appendChild(shell);
         }
 
@@ -1100,7 +1140,7 @@ const TogetherPanel = (() => {
             const shell = this._privateShell(2);
             const lead = doc.createElement('p');
             lead.className = 'nexus-private-setup-lead';
-            lead.textContent = 'Set the atmosphere';
+            lead.textContent = this._privateWord('setup.atmosphere', 'Set the atmosphere');
             shell.appendChild(lead);
 
             const label = (text) => {
@@ -1113,7 +1153,7 @@ const TogetherPanel = (() => {
             const all = activity.scenes();
             const shown = activity.recommendedScenes(3);
             const place = this._privatePlace(activity);
-            shell.appendChild(label('Where should we be?'));
+            shell.appendChild(label(this._privateWord('setup.where', 'Where should we be?')));
             const cards = doc.createElement('div');
             cards.className = 'nexus-private-scene-cards';
             const cardFor = (id, title, note) => {
@@ -1129,12 +1169,14 @@ const TogetherPanel = (() => {
                 card.addEventListener('click', () => activity.setAtmosphere({ scene: id }));
                 return card;
             };
-            cards.appendChild(cardFor(null, place, 'Keep this place'));
+            cards.appendChild(cardFor(null, place, this._privateWord('setup.keep', 'Keep this place')));
             for (const entry of shown) cards.appendChild(cardFor(entry.id, entry.label, ''));
             shell.appendChild(cards);
             if (!activity._showAllScenes && all.length > shown.length) {
-                const more = this._button(`More (${all.length - shown.length})`, 'nexus-private-more', () =>
-                    activity.showAllScenes()
+                const more = this._button(
+                    `${this._privateWord('setup.more', 'More')} (${all.length - shown.length})`,
+                    'nexus-private-more',
+                    () => activity.showAllScenes()
                 );
                 more.dataset.action = 'more-scenes';
                 shell.appendChild(more);
@@ -1145,7 +1187,7 @@ const TogetherPanel = (() => {
             // ones); the activity asks the engine for it only once Private has started.
             const rooms = typeof activity.places === 'function' ? activity.places() : [];
             if (rooms.length) {
-                shell.appendChild(label('Or a 3D room'));
+                shell.appendChild(label(this._privateWord('setup.room', 'Or a 3D room')));
                 const roomCards = doc.createElement('div');
                 roomCards.className = 'nexus-private-scene-cards';
                 for (const room of rooms) {
@@ -1158,7 +1200,7 @@ const TogetherPanel = (() => {
                         '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
                     card.querySelector('.nexus-private-scene-name').textContent = room.title;
                     card.querySelector('.nexus-private-scene-note').textContent =
-                        room.rating === 'private' ? 'Private' : '';
+                        room.rating === 'private' ? this._privateWord('setup.private', 'Private') : '';
                     // PG1–PG2. Each room shows its own picture (the world catalogue's `preview`,
                     // else a playground template's), on its sky colours while it loads.
                     const templates = this.doc.defaultView && this.doc.defaultView.NEXUS_PLAYGROUND_TEMPLATES;
@@ -1190,13 +1232,13 @@ const TogetherPanel = (() => {
                 shell.appendChild(roomCards);
             }
 
-            shell.appendChild(label('Music'));
+            shell.appendChild(label(this._privateWord('setup.music', 'Music')));
             const music = doc.createElement('div');
             music.className = 'nexus-private-segmented';
             for (const [value, text] of [
-                ['choose', 'Auto'],
-                ['current', 'Keep'],
-                ['none', 'Off'],
+                ['choose', this._privateWord('setup.musicAuto', 'Play selected music')],
+                ['current', this._privateWord('setup.musicKeep', 'Keep current music')],
+                ['none', this._privateWord('setup.musicOff', 'Off — silent')],
             ]) {
                 const seg = doc.createElement('button');
                 seg.type = 'button';
@@ -1223,7 +1265,9 @@ const TogetherPanel = (() => {
             begin.addEventListener('click', () => activity.runPreflight());
             shell.appendChild(begin);
 
-            const back = this._button('Back', 'nexus-bd-together-option', () => activity.editSetup());
+            const back = this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () =>
+                activity.editSetup()
+            );
             back.dataset.action = 'edit-private';
             shell.appendChild(back);
             this.root.appendChild(shell);
@@ -1239,7 +1283,10 @@ const TogetherPanel = (() => {
          */
         _privateWord(key, fallback) {
             try {
-                const api = (this.win || (typeof window !== 'undefined' ? window : null)).NEXUS_PRIVATE_LOCALE;
+                const w = this.win || (typeof window !== 'undefined' ? window : null);
+                const api =
+                    (w && w.NEXUS_PRIVATE_LOCALE) ||
+                    (typeof module !== 'undefined' && module.exports ? require('../PrivateLocale.js') : null);
                 if (api && typeof api.t === 'function') {
                     const word = api.t(key);
                     if (word && word !== key) return word;
@@ -1287,7 +1334,11 @@ const TogetherPanel = (() => {
 
             const actions = doc.createElement('div');
             actions.className = 'nexus-bd-together-options';
-            const cancel = this._button('Cancel', 'nexus-bd-together-option is-stop', () => activity.cancelPreflight());
+            const cancel = this._button(
+                this._privateWord('setup.cancel', 'Cancel'),
+                'nexus-bd-together-option is-stop',
+                () => activity.cancelPreflight()
+            );
             cancel.dataset.action = 'cancel-preflight';
             actions.appendChild(cancel);
             shell.appendChild(actions);
@@ -1320,7 +1371,10 @@ const TogetherPanel = (() => {
             const title = doc.createElement('p');
             title.className = 'nexus-private-setup-lead';
             title.dataset.privateReady = '1';
-            title.textContent = String(preset.label || 'Private').toUpperCase();
+            title.textContent = this._privateWord(
+                `preset.name.${preset.id}`,
+                String(preset.label || 'Private')
+            ).toUpperCase();
             shell.appendChild(title);
 
             const note = doc.createElement('p');
@@ -1371,7 +1425,9 @@ const TogetherPanel = (() => {
             }
             shell.appendChild(actions);
 
-            const back = this._button('Edit setup', 'nexus-bd-together-option', () => activity.cancelPreflight());
+            const back = this._button(this._privateWord('setup.edit', 'Edit setup'), 'nexus-bd-together-option', () =>
+                activity.cancelPreflight()
+            );
             back.dataset.action = 'edit-private';
             shell.appendChild(back);
             this.root.appendChild(shell);
@@ -1382,7 +1438,7 @@ const TogetherPanel = (() => {
             const lead = this.doc.createElement('p');
             lead.className = 'nexus-private-setup-lead';
             lead.dataset.privateStarting = '1';
-            lead.textContent = 'Setting the mood…';
+            lead.textContent = this._privateWord('setup.preparing', 'Setting the mood…');
             shell.appendChild(lead);
             this.root.appendChild(shell);
         }
@@ -1411,7 +1467,7 @@ const TogetherPanel = (() => {
             if (!activity || !activity.prepareInput) return null;
             return this.startActivity('intimate', {
                 ...activity.prepareInput,
-                soundtrack: activity.soundtrackChoice || 'choose',
+                soundtrack: activity.soundtrackChoice || 'none',
                 scene: activity.sceneChoice || null,
                 preparedPlan: activity.preparedPlan,
                 preparedTrack: activity.preparedTrack,

@@ -122,3 +122,41 @@ apply unchanged.
 real ConsentFlow, provider capability resolution, no unsolicited escalation, stop and cleanup, no
 leakage, context, languages, honest unavailability. The P22 length tests in
 `tests/behavior/private-register.test.js` were rewritten to the new policy's properties.
+
+## Intenso: on by default, and how to turn it off (AX21–AX22)
+
+Intenso is the fourth Private style (`id: mature`, four steps). Since AX22 it is offered wherever
+Private itself is available: the default content tier is `mature`, and Private is already behind
+the person's own gate (Private Mode on, with its age confirmation). The server's age attestation
+is **not** required for it. That is the owner's decision; note that the person's gate is a
+client-side self-declaration, not verification — a site that must verify age by law needs its own
+check in front of the app.
+
+To take it away, the site declares less before the app boots:
+
+```html
+<script>
+    window.NEXUS_ADULT_EXPERIENCE_CONFIG = { contentTier: 'sensual' };
+    // or for one provider only: { providers: { openai: 'sensual' } }
+</script>
+```
+
+The setup screen then shows the card disabled ("Not enabled on this site") and
+`Intimate.start()` refuses it. A declaration that cannot be read (a mistyped tier) resolves to
+`sensual`, never to the default above it.
+
+What Intenso changes: four steps instead of three, all moved by the person; the step-4 register
+and example lines (`PrivateVoice` `intense`, nine languages); six sentences for a scene or a
+request from step 3 (`PrivateExperienceProfile.maxSentences`, the single source for the prompt and
+for `shapePrivateReply`); the `intimate` animation intents of `adult.profile` level 4.
+
+What it does not change: she never initiates, the proactive lines stay non-explicit
+(`proactiveNsfw: false`), "cozy" and "stop" work as everywhere, care mode replaces the whole
+register, and a provider's refusal is said once in her voice and never worked around. What a model
+will actually write at step 4 is the provider's policy, not this app's.
+
+Use one model for the whole session (not a route that switches backends per turn): her voice at
+step 4 depends on it more than anything in the prompt.
+
+The `explicit` tier is separate: it still needs the site's declaration for the provider in use
+**and** the server's attestation, and no style uses it yet.

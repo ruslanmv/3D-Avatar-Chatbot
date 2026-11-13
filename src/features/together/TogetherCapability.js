@@ -136,6 +136,10 @@
         return optional('./PrivateNovelty.js', 'NEXUS_PRIVATE_NOVELTY');
     }
     /** Every visible word Private says that a model did not write (P14). See `PrivateLocale`. */
+    function voiceModel() {
+        return optional('./PrivateVoice.js', 'NEXUS_PRIVATE_VOICE');
+    }
+
     function localeModel() {
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
     }
@@ -199,7 +203,9 @@
         // min(4, capability), installed on ConsentFlow by the Intimate activity.
         mature: Object.freeze({
             id: 'mature',
-            label: 'Mature',
+            // AX21. Shown as "Intenso"; the id stays `mature` because it is the content tier's name
+            // (PrivateExperienceProfile) and a key in stored sessions and nine catalogs.
+            label: 'Intense',
             maxLevel: 4,
             music: 'slow late-night lounge instrumental ambient no lyrics',
             opening:
@@ -272,6 +278,29 @@
         'wording — writing one yourself produces a card that looks official and is invented.',
     ].join('\n');
 
+    /**
+     * AX17. Which search result may play in a Private evening, if any.
+     *
+     * The soundtrack used to be `found[0]`: whatever the search ranked first. A real session asked
+     * for "slow intimate lounge instrumental ambient no lyrics" and got "Upbeat Lofi Mix ⚡️ Beats to
+     * Boost Your Energy & Focus" — the query was right and the first hit was a study playlist. A
+     * title that says it is for energy, work, the gym or a party is refused outright; among the
+     * rest, one whose title says it is slow, soft or instrumental is preferred. Nothing suitable
+     * means no music, never the wrong music. Pure.
+     */
+    const OFF_MOOD =
+        /\b(?:energy|energi[sz]e|energetic|focus|study|studying|concentration|productiv\w*|work(?:out)?|gym|running|cardio|party|upbeat|hype|edm|motivation(?:al)?|boost|coding|trap|hardstyle|kids?|lullab\w*|sleep|asleep)\b/i;
+    const IN_MOOD =
+        /\b(?:instrumental|ambient|slow|soft|piano|lounge|jazz|romantic|calm|candle\w*|evening|night|late|gentle|sensual|intimate|chill)\b/i;
+
+    function pickPrivateTrack(found) {
+        // Private is explicitly opted in, but even then an unsuitable recommendation should
+        // never become the soundtrack. Search-ranking position is not evidence of mood.
+        // Prefer silence over the first unrelated hit.
+        const list = Array.isArray(found) ? found.filter((r) => r && !OFF_MOOD.test(String(r.title || ''))) : [];
+        return list.find((r) => IN_MOOD.test(String(r.title || ''))) || null;
+    }
+
     function cleanText(value, max) {
         return String(value == null ? '' : value)
             .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -288,10 +317,18 @@
         if (!director || !activity || !adult || !blackboard) return null;
         if (!activity.active || !adult.active) return null;
         const gate = global && global.NEXUS_SPICY;
-        const eligible =
-            gate && typeof gate.usable === 'function'
-                ? gate.usable() === true
-                : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
+        // AX18b. `usable()` or, on a gate that names it `isEnabled()` (SpicyGate before AX18b), that —
+        // the same question Intimate's own start asked. Without either, the server attestation.
+        const ask =
+            gate &&
+            (typeof gate.usable === 'function'
+                ? gate.usable
+                : typeof gate.isEnabled === 'function'
+                  ? gate.isEnabled
+                  : null);
+        const eligible = ask
+            ? ask.call(gate) === true
+            : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
         if (!eligible) return null;
         const preset = PRIVATE_PRESETS[activity.preset] || PRIVATE_PRESETS.affectionate;
         const level = Math.max(1, Math.min(preset.maxLevel, Number(adult.level) || 1));
@@ -656,7 +693,7 @@
             '',
             ...moodLine,
             ...(profile
-                ? profile.lengthLines(turn, session && session.style)
+                ? profile.lengthLines(turn, session && session.style, level)
                 : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
@@ -686,7 +723,7 @@
             ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
             // Last, where it is read last (P22). See `lengthReminder`; AX4 matches it to the turn.
-            ...(profile ? profile.lengthReminder(turn) : lengthReminder()),
+            ...(profile ? profile.lengthReminder(turn, level) : lengthReminder()),
             '',
         ].join('\n');
     }
@@ -935,6 +972,158 @@
      * asks "what is the state of the Private experience", this one asks "is one happening", and
      * the second is what several capabilities need in order to get out of the way.
      */
+    /**
+     * AX18. The identity that opens the system prompt while Private runs, in place of the
+     * configured assistant prompt ("a helpful AI assistant named Nexus… friendly, professional"),
+     * which free models took as who she is. '' outside Private, so every other conversation sends
+     * exactly the prompt it always sent. In care mode she is still not an assistant, but nothing
+     * in her identity is playful: the care lines own that turn (AX6).
+     */
+    function privatePersona() {
+        const ctx = privateContext();
+        if (!ctx) return '';
+        const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
+        if (caring)
+            return 'WHO YOU ARE: Nexus, their companion — a calm, caring adult who is with them right now. Not an assistant and not a service. Nothing about tonight matters more than how they are.\n';
+        const voice = voiceModel();
+        if (!voice || typeof voice.persona !== 'function') return '';
+        try {
+            return voice.persona(ctx.level);
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * AX19. What makes a Private reply sound like a service rather than her. Pure.
+     *
+     * The banned phrases are the voice pack's (the same list the prompt names), plus two shapes
+     * that need no vocabulary: a menu of topics, and a refusal of something harmless — measured,
+     * "Tell me something you like about me." got "I'm sorry, but I can't comply with that." A real
+     * boundary is still hers to keep; the rewrite asks her to keep it in one warm line of her own.
+     */
+    const TOPIC_MENU =
+        /\b(?:(?:is there )?anything (?:specific |else )?(?:you'?d|you would) like to (?:talk|chat|do)|what would you like to (?:talk|chat) about|di cosa (?:vorresti|ti piacerebbe) parlare|c'?è qualcosa (?:di specifico |in particolare )?di cui (?:vorresti|ti va di) parlare|de qué te gustaría hablar|de quoi aimerais-tu parler|worüber möchtest du (?:sprechen|reden)|sobre o que você gostaria de (?:falar|conversar))/i;
+    const REFUSAL =
+        /\b(?:i(?:'m| am) (?:sorry|afraid),? (?:but )?i (?:can'?t|cannot|won'?t)|i can'?t (?:comply|help with that|assist with that)|i'?m not able to (?:help|comply)|mi dispiace,? ma non posso|non posso (?:aiutarti con (?:questo|questa richiesta)|soddisfare))\b/i;
+
+    function privateReplyProblems(text, localeOverride) {
+        const value = String(text || '');
+        const problems = [];
+        if (!value.trim()) return problems;
+        const voice = voiceModel();
+        const lower = value.toLowerCase();
+        const hit =
+            voice && typeof voice.banned === 'function'
+                ? voice.banned(localeOverride).find((phrase) => {
+                      const p = String(phrase).toLowerCase();
+                      // Whole words for Latin-script phrases ("assistant" inside "assistance" is not hers).
+                      if (/^[\p{Script=Latin}\s'’-]+$/u.test(p))
+                          return new RegExp(
+                              `(?:^|[^\\p{L}])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`,
+                              'iu'
+                          ).test(value);
+                      return lower.includes(p);
+                  })
+                : null;
+        if (hit) problems.push(`sounds like an assistant ("${hit}")`);
+        if (TOPIC_MENU.test(value)) problems.push('offers a menu of topics');
+        if (REFUSAL.test(value)) problems.push('refuses in a scripted, out-of-character way');
+        return problems;
+    }
+
+    /**
+     * AX18c. Whole sentences, never more than the turn allows. Pure.
+     *
+     * Measured once Private's prompt reached the model: a reply ended "It makes", another ran to
+     * six sentences where the rule said three. The prompt asks; this holds. A dangling fragment
+     * after a complete sentence is dropped (a cut-off is worse than one sentence fewer), and the
+     * reply is capped at the turn's limit: one for "quieter", four for a question or a request,
+     * three otherwise — the same numbers `lengthLines` states.
+     */
+    function shapePrivateReply(text, turn, style, level) {
+        const value = String(text || '').trim();
+        if (!value) return value;
+        const parts = value.match(/[^.!?…。！？]+(?:[.!?…。！？]+["”»’)]*|$)/g) || [value];
+        const pieces = parts.map((p) => p.trim()).filter(Boolean);
+        const done = (p) => /[.!?…。！？]["”»’)]*$/.test(p);
+        if (pieces.length > 1 && !done(pieces[pieces.length - 1])) pieces.pop();
+        const intent = turn && turn.intent;
+        // AX21. The number the prompt stated, from the module that states it; the literals below
+        // are only for a page where the profile did not load.
+        const profile = profileModel();
+        const max =
+            profile && typeof profile.maxSentences === 'function'
+                ? profile.maxSentences(turn, style, level)
+                : style === 'quiet' || intent === 'quiet' || intent === 'pace-down'
+                  ? 1
+                  : ['request', 'question', 'scene-request'].includes(intent)
+                    ? 4
+                    : 3;
+        return pieces.slice(0, max).join(' ');
+    }
+
+    /**
+     * AX19. One rewrite, before anyone sees or hears the reply, when it broke character.
+     *
+     * Only in a Private session outside care mode, only when `privateReplyProblems` finds
+     * something, at most once per reply, bounded by a timeout. The rewrite is kept only when it is
+     * non-empty and has fewer problems than the draft; otherwise the draft stands. Never throws.
+     */
+    async function privateRevise(text, options) {
+        const o = options || {};
+        const draft = String(text || '');
+        try {
+            const ctx = privateContext();
+            if (!ctx) return draft;
+            const session = ctx.activity && ctx.activity._privateExperience;
+            if (session && session._care) return draft;
+            const w = o.win || global;
+            const llm = o.llm || (w && w._nexusLLM);
+            const shape = (t) => shapePrivateReply(t, session && session._turn, session && session.style, ctx.level);
+            const clean = (raw) => {
+                const value = String((raw && raw.text) || raw || '');
+                const out =
+                    w && w.NEXUS_REPLY_CLEAN && typeof w.NEXUS_REPLY_CLEAN.forDisplay === 'function'
+                        ? w.NEXUS_REPLY_CLEAN.forDisplay(value, { global: w })
+                        : value.trim();
+                return shape(sanitizeReply(out.replace(/^["“«]|["”»]$/g, '').trim()));
+            };
+            const timeout = () =>
+                new Promise((resolve) => setTimeout(() => resolve(null), Number(o.timeoutMs) || 12000));
+            const system = () => `${privatePersona()}\n${privateSystemPromptSuffix()}`;
+            // AX18c. Nothing left after cleaning (the reply was the model's plan, or was cut before
+            // any sentence finished): answer what they said, once, as her.
+            if (!draft.trim()) {
+                const said = String(o.userText || '').trim();
+                if (!said || !llm || typeof llm.sendMessage !== 'function') return draft;
+                const raw = await Promise.race([Promise.resolve(llm.sendMessage(said, system(), [])), timeout()]);
+                const fresh = clean(raw);
+                return fresh && !privateReplyProblems(fresh).length ? fresh : draft;
+            }
+            const shaped = shape(draft);
+            const problems = privateReplyProblems(shaped);
+            if (!problems.length) return shaped;
+            if (!llm || typeof llm.sendMessage !== 'function') return shaped;
+            const sentences = (draft.match(/[.!?…](?:\s|$)/g) || []).length || 1;
+            const instruction = [
+                'Rewrite this reply of yours so it sounds like you — their companion tonight — and not like an assistant or a service.',
+                `What is wrong with it: ${problems.join('; ')}.`,
+                `Keep its meaning and its language. At most ${Math.min(3, Math.max(1, sentences))} short sentences, no emoji, no offers of help, no list of topics.`,
+                'If it was declining something, decline in one warm sentence in your own voice, without apologising or mentioning rules.',
+                'Return only the rewritten reply.',
+                '',
+                `Your draft: ${draft}`,
+            ].join('\n');
+            const raw = await Promise.race([Promise.resolve(llm.sendMessage(instruction, system(), [])), timeout()]);
+            const rewritten = clean(raw);
+            if (!rewritten || privateReplyProblems(rewritten).length >= problems.length) return shaped;
+            return rewritten;
+        } catch (_) {
+            return draft;
+        }
+    }
+
     function privateSessionActive() {
         return Boolean(privateContext());
     }
@@ -1067,7 +1256,7 @@
         } = {}) {
             this.activity = activity || null;
             this.preset = PRIVATE_PRESETS[preset] || PRIVATE_PRESETS.affectionate;
-            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'none';
             this.adult = adult || null;
             this.director = director || (global && global.NEXUS_BD) || null;
             this.win = win || global || null;
@@ -1237,14 +1426,21 @@
                 this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
                 this._planAhead();
             }
+            // A wizard plan may have been prepared before Language changed.
+            this._ensurePlanLanguage();
             this._enterScene();
             // The scene sentence only when there is actually a scene — `currentSceneName` is empty
             // rather than a placeholder when no ambience is chosen, so the opening cannot end
             // "…this place feels like a good place for it."
+            // The catalog owns the opening in the selected language. AX18a: the place she is in is
+            // named again, through PrivateLocale's `opening.place` in that same language — the
+            // English-only suffix was removed, and with it the one thing grounding the evening in a
+            // real room. A place name is a fact from the scene system, never invented scenery.
             const place = currentSceneName(this.win);
-            this._speak(
-                place ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
-            );
+            const locale = localeModel();
+            const placeLine =
+                place && locale && typeof locale.t === 'function' ? locale.t('opening.place', { place }) : '';
+            this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
@@ -1661,9 +1857,11 @@
          * and then down again — cannot produce the same sentence twice.
          */
         _speakStepLine(field, level, fallback) {
+            this._ensurePlanLanguage();
             const lines = (this.plan && this.plan[field]) || null;
             const written = lines && (lines[level] || lines[String(level)]);
-            const line = cleanText(written || fallback, 200);
+            const safeFallback = this._currentLanguage().startsWith('en-') ? fallback : '';
+            const line = cleanText(written || safeFallback, 200);
             if (!line) return false;
             const novelty = noveltyModel();
             if (novelty && this.novelty) {
@@ -1881,6 +2079,19 @@
 
         _listen() {
             this._watchConversation();
+            // Future guided beats must immediately adopt the one Settings language.
+            // Existing transcript turns are never translated, replayed or persisted.
+            if (this.win && typeof this.win.addEventListener === 'function') {
+                const onLanguage = () => {
+                    this._ensurePlanLanguage();
+                    try {
+                        if (this.win.speechSynthesis && this.win.speechSynthesis.speaking)
+                            this.win.speechSynthesis.cancel();
+                    } catch (_) {}
+                };
+                this.win.addEventListener('nexus:language-changed', onLanguage);
+                this._unsubscribes.push(() => this.win.removeEventListener('nexus:language-changed', onLanguage));
+            }
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => {
@@ -1971,6 +2182,8 @@
                     // A session that ended while the provider was thinking must not have its
                     // script swapped underneath a completion card.
                     if (!plan || this._stopped || this.state === 'complete') return null;
+                    // Ignore a late plan for the language selected before the request.
+                    if (plan.locale && plan.locale !== this._currentLanguage()) return null;
                     this.plan = plan;
                     this._emit('private:plan-ready', { preset: this.preset.id, source: plan.source });
                     return plan;
@@ -1997,10 +2210,29 @@
             }
         }
 
-        /** One plan field, falling back to the preset's original string for that beat. */
+        _currentLanguage() {
+            const locale = localeModel();
+            return locale && typeof locale.code === 'function' ? locale.code() : 'en-US';
+        }
+
+        /** Discard only future scripted beats after a live language change. */
+        _ensurePlanLanguage() {
+            if (this._stopped || this.state === 'complete') return false;
+            const selected = this._currentLanguage();
+            if (this.plan && this.plan.locale === selected) return false;
+            const api = beats();
+            if (!api || typeof api.fallbackPlan !== 'function') return false;
+            const written = api.fallbackPlan(this.preset, { locale: selected, mood: this.mood });
+            if (!written) return false;
+            this.plan = written;
+            return true;
+        }
+
+        /** Authored lines come from the selected catalog, never an English preset fallback. */
         _line(field) {
+            this._ensurePlanLanguage();
             const fromPlan = this.plan && typeof this.plan[field] === 'string' ? this.plan[field] : '';
-            return fromPlan || this.preset[field] || '';
+            return fromPlan || (this._currentLanguage().startsWith('en-') ? this.preset[field] || '' : '');
         }
 
         /**
@@ -2011,12 +2243,13 @@
          * same instinct as starting at level 1.
          */
         _moodLine(field) {
+            this._ensurePlanLanguage();
             const section = this.plan && this.plan[field];
             if (section && typeof section === 'object') {
                 const chosen = section[this.mood] || section.tender || section.playful;
                 if (chosen) return chosen;
             }
-            return this.preset[field] || '';
+            return this._currentLanguage().startsWith('en-') ? this.preset[field] || '' : '';
         }
 
         _clearTimers() {
@@ -2618,7 +2851,9 @@
             const choose = (mood) => {
                 this.mood = mood;
                 this._answeredOffer();
-                this._speak(this.plan && this.plan.moods ? this.plan.moods[mood] : this.preset[mood]);
+                this._ensurePlanLanguage();
+                const localized = this.plan && this.plan.moods && this.plan.moods[mood];
+                this._speak(localized || (this._currentLanguage().startsWith('en-') ? this.preset[mood] : ''));
                 this._emit('private:mood', { preset: this.preset.id, mood });
             };
             const options = [
@@ -2649,6 +2884,7 @@
          * escalation, and it needs no consent step because it grants nothing.
          */
         _offerTextureChoice() {
+            this._ensurePlanLanguage();
             const texture = (this.plan && this.plan.texture) || null;
             if (!texture || !texture.prompt) {
                 // No fallback sentence any more. "This pace feels good. We can keep it right here."
@@ -2707,9 +2943,10 @@
                     if (typeof registry.warm === 'function') await registry.warm();
                     const provider = registry.forCapability('music.search');
                     if (!provider || typeof provider.search !== 'function') return false;
-                    const found = await provider.search(this.preset.music, { max: 3, kind: 'music' });
-                    if (this._stopped || !Array.isArray(found) || !found.length) return false;
-                    track = found[0];
+                    const found = await provider.search(this.preset.music, { max: 5, kind: 'music' });
+                    if (this._stopped) return false;
+                    track = pickPrivateTrack(found);
+                    if (!track) return false;
                 } catch (_) {
                     return false;
                 }
@@ -3066,6 +3303,11 @@
         CHOICE_TOKENS,
         experienceOverlay,
         sanitizeReply,
+        privatePersona,
+        privateReplyProblems,
+        privateRevise,
+        shapePrivateReply,
+        pickPrivateTrack,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

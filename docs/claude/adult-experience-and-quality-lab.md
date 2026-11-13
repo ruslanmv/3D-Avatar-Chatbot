@@ -11,15 +11,18 @@ TogetherCapability) owns style data and capability resolution;
 - **Intensity is still only ConsentFlow's**, moved only by the person. The
   ceiling installed on ConsentFlow is min(style, capability): it only narrows.
 - **Content capability** is the lowest of the provider's tier (NEXUS default
-  `sensual` for every provider; a deployment may name one) and the site's tier
-  (`window.NEXUS_ADULT_EXPERIENCE_CONFIG`, set by the deployment, never storage
-  or a setting). Nothing above `sensual` without `blackboard.adultVerified`. No
-  build sets the config, so every build behaves as before.
+  `mature` for every provider since AX22; a deployment may name one) and the
+  site's tier (`window.NEXUS_ADULT_EXPERIENCE_CONFIG`, set by the deployment,
+  never storage or a setting). Nothing above `mature` without
+  `blackboard.adultVerified`; an unreadable declaration resolves to `sensual`.
+  No build sets the config, so every build resolves to `mature`.
 - **Undeclared, NEXUS adds no content rule of its own** (an earlier product
   decision, pinned in `tests/behavior/private-register.test.js`); she is told
   only how to meet a boundary in her own voice. A declared tier is stated.
-- **Mature** (fourth step, "Intimate" in nine languages) is offered only where
-  the capability reaches `mature`; `PrivatePace` and the register now go to 4.
+- **Mature** (shown as "Intenso"/"Intense", AX21) is the fourth style and is
+  offered wherever Private is (AX22, the owner's decision: Private's own gate
+  is the lock). A site takes it away by declaring `contentTier: 'sensual'`; the
+  card is then drawn locked (`Intimate.lockedInputs()`).
 - **Truth and care are not configurable (AX6).** A sincere "are you an AI?" gets
   a truthful answer (unprompted disclaimers stay forbidden, P22).
   `PrivateExperienceProfile.wellbeingConcern` checks the person's own turn (en,

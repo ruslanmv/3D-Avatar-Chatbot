@@ -93,12 +93,13 @@ const PlaygroundActivity = (() => {
             maxLevel: 3,
         }),
         // AX1. Offered only where the session's content capability reaches `mature`
-        // (PrivateExperienceProfile.styleAvailable) — deployment-, provider- and server-declared.
+        // (PrivateExperienceProfile.styleAvailable). AX22: that is the default, so it is offered
+        // wherever Private is, unless the site declared a lower level.
         Object.freeze({
             id: 'mature',
-            label: 'Mature',
+            label: 'Intense',
             permission: null,
-            note: 'An adult evening at your pace, up to the fourth step, where this site allows it.',
+            note: 'Direct and unhurried, up to the fourth step, where this site allows it.',
             maxLevel: 4,
         }),
     ]);
@@ -1568,7 +1569,7 @@ const PlaygroundActivity = (() => {
              */
             this.sessionState = 'mood';
             this.prepareInput = null;
-            this.soundtrackChoice = 'choose';
+            this.soundtrackChoice = 'none';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
             /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
@@ -1734,7 +1735,9 @@ const PlaygroundActivity = (() => {
                     preset: { ...preset },
                     scene: scene ? scene.id : null,
                     sceneLabel: scene ? scene.label : null,
-                    soundtrack: kept.soundtrack || 'choose',
+                    // A remembered track may have been started by the old automatic default.
+                    // Repeating a Private session never constitutes a fresh music request.
+                    soundtrack: 'none',
                 };
             } catch (_) {
                 return null;
@@ -1764,7 +1767,7 @@ const PlaygroundActivity = (() => {
                 if (this.worldChoice) this.sceneChoice = null;
             }
             if (soundtrack !== undefined) {
-                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'none';
             }
             this.prewarm();
             this._repaint();
@@ -1831,7 +1834,10 @@ const PlaygroundActivity = (() => {
         _planFor({ preset, place, win }) {
             const beats = privateBeats(win);
             if (!beats || typeof beats.plan !== 'function') return Promise.resolve(null);
-            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}`;
+            // Generated plans are language-dependent: never replay a cached English
+            // story after Settings has switched the app to Italian (or vice versa).
+            const locale = (win && win.AppLanguage && win.AppLanguage.code) || 'en-US';
+            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}|${locale}`;
             const cached = this._planCache.get(key);
             if (cached) return cached;
             let attempt;
@@ -1873,7 +1879,11 @@ const PlaygroundActivity = (() => {
                 if (typeof registry.warm === 'function') await registry.warm();
                 const provider = registry.forCapability('music.search');
                 if (!provider || typeof provider.search !== 'function') return null;
-                const found = await provider.search(key, { max: 3, kind: 'music' });
+                const found = await provider.search(key, { max: 5, kind: 'music' });
+                // AX17. A Private track must fit the evening; none fitting means silence.
+                const capability = win && win.NEXUS_TOGETHER_CAPABILITY;
+                if (capability && typeof capability.pickPrivateTrack === 'function')
+                    return capability.pickPrivateTrack(found);
                 return Array.isArray(found) && found.length ? found[0] : null;
             })().catch(() => {
                 this._trackCache.delete(key);
@@ -2179,6 +2189,28 @@ const PlaygroundActivity = (() => {
             return INTIMATE_PRESETS.filter((preset) => presetAllowed(preset, capability, P)).map((preset) => ({
                 ...preset,
                 maxLevel: P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel,
+            }));
+        }
+        /**
+         * AX21. The styles that exist but cannot be started here, each with why — for the setup
+         * screen to draw as a locked card. Kept out of `inputs()` on purpose: everything that
+         * reads `inputs()` (the panel's default option, starting from chat, the wizard) treats an
+         * entry as something it may start. This grants nothing; `start()` asks the gate again.
+         *
+         * AX22: Intenso is offered by default, so this is empty unless the site declared a lower
+         * level (`why: 'site'`). `age` is for a style that needs the server's attestation — none
+         * of today's four does; it is here for the one that will.
+         */
+        lockedInputs() {
+            const gate = this.availability();
+            if (!gate || gate.ok === false) return [];
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            const limited = (capability && capability.limitedBy) || [];
+            return INTIMATE_PRESETS.filter((preset) => !presetAllowed(preset, capability, P)).map((preset) => ({
+                ...preset,
+                locked: true,
+                why: limited.includes('needs-server-attestation') ? 'age' : 'site',
             }));
         }
         availability() {

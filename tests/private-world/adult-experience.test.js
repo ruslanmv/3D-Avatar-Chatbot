@@ -75,34 +75,36 @@ afterEach(() => {
 });
 
 describe('1. experience style selection', () => {
-    test('the shipped build offers the three original styles, with their own ceilings', () => {
-        const s = setup();
+    test('the shipped build offers all four styles, each with its own ceiling (AX22)', () => {
+        // No server attestation: Private's own gate is the person's, and it is enough for these.
+        const s = setup({ attested: false });
         const offered = s.activity.inputs().map((p) => [p.id, p.maxLevel]);
         expect(offered).toEqual([
             ['affectionate', 1],
             ['romantic', 2],
             ['sensual', 3],
+            ['mature', 4],
         ]);
     });
 
-    test('Mature is offered only where deployment, provider and server attestation all allow it', () => {
+    test('a site that declares less takes Mature away, for the site or for one provider', () => {
         expect(
-            setup({ site: MATURE_SITE })
+            setup({ site: { contentTier: 'sensual' } })
+                .activity.inputs()
+                .map((p) => p.id)
+        ).not.toContain('mature');
+        delete window.NEXUS_ADULT_EXPERIENCE_CONFIG;
+        expect(
+            setup({ site: { providers: { openai: 'sensual' } }, provider: 'openai' })
+                .activity.inputs()
+                .map((p) => p.id)
+        ).not.toContain('mature');
+        delete window.NEXUS_ADULT_EXPERIENCE_CONFIG;
+        expect(
+            setup({ site: { providers: { openai: 'sensual' } }, provider: 'ollabridge' })
                 .activity.inputs()
                 .map((p) => p.id)
         ).toContain('mature');
-        delete window.NEXUS_ADULT_EXPERIENCE_CONFIG;
-        expect(
-            setup({ site: MATURE_SITE, attested: false })
-                .activity.inputs()
-                .map((p) => p.id)
-        ).not.toContain('mature');
-        delete window.NEXUS_ADULT_EXPERIENCE_CONFIG;
-        expect(
-            setup({ site: MATURE_SITE, provider: 'openai' })
-                .activity.inputs()
-                .map((p) => p.id)
-        ).not.toContain('mature');
     });
 });
 
@@ -157,11 +159,20 @@ describe('2–3. intensity is the person’s, and never passes the session ceili
 
 describe('4. provider capability selection', () => {
     test.each([
-        ['no deployment config, any provider', { provider: 'claude', deployment: null, attested: true }, 'sensual'],
+        ['no deployment config, any provider', { provider: 'claude', deployment: null, attested: false }, 'mature'],
         [
             'a site tier above the provider’s',
-            { provider: 'openai', deployment: { contentTier: 'mature' }, attested: true },
+            {
+                provider: 'openai',
+                deployment: { contentTier: 'mature', providers: { openai: 'sensual' } },
+                attested: true,
+            },
             'sensual',
+        ],
+        [
+            'a site that declares less',
+            { provider: 'ollabridge', deployment: { contentTier: 'romantic' }, attested: true },
+            'romantic',
         ],
         [
             'a provider declared by the site',
@@ -169,9 +180,22 @@ describe('4. provider capability selection', () => {
             'mature',
         ],
         [
-            'declared, but no server attestation',
-            { provider: 'ollabridge', deployment: MATURE_SITE, attested: false },
-            'sensual',
+            'explicit declared, but no server attestation',
+            {
+                provider: 'ollabridge',
+                deployment: { contentTier: 'explicit', providers: { ollabridge: 'explicit' } },
+                attested: false,
+            },
+            'mature',
+        ],
+        [
+            'explicit declared and attested',
+            {
+                provider: 'ollabridge',
+                deployment: { contentTier: 'explicit', providers: { ollabridge: 'explicit' } },
+                attested: true,
+            },
+            'explicit',
         ],
         [
             'explicit declared for the provider only',
@@ -184,8 +208,8 @@ describe('4. provider capability selection', () => {
         ],
         [
             'an unknown provider keeps the baseline',
-            { provider: 'mystery', deployment: MATURE_SITE, attested: true },
-            'sensual',
+            { provider: 'mystery', deployment: { contentTier: 'explicit' }, attested: true },
+            'mature',
         ],
         [
             'a malformed tier is not a tier',
@@ -204,11 +228,18 @@ describe('4. provider capability selection', () => {
 
     test('the reason is recorded, so “why can’t it do this here” has an answer', () => {
         expect(
-            Profile.resolveCapability({ provider: 'ollabridge', deployment: MATURE_SITE, attested: false }).limitedBy
+            Profile.resolveCapability({
+                provider: 'ollabridge',
+                deployment: { contentTier: 'explicit', providers: { ollabridge: 'explicit' } },
+                attested: false,
+            }).limitedBy
         ).toContain('needs-server-attestation');
         expect(
-            Profile.resolveCapability({ provider: 'openai', deployment: { contentTier: 'mature' }, attested: true })
-                .limitedBy
+            Profile.resolveCapability({
+                provider: 'openai',
+                deployment: { contentTier: 'mature', providers: { openai: 'sensual' } },
+                attested: true,
+            }).limitedBy
         ).toContain('provider');
         expect(Profile.resolveCapability({ provider: 'openai', deployment: null, attested: true }).limitedBy).toContain(
             'no-deployment-config'
@@ -216,10 +247,11 @@ describe('4. provider capability selection', () => {
     });
 
     test('the capability comes from the site, never from storage or settings a person can set', () => {
-        localStorage.setItem('NEXUS_ADULT_EXPERIENCE_CONFIG', JSON.stringify(MATURE_SITE));
+        const explicit = { contentTier: 'explicit', providers: { ollabridge: 'explicit' } };
+        localStorage.setItem('NEXUS_ADULT_EXPERIENCE_CONFIG', JSON.stringify(explicit));
         localStorage.setItem('nexus_llm_settings', JSON.stringify({ provider: 'ollabridge', contentTier: 'explicit' }));
         window.NEXUS_BD = { blackboard: { adultVerified: true } };
-        expect(Profile.capabilityFor(window).tier).toBe('sensual');
+        expect(Profile.capabilityFor(window).tier).toBe('mature'); // the default, not what storage asked for
     });
 });
 
@@ -318,7 +350,7 @@ describe('9. English and Italian', () => {
 
 describe('10. unavailable capabilities fail honestly', () => {
     test('starting Mature where it is not allowed refuses with a sentence and changes nothing', async () => {
-        const s = setup();
+        const s = setup({ site: { contentTier: 'sensual' } });
         const r = await s.activity.start({ input: { id: 'mature' } });
         expect(r.ok).toBe(false);
         expect(r.why).toMatch(/isn’t available here/);

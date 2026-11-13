@@ -139,6 +139,21 @@ const CurrentMediaContext = (() => {
         if (!current) {
             return '';
         }
+        // AX17. Inside a Private evening the track is background they chose, not a topic. With the
+        // title in her context she narrated it — "Ecco il mix lofi per darti energia e
+        // concentrazione" — in the middle of an intimate moment. She is told only that soft music
+        // is on, at their choice, and never to talk about it unless they do.
+        try {
+            const capability = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_CAPABILITY : null;
+            if (
+                capability &&
+                typeof capability.privateSessionActive === 'function' &&
+                capability.privateSessionActive()
+            )
+                return '\nMUSIC: Music they chose is playing softly in the background. Do not name it, describe it or comment on it unless they bring it up. Never offer to change it.\n';
+        } catch (_) {
+            /* fall through to the ordinary context */
+        }
         // M4. The `selected` line used to end "tell them to tap the card", which directly
         // contradicted the capability paragraph telling her to choose something and play it.
         // A model handed both instructions will follow one of them, and the one it followed

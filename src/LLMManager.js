@@ -165,9 +165,8 @@
      *   - Harmony and `<think>` wrappers sometimes carry the answer after the
      *     thought, or inside `<|channel|>final<|message|>`.
      *
-     * The chain of thought is not the reply. It is used only when `content`
-     * has no visible words — which is the case that was reaching the bubble as
-     * the literal sentence "No response".
+     * Only final content is user-visible. A provider's reasoning-only completion
+     * produces EmptyCompletionError rather than a speech/chat privacy leak.
      */
     function flattenContent(content) {
         if (typeof content === 'string') return content;
@@ -189,19 +188,6 @@
         return '';
     }
 
-    function reasoningDetailsText(message) {
-        const details = message && message.reasoning_details;
-        if (!Array.isArray(details)) return '';
-        return details
-            .map((part) => {
-                if (!part || typeof part !== 'object') return '';
-                if (typeof part.text === 'string') return part.text;
-                if (typeof part.summary === 'string') return part.summary;
-                return '';
-            })
-            .join('\n');
-    }
-
     function stripReasoningWrappers(text) {
         // Fresh regexes. A shared /g pattern keeps lastIndex between calls, and the
         // second reply of a session would then skip a <think> block the first one saw.
@@ -217,20 +203,19 @@
     }
 
     function visibleMessageText(message) {
-        if (typeof message === 'string') return stripReasoningWrappers(message);
+        const thought = (text) => {
+            // AX16. A plain "THOUGHT:" paragraph before the answer (not a <think> wrapper).
+            const shared = typeof window !== 'undefined' ? window.NEXUS_REPLY_CLEAN : null;
+            return shared && typeof shared.stripThought === 'function' ? shared.stripThought(text) : text;
+        };
+        if (typeof message === 'string') return thought(stripReasoningWrappers(message));
         if (!message || typeof message !== 'object') return '';
-        const fromContent = stripReasoningWrappers(flattenContent(message.content));
+        const fromContent = thought(stripReasoningWrappers(flattenContent(message.content)));
         if (fromContent) return fromContent;
-        const fromReasoning = stripReasoningWrappers(
-            flattenContent(message.reasoning_content || message.reasoning || reasoningDetailsText(message))
-        );
-        if (fromReasoning) {
-            // One line in the console the connection check already asks people to
-            // paste. Without it, a reply that came from `reasoning` looks like the
-            // model said the thought out loud for no reason.
-            console.warn('[LLMManager] completion content was empty; the reply was in the reasoning channel.');
-        }
-        return fromReasoning;
+        // Provider reasoning, reasoning_content and reasoning_details are private
+        // metadata, not a final assistant message. The existing empty-completion
+        // recovery path handles a provider that supplied no final text.
+        return '';
     }
 
     /**
@@ -690,10 +675,16 @@
         }
 
         _tokenBudget(fallback) {
+            const PRIVATE_MAX = 1024;
             try {
                 const api = global && global.NEXUS_TOGETHER_CAPABILITY;
                 const wanted = api && typeof api.responseBudget === 'function' ? api.responseBudget() : null;
-                if (Number.isFinite(wanted) && wanted > 0) return Math.min(wanted, fallback);
+                // AX18c. A budget may lower the ceiling, and may raise it only up to PRIVATE_MAX
+                // (1024). `Math.min` with a 500 default undid Private's raised floor on the
+                // OpenAI-style paths, and a reasoning model spends ~450 tokens before its first
+                // visible word (AX8), so 500 was a cut-off reply, not a short one. The bound keeps
+                // the original rule's point: no feature spends without limit.
+                if (Number.isFinite(wanted) && wanted > 0) return Math.min(wanted, Math.max(fallback, PRIVATE_MAX));
             } catch (_) {
                 // A capability module that throws costs the tuning, never the reply.
             }

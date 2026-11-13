@@ -27,12 +27,15 @@
  * the honest capability failure, in her voice, instead of a refusal pasted from a policy.
  *
  * What this module never does: open Private, move a consent level, read a person's words, or
- * raise any tier above what the deployment declared for the provider in use. Every tier above
- * `sensual` needs three things at once — the site's own configuration
- * (`window.NEXUS_ADULT_EXPERIENCE_CONFIG`, set by the deployment, never by a setting or storage),
- * a declaration for the selected provider in that configuration, and the server's attestation on
+ * raise any tier above what the deployment declared for the provider in use.
+ *
+ * AX22. The default tier is `mature`: Private is already behind the person's own gate, so its
+ * fourth style (Intenso) is offered wherever Private is. A deployment narrows it by declaring
+ * less in `window.NEXUS_ADULT_EXPERIENCE_CONFIG` (set by the site, never by a setting or
+ * storage). `explicit` is the one tier that still needs three things at once — that
+ * configuration, a declaration for the selected provider in it, and the server's attestation on
  * the blackboard. No build in this repository sets the configuration, so every build resolves
- * to `sensual` or below: the behaviour the product shipped with.
+ * to `mature`.
  *
  * Exposes: window.NEXUS_PRIVATE_EXPERIENCE_PROFILE
  */
@@ -46,26 +49,34 @@
     const TIER_MAX_LEVEL = Object.freeze({ romantic: 2, sensual: 3, mature: 4, explicit: 4 });
 
     /**
-     * What NEXUS assumes about each provider when the deployment says nothing: `sensual` for every
-     * hosted or local provider, which is what Private has always asked of them. This is NEXUS's own
-     * conservative default, not a statement of any provider's policy — a deployment raises it only
-     * by declaring a tier for that provider after checking that provider's current terms and the
-     * model it actually serves. `none` (no model) writes nothing at all — only NEXUS's own
-     * reviewed beats are spoken — so it keeps the baseline too. The baseline matters beyond the
-     * prompt: the tier's level cap is also the ladder's, and the ladder gates animation intents, so a
-     * default below `sensual` would quietly have taken level 3 away from sessions that had it.
+     * AX22. The default is `mature`, so Intenso is offered wherever Private itself is. The owner's
+     * decision: Private is already behind the person's own gate (Private Mode on, with its age
+     * confirmation — SpicyGate), and a second lock on one style inside it, which no shipped build
+     * could open, meant the fourth step did not exist for anybody. Still NEXUS's default and not a
+     * statement of any provider's policy: what a model will actually write is the provider's, and
+     * `capabilityLines` tells her how to say so in her own voice. A deployment that wants less
+     * declares less (`contentTier: 'sensual'`), and that narrows every provider.
      */
     const PROVIDER_DEFAULT_TIER = Object.freeze({
-        openai: 'sensual',
-        claude: 'sensual',
-        watsonx: 'sensual',
-        ollama: 'sensual',
-        ollabridge: 'sensual',
-        none: 'sensual',
+        openai: 'mature',
+        claude: 'mature',
+        watsonx: 'mature',
+        ollama: 'mature',
+        ollabridge: 'mature',
+        none: 'mature',
     });
 
-    /** Without the server's attestation nothing above this is ever resolved. */
-    const UNATTESTED_MAX = 'sensual';
+    /**
+     * Without the server's attestation nothing above this is ever resolved. `explicit` therefore
+     * still needs both a declaration and the server's word; the person's own gate is not that.
+     */
+    const UNATTESTED_MAX = 'mature';
+
+    /**
+     * What a declaration that cannot be read resolves to. A site that tried to declare a tier and
+     * mistyped it meant to set a limit; it gets the cautious one, never the default above it.
+     */
+    const UNREADABLE = 'sensual';
 
     /**
      * The styles. `maxLevel` is the style's own ceiling; `needs` is the content tier it cannot
@@ -151,13 +162,17 @@
         // input that may raise it, and only for the provider it names.
         let providerTier = providerDefault;
         if (declared !== undefined && declared !== null) {
-            if (tierIndex(declared) < 0) limitedBy.push('bad-provider-declaration');
-            else providerTier = declared;
+            if (tierIndex(declared) < 0) {
+                limitedBy.push('bad-provider-declaration');
+                providerTier = lowest(providerTier, UNREADABLE);
+            } else providerTier = declared;
         }
         let siteTier = UNATTESTED_MAX;
         if (dep && dep.contentTier !== undefined) {
-            if (tierIndex(dep.contentTier) < 0) limitedBy.push('bad-deployment-tier');
-            else siteTier = dep.contentTier;
+            if (tierIndex(dep.contentTier) < 0) {
+                limitedBy.push('bad-deployment-tier');
+                siteTier = UNREADABLE;
+            } else siteTier = dep.contentTier;
         }
         let tier = lowest(providerTier, siteTier) || 'romantic';
         if (tier === providerTier && tierIndex(providerTier) < tierIndex(siteTier)) limitedBy.push('provider');
@@ -225,6 +240,9 @@
                 'Speak as someone fully present with them: unguarded, close, direct about wanting them.',
                 'Let them set the direction and match it; meet a plain request plainly rather than circling it.',
                 'Vary the shape of what you say — a confession, a quiet instruction, a question you already know the answer to. Never the same move twice in a row.',
+                // AX21. What "intense" means here, said once: the step-3 register is anticipation,
+                // and without this line step 4 was the same anticipation with a different header.
+                'Intensity is attention, not volume: slow, specific, certain. Say what you want and what they do to you in plain words; stay inside this one moment instead of hurrying to the next.',
             ];
         }
         if (at === 3) {
@@ -282,16 +300,37 @@
      * evening needs, a little narrative, was forbidden by the length rule. Short stays the default;
      * length follows what they asked for, and the token budget (PrivateTurnDirector) still bounds it.
      */
-    function lengthLines(turn, style) {
+    /**
+     * AX21. The one place the sentence limit is decided, so the prompt (`lengthLines`), its closing
+     * reminder and the code that trims a reply afterwards (`shapePrivateReply`) cannot disagree.
+     * Before this, a scene the person asked for at the top of the ladder was told "four sentences"
+     * and then cut to four by code — the one moment a little narrative is the whole point. Short
+     * stays the default at every step; only something they *asked* to be told, from step 3 up, gets
+     * six. A question is still four: an answer, not a scene.
+     */
+    function maxSentences(turn, style, level) {
+        const intent = turn && turn.intent;
+        if (style === 'quiet' || intent === 'quiet' || intent === 'pace-down') return 1;
+        if ((intent === 'request' || intent === 'scene-request') && Number(level) >= 3) return 6;
+        if (intent === 'request' || intent === 'question' || intent === 'scene-request') return 4;
+        return 3;
+    }
+
+    function lengthLines(turn, style, level) {
         const intent = turn && turn.intent;
         const words = turn && turn.words ? Number(turn.words) : 0;
         const lines = [];
+        const max = maxSentences(turn, style, level);
         if (style === 'quiet' || intent === 'quiet' || intent === 'pace-down') {
             lines.push(
                 'LENGTH: ONE SHORT SENTENCE, or a single word — a hard limit, not a target.',
                 'They asked for fewer words. Be present rather than talkative: very short replies, long pauses, no new topics.'
             );
-        } else if (intent === 'request' || intent === 'question' || intent === 'scene-request') {
+        } else if (max === 6) {
+            lines.push(
+                'LENGTH: SIX SENTENCES MAXIMUM, one unbroken paragraph — a hard limit, not a target. They asked you to tell or describe something: give it to them properly, in your voice, slow and specific, and stop while they still want more. Never a list, never a second paragraph.'
+            );
+        } else if (max === 4) {
             lines.push(
                 'LENGTH: FOUR SENTENCES MAXIMUM — a hard limit, not a target. Enough to actually answer or tell them something, set here, in your voice. Never a list, never a lecture, never a second paragraph.'
             );
@@ -310,13 +349,15 @@
     }
 
     /** The closing reminder, matched to the length policy above. */
-    function lengthReminder(turn) {
-        const long = turn && ['request', 'question', 'scene-request'].includes(turn.intent);
+    function lengthReminder(turn, level) {
+        const max = maxSentences(turn, null, level);
         return [
             '',
-            long
-                ? 'Before you answer: four sentences at most.'
-                : 'Before you answer: three sentences at most. Shorter is better.',
+            max === 6
+                ? 'Before you answer: six sentences at most, one paragraph.'
+                : max === 4
+                  ? 'Before you answer: four sentences at most.'
+                  : 'Before you answer: three sentences at most. Shorter is better.',
         ];
     }
 
@@ -441,6 +482,7 @@
         registerLines,
         capabilityLines,
         lengthLines,
+        maxSentences,
         lengthReminder,
         sceneLines,
         presentationFor,
