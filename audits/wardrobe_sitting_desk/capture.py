@@ -546,6 +546,29 @@ def unsupported_poses() -> dict:
     return {pose: {"status": "unsupported", "reason": reason} for pose, reason in UNSUPPORTED_POSES.items()}
 
 
+def metric_findings(entry: dict) -> list[dict]:
+    """Gate misses stored on a captured entry. --resume must rebuild these, because
+    the fresh-capture loop is the only other place that appends them."""
+    found = []
+    poses = entry.get("poses") or {}
+    if not isinstance(poses, dict):
+        return found
+    for pose_id, captured in poses.items():
+        if not isinstance(captured, dict):
+            continue
+        for finding in (captured.get("gate") or {}).get("issues") or []:
+            found.append(
+                metric_issue(
+                    entry.get("id") or "",
+                    entry.get("name") or "",
+                    entry.get("category") or "",
+                    pose_id,
+                    finding,
+                )
+            )
+    return found
+
+
 def entry_complete(out: Path, entry: dict, views: list[str], poses: list[str]) -> bool:
     if entry.get("status") != "ok":
         return False
@@ -798,8 +821,7 @@ def main(argv=None) -> int:
     controller = browser = None
     try:
         controller, browser, context = playwright_browser(opts, width, height)
-        if opts.forge_url or opts.avatar:
-            context.add_init_script(context_init_script(opts))
+        context.add_init_script(context_init_script(opts))
         page = context.new_page()
         page.audit_url = opts.url
         if opts.cloth == "off":
@@ -825,8 +847,7 @@ def main(argv=None) -> int:
                     "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
                 ),
             )
-            if opts.forge_url or opts.avatar:
-                mobile_context.add_init_script(context_init_script(opts))
+            mobile_context.add_init_script(context_init_script(opts))
             mobile_page = mobile_context.new_page()
             mobile_page.audit_url = opts.url
             try:
@@ -880,7 +901,9 @@ def main(argv=None) -> int:
                 continue
             if opts.resume and entry_complete(out, previous.get(entry_id, {}), opts.views, opts.poses):
                 print(f"[{index}/{len(queue)}] SKIP {source}: {name}", flush=True)
-                record(previous[entry_id])
+                restored = previous[entry_id]
+                record(restored)
+                issues.extend(metric_findings(restored))
                 continue
             start_errors = len(errors)
             entry = {
@@ -905,9 +928,7 @@ def main(argv=None) -> int:
                     phase = "pose"
                     captured = capture_pose(page, path, pose_id, opts.views, opts.settle_ms, opts.cloth_timeout)
                     entry["poses"][pose_id] = captured
-                    gate = captured.get("gate") or {}
-                    for finding in gate.get("issues") or []:
-                        issues.append(metric_issue(entry_id, name, entry["category"], pose_id, finding))
+                    issues.extend(metric_findings({**entry, "poses": {pose_id: captured}}))
                 entry["description"] = state(page)["description"] or name
                 entry["lookKey"] = state(page)["lookKey"]
                 entry["status"] = "ok"
