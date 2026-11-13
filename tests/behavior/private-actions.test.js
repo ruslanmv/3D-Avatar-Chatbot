@@ -848,3 +848,66 @@ describe('PX7. nothing internal is shown or spoken while a reply streams', () =>
         expect(pushed.join('')).toBe('Eccomi. Ti ascolto.');
     });
 });
+
+describe('nothing else answers for Private, and nothing is drawn twice', () => {
+    test('the ordinary chat’s "play …" interceptor leaves a Private message alone', async () => {
+        const YouTubeAsk = require('../../src/features/youtube/YouTubeAsk.js');
+        await begin();
+        const input = document.getElementById('speech-text');
+        const send = document.getElementById('speak-btn');
+        const unhook = YouTubeAsk.hook(document);
+        input.value = 'play some jazz music';
+        const event = new window.MouseEvent('click', { bubbles: true, cancelable: true });
+        send.dispatchEvent(event);
+        // Not swallowed, not answered in the ordinary chat: it goes down the normal send path.
+        expect(event.defaultPrevented).toBe(false);
+        expect(input.value).toBe('play some jazz music');
+        expect(document.querySelectorAll('#chat-history .chat-row')).toHaveLength(0);
+        if (typeof unhook === 'function') unhook();
+    });
+
+    test('redrawing the strip any number of times leaves one control and one chip', async () => {
+        const w = await begin();
+        await say('play some Daft Punk');
+        MediaSession.markPlaying();
+        await say('Mettiti un vestito elegante.');
+        for (let i = 0; i < 5; i += 1) w.session._showActions(Actions.snapshot());
+        expect(document.querySelectorAll('[data-private-music="toggle"]')).toHaveLength(1);
+        expect(document.querySelectorAll('.nexus-private-music-state')).toHaveLength(1);
+        expect(document.querySelectorAll('.nexus-private-outfit')).toHaveLength(1);
+        expect(document.querySelectorAll('[data-private-outfit="undo"]')).toHaveLength(1);
+        // A new song keeps the outfit chip; the chip is not the soundtrack's to erase.
+        await say('suona i Queen');
+        expect(document.querySelectorAll('.nexus-private-outfit')).toHaveLength(1);
+        expect(document.querySelectorAll('[data-private-soundtrack]')).toHaveLength(1);
+        // One click is one request, however often the button was redrawn.
+        strip().querySelector('[data-private-music="toggle"]').click();
+        await flush();
+        expect(Actions.log().filter((a) => a.source === 'control')).toHaveLength(1);
+    });
+
+    test('a Try-On haul that is open keeps the wardrobe; Private says so and changes nothing', async () => {
+        const w = await begin();
+        window.NEXUS_TRY_ON = { activity: { status: () => ({ label: 'Try-On' }) } };
+        await say('Mettiti un vestito elegante.');
+        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'haul-running' });
+        expect(w.controller.applyLook).not.toHaveBeenCalled();
+        delete window.NEXUS_TRY_ON;
+    });
+
+    test('every request carries the whole contract', async () => {
+        await begin();
+        await say('play some Daft Punk');
+        await say('Mettiti un vestito elegante.');
+        const ids = new Set();
+        for (const a of Actions.log()) {
+            for (const key of ['id', 'sessionId', 'turnId', 'name', 'params', 'source', 'locale', 'status'])
+                expect(a[key]).toBeDefined();
+            expect(Object.keys(Policy.ACTIONS)).toContain(a.name);
+            expect(Policy.SOURCES).toContain(a.source);
+            expect(['pending', 'completed', 'blocked', 'failed']).toContain(a.status);
+            ids.add(a.id);
+        }
+        expect(ids.size).toBe(Actions.log().length);
+    });
+});

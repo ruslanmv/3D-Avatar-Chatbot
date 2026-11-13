@@ -40,6 +40,9 @@
         selected: 'stopped',
     });
 
+    /** How long a tap on play may go unconfirmed before the strip stops saying "starting…". */
+    const CONFIRM_MS = 6000;
+
     class PrivateMediaController {
         /**
          * @param {object} options
@@ -188,6 +191,16 @@
             }
         }
 
+        _settleLater() {
+            const win = this.win;
+            if (!win || typeof win.setTimeout !== 'function') return;
+            if (this._settle) win.clearTimeout(this._settle);
+            this._settle = win.setTimeout(() => {
+                this._settle = null;
+                if (this.state.status === 'loading' && this.state.track) this._set(this._lastKnown());
+            }, CONFIRM_MS);
+        }
+
         /** What `MediaSession` last said about this track, when a search leaves it untouched. */
         _lastKnown() {
             const media = this.win && this.win.NEXUS_MEDIA_SESSION;
@@ -239,6 +252,9 @@
             if (!done) return { ok: false, why: 'no-player' };
             // Not `playing`: the player says so itself, through MediaSession.
             this._set('loading');
+            // And if it never says so — the tap did not start it either — the strip must not sit
+            // on "starting…" for the rest of the evening: go back to what the record says.
+            this._settleLater();
             return { ok: true };
         }
 
@@ -272,6 +288,9 @@
         }
 
         dispose() {
+            if (this._settle && this.win && typeof this.win.clearTimeout === 'function')
+                this.win.clearTimeout(this._settle);
+            this._settle = null;
             if (this._unwatch) {
                 try {
                     this._unwatch();
@@ -284,7 +303,7 @@
         }
     }
 
-    const api = { PrivateMediaController, FROM_SESSION };
+    const api = { PrivateMediaController, FROM_SESSION, CONFIRM_MS };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_MEDIA_CONTROLLER = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
