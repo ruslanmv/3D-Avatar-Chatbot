@@ -6785,6 +6785,19 @@ function __nexusWireOllaBridgePairButton() {
     const btn = document.getElementById('ollabridge-pair-btn');
     if (!btn) return;
 
+    // PX12. A code copied from the OllaBridge page often arrives with a space or a line break
+    // around it. The box held 9 characters, so "  ODHL-0189" was cut to "  ODHL-01" before
+    // anyone pressed Pair, and a valid code failed as "Invalid pairing code". The box now holds
+    // more, and what is pasted or typed is tidied as it arrives: spaces out, letters upper case.
+    const box = document.getElementById('ollabridge-pair-code');
+    if (box && !box.__nexusTidy) {
+        box.__nexusTidy = true;
+        box.addEventListener('input', () => {
+            const tidy = box.value.replace(/\s+/g, '').toUpperCase();
+            if (tidy !== box.value) box.value = tidy;
+        });
+    }
+
     btn.addEventListener('click', async () => {
         const codeInput = document.getElementById('ollabridge-pair-code');
         const statusDiv = document.getElementById('ollabridge-pair-status');
