@@ -362,8 +362,47 @@
     }
 
     /** The paragraph to append, or `''` when she could not act on it. */
+    /**
+     * PX6. A Private session's action bridge, while one is running. Inside Private this tool's
+     * tag is still the transport, but `TryOnHaulActivity.request` is not the executor: its first
+     * line starts the Try-On activity, and starting an activity ends the one that was running —
+     * "Mettiti un vestito elegante" closed the Private conversation it was said in. The bridge
+     * changes her outfit where she stands (InSceneWardrobe) and decides, by the person's own
+     * setting, whether a look she proposes is worn or only offered.
+     */
+    function privateActions(deps) {
+        if (deps && deps.actions === false) return null;
+        var actions = (deps && deps.actions) || (global && global.NEXUS_PRIVATE_ACTIONS) || null;
+        try {
+            return actions && typeof actions.active === 'function' && actions.active() ? actions : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** The bridge's action for one tool call, or null for a tool Private has no in-scene form of. */
+    function privateAction(call) {
+        var args = call.args || {};
+        switch (call.name) {
+            case 'wardrobe_wear':
+                return { name: 'wardrobe.wear', params: args.outfit ? { outfit: args.outfit } : { look: args.look } };
+            case 'wardrobe_change':
+                return { name: 'wardrobe.change', params: { prompt: args.prompt } };
+            case 'wardrobe_create':
+                return { name: 'wardrobe.create', params: { prompt: args.prompt } };
+            case 'wardrobe_undo':
+                return { name: 'wardrobe.undo', params: {} };
+            default:
+                // keep / tattoo / underneath belong to the haul's own screen.
+                return null;
+        }
+    }
+
     function systemPromptSuffix(deps) {
         if (!isEnabled()) return '';
+        // PX6. Private tells her about her wardrobe itself (PrivateActionBridge.promptLines), in
+        // the terms that are true there: no haul, no host, a change that may only be offered.
+        if (privateActions(deps)) return '';
         var a = activity(deps);
         if (!a || typeof a.request !== 'function') return '';
         try {
@@ -506,6 +545,21 @@
             console.warn('[Wardrobe] a wardrobe tag arrived while the switch is off — refused');
             return extracted.clean;
         }
+        // PX6. Inside Private the tag never reaches Try-On: see `privateActions`.
+        var actions = privateActions(deps);
+        if (actions) {
+            var wanted = privateAction(extracted.call);
+            if (wanted && typeof actions.fromModel === 'function') {
+                try {
+                    Promise.resolve(actions.fromModel(wanted.name, wanted.params)).catch(function () {
+                        return null;
+                    });
+                } catch (_) {
+                    /* a tag that cannot run must not take the reply down with it */
+                }
+            }
+            return extracted.clean;
+        }
         try {
             Promise.resolve(call(extracted.call.name, extracted.call.args, deps)).catch(function () {
                 return null;
@@ -532,6 +586,8 @@
         has: has,
         call: call,
         consume: consume,
+        privateActions: privateActions,
+        privateAction: privateAction,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_WARDROBE_TOOL = api;

@@ -1018,7 +1018,8 @@ const TogetherPanel = (() => {
                 const summary = doc.createElement('div');
                 summary.className = 'nexus-private-again-summary';
                 summary.textContent = [
-                    last.preset.label,
+                    // PX8. In the person's language: this read "Intense" on an Italian screen.
+                    this._privateWord(`preset.name.${last.preset.id}`, last.preset.label),
                     last.sceneLabel,
                     last.soundtrack === 'none'
                         ? this._privateWord('setup.musicNo', 'No music')
@@ -1250,6 +1251,37 @@ const TogetherPanel = (() => {
                 music.appendChild(seg);
             }
             shell.appendChild(music);
+
+            // PX5. How much say she has over what she wears during the evening. Shown only when
+            // the action policy is loaded; the choice is the person's and is kept between
+            // sessions. Whatever is chosen, a request in their own words is always honoured, and
+            // a new outfit is never made without their yes.
+            const policy = this.win && this.win.NEXUS_PRIVATE_ACTION_POLICY;
+            if (policy && typeof policy.autonomy === 'function') {
+                shell.appendChild(label(this._privateWord('setup.outfits', 'Her outfits')));
+                const outfits = doc.createElement('div');
+                outfits.className = 'nexus-private-segmented';
+                const fallback = { off: 'Only when I ask', suggest: 'She suggests', autonomous: 'She chooses' };
+                for (const value of policy.AUTONOMY) {
+                    const seg = doc.createElement('button');
+                    seg.type = 'button';
+                    seg.className = 'nexus-private-segment';
+                    seg.dataset.outfits = value;
+                    seg.textContent = this._privateWord(`setup.outfits.${value}`, fallback[value]);
+                    seg.classList.toggle('is-selected', policy.autonomy(this.win) === value);
+                    seg.setAttribute('aria-pressed', policy.autonomy(this.win) === value ? 'true' : 'false');
+                    seg.addEventListener('click', () => {
+                        policy.setAutonomy(value, this.win);
+                        for (const other of outfits.children) {
+                            const on = other.dataset.outfits === value;
+                            other.classList.toggle('is-selected', on);
+                            other.setAttribute('aria-pressed', on ? 'true' : 'false');
+                        }
+                    });
+                    outfits.appendChild(seg);
+                }
+                shell.appendChild(outfits);
+            }
 
             const begin = doc.createElement('button');
             begin.type = 'button';

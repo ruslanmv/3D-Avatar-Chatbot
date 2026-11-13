@@ -4018,17 +4018,34 @@ async function _handleStreamingResponse(text) {
         // SonicAgent streaming voice active and "speak while streaming" on; null otherwise, and
         // then this reply is spoken by speakText() at the end exactly as before.
         voiceStream = __nexusStreamedSpeech();
+        let voiced = ''; // PX7. what the streamed voice has been given so far
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
             // Hide typing indicator on first token
             if (!accumulated) _setTyping(false);
             accumulated += token;
-            if (voiceStream) voiceStream.push(token);
+            // PX7. What is still being written is cleaned before anyone sees or hears it: a
+            // "THOUGHT:" paragraph and a half-arrived <wardrobe …> used to be drawn — and, with
+            // "speak while streaming", read aloud — seconds before the `displayText` seam below
+            // could remove them. For a reply with neither, `shown` is `accumulated`.
+            const shown = window.NEXUS_REPLY_CLEAN?.maskStreaming?.(accumulated) ?? accumulated;
+            if (voiceStream) {
+                if (shown.startsWith(voiced)) {
+                    const more = shown.slice(voiced.length);
+                    if (more) voiceStream.push(more);
+                    voiced = shown;
+                } else {
+                    // What she already said is no longer what the app is keeping (a thought was
+                    // recognised late). Stop; `speakText()` says the finished reply instead.
+                    voiceStream.cancel();
+                    voiceStream = null;
+                }
+            }
             // Living NPC: hide the ```motion block while it streams in
             // PG3: a <gesture/> tag is masked like a motion block, so neither flashes mid-stream.
             stream.append(
                 (window.NEXUS_PLAYGROUND_REACTIVE?.maskStreaming || ((t) => t))(
-                    window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated
+                    window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(shown) : shown
                 )
             );
         });
