@@ -17,6 +17,13 @@
             this._verified = null;
             this.original = null;
             this.activeLook = null;
+            /**
+             * PW8. The URL of the look she is wearing now, exactly as it was loaded (a verified
+             * `blob:…#look.vrm` or Forge's URL). Private judges the snapshotted original only
+             * while this is what is on screen: a `blob:` alone said "worn look" before, so an
+             * avatar uploaded after a haul was judged as the haul's original.
+             */
+            this.wornUrl = null;
             this.looks = [];
         }
 
@@ -72,6 +79,7 @@
             if (hold) hold();
             else if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = look;
+            this.wornUrl = url;
             return look;
         }
 
@@ -148,6 +156,7 @@
             if (hold) hold();
             else if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = null;
+            this.wornUrl = null;
             return true;
         }
 

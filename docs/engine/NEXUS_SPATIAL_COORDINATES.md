@@ -185,6 +185,45 @@ It needs no app server.
 An unverified spot is never offered: `WorldSpots.normalize` drops it, so it
 reaches neither the prompt nor `intentOf`.
 
+### The private cabaret (PW2, tool v5)
+
+These two scenes are private rooms. Only the Private World's gated presence
+(`src/experiences/private/PrivateWorldAdapter.js`) reads their spots; the
+public presence refuses any world rated `private`. Tool v5 adds one rule to the
+same-room check: it also aims at the nearest point on the top edge of a low or
+wide object. Before that, the footlight strip and the curtain's track were
+missed by the chest-height aim alone.
+
+`scenes/cabaret-stage.glb` (desktop and VR, world `private-cabaret`):
+
+- SHA-256 `b1974cf8b80163e9…`
+- floorY 0.9
+
+| Spot         | Position (scene)        | Facing | Framing  | From thing | Open ahead |
+| ------------ | ----------------------- | ------ | -------- | ---------- | ---------- |
+| lounge       | (3.06, 0.9, −5.52)      | 120°   | fullBody | 0.63 m     | 6 m        |
+| center-stage | (4.1, 0.9, −6.503)      | 80°    | fullBody | 0.32 m     | 6 m        |
+| footlights   | (−1.101, 0.9, −2.5)     | −65°   | fullBody | 0.50 m     | 6 m        |
+| steps        | (0.193, 0.9, −2.82)     | 55°    | fullBody | 0.34 m     | 6 m        |
+| curtain      | (4.149, 0.9, −3.125)    | 95°    | fullBody | 0.40 m     | 6 m        |
+
+`scenes/cabaret-stage-light.glb` (phones, world `private-cabaret-light`):
+
+- SHA-256 `4f9741517ed5c884…`
+- floorY 0.9
+
+| Spot         | Result                                                        |
+| ------------ | ------------------------------------------------------------- |
+| lounge       | (0.566, 0.9, −4.298), facing −105°, fullBody                  |
+| center-stage | (0.7, 0.9, −6.503), facing 45°, fullBody, 5.45 m open         |
+| footlights   | (−0.301, 0.9, −2.4), facing −155°, fullBody, 4.88 m open      |
+| curtain      | **unverified**: no point passed (234 failed the room check)   |
+
+center-stage targets the backdrop, not the stage deck: the deck boxes are the
+whole stage, so every point was "near" them and none was a place to stand. On a
+phone, "andiamo vicino al sipario" therefore does not move her: the curtain is
+not offered there.
+
 ## 7. Camera, person and headset
 
 The camera offset was measured in the real app with the apartment shown

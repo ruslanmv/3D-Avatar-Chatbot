@@ -115,6 +115,7 @@ larger on disk than their triangle count suggests.
 | `cabaret-stage-light.glb`   | the same, recipe `cabaret-light`                  | as above                                                                                      | 25 160    |
 | `academy-seminar.glb`       | Seminar room (University Lecture Hall and Campus) | <https://3dassets.dev/assets/university-lecture-hall-and-campus-teach-1377fb44-starter-scene> | 41 160    |
 | `academy-seminar-light.glb` | the same, recipe `academy-light`                  | as above                                                                                      | 29 356    |
+| `airship-dock-light.glb`    | `airship-dock.glb` above, recipe `airship-light`  | as above (VW3 table)                                                                          | 29 140    |
 
 `sources/playhouse-stage.glb` (202 994 triangles) and
 `sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret
@@ -122,6 +123,16 @@ and academy recipes cut from; the app never loads them. The cabaret keeps the
 stage, its curtains and footlights and drops the stalls, the scenery flats and
 backstage; the academy keeps the seminar room only (the tiered lecture hall is
 118K triangles of benches on its own).
+
+The airship dock's phone and VR stand-in (`airship-dock-light`, recipe
+`airship-light`) keeps the airship itself (envelope, nose, keel, gondola, tail,
+both engine pods), its mooring mast and boarding stair, the nine deck plates
+under her and toward the ship, and a few crates, a bollard, sandbags, a toolbox
+and the airscrew rack. It drops the workshop shed, the far deck, the gantry and
+the catwalks, and on purpose every node whose bounding box comes within 1 m of
+her standing spot other than the floor: the jib crane (whose box contains her),
+the catwalk corner (0.03 m) and the ballast weights (0.47 m). In a headset those
+would be in reach. Same `at`/`turn` as the desktop scene.
 
 The **stream studio** is built from the Kenney Furniture Kit already listed
 above (sofa, floor lamps, desk, screen, speaker, plants): 1 912 triangles.

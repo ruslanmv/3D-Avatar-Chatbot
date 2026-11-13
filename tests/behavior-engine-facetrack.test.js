@@ -185,6 +185,26 @@ describe('BehaviorEngine', () => {
         });
     });
 
+    describe('AX7: clearing settles to the face of record', () => {
+        afterEach(() => {
+            delete window.NEXUS_PRIVATE_PRESENTATION;
+        });
+
+        test('outside Private, speech end clears to neutral as before', () => {
+            mockSetEmotion.mockClear();
+            window.NEXUS_BEHAVIOR.onSpeechEnd();
+            expect(mockSetEmotion).toHaveBeenLastCalledWith('neutral', 0);
+        });
+
+        test('inside Private, speech end settles to the resting warmth, not a blank face', () => {
+            window.NEXUS_PRIVATE_PRESENTATION = { restingExpression: () => ({ emotion: 'happy', intensity: 0.14 }) };
+            mockSetEmotion.mockClear();
+            window.NEXUS_BEHAVIOR.onSpeechEnd();
+            expect(mockSetEmotion).toHaveBeenLastCalledWith('happy', 0.14);
+            expect(mockSetEmotion).not.toHaveBeenCalledWith('neutral', 0);
+        });
+    });
+
     describe('Event handlers (backward compatibility)', () => {
         test('onBotResponse should not throw', () => {
             expect(() => {

@@ -92,7 +92,33 @@ const PlaygroundActivity = (() => {
             note: 'A more intimate atmosphere, still consent-gated.',
             maxLevel: 3,
         }),
+        // AX1. Offered only where the session's content capability reaches `mature`
+        // (PrivateExperienceProfile.styleAvailable). AX22: that is the default, so it is offered
+        // wherever Private is, unless the site declared a lower level.
+        Object.freeze({
+            id: 'mature',
+            label: 'Intense',
+            permission: null,
+            note: 'Direct and unhurried, up to the fourth step, where this site allows it.',
+            maxLevel: 4,
+        }),
     ]);
+
+    /**
+     * AX1. The experience profile, if loaded. Without it only the three original styles exist and
+     * each keeps its own ceiling — the behaviour before AX1, and the fail-closed answer for
+     * `mature`, which needs the profile to say the capability exists.
+     */
+    function experienceProfile() {
+        const win = globalObject();
+        const P = win && win.NEXUS_PRIVATE_EXPERIENCE_PROFILE;
+        return P && typeof P.capabilityFor === 'function' ? P : null;
+    }
+
+    function presetAllowed(preset, capability, P) {
+        if (!P || !capability) return preset.id !== 'mature';
+        return P.styleAvailable(preset.id, capability);
+    }
 
     function globalObject() {
         if (typeof window !== 'undefined') return window;
@@ -1543,7 +1569,7 @@ const PlaygroundActivity = (() => {
              */
             this.sessionState = 'mood';
             this.prepareInput = null;
-            this.soundtrackChoice = 'choose';
+            this.soundtrackChoice = 'none';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
             /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
@@ -1709,7 +1735,9 @@ const PlaygroundActivity = (() => {
                     preset: { ...preset },
                     scene: scene ? scene.id : null,
                     sceneLabel: scene ? scene.label : null,
-                    soundtrack: kept.soundtrack || 'choose',
+                    // A remembered track may have been started by the old automatic default.
+                    // Repeating a Private session never constitutes a fresh music request.
+                    soundtrack: 'none',
                 };
             } catch (_) {
                 return null;
@@ -1739,7 +1767,7 @@ const PlaygroundActivity = (() => {
                 if (this.worldChoice) this.sceneChoice = null;
             }
             if (soundtrack !== undefined) {
-                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'none';
             }
             this.prewarm();
             this._repaint();
@@ -1806,7 +1834,14 @@ const PlaygroundActivity = (() => {
         _planFor({ preset, place, win }) {
             const beats = privateBeats(win);
             if (!beats || typeof beats.plan !== 'function') return Promise.resolve(null);
-            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}`;
+            // Generated plans are language-dependent: never replay a cached English
+            // story after Settings has switched the app to Italian (or vice versa).
+            const locale = (win && win.AppLanguage && win.AppLanguage.code) || 'en-US';
+            // PX13. Keyed on the scene *chosen*, not on its label: with no choice yet the label of
+            // "here" changed from "Current Scene" to "this place" between choosing a style and
+            // pressing Get ready, and every session paid for a second plan it threw away.
+            const where = this.sceneChoice || 'current';
+            const key = `${(preset && preset.id) || ''}|${where}|${this.mood || ''}|${locale}`;
             const cached = this._planCache.get(key);
             if (cached) return cached;
             let attempt;
@@ -1848,7 +1883,11 @@ const PlaygroundActivity = (() => {
                 if (typeof registry.warm === 'function') await registry.warm();
                 const provider = registry.forCapability('music.search');
                 if (!provider || typeof provider.search !== 'function') return null;
-                const found = await provider.search(key, { max: 3, kind: 'music' });
+                const found = await provider.search(key, { max: 5, kind: 'music' });
+                // AX17. A Private track must fit the evening; none fitting means silence.
+                const capability = win && win.NEXUS_TOGETHER_CAPABILITY;
+                if (capability && typeof capability.pickPrivateTrack === 'function')
+                    return capability.pickPrivateTrack(found);
                 return Array.isArray(found) && found.length ? found[0] : null;
             })().catch(() => {
                 this._trackCache.delete(key);
@@ -2149,7 +2188,34 @@ const PlaygroundActivity = (() => {
         inputs() {
             const gate = this.availability();
             if (!gate || gate.ok === false) return [];
-            return INTIMATE_PRESETS.map((preset) => ({ ...preset }));
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            return INTIMATE_PRESETS.filter((preset) => presetAllowed(preset, capability, P)).map((preset) => ({
+                ...preset,
+                maxLevel: P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel,
+            }));
+        }
+        /**
+         * AX21. The styles that exist but cannot be started here, each with why — for the setup
+         * screen to draw as a locked card. Kept out of `inputs()` on purpose: everything that
+         * reads `inputs()` (the panel's default option, starting from chat, the wizard) treats an
+         * entry as something it may start. This grants nothing; `start()` asks the gate again.
+         *
+         * AX22: Intenso is offered by default, so this is empty unless the site declared a lower
+         * level (`why: 'site'`). `age` is for a style that needs the server's attestation — none
+         * of today's four does; it is here for the one that will.
+         */
+        lockedInputs() {
+            const gate = this.availability();
+            if (!gate || gate.ok === false) return [];
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            const limited = (capability && capability.limitedBy) || [];
+            return INTIMATE_PRESETS.filter((preset) => !presetAllowed(preset, capability, P)).map((preset) => ({
+                ...preset,
+                locked: true,
+                why: limited.includes('needs-server-attestation') ? 'age' : 'site',
+            }));
         }
         availability() {
             return this.capability();
@@ -2176,7 +2242,18 @@ const PlaygroundActivity = (() => {
                     };
                 if (this.active) return { ok: false, why: 'Private is already running' };
             }
-            this._installCeiling(preset.maxLevel);
+            // AX1. The style's ceiling, narrowed by what this session may actually produce. Asked
+            // again here, not trusted from the setup screen: the provider or the attestation can
+            // change between drawing the choices and pressing Start.
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            if (!presetAllowed(preset, capability, P))
+                return {
+                    ok: false,
+                    why: 'This kind of evening isn’t available here: this site or the selected AI provider doesn’t allow it.',
+                };
+            const ceiling = P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel;
+            this._installCeiling(ceiling);
             const entered = this.adult.enter();
             if (!entered || entered.ok === false) {
                 this._restoreCeiling();
@@ -2188,12 +2265,12 @@ const PlaygroundActivity = (() => {
             this.sessionState = 'playing';
             busEmit(this.bus, 'intimate:start', {
                 preset: preset.id,
-                maxLevel: preset.maxLevel,
+                maxLevel: ceiling,
                 startedAt: this.startedAt,
             });
             // VW3. The room, only now: after the gates above have all passed.
             if (this.worldChoice) this._requestWorld(this.worldChoice);
-            return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
+            return { ok: true, why: preset.id, preset: preset.id, maxLevel: ceiling };
         }
         stop(why = 'user') {
             const wasActive = this.active || Boolean(this.adult && this.adult.active);

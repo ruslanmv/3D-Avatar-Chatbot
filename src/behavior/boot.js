@@ -104,6 +104,7 @@
         // P14. What a reply says, as opposed to how it asked to be performed. Before
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
+        'src/features/chat/ReplyClean.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;
@@ -119,6 +120,9 @@
         // loads after its first reader gets English for one paint and the chosen language after,
         // which is the flicker this list exists to prevent.
         'src/features/together/PrivateLocale.js',
+        // Authored Private speech and planner rules for every AppLanguage locale.
+        // Must load before PrivateBeats/TogetherCapability to avoid English fallback flashes.
+        'src/features/together/PrivatePromptCatalog.js',
         'src/features/together/ui/PrivateConversationView.js',
         // What she says during a Private session, and the four enums it is allowed to
         // remember between them. Before TogetherCapability, which runs both.
@@ -134,12 +138,29 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // AX1. Style, content capability and ceiling, kept apart. Before TogetherCapability,
+        // which builds Private's prompt from it, and the playground activity, which installs its
+        // ceiling.
+        'src/features/together/PrivateExperienceProfile.js',
+        'src/features/together/PrivateVoice.js',
+        // AX7. The style made visible and audible: voice pace, resting expression, the room's
+        // light. Before TogetherCapability, which applies it, and main.js's speech, which asks it.
+        'src/features/together/PrivatePresentation.js',
         // P20. What an evening needs, loaded before it starts. Before the Together panel and
         // the playground activity, which drive it from the wizard's third step.
         'src/features/together/PrivatePreflight.js',
         // P17. The clock that notices silence — stages, never intensity. Before
         // TogetherCapability, which drives it from the beat tick it already has.
         'src/features/together/PrivateIdleClock.js',
+        // PX1–PX6. Private 3.0: actions asked for in a Private conversation happen in it. Before
+        // TogetherCapability only so the reader meets them in dependency order — each resolves
+        // the others (and the wardrobe globals `index.html` loads later) when it runs, not here.
+        'src/experiences/private/PrivateActionIntent.js',
+        'src/experiences/private/PrivateActionPolicy.js',
+        'src/experiences/private/PrivateMediaController.js',
+        'src/experiences/private/OutfitDecisionEngine.js',
+        'src/experiences/private/InSceneWardrobe.js',
+        'src/experiences/private/PrivateActionBridge.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

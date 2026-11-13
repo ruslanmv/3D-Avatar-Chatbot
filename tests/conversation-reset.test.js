@@ -250,19 +250,28 @@ describe('the epoch — pressing CLEAR mid-reply', () => {
     test('and check it before writing anything back', () => {
         // Three places: the streaming result, the plain result, and the error path — each of
         // which appends to the transcript or persists.
-        expect(mainSrc.match(/if \(!_turnIsCurrent\(turn\)\)/g)).toHaveLength(4);
+        expect(mainSrc.match(/if \(!_turnIsCurrent\(turn\)\)/g).length).toBeGreaterThanOrEqual(4);
+        // AX19. Every await added to the pipeline is followed by the same check: the Private
+        // rewrite can take seconds, and a CLEAR in that time must still win.
+        const rewrites = [...mainSrc.matchAll(/await window\.NEXUS_TOGETHER_CAPABILITY\.privateRevise\(/g)];
+        expect(rewrites.length).toBe(2);
+        for (const r of rewrites)
+            expect(mainSrc.slice(r.index, r.index + 400)).toMatch(/if \(!_turnIsCurrent\(turn\)\)/);
     });
 
     test('the streaming fallback does not retry a cleared turn', () => {
         // The fallback captures a *fresh* epoch and would therefore consider itself current,
         // putting the old question's answer into the new conversation. The one hole a per-turn
         // token does not close by itself.
+        // The property, not a distance: inside the catch, the turn is checked before anything is
+        // asked again (PX13 put the usage-limit stop between the two).
         const streaming = mainSrc.slice(mainSrc.indexOf('async function _handleStreamingResponse'));
         const catchBlock = streaming.slice(
-            streaming.indexOf('Fallback to non-streaming') - 500,
-            streaming.indexOf('Fallback to non-streaming')
+            streaming.indexOf("logError('Streaming error, falling back'"),
+            streaming.indexOf('await _handleNonStreamingResponse(text);')
         );
         expect(catchBlock).toContain('_turnIsCurrent(turn)');
+        expect(catchBlock.indexOf('_turnIsCurrent(turn)')).toBeLessThan(catchBlock.indexOf("=== 'limit'"));
     });
 
     test('a missing reset module leaves turns behaving exactly as before', () => {

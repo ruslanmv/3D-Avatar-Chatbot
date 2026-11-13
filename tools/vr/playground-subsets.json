@@ -42,6 +42,12 @@
       "out": "assets/vr-worlds/scenes/pixel-flat-home.glb",
       "drop": ["-resident-", "-crib$", "-indoor-bicycle$"],
       "budget": 30000
+    },
+    "airship-light": {
+      "src": "assets/vr-worlds/scenes/airship-dock.glb",
+      "out": "assets/vr-worlds/scenes/airship-dock-light.glb",
+      "keep": ["31-32", "37-40", "45-47", "65-73", "110", "115", "123", "132-134"],
+      "budget": 30000
     }
   }
 }

@@ -42,6 +42,7 @@ flowchart TD
   Q -->|a behaviour| B[BehaviorRouter INTENTS/CHANNELS + PROFILES;<br/>HOW_TO_ADD_COMPANION_BEHAVIORS.md]
   Q -->|a story| T[HOW_TO_CREATE_DYNAMIC_STORIES.md]
   Q -->|travel to a place| X[WorldPresence.DESTINATIONS — HOW_TO_CREATE_A_NEXUS_WORLD.md §13]
+  Q -->|a premium private room| P[PRIVATE_WORLD_ENGINE.md<br/>+ HOW_TO_CREATE_A_PRIVATE_WORLD.md]
   Q -->|understand the AI turn| AI[NEXUS_AI_ARCHITECTURE.md]
   Q -->|long-term direction| U[NEXUS_WORLD_ENGINE_DESIGN.md + NEXUS_UNIVERSE_ROADMAP.md]
 ```
@@ -59,7 +60,26 @@ flowchart TD
 | Behaviour routing | `src/companion/BehaviorRouter.js`, `src/behavior/boot.js` (`NEXUS_BD`) |
 | Stories | `src/experiences/` (Seaside), `src/features/together/activities/playground.js` (Scene Tale) |
 | Camera framing | `src/gltf-viewer/CameraPresets.js` |
-| Tests | `tests/living-worlds/`, `tests/vr-*.test.js`, `tests/playground*.test.js`, `tests/companion/` |
+| Private World (gated premium room) | `src/experiences/private/PrivateWorldAdapter.js`, `assets/vr-worlds/private/`, `src/features/together/AvatarAdultDeclaration.js` |
+| Tests | `tests/living-worlds/`, `tests/private-world/`, `tests/vr-*.test.js`, `tests/playground*.test.js`, `tests/companion/` |
+
+## Premium private rooms
+
+Read these before touching anything private:
+
+- `PRIVATE_WORLD_ENGINE.md`: the gate and its owners, the interactions and
+  their confirmations, where the room reaches the model
+- `HOW_TO_CREATE_A_PRIVATE_WORLD.md`: the steps, and the rules that are not
+  negotiable
+- `PREMIUM_INTERACTION_CONTRACTS.md`: every shape, marked EXISTS, PARTIAL or
+  PROPOSED
+- `PREMIUM_BEHAVIOR_AUTHORING.md`: writing tone, labels, words and spots
+- `docs/qa/PRIVATE_WORLD_SECURITY_MATRIX.md` and
+  `docs/qa/PRIVATE_WORLD_RELEASE_READINESS.md`: what is held, and what still
+  blocks release
+
+Never loosen a gate, change a world's rating, or make a client flag stand in
+for a server attestation to get something working.
 
 ## Templates and tutorials
 
@@ -74,7 +94,7 @@ flowchart TD
 ## Always run
 
 ```bash
-npx jest tests/living-worlds tests/engine-docs.test.js
+npx jest tests/living-worlds tests/private-world tests/engine-docs.test.js
 npm run validate
 node scripts/behavior-parity-baseline.mjs --check
 ```

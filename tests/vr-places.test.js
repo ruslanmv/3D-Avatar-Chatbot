@@ -101,7 +101,8 @@ describe('who may see what', () => {
         }
         expect(Worlds.resolveFor(worlds, 'hotel-suite', 'mobile')).toBe('hotel-suite'); // built light everywhere
         expect(Worlds.resolveFor(worlds, 'bedroom', 'mobile')).toBe('bedroom-light');
-        expect(Worlds.resolveFor(worlds, 'airship-dock', 'mobile')).toBeNull(); // 141K, no light stand-in
+        // 141K on its own; the phone gets the recipe-cut stand-in (tools/vr/playground-subsets.json).
+        expect(Worlds.resolveFor(worlds, 'airship-dock', 'mobile')).toBe('airship-dock-light');
         expect(Worlds.resolveFor(worlds, 'neon-street', 'mobile')).toBe('neon-street'); // 16K
         // One card per place- a stand-in is never listed beside its original.
         expect(offered.some((p) => p.id.endsWith('-light'))).toBe(false);

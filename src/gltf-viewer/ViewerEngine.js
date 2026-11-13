@@ -2286,7 +2286,12 @@ export class ViewerEngine {
         preview = preview || this._vrWorldPreview || null;
         const xr = !!this.renderer.xr.isPresenting;
         const tier = worlds.tierFor({ xr, mobile: document.documentElement.classList.contains('is-mobile') });
-        let id = preview;
+        // AX15. The preview resolves like a person's request on this device: on a phone a heavy
+        // place shows its light stand-in (resolveFor), exactly as Visit a place would. It used to
+        // load the id as given, so `?vrWorld=airship-dock` on a phone drew the 141K desktop scene
+        // and a check of "what a phone sees" was wrong. Asked for by exact id (a stand-in, or a
+        // world with no version for this tier), it still shows that id: it is a checking tool.
+        let id = preview ? worlds.resolveFor(catalogue.worlds, preview, tier, true) || preview : null;
         if (!id) {
             let activity = null;
             try {

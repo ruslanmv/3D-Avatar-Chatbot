@@ -300,7 +300,8 @@ describe('Private runtime integration', () => {
         expect(suffix).toContain('ACTIVE PRIVATE EXPERIENCE');
         expect(suffix).toContain('Romantic');
         expect(suffix).toContain('Current consent level: 1');
-        expect(suffix).toContain('Preset ceiling: 2');
+        // AX1: the ceiling printed is the session's (style narrowed by capability), named as such.
+        expect(suffix).toContain('Session ceiling: 2');
         expect(suffix).toMatch(/consenting adult/i);
 
         s.activity.stop('user');
@@ -423,8 +424,17 @@ describe('Private runtime integration', () => {
     });
 
     test('Private soundtrack search is optional and never replaces media already playing', async () => {
+        // AX17. Silent unless asked: with no soundtrack choice nothing is searched or played.
+        const silent = setup({ preset: 'affectionate', withDiscovery: true });
+        await silent.activity.start({ input: { id: 'affectionate' } });
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(silent.provider.search).not.toHaveBeenCalled();
+        expect(silent.media.requestPlay).not.toHaveBeenCalled();
+        silent.activity.stop('user');
+
         const idle = setup({ preset: 'affectionate', withDiscovery: true });
-        await idle.activity.start({ input: { id: 'affectionate' } });
+        await idle.activity.start({ input: { id: 'affectionate', soundtrack: 'choose' } });
         await Promise.resolve();
         await Promise.resolve();
 

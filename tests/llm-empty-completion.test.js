@@ -173,12 +173,10 @@ describe.each(PROVIDERS)('$name', (provider) => {
 describe('OllaBridge reasoning models', () => {
     const read = (message) => window.LLMManager.visibleMessageText(message);
 
-    test('an empty content field still yields the reasoning channel', () => {
-        // free-best's first hop (Groq gpt-oss) does this: HTTP 200, content null,
-        // the words in `reasoning`. Reading only content is how the bubble got "No response".
-        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        expect(read({ content: null, reasoning: 'Hello — I am here.' })).toBe('Hello — I am here.');
-        expect(String(warned.mock.calls[0][0])).toMatch(/reasoning channel/);
+    test('empty final content cannot surface provider reasoning', () => {
+        expect(read({ content: null, reasoning: 'PRIVATE HIDDEN REASONING' })).toBe('');
+        expect(read({ content: '', reasoning_content: 'PRIVATE HIDDEN REASONING' })).toBe('');
+        expect(read({ content: null, reasoning_details: [{ summary: 'PRIVATE HIDDEN REASONING' }] })).toBe('');
     });
 
     test('content wins when both channels have text, so the thought is not spoken', () => {
@@ -208,23 +206,22 @@ describe('OllaBridge reasoning models', () => {
         ).toBe('Hello.');
     });
 
-    test('the chat path returns that text instead of throwing', async () => {
+    test('a reasoning-only provider response is an empty completion error', async () => {
         configure(PROVIDERS[2]);
-        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
         answerWith({
-            choices: [{ message: { content: '', reasoning: 'Hello — I am here.' }, finish_reason: 'stop' }],
+            choices: [{ message: { content: '', reasoning: 'HIDDEN REASONING' }, finish_reason: 'stop' }],
         });
-        await expect(mgr._chatOllaBridge('hi', 'rules')).resolves.toBe('Hello — I am here.');
+        await expect(mgr._chatOllaBridge('hi', 'rules')).rejects.toMatchObject({ name: 'EmptyCompletionError' });
     });
 
-    test('the structured path, which is what the bubble calls, writes it back into content', async () => {
+    test('the structured path also refuses to convert reasoning into a visible answer', async () => {
         configure(PROVIDERS[2]);
-        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
         answerWith({
-            choices: [{ message: { content: null, reasoning_content: 'Hello — I am here.' }, finish_reason: 'stop' }],
+            choices: [{ message: { content: null, reasoning_content: 'HIDDEN REASONING' }, finish_reason: 'stop' }],
         });
-        const raw = await mgr._chatOllaBridgeStructured('hi', 'rules', []);
-        expect(raw.choices[0].message.content).toBe('Hello — I am here.');
+        await expect(mgr._chatOllaBridgeStructured('hi', 'rules', [])).rejects.toMatchObject({
+            name: 'EmptyCompletionError',
+        });
     });
 
     test('still empty when the only text was a thought', async () => {
@@ -238,16 +235,15 @@ describe('OllaBridge reasoning models', () => {
         });
     });
 
-    test('the adapter no longer turns that emptiness into the sentence "No response"', () => {
+    test('BridgeResponseAdapter does not use reasoning as dialogue', () => {
         require('../src/BridgeResponseAdapter.js');
-        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        const said = window.BridgeResponseAdapter.normalizeResponse({
-            choices: [{ message: { content: '', reasoning: 'Hello — I am here.' } }],
+        const hidden = window.BridgeResponseAdapter.normalizeResponse({
+            choices: [{ message: { content: '', reasoning: 'HIDDEN REASONING' } }],
         });
-        expect(said.text).toBe('Hello — I am here.');
-        const silent = window.BridgeResponseAdapter.normalizeResponse({
-            choices: [{ message: { content: '' } }],
+        expect(hidden.text).toBe('');
+        const final = window.BridgeResponseAdapter.normalizeResponse({
+            choices: [{ message: { content: 'A real final answer.', reasoning: 'HIDDEN REASONING' } }],
         });
-        expect(silent.text).toBe('');
+        expect(final.text).toBe('A real final answer.');
     });
 });

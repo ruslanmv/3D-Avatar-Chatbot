@@ -1315,6 +1315,45 @@
       "category": "Fantasy"
     },
     {
+      "id": "airship-dock-light",
+      "title": "Airship dock",
+      "note": "The airship at its mast and the deck around her, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29140,
+      "activities": [],
+      "sky": {
+        "top": "#2c4a5a",
+        "horizon": "#f0a868",
+        "bottom": "#3a3028"
+      },
+      "fog": {
+        "color": "#c89870",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#ffd8b0",
+        "ground": "#3a2c20",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#80c0c8",
+        "fillIntensity": 0.5,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/airship-dock-light.glb",
+        "at": [-2.475, -0.1, -13.081],
+        "turn": -45
+      },
+      "lightFor": "airship-dock"
+    },
+    {
       "id": "neon-street",
       "title": "Neon street",
       "note": "Cyberpunk: a street of neon signs at night.",

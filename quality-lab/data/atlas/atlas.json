@@ -1,0 +1,43 @@
+{
+    "schema": 1,
+    "note": "AX11. The Nexus world as a design map: regions made of zones. A shipped zone names the catalogue worlds that are it (assets/vr-worlds/worlds.json); its readiness is computed, never written here. A planned zone carries a brief and no worlds. Links are the intended map between zones, undirected; today the runtime has no links — moving between any two places is a proposal she makes and the person approves (LW5). Private zones link only to private zones. An original world: genre-inspired exploration, not a recreation of any existing game.",
+    "regions": [
+        { "id": "home", "title": "Home quarter", "summary": "Where the evening starts: her apartment and the rooms near it." },
+        { "id": "town", "title": "Old town and nightlife", "summary": "Streets, bars, a club, work and study: places with things to do." },
+        { "id": "wilds", "title": "Wilds and shores", "summary": "Outside the town: woods, a village, a walled town, a lagoon." },
+        { "id": "vistas", "title": "Vistas", "summary": "Panorama places for a quiet moment; small enough for any device." },
+        { "id": "private", "title": "Private quarter", "summary": "Rooms reached only through Private, behind its gate." }
+    ],
+    "zones": [
+        { "id": "apartment", "region": "home", "status": "shipped", "worlds": ["apartment"], "links": ["bedroom", "hotel-suite", "neon-street"] },
+        { "id": "bedroom", "region": "home", "status": "shipped", "worlds": ["bedroom", "bedroom-light"], "links": ["apartment"] },
+        { "id": "hotel-suite", "region": "home", "status": "shipped", "worlds": ["hotel-suite"], "links": ["apartment"] },
+        { "id": "neon-street", "region": "town", "status": "shipped", "worlds": ["neon-street"], "links": ["apartment", "irish-pub", "neon-discoteca", "office", "airship-dock"] },
+        { "id": "irish-pub", "region": "town", "status": "shipped", "worlds": ["irish-pub", "irish-pub-light"], "links": ["neon-street"] },
+        { "id": "neon-discoteca", "region": "town", "status": "shipped", "worlds": ["neon-discoteca", "neon-discoteca-light"], "links": ["neon-street"] },
+        { "id": "office", "region": "town", "status": "shipped", "worlds": ["office", "office-light"], "links": ["neon-street", "creative-academy"] },
+        { "id": "creative-academy", "region": "town", "status": "shipped", "worlds": ["creative-academy", "creative-academy-light"], "links": ["office"] },
+        { "id": "airship-dock", "region": "town", "status": "shipped", "worlds": ["airship-dock", "airship-dock-light"], "links": ["neon-street", "walled-town"] },
+        { "id": "walled-town", "region": "wilds", "status": "shipped", "worlds": ["walled-town"], "links": ["airship-dock", "meadow-village"] },
+        { "id": "meadow-village", "region": "wilds", "status": "shipped", "worlds": ["meadow-village"], "links": ["walled-town", "oak-glade", "lagoon-beach"] },
+        { "id": "oak-glade", "region": "wilds", "status": "shipped", "worlds": ["oak-glade"], "links": ["meadow-village", "under-the-trees"] },
+        { "id": "under-the-trees", "region": "wilds", "status": "shipped", "worlds": ["under-the-trees"], "links": ["oak-glade"] },
+        { "id": "lagoon-beach", "region": "wilds", "status": "shipped", "worlds": ["lagoon-beach"], "links": ["meadow-village", "seaside-evening"] },
+        { "id": "seaside-evening", "region": "vistas", "status": "shipped", "worlds": ["seaside-evening"], "links": ["lagoon-beach", "ocean-sunrise"] },
+        { "id": "ocean-sunrise", "region": "vistas", "status": "shipped", "worlds": ["ocean-sunrise"], "links": ["seaside-evening"] },
+        { "id": "starlit-lake", "region": "vistas", "status": "shipped", "worlds": ["starlit-lake"], "links": ["mountain-lake"] },
+        { "id": "mountain-lake", "region": "vistas", "status": "shipped", "worlds": ["mountain-lake"], "links": ["starlit-lake", "meadow-sunset"] },
+        { "id": "meadow-sunset", "region": "vistas", "status": "shipped", "worlds": ["meadow-sunset"], "links": ["mountain-lake", "starry-hills", "meadow-village"] },
+        { "id": "starry-hills", "region": "vistas", "status": "shipped", "worlds": ["starry-hills"], "links": ["meadow-sunset"] },
+        { "id": "garden-after-dark", "region": "vistas", "status": "shipped", "worlds": ["garden-after-dark"], "links": ["moonlit-courtyard"] },
+        { "id": "moonlit-courtyard", "region": "vistas", "status": "shipped", "worlds": ["moonlit-courtyard"], "links": ["garden-after-dark", "walled-town"] },
+        { "id": "city-rooftop", "region": "vistas", "status": "shipped", "worlds": ["city-rooftop"], "links": ["neon-street"] },
+        { "id": "cozy-room", "region": "vistas", "status": "shipped", "worlds": ["cozy-room"], "links": ["apartment"] },
+        { "id": "fantasy-village", "region": "vistas", "status": "shipped", "worlds": ["fantasy-village"], "links": ["walled-town"] },
+        { "id": "scifi-sanctuary", "region": "vistas", "status": "shipped", "worlds": ["scifi-sanctuary"], "links": ["airship-dock"] },
+        { "id": "private-cabaret", "region": "private", "status": "shipped", "worlds": ["private-cabaret", "private-cabaret-light"], "links": ["private-stream-studio", "candlelit-suite"] },
+        { "id": "private-stream-studio", "region": "private", "status": "shipped", "worlds": ["private-stream-studio"], "links": ["private-cabaret"] },
+        { "id": "candlelit-suite", "region": "private", "status": "shipped", "worlds": ["candlelit-suite"], "links": ["private-cabaret", "roadside-motel"] },
+        { "id": "roadside-motel", "region": "private", "status": "shipped", "worlds": ["roadside-motel", "roadside-motel-light"], "links": ["candlelit-suite"] }
+    ]
+}

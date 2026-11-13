@@ -21,7 +21,25 @@
      * Together activity that is running (a focus block, Seaside) is not replaced by a remark.
      */
     let lastSeen = null;
+
+    /**
+     * PW. The private room reads the person's turn itself, from the conversation surface that
+     * took it (`observeSurface`: a Private session's turns never reach chatHistory). It is fed
+     * nothing from here; the context classifier below reads chatHistory only, so words said in
+     * Private never move Life, Copilot or Experiences. The call is idempotent per turn, and the
+     * room acts only while its own gate holds.
+     */
+    function noticeRoomTurn(live) {
+        if (!live || !live.privateWorld || typeof live.privateWorld.observeSurface !== 'function') return;
+        try {
+            live.privateWorld.observeSurface();
+        } catch (error) {
+            console.warn('[Companion] private world could not read the turn — continuing', error);
+        }
+    }
+
     function noticeTopic(session) {
+        noticeRoomTurn(global.__NEXUS_COMPANION_LIVE);
         const Intent = global.NEXUS_COMPANION_INTENT;
         const history = global.chatHistory;
         if (!Intent || !history || typeof history.getHistory !== 'function') return;
@@ -48,15 +66,6 @@
                 live.presence.observeUser(typeof latest.content === 'string' ? latest.content : '');
             } catch (error) {
                 console.warn('[Companion] world presence could not read the turn — continuing', error);
-            }
-        }
-        // PW. The private room's own presence: it acts only while its gate holds (and the public
-        // one above refuses every private world), so exactly one of the two answers a turn.
-        if (live && live.privateWorld && typeof live.privateWorld.observeUser === 'function') {
-            try {
-                live.privateWorld.observeUser(typeof latest.content === 'string' ? latest.content : '');
-            } catch (error) {
-                console.warn('[Companion] private world could not read the turn — continuing', error);
             }
         }
         // LW1: spatial presence is independent of a conversational topic. In particular,
@@ -238,7 +247,12 @@
                     () => {
                         if (mine !== faceToken) return;
                         try {
-                            loader.setEmotion('neutral', 0);
+                            // AX7. Settle back to a Private session's resting warmth, not to a
+                            // blank face: a smile ending used to end the mood with it.
+                            const P = g.NEXUS_PRIVATE_PRESENTATION;
+                            const rest = P && typeof P.restingExpression === 'function' ? P.restingExpression() : null;
+                            if (rest) loader.setEmotion(rest.emotion, rest.intensity);
+                            else loader.setEmotion('neutral', 0);
                         } catch (_) {
                             /* the face settles on its own */
                         }

@@ -252,21 +252,30 @@
      *
      * `MIN` is the floor, and it exists so that a later edit optimising for brevity cannot
      * reintroduce this. Brevity belongs in the prompt. Nothing here may go below it.
+     *
+     * AX18c. 256 was still reachable. Measured on 2026-11-12 once Private's prompt actually reached
+     * the model (AX18b): gpt-oss replies on OllaBridge were cut at "It makes me feel like you
+     * really" and "It makes", and two turns came back empty after 30 s — the reasoning had spent
+     * the allowance (AX8 recorded 442 reasoning tokens on a single reply). The ceilings are now
+     * well above that; the length is held by the prompt and by `TogetherCapability`'s shaping
+     * (whole sentences only, at most the turn's limit), never by cutting her off.
      */
-    const MIN = 256;
+    const MIN = 640;
 
     const BUDGET = Object.freeze({
         affirmation: MIN,
-        conversation: 384,
+        conversation: 768,
         quiet: MIN,
-        preference: 320,
+        preference: 704,
         'pace-down': MIN,
-        'pace-up-request': 320,
-        'scene-request': 320,
+        'pace-up-request': 704,
+        // AX21. A scene they asked for may run to six sentences from step 3 (see
+        // PrivateExperienceProfile.maxSentences); the same room a plain request already has.
+        'scene-request': 1024,
         'music-request': MIN,
         end: MIN,
-        question: 448,
-        request: 512,
+        question: 896,
+        request: 1024,
     });
 
     /**
@@ -279,7 +288,7 @@
         const base = BUDGET[turn && turn.intent] || BUDGET.conversation;
         if (!turn) return base;
         if (turn.length === 'tiny') return Math.max(MIN, Math.min(base, MIN));
-        if (turn.length === 'short') return Math.max(MIN, Math.min(base, 320));
+        if (turn.length === 'short') return Math.max(MIN, Math.min(base, 704));
         return Math.max(MIN, base);
     }
 

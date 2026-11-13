@@ -34,6 +34,11 @@ describe('docs/engine exists and links where it says', () => {
         'tutorials/A_PREMIUM_APARTMENT.md',
         'tutorials/B_NIGHTCLUB.md',
         'tutorials/C_FOREST_ADVENTURE.md',
+        'PRIVATE_WORLD_ENGINE.md',
+        'HOW_TO_CREATE_A_PRIVATE_WORLD.md',
+        'PREMIUM_INTERACTION_CONTRACTS.md',
+        'PREMIUM_BEHAVIOR_AUTHORING.md',
+        'NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md',
     ])('%s', (name) => {
         expect(fs.existsSync(path.join(DOCS, name))).toBe(true);
     });
@@ -100,7 +105,7 @@ describe('docs/engine exists and links where it says', () => {
 
 describe('the spatial doc says what the measured files say', () => {
     const doc = read(path.join(DOCS, 'NEXUS_SPATIAL_COORDINATES.md'));
-    test.each(['pixel-flat-home', 'bedroom-flat'])(
+    test.each(['pixel-flat-home', 'bedroom-flat', 'cabaret-stage', 'cabaret-stage-light'])(
         '%s: every verified spot is in the table with its numbers',
         (stem) => {
             const file = JSON.parse(read(path.join(ROOT, 'assets/vr-worlds/spots', stem + '.json')));
@@ -139,6 +144,26 @@ describe('templates', () => {
         const t = T('spot-targets.example.json')['scenes/example-loft.glb'];
         for (const s of t.spots)
             for (const k of ['id', 'label', 'room', 'near', 'can', 'sees', 'rating']) expect(s).toHaveProperty(k);
+    });
+    test('the private-world template passes the real experience-config validator', () => {
+        const PW = require('../src/experiences/private/PrivateWorldAdapter.js');
+        const Moods = require('../src/experiences/playgrounds/PlaygroundMoodPresets.js');
+        const Templates = require('../src/experiences/playgrounds/PlaygroundTemplateCatalog.js');
+        const { _status, ...config } = T('private-world.example.json');
+        expect(_status).toMatch(/^EXISTS/);
+        const worlds = Worlds.validateCatalogue(
+            JSON.parse(read(path.join(ROOT, 'assets/vr-worlds/worlds.json')))
+        ).worlds;
+        const v = PW.validateConfig(config, {
+            worlds,
+            preset: (id) => Moods.get(id),
+            template: (id) => Templates.TEMPLATES.find((t) => t.id === id),
+        });
+        expect(v.problems).toEqual([]);
+        // …and copied with _status still in it, it is refused whole, as the template says.
+        expect(PW.validateConfig({ _status, ...config }, { worlds, preset: Moods.get, template: () => null }).ok).toBe(
+            false
+        );
     });
     test('the anchor template is copied from the real catalogue', () => {
         const src = read(path.join(ROOT, 'src/experiences/playgrounds/PlaygroundTemplateCatalog.js'));

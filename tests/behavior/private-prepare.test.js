@@ -147,6 +147,7 @@ afterEach(() => {
     delete window.NEXUS_DISCOVERY;
     delete window._nexusLLM;
     delete window.NEXUS_PRIVATE_BEATS;
+    delete window.AppLanguage;
     localStorage.clear();
     document.body.innerHTML = '';
 });
@@ -156,7 +157,11 @@ describe('two screens, not four', () => {
         const s = setup();
         s.panel.choose('intimate');
 
-        expect(document.querySelectorAll('.nexus-private-preset')).toHaveLength(3);
+        // Three to choose; AX21 also draws the style this site has not unlocked, disabled.
+        expect(document.querySelectorAll('.nexus-private-preset[data-preset]')).toHaveLength(3);
+        expect(document.querySelectorAll('.nexus-private-preset:not([data-preset])')).toHaveLength(
+            document.querySelectorAll('.nexus-private-preset:disabled').length
+        );
         // No scene list, no music form, no duration, no progress: one decision.
         expect(document.querySelectorAll('input[name="private-scene"]')).toHaveLength(0);
         expect(document.querySelector('.nexus-private-segmented')).toBeNull();
@@ -174,7 +179,9 @@ describe('two screens, not four', () => {
         // Prefetch, before anybody is waiting on it.
         expect(s.activity.prepared).not.toBeNull();
         await settle();
-        expect(s.search).toHaveBeenCalledTimes(1);
+        // Starting a Private session is not a request to listen to music.
+        expect(s.activity.soundtrackChoice).toBe('none');
+        expect(s.search).not.toHaveBeenCalled();
         // And nothing has entered the consent flow.
         expect(s.adult.enter).not.toHaveBeenCalled();
     });
@@ -209,7 +216,11 @@ describe('two screens, not four', () => {
         action('edit-private').click();
 
         expect(s.activity.sessionState).toBe('mood');
-        expect(document.querySelectorAll('.nexus-private-preset')).toHaveLength(3);
+        // Three to choose; AX21 also draws the style this site has not unlocked, disabled.
+        expect(document.querySelectorAll('.nexus-private-preset[data-preset]')).toHaveLength(3);
+        expect(document.querySelectorAll('.nexus-private-preset:not([data-preset])')).toHaveLength(
+            document.querySelectorAll('.nexus-private-preset:disabled').length
+        );
     });
 });
 
@@ -221,6 +232,8 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup({ hangPlan: true });
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        // Explicit selection, never automatic music when a mood is chosen.
+        document.querySelector('[data-music="choose"]').click();
         await settle();
 
         expect(s.search).toHaveBeenCalledTimes(1);
@@ -255,6 +268,8 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        // AX17. Music is opt-in: this test is about the chosen-music path, so it chooses it.
+        document.querySelector('[data-music="choose"]').click();
         await settle();
 
         await getReady();
@@ -271,6 +286,7 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        document.querySelector('[data-music="choose"]').click(); // AX17: music is opt-in
         await settle();
         await getReady();
         action('begin-private').click();
@@ -319,10 +335,14 @@ describe('the scenes are connected, and each appears once', () => {
         document.querySelector('[data-preset="romantic"]').click();
 
         expect([...document.querySelectorAll('.nexus-private-segment')].map((b) => b.textContent)).toEqual([
-            'Auto',
-            'Keep',
-            'Off',
+            'Play selected music',
+            'Keep current music',
+            'Off — silent',
         ]);
+        expect(s.activity.soundtrackChoice).toBe('none');
+        expect(document.querySelector('[data-music="none"]').classList.contains('is-selected')).toBe(true);
+        document.querySelector('[data-music="choose"]').click();
+        expect(s.activity.soundtrackChoice).toBe('choose');
         document.querySelector('[data-music="none"]').click();
         expect(s.activity.soundtrackChoice).toBe('none');
     });
@@ -387,11 +407,14 @@ describe('a returning person gets there in two taps', () => {
         expect(again).not.toBeNull();
         expect(again.textContent).toMatch(/Romantic/);
         expect(again.textContent).toMatch(/Candlelit Room/);
+        expect(again.textContent).toMatch(/No music/);
 
         action('private-again').click();
         await settle();
         expect(s.adult.enter).toHaveBeenCalledTimes(1);
         expect(s.activity._privateExperience.scene).toBe('candlelit');
+        expect(s.activity._privateExperience.soundtrack).toBe('none');
+        expect(s.search).not.toHaveBeenCalled();
         s.activity.stop('user');
     });
 
@@ -438,5 +461,45 @@ describe('VW3: a 3D room for the evening', () => {
         s.activity.stop('user');
         expect(requests[requests.length - 1]).toEqual({ id: null, owner: 'intimate' });
         window.removeEventListener('nexus-world-request', onRequest);
+    });
+});
+
+describe('Private live language changes', () => {
+    test('future planned lines switch language without changing the world or restarting consent', async () => {
+        window.AppLanguage = { code: 'it-IT' };
+        const s = setup();
+        s.panel.choose('intimate');
+        expect(document.querySelector('.nexus-private-setup-lead').textContent).toMatch(/atmosfera/i);
+        document.querySelector('[data-preset="romantic"]').click();
+        await settle();
+        await getReady();
+        action('begin-private').click();
+        await settle();
+
+        const session = s.activity._privateExperience;
+        expect(session).toBeTruthy();
+        expect(session.plan.locale).toBe('it-IT');
+        const originalScene = session.scene;
+        expect(session.plan.opening).not.toMatch(/This place feels different tonight/);
+
+        window.AppLanguage.code = 'es-ES';
+        window.dispatchEvent(
+            new window.CustomEvent('nexus:language-changed', {
+                detail: { previous: 'it-IT', code: 'es-ES' },
+            })
+        );
+        expect(session.plan.locale).toBe('es-ES');
+        expect(session.scene).toBe(originalScene);
+        expect(s.adult.enter).toHaveBeenCalledTimes(1);
+
+        window.AppLanguage.code = 'it-IT';
+        window.dispatchEvent(
+            new window.CustomEvent('nexus:language-changed', {
+                detail: { previous: 'es-ES', code: 'it-IT' },
+            })
+        );
+        expect(session.plan.locale).toBe('it-IT');
+
+        s.activity.stop('user');
     });
 });

@@ -508,6 +508,28 @@ export class AvatarManager {
             this.current = { url, name, index };
             this.currentRoot = root;
 
+            // PX16. Never skip drawing a part of her because three.js thinks it is off screen.
+            //
+            // Reported from a phone: seated on the bed, framed close, her face vanished while hair
+            // and body stayed. three.js decides whether to draw a mesh from its bounding sphere,
+            // and for a skinned mesh that sphere is the rest pose's — it does not follow the
+            // skeleton. Measured on AvatarSample A: the face's sphere stays at standing head height
+            // (y≈1.43, r≈0.24) whatever she does, so once she sits her real face is ~0.4 m below
+            // it, and a tight portrait framing leaves the stale sphere above the screen: the face is
+            // judged out of view and not drawn. Hair or clothes baked into the big body mesh keep a
+            // sphere that spans the whole figure, which is why they stayed.
+            //
+            // The avatar is the one thing the camera is always pointed at, so testing her meshes
+            // against the frustum saves nothing worth having. Every mesh under the loaded root, so
+            // an outfit (WardrobeController loads it through here) gets the same treatment.
+            try {
+                root.traverse((node) => {
+                    if (node.isMesh || node.isSkinnedMesh) node.frustumCulled = false;
+                });
+            } catch (e) {
+                console.warn('[AvatarManager] could not keep the avatar from being culled:', e);
+            }
+
             // Store VRM humanoid on root so PoseNormalizer/ProceduralAnimator can use Tier 1 detection
             if (vrm && vrm.humanoid) {
                 root.userData.vrmHumanoid = vrm.humanoid;

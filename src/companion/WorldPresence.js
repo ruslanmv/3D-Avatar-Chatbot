@@ -158,6 +158,7 @@
 
         let world = null; // { id, base, title, rating, scene }
         let worldGen = 0;
+        let talkGen = 0; // bumped by reset(): a move that lands after one is not narrated
         let spots = [];
         let spotId = null;
         let moving = null; // { id, from }
@@ -277,6 +278,7 @@
             if (!rt || typeof rt.goToSpot !== 'function' || rt.activeId !== world.id)
                 return { ok: false, why: 'no-renderer' };
             const gen = worldGen;
+            const talk = talkGen;
             const from = spotId;
             moving = { id: spot.id, from };
             emit('nexus-presence', { kind: 'moving', spot: spot.id, source: o.source || 'user' });
@@ -292,6 +294,14 @@
             }
             if (gen !== worldGen) return { ok: false, why: 'stale' };
             moving = null;
+            // PW. A reset while she was moving (Clear, the Private room revoked and reopened) means
+            // the conversation that asked for this move is gone. Where she now stands is still
+            // a fact and is kept; "just now you both moved" would be a memory of a forgotten turn,
+            // so nothing is said about it.
+            if (talk !== talkGen) {
+                if (r && r.ok && rt.spotId === spot.id) spotId = spot.id;
+                return { ok: false, why: 'stale' };
+            }
             if (!r || !r.ok || rt.spotId !== spot.id) {
                 const here = from ? (spotById(from) || {}).label : null;
                 say(
@@ -423,7 +433,7 @@
                     return intent;
                 }
             }
-            if (local && local.move) intent = { kind: 'move', turn };
+            if (local && local.move) intent = { kind: local.named ? 'move-named' : 'move', turn };
             return intent;
         }
 
@@ -503,6 +513,11 @@
             }
             if (intent && intent.turn === turn && intent.kind === 'move' && others.length)
                 parts.push('They want to move somewhere: pick one spot from the list with them.');
+            if (intent && intent.turn === turn && intent.kind === 'move-named')
+                parts.push(
+                    'They asked for somewhere that is not in this place. Say so simply; you may suggest one ' +
+                        'spot from the list, and you go there only if they say yes.'
+                );
             if (mood && mood.name === 'relax')
                 parts.push('You are relaxing together right here: unhurried, few words, no new topics.');
             if (mood && mood.name === 'story')
@@ -548,6 +563,7 @@
         }
 
         function reset(why) {
+            talkGen += 1;
             cancelProposal(why || 'reset');
             endTrip();
             mood = null;

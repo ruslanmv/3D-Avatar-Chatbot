@@ -9,9 +9,11 @@
  *   1. with nothing to say about a request, every path sends exactly the ceiling it always sent —
  *      this is the whole safety of consulting a capability rather than threading an argument, and
  *      a regression here changes the length of every reply in the application;
- *   2. a shorter budget is honoured, and a *longer* one is not. A capability that could raise a
- *      ceiling would be a way for one feature to spend another's token budget, so `_tokenBudget`
- *      clamps rather than assigns.
+ *   2. a shorter budget is honoured, and a longer one only up to a fixed bound (1024, AX18c).
+ *      A capability that could raise a ceiling without limit would be a way for one feature to
+ *      spend another's token budget, so `_tokenBudget` clamps rather than assigns; the bound
+ *      exists because a reasoning model spends ~450 tokens before its first visible word, and a
+ *      500 ceiling cut Private's replies mid-sentence.
  */
 
 /* global describe, test, expect, beforeAll, afterEach, jest */
@@ -78,12 +80,15 @@ describe('a budget that has something to say', () => {
         expect(mgr._tokenBudget(500)).toBe(48);
     });
 
-    test('a longer one is clamped, not obeyed', () => {
-        // Otherwise a feature could raise another path's ceiling, and the ceiling is the one
-        // number the provider settings are allowed to own.
+    test('a longer one is clamped to the bound, never obeyed beyond it', () => {
+        // A feature may not spend without limit: 4096 asked is 1024 given, at most.
         window.NEXUS_TOGETHER_CAPABILITY = { responseBudget: () => 4096 };
-        expect(mgr._tokenBudget(800)).toBe(800);
-        expect(mgr._tokenBudget(500)).toBe(500);
+        expect(mgr._tokenBudget(800)).toBe(1024);
+        expect(mgr._tokenBudget(500)).toBe(1024);
+        expect(mgr._tokenBudget(2048)).toBe(2048); // a provider ceiling above the bound is kept, never raised
+        // AX18c. Within the bound, Private's raised ceiling holds over a 500 default.
+        window.NEXUS_TOGETHER_CAPABILITY = { responseBudget: () => 768 };
+        expect(mgr._tokenBudget(500)).toBe(768);
     });
 });
 

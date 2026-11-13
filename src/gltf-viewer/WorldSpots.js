@@ -191,8 +191,17 @@
                 if (re.test(t) && (!best || word.length > best.len)) best = { spot: spot.id, len: word.length };
             }
         }
-        return best ? { spot: best.spot } : { move: true };
+        if (best) return { spot: best.spot };
+        // PW6. They named somewhere ("vicino al sipario", "to the piano") and it is not a spot here.
+        // On the phone's cabaret the curtain is unmeasured, and the real-model walkthrough moved her
+        // to the footlights on her own `<go/>` because this answered a plain "move". A named place
+        // that is not here is not a blank cheque: her substitute becomes an offer they can take.
+        return NAMED.test(t) ? { move: true, named: true } : { move: true };
     }
+
+    /** A going phrase that names a destination: "to the X", "near the X", "vicino al X", "in X". */
+    const NAMED =
+        /(?:^|[^a-z])(?:(?:to|by|near|at|into) the [a-z]{3,}|(?:vicino|accanto) (?:al|alla|allo|ai|alle|a) [a-z]{3,}|(?:al|alla|allo|ai|alle|in|nel|nella|sul|sulla) [a-z]{3,})/;
 
     /** The spots file a scene's spots live in: `scenes/x.glb` → `spots/x.json`. Pure. */
     function fileFor(sceneSrc) {

@@ -33,11 +33,11 @@ in to conversation framing while a world is up (`framingFor`).
 ## Places by name (VW3)
 
 **Experiences ▸ Visit a place** lists the spaces: Hotel suite, Bedroom, Lagoon
-beach, Office, Airship dock (steampunk, desktop only), Neon street (cyberpunk).
+beach, Office, Airship dock (steampunk), Neon street (cyberpunk).
 Choosing one starts it like any experience — the status bar reads
 "Experiences · Hotel suite" with End experience, she says one line, and the world
 appears around her. On a phone each place is its light version, and a place with
-none (the airship dock) is not listed.
+none is not listed.
 
 **Private ▸ Set the atmosphere ▸ Or a 3D room** offers the romantic rooms and the
 private ones — the Roadside motel and the Candlelit suite. A private room is
