@@ -1,0 +1,21 @@
+{
+  "captured": 61,
+  "entries": 62,
+  "notCaptured": [
+    "Seamless Scrunch Leggings"
+  ],
+  "poses": [
+    "standing",
+    "sittingDesk",
+    "sittingWide",
+    "sittingCrossed"
+  ],
+  "views": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "gateMisses": 149,
+  "note": "Screenshots are not in git. Seamless Scrunch Leggings was skipped: its cloth correction did not finish."
+}
