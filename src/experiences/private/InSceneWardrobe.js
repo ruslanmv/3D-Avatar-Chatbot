@@ -261,6 +261,11 @@
             const Engine = this._dep('Engine', (w) => w.NEXUS_OUTFIT_DECISION_ENGINE);
             if (!Engine) return { ok: false, why: 'wardrobe-not-ready' };
             const r = request || {};
+            // PX15. The private gate first. "Ponte el sujetador negro" was answered with "Crop top &
+            // jeans" — "negro" matched an ordinary look before this check was ever reached, so an
+            // underwear request on an avatar not declared adult changed her into something else.
+            if ((r.style === 'sexy' || r.style === 'lingerie') && !this.privateOpen)
+                return { ok: false, why: 'adult-ineligible' };
             const choice = Engine.choose({
                 request: r,
                 looks: this.looks,
@@ -280,7 +285,8 @@
                 if (hidden && !this.privateOpen) return { ok: false, why: 'adult-ineligible' };
                 if (hidden && !this.canCreate) return { ok: false, why: 'forge-unavailable' };
             }
-            if (r.style === 'sexy' && !this.privateOpen) return { ok: false, why: 'adult-ineligible' };
+            if ((r.style === 'sexy' || r.style === 'lingerie') && !this.privateOpen)
+                return { ok: false, why: 'adult-ineligible' };
             if (!this.looks.length && !this.canCreate) return { ok: false, why: 'no-outfits' };
             return { ok: false, why: 'no-match' };
         }

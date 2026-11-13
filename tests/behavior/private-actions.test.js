@@ -1079,3 +1079,136 @@ describe('PX10. the music requests from a real Italian session', () => {
         expect(w.search).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('PX14–PX15. several outfits in one evening, in her words and on her body', () => {
+    test.each([
+        // Italian
+        ['Poi indossaare solo mutande e reggiseno', { style: 'lingerie' }],
+        ['Mettiti le calze a rete e i tacchi', { garment: 'fishnets' }],
+        ['Indossa la minigonna', { garment: 'miniskirt' }],
+        ['Togliti il vestito', { style: 'lingerie' }],
+        // Spanish
+        ['Ponte el sujetador negro', { garment: 'bra', style: 'lingerie', colour: 'black' }],
+        ['Ponte un vestido de noche rojo', { garment: 'evening gown', colour: 'red' }],
+        ['Quítate la falda', { style: 'lingerie' }],
+        // English
+        ['Put on the black lace bodysuit', { garment: 'bodysuit', style: 'lingerie' }],
+        ['wear stockings and heels', { garment: 'stockings' }],
+    ])('%s', (text, params) => {
+        const got = Intent.parse(text);
+        expect(got && got.name).toBe('wardrobe.wear');
+        expect(got.params).toMatchObject(params);
+    });
+
+    test.each([
+        'Mi piace il tuo vestito',
+        'Posso toccare sotto il tuo vestito',
+        'Me gusta tu vestido',
+        'I love your dress',
+    ])('talk about clothes changes nothing: %s', (text) => expect(Intent.parse(text)).toBeNull());
+
+    test('every garment has words in each of the three languages it is written for', () => {
+        expect(Intent.GARMENTS.length).toBeGreaterThan(30);
+        for (const g of Intent.GARMENTS) {
+            expect(g.name).toMatch(/^[a-z][a-z -]+$/);
+            expect(g.words.length).toBeGreaterThan(0); // "bikini" is "bikini" in all three
+        }
+        expect(Intent.GARMENTS.filter((g) => g.cat === 'lingerie').length).toBeGreaterThanOrEqual(6);
+    });
+
+    test('A → B → C → back → D in one session: each one reaches the avatar, Private stays the session', async () => {
+        const w = await begin();
+        const session = Actions.snapshot().sessionId;
+        const wearing = () => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+        await say('Mettiti un vestito elegante.');
+        await say('Adesso indossa qualcosa di più comodo.');
+        await say('Mettiti il vestito giallo.');
+        await say('Rimetti quello di prima.');
+        await say('Cambia vestito.');
+        expect(wearing()).toEqual([
+            'Black evening gown',
+            'Hoodie & jeans',
+            'Yellow sundress',
+            'Hoodie & jeans',
+            expect.any(String),
+        ]);
+        expect(wearing()[4]).not.toBe('Hoodie & jeans');
+        expect(
+            Actions.log()
+                .filter((a) => a.family === 'wardrobe')
+                .every((a) => a.status === 'completed')
+        ).toBe(true);
+        expect(Actions.snapshot().sessionId).toBe(session);
+        expect(w.panel.startActivity).not.toHaveBeenCalled();
+        expect(w.activity.active).toBe(true);
+    });
+
+    test('underwear for an avatar not declared adult: refused, and she does not say she changed', async () => {
+        const w = await begin({ adult: false });
+        window.AppLanguage = { code: 'it-IT' };
+        await say('Poi indossaare solo mutande e reggiseno');
+        expect(w.controller.applyLook).not.toHaveBeenCalled();
+        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'adult-ineligible' });
+        // The reply the model wrote in the reported session, through the real check.
+        const out = await Capability.privateRevise('Mi tolgo il vestito per te. Ora ho solo mutande e reggiseno.', {
+            llm: null,
+        });
+        expect(out).not.toMatch(/mutande e reggiseno|Mi tolgo/);
+        expect(out).toMatch(/resto così/i);
+    });
+
+    test('a claim is only taken out when it is untrue', () => {
+        const it = (text, state) => Capability.outfitTruthful(text, { state }, 'it-IT');
+        expect(it('Va bene, ora indosso solo mutande e reggiseno.', 'offer')).toMatch(/Dimmi solo di sì/);
+        expect(it('Va bene, ora indosso solo mutande e reggiseno.', 'offer')).not.toMatch(/indosso/);
+        expect(it('Ti piace? Ora indosso il vestito giallo.', 'changed')).toMatch(/indosso il vestito giallo/);
+        expect(it('Mi metto qualcosa di elegante per te.', 'pending')).toBe('Mi metto qualcosa di elegante per te.');
+        expect(it('Che bello sentirti. Mi piace come mi guardi.', 'none')).toBe(
+            'Che bello sentirti. Mi piace come mi guardi.'
+        );
+        expect(Capability.outfitTruthful("I'm wearing only my bra now.", { state: 'none' }, 'en-US')).not.toMatch(
+            /bra/
+        );
+        expect(Capability.outfitTruthful('Ahora llevo solo el sujetador.', { state: 'failed' }, 'es-ES')).not.toMatch(
+            /sujetador/
+        );
+    });
+
+    test('her instructions say the wardrobe, not she, decides what she is wearing', async () => {
+        await begin();
+        Surface.renderUser('Mi piace il tuo vestito');
+        const told = Capability.privateSystemPromptSuffix();
+        expect(told).toMatch(/changes ONLY when the app changes it/);
+        expect(told).toMatch(/Nothing about your outfit has changed this turn/);
+        await flush();
+    });
+
+    test('silence lines follow the app language and never fall back to English', () => {
+        const Idle = require('../../src/features/together/PrivateIdleClock.js');
+        for (const code of ['it-IT', 'es-ES', 'fr-FR', 'de-DE', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN']) {
+            for (const kind of ['noticing', 'releasing']) {
+                const pool = Idle.pools(kind, code);
+                expect(pool.length).toBeGreaterThan(0);
+                for (const line of pool) {
+                    expect(Idle.usable(line)).toBe(line);
+                    expect(Idle.NOTICING.concat(Idle.RELEASING)).not.toContain(line);
+                }
+            }
+        }
+        expect(Idle.pools('noticing', 'xx-YY')).toEqual([]);
+    });
+
+    test('an underwear request is never answered with an ordinary look, whatever colour it names', async () => {
+        const w = await begin({ adult: false });
+        await say('Ponte el sujetador negro');
+        expect(w.controller.applyLook).not.toHaveBeenCalled();
+        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'adult-ineligible' });
+        const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+        const choice = Engine.choose({
+            request: { style: 'lingerie', garment: 'bra', colour: 'black' },
+            looks: [{ lookId: 'x', name: 'Black tee & jeans', tags: ['casual'] }],
+            entries: [],
+        });
+        expect(choice).toBeNull();
+    });
+});

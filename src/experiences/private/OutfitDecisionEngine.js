@@ -43,6 +43,9 @@
             'knit',
             'jumper',
         ],
+        // PX14. Words that only name underwear: "slip" matched a slip *dress*, and a request for
+        // underwear was answered with an offer to make a satin dress.
+        lingerie: ['lingerie', 'underwear', 'bra', 'panties', 'intimo', 'bodysuit', 'lace set', 'lace lingerie'],
         sexy: ['sexy', 'lingerie', 'lace', 'mini', 'bikini', 'stockings', 'sheer', 'bodycon', 'slip'],
         sporty: ['sport', 'sporty', 'gym', 'leggings', 'track', 'yoga', 'athletic', 'running'],
         cute: ['cute', 'sundress', 'skirt', 'pleated', 'bow', 'pastel', 'floral'],
@@ -76,6 +79,8 @@
         if (request.style) for (const w of STYLE_WORDS[request.style] || []) if (has(text, w)) total += 2;
         if (request.style && has(text, request.style)) total += 2;
         if (request.colour && has(text, request.colour)) total += 3;
+        // PX15. The garment they named, by its English name: the strongest single signal.
+        if (request.garment && has(text, request.garment)) total += 4;
         return total;
     }
 
@@ -151,11 +156,22 @@
             return i.canCreate ? { kind: 'outfit', entry, generate: true, reason: 'named' } : null;
         }
 
-        if (request.style || request.colour) {
-            const look = best(looks, request, worn);
+        if (request.style || request.colour || request.garment) {
+            // PX15. An underwear request is answered with underwear or not at all: a colour alone
+            // ("negro") must never pick an ordinary look for it.
+            const kind =
+                request.style === 'lingerie'
+                    ? (item) => score(item, { style: 'lingerie', garment: request.garment }) > 0
+                    : null;
+            const skip = (item) => worn(item) || (kind ? !kind(item) : false);
+            const look = best(looks, request, skip);
             if (look) return { kind: 'look', look: look.item, generate: false, reason: 'matches' };
             if (i.canCreate) {
-                const entry = best(entries, request, (e) => looks.some((l) => l.outfitId === e.id && worn(l)));
+                const entry = best(
+                    entries,
+                    request,
+                    (e) => looks.some((l) => l.outfitId === e.id && worn(l)) || (kind ? !kind(e) : false)
+                );
                 if (entry) return { kind: 'outfit', entry: entry.item, generate: true, reason: 'matches' };
             }
             return null;

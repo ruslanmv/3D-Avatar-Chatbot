@@ -40,7 +40,19 @@
     /** Who may be the reason an action runs. */
     const SOURCES = Object.freeze(['user', 'user-approved', 'control', 'model']);
 
-    const STYLE = ['elegant', 'formal', 'casual', 'comfy', 'sexy', 'sporty', 'cute', 'summer', 'night', 'party'];
+    const STYLE = [
+        'lingerie',
+        'elegant',
+        'formal',
+        'casual',
+        'comfy',
+        'sexy',
+        'sporty',
+        'cute',
+        'summer',
+        'night',
+        'party',
+    ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
 
@@ -78,6 +90,8 @@
                 outfit: (v) => (ID.test(String(v || '').toLowerCase()) ? String(v).toLowerCase() : undefined),
                 style: oneOf(STYLE),
                 colour: oneOf(COLOUR),
+                // PX15. The English canonical name from PrivateActionIntent.GARMENTS.
+                garment: (v) => (/^[a-z][a-z -]{1,30}$/.test(String(v || '')) ? String(v) : undefined),
                 choose: flag,
                 different: flag,
                 words: (v) => text(v, 120) || undefined,

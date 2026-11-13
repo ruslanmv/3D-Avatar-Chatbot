@@ -643,6 +643,8 @@
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
+        s.topic = topic;
+        s.topicTurn = s.turnId;
         if (!parsed) {
             // Talk about music or clothes: remembered, so "you choose" next has a subject — and a
             // statement (not a question) about music lets a tag she writes for it run.
@@ -664,6 +666,26 @@
     function fromModel(name, params) {
         if (!state) return Promise.resolve(null);
         return request(name, params, { source: 'model', turnId: state.turnId });
+    }
+
+    /**
+     * PX14. What really happened to her outfit on the person's latest turn, for the reply check
+     * (TogetherCapability.privateRevise): `changed` once the wardrobe confirmed it, `pending` while
+     * it is loading or being made, otherwise why not — `offer` (waiting for their yes), `failed`,
+     * or `none` (nothing ran).
+     */
+    function outfitTruth() {
+        const s = state;
+        if (!s) return { state: 'none' };
+        const w = s.wardrobe;
+        if (!w || w.turnId !== s.turnId) {
+            const offer = s.offer && s.offer.turnId === s.turnId;
+            return { state: offer ? 'offer' : 'none' };
+        }
+        if (w.status === 'completed') return { state: 'changed', name: (w.result && w.result.name) || '' };
+        if (w.status === 'pending') return { state: 'pending' };
+        if (w.why === 'needs-approval') return { state: 'offer' };
+        return { state: 'failed', why: w.why };
     }
 
     function snapshot() {
@@ -746,6 +768,12 @@
                 );
             else lines.push('  Change only when they ask. Talking about clothes is not asking.');
         }
+        // PX14. The rule that stops the reported transcript: "Mi tolgo il vestito per te. Ora ho
+        // solo mutande e reggiseno." while the avatar wore exactly what she had on. Her clothes are
+        // the wardrobe's to change; her words follow it. Said whether or not a wardrobe exists here.
+        lines.push(
+            '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
+        );
         lines.push('- Dancing: when they ask you to dance, you do.');
         lines.push(
             'An executable request is never answered with "tell me more" or a list of options: acknowledge it in one short sentence, as something you are doing.'
@@ -823,6 +851,9 @@
                     `They asked you to change and it did not happen: ${WHY_OUTFIT[w.why] || 'it could not be done'}. Tell them so once, in your own voice, and stay as you are.`
                 );
         }
+        // PX14. They talked about her clothes and nothing ran: say so, so the reply cannot invent it.
+        if (!(w && w.turnId === s.turnId) && s.topicTurn === s.turnId && s.topic === 'wardrobe')
+            now.push('Nothing about your outfit has changed this turn. You are still wearing the same thing.');
         const d = last && last.turnId === s.turnId && last.name === 'avatar.dance' ? last : null;
         if (d)
             now.push(
@@ -847,6 +878,7 @@
         approveOffer,
         declineOffer,
         snapshot,
+        outfitTruth,
         log,
         onChange,
         promptLines,
