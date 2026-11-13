@@ -1212,3 +1212,23 @@ describe('PX14–PX15. several outfits in one evening, in her words and on her b
         expect(choice).toBeNull();
     });
 });
+
+describe('PB5 — a kind she has ready is never denied', () => {
+    const Bridge = require('../../src/experiences/private/PrivateActionBridge.js');
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+
+    test('lingerie is listed and named even behind a long shelf of tees', () => {
+        const tees = Array.from({ length: 30 }, (_, i) => `Black Tee ${i + 1}`);
+        const all = [...tees, 'Black Lingerie Set', 'Black Triangle Bikini', 'Black A-Line Dress'];
+        const { names, kinds } = Bridge.closetSummary(all, Intent);
+        expect(names.length).toBeLessThanOrEqual(10);
+        expect(names).toEqual(expect.arrayContaining(['Black Lingerie Set', 'Black Triangle Bikini']));
+        expect(kinds.join(', ')).toMatch(/lingerie \(1\)/);
+        expect(kinds.join(', ')).toMatch(/swimwear \(1\)/);
+    });
+
+    test('with nothing classified it is just the first ten names', () => {
+        const all = Array.from({ length: 12 }, (_, i) => `Look ${i + 1}`);
+        expect(Bridge.closetSummary(all, Intent)).toEqual({ names: all.slice(0, 10), kinds: [] });
+    });
+});

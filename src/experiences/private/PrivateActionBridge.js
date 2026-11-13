@@ -742,6 +742,41 @@
      * English, like the rest of Private's prompt; `languageLines` beside it names the language
      * she answers in. Facts only: she never says music is playing unless the player said so.
      */
+    /**
+     * PB5. Her saved looks for the prompt: at most ten names, at least one of every kind she has
+     * (so lingerie is never crowded out by tees), and the kinds counted over all of them.
+     */
+    const KIND_LABEL = {
+        lingerie: 'lingerie',
+        hosiery: 'stockings',
+        night: 'nightwear',
+        swim: 'swimwear',
+        dress: 'dresses',
+        top: 'tops',
+        bottom: 'skirts and trousers',
+        shoes: 'shoes',
+        outer: 'outerwear',
+    };
+    function closetSummary(allNames, Intent, max) {
+        const limit = max || 10;
+        const list = (allNames || []).map((n) => String(n || '')).filter(Boolean);
+        const byKind = new Map();
+        for (const name of list) {
+            const cats = Intent && typeof Intent.garmentsIn === 'function' ? Intent.garmentsIn(name) : [];
+            for (const g of cats) {
+                if (!KIND_LABEL[g.cat]) continue;
+                if (!byKind.has(g.cat)) byKind.set(g.cat, []);
+                if (!byKind.get(g.cat).includes(name)) byKind.get(g.cat).push(name);
+            }
+        }
+        const names = [];
+        for (const named of byKind.values())
+            if (names.length < limit && !names.includes(named[0])) names.push(named[0]);
+        for (const name of list) if (names.length < limit && !names.includes(name)) names.push(name);
+        const kinds = [...byKind.entries()].map(([cat, named]) => `${KIND_LABEL[cat]} (${named.length})`);
+        return { names, kinds };
+    }
+
     function promptLines() {
         const s = state;
         if (!s || s.session._stopped || s.session._care) return [];
@@ -752,12 +787,21 @@
             '- Music: when they ask for music, the app finds it and plays it here. Never say you cannot play music, and never say you are only text.'
         );
         const closet = s.closet;
-        const names = closet && typeof closet.names === 'function' ? closet.names().slice(0, 10) : [];
+        const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
+        const ready = closetSummary(closet && typeof closet.names === 'function' ? closet.names() : [], Intent);
+        const names = ready.names;
         const outfit = closet ? closet.snapshot() : null;
         if (closet && closet.availability().ok) {
             lines.push(
                 `- Your outfit: you can change clothes right here, without leaving. You are wearing: ${(outfit && outfit.name) || 'your own outfit'}.${names.length ? ` Your saved looks: ${names.join('; ')}.` : ''}`
             );
+            // PB5. "¿Quieres lencería?" — "Sí" — "No tengo lencería guardada", while a prebuilt
+            // lingerie set was hers all along: the ten names she was shown happened not to include
+            // one. She is told every kind she has ready, so a kind she has is never denied.
+            if (ready.kinds.length)
+                lines.push(
+                    `  Ready to wear now, no waiting: ${ready.kinds.join(', ')}. When they want one of these kinds, offer a saved look of that kind by its name — never say you have none.`
+                );
             if (autonomy === 'autonomous')
                 lines.push(
                     '  When a saved look suits the moment you may change into it: one short sentence, then <wardrobe action="wear" look="NAME"/> on its own line. Rarely — at most once in a while.'
@@ -882,6 +926,7 @@
         log,
         onChange,
         promptLines,
+        closetSummary,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTIONS = api;
