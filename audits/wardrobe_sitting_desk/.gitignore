@@ -1,0 +1,4 @@
+# Large screenshots belong in GitHub Actions artifacts, not git history.
+runs/
+__pycache__/
+*.pyc
