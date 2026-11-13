@@ -617,10 +617,36 @@
         return { garments: results };
     }
 
+    /**
+     * The 0.9 standing-cut walk is not on this branch. A risen hem is seated by
+     * the XPBD lap constraint, and only a skirt or a dress may take that path.
+     * A tee, a top, leggings, jeans, trousers, shorts, and boots return false,
+     * so a vertex that rose with the knee stays where skinning put it.
+     */
+    function seatRisenHemApplies(garment) {
+        if (!garment) return false;
+        var name = String(garment.name || '');
+        var slot = String(garment.slot || '');
+        var profile = String(garment.profile || '');
+        var label = (name + ' ' + slot + ' ' + profile).toLowerCase();
+        if (/tee|top|shirt|legging|jean|trouser|short|boot|shoe|brief|panty|underwear|\bbra\b/.test(label))
+            return false;
+        if (profile === 'shoe' || profile === 'skinning' || profile === 'corrective' || profile === 'rigid')
+            return false;
+        return (
+            profile === 'cloth' ||
+            profile === 'hybrid-skirt' ||
+            profile === 'skirt' ||
+            profile === 'dress' ||
+            /skirt|dress|gown/.test(label)
+        );
+    }
+
     var api = {
         DEFAULTS: DEFAULTS,
         SHOE: SHOE,
         correct: correct,
+        seatRisenHemApplies: seatRisenHemApplies,
         edgesOf: edgesOf,
         weldOf: weldOf,
         normalsOf: normalsOf,

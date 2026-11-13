@@ -18,6 +18,107 @@
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 
 const SNAPSHOT = 'nexusPoseClothRest';
+
+/**
+ * `?cloth=xpbd` asks for the lap solver. The pose corrector stays the default.
+ * Only A-line, pencil, and pleated, and only with a wardrobe.cloth/1 summary
+ * whose profile is cloth or hybrid-skirt. A tee is not in this list.
+ */
+const LIVE_XPBD = ['a-line dress', 'pencil skirt', 'pleated mini skirt'];
+
+function catalogName(name) {
+    return String(name || '')
+        .replace(/\[Forge_[^\]]*\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function liveXpbdName(name) {
+    const text = catalogName(name);
+    if (!text || /pencil mini skirt/.test(text)) return false;
+    if (LIVE_XPBD.includes(text)) return true;
+    return /(^| )a-line dress$/.test(text) || /(^| )pencil skirt$/.test(text) || /(^| )pleated mini skirt$/.test(text);
+}
+
+export function clothRequested(search) {
+    const text = search == null && typeof location !== 'undefined' ? location.search : String(search || '');
+    return new URLSearchParams(text).get('cloth') === 'xpbd' ? 'xpbd' : '';
+}
+
+function xpbdSummary(tag) {
+    if (!tag) return null;
+    return tag.clothSummary || tag.cloth || null;
+}
+
+function qualifiesForXpbd(garment, requested) {
+    if (requested !== 'xpbd') return false;
+    if (!liveXpbdName(garment.name)) return false;
+    const summary = garment.summary;
+    if (!summary || summary.schema !== 'wardrobe.cloth/1') return false;
+    if (summary.profile !== 'cloth' && summary.profile !== 'hybrid-skirt') return false;
+    return Boolean(garment.asset);
+}
+
+function worldPoint(bone) {
+    const point = new THREE.Vector3();
+    bone.getWorldPosition(point);
+    return [point.x, point.y, point.z];
+}
+
+function findBone(bones, pattern) {
+    return bones.find((bone) => pattern.test(bone.name)) || null;
+}
+
+/** Thigh capsules and a pelvis capsule in world space, for the lap stop. */
+function bodyCapsules(mesh) {
+    const bones = (mesh && mesh.skeleton && mesh.skeleton.bones) || [];
+    if (!bones.length) return { capsules: [], brief: null };
+    const pairs = [
+        [/left.*upper.*leg|l_upper.*leg|left.*thigh/i, /left.*lower.*leg|l_lower.*leg|left.*shin|left.*calf/i, 0.07],
+        [
+            /right.*upper.*leg|r_upper.*leg|right.*thigh/i,
+            /right.*lower.*leg|r_lower.*leg|right.*shin|right.*calf/i,
+            0.07,
+        ],
+    ];
+    const capsules = [];
+    pairs.forEach(([upper, lower, radius]) => {
+        const a = findBone(bones, upper);
+        const b = findBone(bones, lower);
+        if (!a || !b) return;
+        const head = worldPoint(a);
+        const tail = worldPoint(b);
+        capsules.push({
+            ax: head[0],
+            ay: head[1],
+            az: head[2],
+            bx: tail[0],
+            by: tail[1],
+            bz: tail[2],
+            radius,
+            role: 'thigh',
+        });
+    });
+    const hips = findBone(bones, /hips|pelvis/i);
+    const spine = findBone(bones, /spine/i);
+    let brief = null;
+    if (hips) {
+        const head = worldPoint(hips);
+        const tail = spine ? worldPoint(spine) : [head[0], head[1] + 0.12, head[2]];
+        brief = {
+            ax: head[0],
+            ay: head[1],
+            az: head[2],
+            bx: tail[0],
+            by: tail[1],
+            bz: tail[2],
+            radius: 0.09,
+            role: 'pelvis',
+        };
+    }
+    return { capsules, brief };
+}
 // three r147's BufferAttribute has getX…getW (normalised weights included), not getComponent.
 const GET = ['getX', 'getY', 'getZ', 'getW'];
 const component = (attribute, v, k) => attribute[GET[k]](v);
@@ -292,9 +393,13 @@ export class PoseClothCorrector {
                 // materials, three meshes here): corrected apart, the lining was pushed out
                 // through the shell as if it were a layer beneath it.
                 group: g.node.uuid,
+                summary: xpbdSummary(g.tag),
+                asset: (g.tag && g.tag.clothAsset) || null,
             };
         });
         const input = { bodyPos: join(bodyPos), bodyNrm: join(bodyNrm), garments };
+        const requested = clothRequested();
+        const bodies = requested ? bodyCapsules(found.garments[0] && found.garments[0].mesh) : null;
         return new Promise((resolve) => {
             const onMessage = (event) => {
                 const answer = event.data || {};
@@ -311,7 +416,26 @@ export class PoseClothCorrector {
                 resolve(this.last);
             };
             worker.addEventListener('message', onMessage);
-            worker.postMessage({ id: generation, input });
+            const message = { id: generation, input };
+            if (requested === 'xpbd' && bodies) {
+                const xpbd = [];
+                input.garments.forEach((garment, index) => {
+                    if (!qualifiesForXpbd(garment, requested)) return;
+                    xpbd.push({
+                        index,
+                        name: garment.name,
+                        summary: garment.summary,
+                        asset: garment.asset,
+                        capsules: bodies.capsules,
+                        brief: bodies.brief,
+                    });
+                });
+                if (xpbd.length) {
+                    message.solver = 'xpbd';
+                    message.xpbd = xpbd;
+                }
+            }
+            worker.postMessage(message);
         });
     }
 

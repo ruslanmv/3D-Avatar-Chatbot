@@ -225,4 +225,23 @@ describe('SW3 — seams, pieces of one garment, folds and shoes', () => {
         expect(moved('shoe')).toBeLessThanOrEqual(C.SHOE.maxMove + 1e-6);
         expect(moved(undefined)).toBeGreaterThan(C.SHOE.maxMove);
     });
+
+    test('a tee vertex that rose with the knee stays on the skinned position', () => {
+        expect(C.seatRisenHemApplies({ name: 'Fitted Tee', profile: 'skinning' })).toBe(false);
+        expect(C.seatRisenHemApplies({ name: 'A-line dress', profile: 'cloth' })).toBe(true);
+        expect(C.seatRisenHemApplies({ name: 'Pencil skirt', profile: 'hybrid-skirt' })).toBe(true);
+        expect(C.seatRisenHemApplies({ name: 'Combat Boots', slot: 'shoes', profile: 'shoe' })).toBe(false);
+        const standing = square(R + 0.08, 0.02, 5);
+        const risen = standing.pos.slice();
+        const hem = 0;
+        risen[hem * 3 + 1] += 0.004;
+        const { garments } = C.correct({
+            bodyPos: body.pos,
+            bodyNrm: body.nrm,
+            garments: [
+                { name: 'Fitted Tee', profile: 'skinning', posed: risen, rest: risen, indices: standing.indices },
+            ],
+        });
+        expect(Array.from(garments[0].positions)).toEqual(Array.from(Float32Array.from(risen)));
+    });
 });
