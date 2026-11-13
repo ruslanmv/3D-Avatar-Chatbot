@@ -8,7 +8,16 @@ from unittest.mock import patch
 
 # Supports `python -m unittest discover -s audits/wardrobe_sitting_desk`.
 sys.path.insert(0, str(Path(__file__).parent))
-from capture import CLOTH_OBSERVER_JS, VIEWS, context_init_script, matching_items, parse_args, report, slug  # noqa: E402
+from capture import (  # noqa: E402
+    CLOTH_OBSERVER_JS,
+    VIEWS,
+    context_init_script,
+    matching_items,
+    metric_findings,
+    parse_args,
+    report,
+    slug,
+)
 
 
 class CaptureHelpersTest(unittest.TestCase):
@@ -22,7 +31,41 @@ class CaptureHelpersTest(unittest.TestCase):
         self.assertNotIn("typeof p.clothStatus !== 'function') return true", script)
         self.assertIn("__auditReadCloth", CLOTH_OBSERVER_JS)
         self.assertIn("cloth.phase = result ? 'applied' : 'skipped'", CLOTH_OBSERVER_JS)
-        self.assertIn(CLOTH_OBSERVER_JS, context_init_script(parse_args([])))
+        opts = parse_args([])
+        self.assertIsNone(opts.forge_url)
+        self.assertIsNone(opts.avatar)
+        self.assertIn(CLOTH_OBSERVER_JS, context_init_script(opts))
+        self.assertNotIn("if opts.forge_url or opts.avatar:", script)
+
+    def test_resume_rebuilds_gate_findings_from_the_manifest(self):
+        found = metric_findings(
+            {
+                "id": "garment-02-00-a-line-dress",
+                "name": "A-line dress",
+                "category": "Dresses",
+                "poses": {
+                    "sittingWide": {
+                        "status": "ok",
+                        "gate": {
+                            "issues": [
+                                {
+                                    "code": "penetration",
+                                    "severity": "P1",
+                                    "garment": "Black A-Line Dress",
+                                    "metric": "maxPenetrationMm",
+                                    "value": 6,
+                                    "limit": 1,
+                                }
+                            ]
+                        },
+                    },
+                    "walking": {"status": "unsupported"},
+                },
+            }
+        )
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["pose"], "sittingWide")
+        self.assertEqual(found[0]["actual"], "maxPenetrationMm is 6")
 
     def test_views_have_independent_angles(self):
         self.assertEqual(VIEWS["front"], 0)
