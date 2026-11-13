@@ -104,6 +104,7 @@
         // P14. What a reply says, as opposed to how it asked to be performed. Before
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
+        'src/features/chat/ReplyClean.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;
@@ -119,6 +120,9 @@
         // loads after its first reader gets English for one paint and the chosen language after,
         // which is the flicker this list exists to prevent.
         'src/features/together/PrivateLocale.js',
+        // Authored Private speech and planner rules for every AppLanguage locale.
+        // Must load before PrivateBeats/TogetherCapability to avoid English fallback flashes.
+        'src/features/together/PrivatePromptCatalog.js',
         'src/features/together/ui/PrivateConversationView.js',
         // What she says during a Private session, and the four enums it is allowed to
         // remember between them. Before TogetherCapability, which runs both.
@@ -138,6 +142,7 @@
         // which builds Private's prompt from it, and the playground activity, which installs its
         // ceiling.
         'src/features/together/PrivateExperienceProfile.js',
+        'src/features/together/PrivateVoice.js',
         // AX7. The style made visible and audible: voice pace, resting expression, the room's
         // light. Before TogetherCapability, which applies it, and main.js's speech, which asks it.
         'src/features/together/PrivatePresentation.js',

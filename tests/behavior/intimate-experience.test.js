@@ -424,8 +424,17 @@ describe('Private runtime integration', () => {
     });
 
     test('Private soundtrack search is optional and never replaces media already playing', async () => {
+        // AX17. Silent unless asked: with no soundtrack choice nothing is searched or played.
+        const silent = setup({ preset: 'affectionate', withDiscovery: true });
+        await silent.activity.start({ input: { id: 'affectionate' } });
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(silent.provider.search).not.toHaveBeenCalled();
+        expect(silent.media.requestPlay).not.toHaveBeenCalled();
+        silent.activity.stop('user');
+
         const idle = setup({ preset: 'affectionate', withDiscovery: true });
-        await idle.activity.start({ input: { id: 'affectionate' } });
+        await idle.activity.start({ input: { id: 'affectionate', soundtrack: 'choose' } });
         await Promise.resolve();
         await Promise.resolve();
 

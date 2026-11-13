@@ -132,8 +132,9 @@ describe('the response budget', () => {
         // coming from it. It comes from `privateLengthLines`, in words the model reads.
         for (const name of Director.INTENTS) {
             expect(Director.BUDGET[name]).toBeGreaterThanOrEqual(Director.MIN);
-            // Still a reduction against the provider default, which is what this table is for.
-            expect(Director.BUDGET[name]).toBeLessThan(800);
+            // A ceiling, not a length: high enough that a reasoning model's thinking (AX8
+            // measured 442 tokens) cannot reach it, and still bounded.
+            expect(Director.BUDGET[name]).toBeLessThanOrEqual(1024);
         }
     });
 
