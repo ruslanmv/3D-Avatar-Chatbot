@@ -1,0 +1,157 @@
+{
+  "clips": [
+    {
+      "id": "VRMA_01.vrma",
+      "label": "booth-01-ShowFullBody",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_01.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-01-ShowFullBody.png"
+    },
+    {
+      "id": "VRMA_03.vrma",
+      "label": "booth-03-PeaceSign",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_03.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-03-PeaceSign.png"
+    },
+    {
+      "id": "VRMA_04.vrma",
+      "label": "booth-04-Shoot",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_04.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-04-Shoot.png"
+    },
+    {
+      "id": "VRMA_05.vrma",
+      "label": "booth-05-Spin",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_05.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-05-Spin.png"
+    },
+    {
+      "id": "VRMA_06.vrma",
+      "label": "booth-06-ModelPose",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_06.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-06-ModelPose.png"
+    },
+    {
+      "id": "VRMA_07.vrma",
+      "label": "booth-07-Squat",
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_07.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "booth-07-Squat.png"
+    },
+    {
+      "id": "MCPM_20230806_154241.vrma",
+      "label": "mocopi-154241",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154241.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "mocopi-154241.png"
+    },
+    {
+      "id": "MCPM_20230806_154323.vrma",
+      "label": "mocopi-154323",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154323.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "mocopi-154323.png"
+    },
+    {
+      "id": "MCPM_20230806_154402.vrma",
+      "label": "mocopi-154402",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154402.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "mocopi-154402.png"
+    },
+    {
+      "id": "MCPM_20230806_154429.vrma",
+      "label": "mocopi-154429",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154429.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "mocopi-154429.png"
+    },
+    {
+      "id": "MCPM_20230806_154455.vrma",
+      "label": "mocopi-154455",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154455.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "mocopi-154455.png"
+    },
+    {
+      "id": "idle_loop.vrma",
+      "label": "stable-mit-idle_loop",
+      "path": "develop/addons/stable/vrma-mit/idle_loop.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-mit-idle_loop.png"
+    },
+    {
+      "id": "test.vrma",
+      "label": "stable-mit-test",
+      "path": "develop/addons/stable/vrma-mit/test.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-mit-test.png"
+    },
+    {
+      "id": "Blush.vrma",
+      "label": "stable-tk256-Blush",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Blush.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-Blush.png"
+    },
+    {
+      "id": "Clapping.vrma",
+      "label": "stable-tk256-Clapping",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Clapping.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-Clapping.png"
+    },
+    {
+      "id": "Goodbye.vrma",
+      "label": "stable-tk256-Goodbye",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Goodbye.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-Goodbye.png"
+    },
+    {
+      "id": "Jump.vrma",
+      "label": "stable-tk256-Jump",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Jump.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-Jump.png"
+    },
+    {
+      "id": "LookAround.vrma",
+      "label": "stable-tk256-LookAround",
+      "path": "develop/addons/stable/vrma-tk256-candidates/LookAround.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-LookAround.png"
+    },
+    {
+      "id": "Sleepy.vrma",
+      "label": "stable-tk256-Sleepy",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Sleepy.vrma",
+      "played": true,
+      "error": null,
+      "screenshot": "stable-tk256-Sleepy.png"
+    }
+  ],
+  "out": "develop/verification/runs/screenshots-2026-11-14T09-05-06"
+}
