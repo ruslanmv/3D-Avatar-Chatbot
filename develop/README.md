@@ -1,30 +1,26 @@
 # develop/ — animation staging
 
-- **`addons/stable/`** — working VRMA only (additive audit **ok**).
-- **`addons/pending/`** — license-clean but **not playable yet** (Quaternius
-  GLB).
-- Nothing here is product-wired until a separate promotion PR.
+Staging area for animation clips **before** they reach the app. It holds no
+binaries today: everything that passed review was promoted to
+`vendor/animations/vrma/` (credits:
+`vendor/animations/vrma/THIRD_PARTY_LICENSES.md`), and clips nobody used were
+removed on 2026-11-14.
 
-## Layout
-
-| Path                                      | Contents                                |
-| ----------------------------------------- | --------------------------------------- |
-| `addons/stable/vrma-mit/`                 | MIT VRMA (`idle_loop`, `test`) — **ok** |
-| `addons/stable/vrma-tk256-candidates/`    | tk256 six — **ok**                      |
-| `addons/pending/quaternius-ual-standard/` | CC0 GLB — **not playable yet**          |
-| `addons/pending/vrma-booth-vroid/ok/`     | BOOTH 6 VRMA — playback **ok** (dev)    |
-| `addons/pending/vrma-mocopi-tfuru/`       | mocopi 5 VRMA — playback **ok** (dev)   |
-| `addons/pending/archives/`                | Quaternius zip + SHA-256                |
-| `CATALOG.md`                              | More compatible sources                 |
-| `verification/AGENT.md`                   | Brief for Claude / Cursor / Grok        |
-| `verification/audit-additive.mjs`         | Audits **stable** `.vrma`/`.bvh` only   |
+| Path                             | Contents                                                       |
+| -------------------------------- | -------------------------------------------------------------- |
+| `addons/stable/`                 | empty — stage candidates here, then audit                      |
+| `addons/pending/`                | empty — licence-clean packs awaiting conversion                |
+| `NEEDS_FIX.md`, `needs-fix.json` | clips that failed review (they live in `addons/`, quarantined) |
+| `CATALOG.md`                     | compatible sources to look at next                             |
+| `verification/`                  | audit + screenshot scripts, and the evidence of past runs      |
 
 ## Agent loop
 
 ```bash
 npm start
-node develop/verification/audit-additive.mjs
+node develop/verification/audit-additive.mjs          # develop/addons/stable
+node develop/verification/audit-additive.mjs --dir <path>
 ```
 
-Pending packs are excluded from that audit on purpose. See
-`addons/pending/README.md`.
+Then look at the frames (`verification/screenshot-clips.mjs`) on more than one
+avatar height — hips height alone missed a sideways tilt and a leg flip.

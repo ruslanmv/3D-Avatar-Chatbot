@@ -1,43 +1,32 @@
 {
-  "schema": 4,
-  "purpose": "Development staging: stable=MIT ok VRMA; pending=dev binaries + conversion.",
+  "schema": 5,
+  "purpose": "Development staging for animation clips. Empty of binaries since 2026-11-14: passed clips promoted to vendor/animations/vrma/, unused ones removed.",
   "additive_audit": "node develop/verification/audit-additive.mjs",
   "packs": [
     {
       "id": "vrma-mit",
-      "tier": "stable",
-      "license": "MIT",
-      "status": "verified-ok",
-      "path": "develop/addons/stable/vrma-mit"
+      "status": "promoted (idle_loop) / removed (test)",
+      "path": "vendor/animations/vrma/idle_loop.vrma"
     },
     {
       "id": "vrma-tk256-candidates",
-      "tier": "stable",
-      "license": "MIT",
-      "status": "verified-ok",
-      "path": "develop/addons/stable/vrma-tk256-candidates"
-    },
-    {
-      "id": "quaternius-ual-standard",
-      "tier": "pending",
-      "license": "CC0",
-      "status": "not-playable-yet",
-      "path": "develop/addons/pending/quaternius-ual-standard"
+      "status": "staging copies removed; originals active in vendor",
+      "path": "vendor/animations/vrma/"
     },
     {
       "id": "vrma-booth-vroid",
-      "tier": "pending",
-      "license": "BOOTH-credit-no-extract",
-      "status": "playback-ok-dev-only",
-      "removed_failed": ["VRMA_02.vrma"],
-      "path": "develop/addons/pending/vrma-booth-vroid/ok"
+      "status": "promoted (MO10)",
+      "path": "vendor/animations/vrma/"
     },
     {
       "id": "vrma-mocopi-tfuru",
-      "tier": "pending",
-      "license": "unclear-no-SPDX",
-      "status": "playback-ok-dev-only",
-      "path": "develop/addons/pending/vrma-mocopi-tfuru"
+      "status": "promoted (MO10)",
+      "path": "vendor/animations/vrma/"
+    },
+    {
+      "id": "quaternius-ual-standard",
+      "status": "removed \u2014 not playable until converted; re-download from quaternius.com",
+      "path": null
     }
   ],
   "latest_additive": {
@@ -56,193 +45,38 @@
     },
     {
       "path": "develop/CATALOG.md",
-      "bytes": 6350,
-      "sha256": "4f7be6b396d2b5bfa16d2c116e1ff142d8a501e4a941a48818543a3d47e8ae20"
+      "bytes": 5667,
+      "sha256": "46e521da3e543430ce0bcb28b6249a947eb64be59bddb74a7e1ef7e2a672e13a"
+    },
+    {
+      "path": "develop/NEEDS_FIX.md",
+      "bytes": 3518,
+      "sha256": "f66345da5828baa70ea66b092fb4fa6aa91a20860e3624a43ce952da2b5908a0"
     },
     {
       "path": "develop/README.md",
-      "bytes": 1235,
-      "sha256": "13fc11bcc470bd4149e89bae6f06892304fc4d1d9807e6e9ade80e2431b764ac"
+      "bytes": 1356,
+      "sha256": "1c331fdf63869fa770d0c0ed1c6a59a13ac0afafb12b2ef4759842dc93ca80cb"
     },
     {
       "path": "develop/STATUS.md",
-      "bytes": 1118,
-      "sha256": "2c067b8ed6aca3c437ac02b0002354b910ebbc00089d18b62da870d085e99ec8"
+      "bytes": 2335,
+      "sha256": "acfccd69b769344a14cf38904a7417a697c8e4e22a4b946902fed6d913feed98"
     },
     {
       "path": "develop/addons/pending/README.md",
-      "bytes": 876,
-      "sha256": "d2116a6332cda086e25241fff5b0ad3c1be966864e9c57901d005c9e8e6a5bc9"
-    },
-    {
-      "path": "develop/addons/pending/archives/SHA256SUMS.txt",
-      "bytes": 118,
-      "sha256": "7ea2fb298c49e1ef2105e9155db5aeb51e646d75ea6a676ef037f223df65a6d4"
-    },
-    {
-      "path": "develop/addons/pending/archives/quaternius_universal_animation_library_standard.zip",
-      "bytes": 133,
-      "sha256": "9a935df51376b5395fd9730d944121d5988df90424392de95ea65c0234adc385"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/Godot/AnimationLibrary_Godot_Standard.glb",
-      "bytes": 6671104,
-      "sha256": "1b7bf67866360665426bb99e4c71bd619f19b408453c24e30f0c3071601eee5c"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/License.txt",
-      "bytes": 446,
-      "sha256": "11eac7504a28077e9d8dbac8ddfca2566510efba7eef46e11f21cdd2bc96d4d5"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/NOT_PLAYABLE_YET.md",
-      "bytes": 865,
-      "sha256": "4ec05e3fac9ec667b6707a84ace3d5fe6f84ad0e3419a65582aef1b7de8f1c3a"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/PROVENANCE.md",
-      "bytes": 1248,
-      "sha256": "06f3890177dfff922734dfcebf4421d2253e19f8bc295cd811b83883457b83a5"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/Preview.png",
-      "bytes": 2424027,
-      "sha256": "4491742a3ffe68c571a04fdf8fdf9bf761a3cba690b60d96e87c858df92159ab"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.bin",
-      "bytes": 132,
-      "sha256": "c159f09fb8b6ad87cefb281ada0914196ac621a40f9b96d745f21a21995b3b8b"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.gltf",
-      "bytes": 2459987,
-      "sha256": "0ff075c7ad6855c5c2c37a171592ee8f0d6ab2f58259e2be77a9b63dd8027765"
-    },
-    {
-      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/LICENSE",
-      "bytes": 7048,
-      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/PROVENANCE.md",
-      "bytes": 1401,
-      "sha256": "adeb6889df4f20bbcf1dcc3251866d1952c723914450886f3850efc6d7b23d06"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_01.vrma",
-      "bytes": 1348388,
-      "sha256": "f45abc44800c647fa106537a2e31a84cb83b74cf3dd8a0ee71c6915f1555ac57"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_03.vrma",
-      "bytes": 1335704,
-      "sha256": "6f66b6b5c0214a7b825498050380ea43a3f782b5ea24ce46f7096acf15866d75"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_04.vrma",
-      "bytes": 1108548,
-      "sha256": "c40c1a7b0dbcac5aa9582f45498474255e4b0ca5642a71ffaf43878c27bedf70"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_05.vrma",
-      "bytes": 632316,
-      "sha256": "cc508712ca4db8833ffe982d2eecd427e9374a04c005db2a7a45775f0ca45586"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_06.vrma",
-      "bytes": 518364,
-      "sha256": "a2c86633690e911cf935c5b8cae6553aea0445567f88c2861f7597fc1bf08af1"
-    },
-    {
-      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_07.vrma",
-      "bytes": 771944,
-      "sha256": "b0096525231e9f49947a6fad0295575b1c2bfbc33c042d07f125c7c2fbe88995"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154241.vrma",
-      "bytes": 317412,
-      "sha256": "70c22d241586950350f2ac7431383504845025b19576a557f70e55aaac74f611"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154323.vrma",
-      "bytes": 437268,
-      "sha256": "84dccd6f25f0a19cc591aa39d98544a36caf1e30dd23561a3a938795d6928f24"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154402.vrma",
-      "bytes": 429720,
-      "sha256": "de9024c1eee762094b19269efc900857e76a8ae168131d67116f6714e135f2f6"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154429.vrma",
-      "bytes": 523940,
-      "sha256": "32b7162c82d5cfdf73b685031e4e8c20245615e28b8786071eedb11b7c1f344e"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154455.vrma",
-      "bytes": 546228,
-      "sha256": "7271257be1bb3de422004b684c0f34b6360aeb02837468d373795ad8485d1b2f"
-    },
-    {
-      "path": "develop/addons/pending/vrma-mocopi-tfuru/PROVENANCE.md",
-      "bytes": 710,
-      "sha256": "338411c630aba96650b821d4b3e7fdb211c3476d27ba80a6e844a467995d817f"
+      "bytes": 513,
+      "sha256": "d9fa6a0ca8287ba1fbd2320a68fa7c9d3e723f2216f8f3190d41bab8a383d733"
     },
     {
       "path": "develop/addons/stable/README.md",
-      "bytes": 553,
-      "sha256": "2a8d4cb7cb41d67785803e1035c48a979abc6579b9cf77afeca8a4b98ff383a7"
+      "bytes": 468,
+      "sha256": "b5120b3f2f7e86c507e78174a37d45483b1da3f9ddc90a33c74d9c2362b1b985"
     },
     {
-      "path": "develop/addons/stable/vrma-mit/PROVENANCE.md",
-      "bytes": 869,
-      "sha256": "189570ebe75e75b89dbe08fb540a75243414615fd606185634f36a01fdc2773d"
-    },
-    {
-      "path": "develop/addons/stable/vrma-mit/idle_loop.vrma",
-      "bytes": 157664,
-      "sha256": "ace95ba6dcc0bdf2ed1081c002332b4184441117c8d543b6f642b3d2c5cf99be"
-    },
-    {
-      "path": "develop/addons/stable/vrma-mit/test.vrma",
-      "bytes": 11548,
-      "sha256": "38d0fd12d61e896f1a970b5e358ebb41a96c8d5ee8e284496ea18f0ba1f04e7b"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/Blush.vrma",
-      "bytes": 118448,
-      "sha256": "9057f93fe8add98c781955ebc0df686bec79dbb90cc6351b092a3a4fea8e8edf"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/Clapping.vrma",
-      "bytes": 118448,
-      "sha256": "a4165a9ddd02fbccf527f49bce60656bf1ac601630b32d7d70509d8006912ee9"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/Goodbye.vrma",
-      "bytes": 118448,
-      "sha256": "6a162b83a0b9b8c1d6ee5c05adf71ccb16f012286bab1dd3b1d69f5a1d3c9fbe"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/Jump.vrma",
-      "bytes": 118448,
-      "sha256": "844e47e6f9a1166edcf2c9ce30be50405e693f59da1cf4be88ecadd6ffda667a"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/LookAround.vrma",
-      "bytes": 118448,
-      "sha256": "cf5c51bf07845b29c8f664cea6cf694f05f0d51fbf41a716414b656db72e411f"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/PROVENANCE.md",
-      "bytes": 775,
-      "sha256": "ab73f3703ca97fc9b98189bcf4f0becb39f87c83468aeb78022c93fbc0c02fba"
-    },
-    {
-      "path": "develop/addons/stable/vrma-tk256-candidates/Sleepy.vrma",
-      "bytes": 118448,
-      "sha256": "42b6c81721235d0697c97dbde62e15e7c3bf91d5267205920a9bb150cc19a51f"
+      "path": "develop/needs-fix.json",
+      "bytes": 13744,
+      "sha256": "308cb57b4a67814c422e64d8318ff442f4729e9802681d0acdba3f14a7438e8a"
     },
     {
       "path": "develop/verification/AGENT.md",
@@ -263,11 +97,6 @@
       "path": "develop/verification/audit-additive.mjs",
       "bytes": 10660,
       "sha256": "74cd6b921bdc83417036c032b60ffbdf101694584e654546824b2fcb465cff43"
-    },
-    {
-      "path": "develop/verification/probe-quaternius-glb.mjs",
-      "bytes": 7354,
-      "sha256": "f6eeba659c603173ae836b729c18e2e62285efb33c3612ff24b452dfc449760f"
     },
     {
       "path": "develop/verification/runs/LATEST.json",
@@ -311,8 +140,8 @@
     },
     {
       "path": "develop/verification/runs/additive-2026-11-14T08-54-41/summary.json",
-      "bytes": 4455,
-      "sha256": "deb16dc0fd8a70e7f1e33c96f64265aa3523d000582125f8f2202ca6fee42ad9"
+      "bytes": 4439,
+      "sha256": "b8919a5b511dec82f973fe42ee2ec17640fe3fc331b95cdfd791afb85837c054"
     },
     {
       "path": "develop/verification/runs/additive-2026-11-14T08-56-40/additive.csv",
@@ -361,8 +190,8 @@
     },
     {
       "path": "develop/verification/runs/download-test-2026-11-14.md",
-      "bytes": 1199,
-      "sha256": "21a5f5a85aed7d55d729f0f2f1d2fc52e50b67db5951412417e1552d1d1338ac"
+      "bytes": 1383,
+      "sha256": "251172bf669babd84346f464a4b05bdfd9f54e8218945cf0b7fb4868bad94462"
     },
     {
       "path": "develop/verification/runs/quaternius-glb-probe/probe.json",
@@ -370,9 +199,119 @@
       "sha256": "5d3705dfc139e0e619d1c3471fba112915a731590528c22248e148fe785fc435"
     },
     {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/GALLERY.md",
+      "bytes": 2819,
+      "sha256": "70ad926ec617b3e8e1a7fccf732ef99a7787296c5964d36930c59ad97300b05e"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-01-ShowFullBody.png",
+      "bytes": 162516,
+      "sha256": "b372e7eff90c0a70dfce5a3e73e58b56d026ccbf5bfbf058a611982bc724ca84"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-03-PeaceSign.png",
+      "bytes": 163562,
+      "sha256": "89797717f15006c068630a4d646e3c0c4fdd1b9f333556239f9a02d9ac81e4a9"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-04-Shoot.png",
+      "bytes": 148759,
+      "sha256": "1802b080a5a96e0c045bc069c3201f53f8835f46ceeed0572cd747fef87c3195"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-05-Spin.png",
+      "bytes": 136854,
+      "sha256": "97a00ab366398839c5eb256f88a858880ab5046556ab98a57c185b070dda2e73"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-06-ModelPose.png",
+      "bytes": 139757,
+      "sha256": "94ba56d2abf3b5f9cd1c0a701ffdc2578f6a0546a25ff8dd44d7b871920dc159"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/booth-07-Squat.png",
+      "bytes": 123861,
+      "sha256": "e19697820c8597f6ca2ea93be72610a474948b492f9cd31e1630703e81897c36"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/index.json",
+      "bytes": 4675,
+      "sha256": "53109bccc96f2bccc2e25a4172b5ef0974e6cf69055c0ab703251b5e4d05b75b"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/mocopi-154241.png",
+      "bytes": 148425,
+      "sha256": "e201af1e2c93e29f579043684c273cc95dab92151e552c0494f30f05fed1a405"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/mocopi-154323.png",
+      "bytes": 147995,
+      "sha256": "b758f0bee878d8aa00f0a8c65cc1e3192dcf9190f0cfaf781f6bd5bc0a37a9b5"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/mocopi-154402.png",
+      "bytes": 149794,
+      "sha256": "9800089e954f347e444f1f35cb15df553e3f5601a6408f5ed8447edaf0a2bc88"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/mocopi-154429.png",
+      "bytes": 154401,
+      "sha256": "6b3a07ec91d4d2779baf77b1785ad2628edeac0c3f82d591fffc5d1047c6bc4d"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/mocopi-154455.png",
+      "bytes": 149855,
+      "sha256": "59707464c94fb09c7ab8ad9d956d1ea3cb02c1a6b578cf9109189d82a490fd46"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-mit-idle_loop.png",
+      "bytes": 150507,
+      "sha256": "d03cef4a1584b7a280d1d82a7930e64cf184e39c6dcb295e88366167e3faae30"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-mit-test.png",
+      "bytes": 157713,
+      "sha256": "3268bc3d24a5190fe39f419cc6a5501a581223942f11ccb3e655909b41534644"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-Blush.png",
+      "bytes": 156015,
+      "sha256": "b1839ec64c8371c4f067445104a9afe8a3609c4c4f24002ef6d47d04455b7c9a"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-Clapping.png",
+      "bytes": 143853,
+      "sha256": "9112ad40455a532c3fcb6607cdada7ca02611e52976872bb2cd15e0264919b31"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-Goodbye.png",
+      "bytes": 153378,
+      "sha256": "dcf2a428eed59b17e64aa05602ff1a2519ea595155c91c3fff89ce3d2f1b61d0"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-Jump.png",
+      "bytes": 155456,
+      "sha256": "433ddf8d38b030574b1bd9d5243117c40013fbb1bba36a8ddcdaec4f5dcb1c36"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-LookAround.png",
+      "bytes": 150720,
+      "sha256": "f4557153b7bfdd0574a70b238e0862a2d1afa6d9af678422df7fc97e49b89117"
+    },
+    {
+      "path": "develop/verification/runs/screenshots-2026-11-14T09-05-06/stable-tk256-Sleepy.png",
+      "bytes": 147907,
+      "sha256": "9134193e825260fcc066ee7b262dead79a0f83972cdfcec96adda46b7febd16b"
+    },
+    {
       "path": "develop/verification/runs/stable-vrma-mit/summary.json",
       "bytes": 393,
       "sha256": "30f39a0dffce1e527eb9ce04a2e222ba8115923f8fbabb2beca5f3e33752c656"
+    },
+    {
+      "path": "develop/verification/screenshot-clips.mjs",
+      "bytes": 6790,
+      "sha256": "f8357fd6694ce29fb483ab3f2867634068110b95ff64e038046495039831b1eb"
     }
   ]
 }

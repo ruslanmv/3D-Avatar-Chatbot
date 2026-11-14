@@ -1,9 +1,11 @@
 # Third-party licences for vendor/animations/vrma/
 
-Every `.vrma` here is redistributed under the MIT licence of its upstream
-project, which is compatible with this repository's Apache-2.0. MIT requires the
-copyright notice and permission notice to travel with the files; they are
-reproduced in full below.
+Every `.vrma` in this folder, where it came from, and the terms it is used under.
+MIT requires the copyright notice and permission notice to travel with the files;
+they are reproduced in full below. Two packs are **not** MIT and are flagged for
+review before a public release. The same sources are recorded per clip in
+`vendor/animations/manifest.json` (`credits`) and in the KB
+(`kb/animations.manifest.jsonl`, `source` / `license`).
 
 | Files | Upstream | Licence |
 | --- | --- | --- |
@@ -11,9 +13,21 @@ reproduced in full below.
 | `idle_loop.vrma` | [pixiv/ChatVRM](https://github.com/pixiv/ChatVRM) `public/idle_loop.vrma` | MIT, © 2023 pixiv Inc. |
 | `show_outfit`, `peace_sign`, `finger_gun`, `spin`, `model_pose`, `playful_dip` (`.vrma`) | [VRoid Project VRMA motion pack, BOOTH item 5512385](https://booth.pm/ja/items/5512385) (pixiv Inc.) | BOOTH terms: free, commercial use OK **with credit** — see below |
 | `turn_aside`, `open_arms`, `hand_on_heart`, `explain`, `present` (`.vrma`) | [tfuru/vrma-loader-sample](https://github.com/tfuru/vrma-loader-sample) `example/mocopi/vrma/` | **No licence declared upstream** — see below |
+| `waiting-standard.vrma` | Not recorded — the repo's docs call it a "VRoid Hub clip idle"; it was added in `d6dc853` (2026-03-27) without a source | **Unknown** — confirm before a public release |
 
-`idle_loop.vrma` was staged and audited under `develop/addons/stable/vrma-mit/`
-(PR #153) before promotion; it is byte-identical to that copy.
+Every clip here was reviewed on three avatar heights (0.69 m, 0.89 m and 0.98 m
+hips) with frames checked by eye before it was enabled; evidence is in
+`develop/verification/runs/`. The staging copies under `develop/addons/` were
+removed on 2026-11-14 — this folder is the only copy.
+
+## Status at a glance
+
+| Licence | Files | Public release |
+| --- | --- | --- |
+| MIT (tk256, ChatVRM) | 12 | Ready — notices below |
+| BOOTH terms (VRoid Project) | 6 | **Review** — credit required; extractable redistribution not permitted |
+| None declared (mocopi sample repo) | 5 | **Review** — ask the author for a licence |
+| Unknown (`waiting-standard`) | 1 | **Review** — source not recorded |
 
 ## tk256ailab/vrm-viewer
 

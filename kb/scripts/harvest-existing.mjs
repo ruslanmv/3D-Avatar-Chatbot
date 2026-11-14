@@ -74,12 +74,34 @@ const DEFAULTS = { priority: 3, cooldownMs: 8000 };
  */
 const PROVENANCE = {
     vendor: { source: 'sillytavern-vrm-assets-pack', license: 'Community use' },
-    'vendor-vrma': { source: 'tk256ailab-vrm-viewer', license: 'Open source' },
+    'vendor-vrma': { source: 'tk256ailab-vrm-viewer', license: 'MIT' },
     'addons-actions': { source: 'davincidreams-3dchat (mixamo origin)', license: 'unknown' },
     'addons-dance': { source: 'davincidreams-3dchat (mixamo origin)', license: 'unknown' },
     'addons-dance-converted': { source: 'bvh2vrma from vendor/animations/dance', license: 'Community use' },
     'addons-locomotion': { source: 'generated (retarget_mixamo_to_vrma.py)', license: 'unknown' },
     procedural: { source: 'in-repo (AnimationPresets)', license: 'Apache-2.0' },
+};
+
+/**
+ * vendor/animations/vrma/ holds more than the tk256 pack since MO9/MO10. Per-file
+ * provenance, mirroring vendor/animations/vrma/THIRD_PARTY_LICENSES.md — every clip there
+ * was labelled "tk256 · Open source" before, which was wrong for eighteen of them.
+ */
+const VRMA_FILE_PROVENANCE = {
+    'idle_loop.vrma': { source: 'pixiv-chatvrm', license: 'MIT' },
+    'waiting-standard.vrma': { source: 'not recorded (described as a VRoid Hub idle)', license: 'unknown' },
+    ...Object.fromEntries(
+        ['show_outfit', 'peace_sign', 'finger_gun', 'spin', 'model_pose', 'playful_dip'].map((n) => [
+            n + '.vrma',
+            { source: 'vroid-project-booth-5512385', license: "BOOTH terms (credit pixiv Inc.'s VRoid Project)" },
+        ])
+    ),
+    ...Object.fromEntries(
+        ['turn_aside', 'open_arms', 'hand_on_heart', 'explain', 'present'].map((n) => [
+            n + '.vrma',
+            { source: 'tfuru-vrma-loader-sample (mocopi)', license: 'unknown (none declared upstream)' },
+        ])
+    ),
 };
 
 /**
@@ -231,7 +253,9 @@ function clipRecord({ file, pack, category }, ctx) {
             : pack === 'addons-dance' && !excluded
               ? 'addons-dance-converted'
               : pack;
-    const provenance = PROVENANCE[provenanceKey] || { source: pack, license: 'unknown' };
+    const provenance =
+        (provenanceKey === 'vendor-vrma' && VRMA_FILE_PROVENANCE[file.split('/').pop()]) ||
+        PROVENANCE[provenanceKey] || { source: pack, license: 'unknown' };
     const policy = CATEGORY_DEFAULTS[category] || DEFAULTS;
 
     const record = {
