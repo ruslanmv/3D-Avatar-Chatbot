@@ -1,0 +1,2965 @@
+{
+  "schema": 1,
+  "purpose": "Staging area for candidate poses/animations. NOT integrated into product motion until verified via AX16 audit.",
+  "branch_policy": "Do not copy into vendor/animations or src/ until verification passes.",
+  "counts": {
+    "files": 328,
+    "bvh": 325,
+    "glb": 1,
+    "gltf": 1
+  },
+  "items": [
+    {
+      "path": "sources/accad-female1/Female1_A01_Stand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 55454,
+      "sha256": "9cbbb4749b42922503fb24997d53f60d6c36b62f6c00a12d3c8a1a9cfd5987d4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A02_Sway.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 210056,
+      "sha256": "3204542c265fc479993137407deaf0418a46e0d01ac99fc679a7536dd77c991e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A02_SwayT2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 276945,
+      "sha256": "65555d3750f85fd76613143f0c3a6db5e6618b5942b6926bb69ccd191dc822ab",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A03_Swing.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 250373,
+      "sha256": "5fe887cd4c60081e9341afd08ef04604aee85b3f56030abf44cb09bb56738895",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A03_SwingT2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 142218,
+      "sha256": "0e4c3e570aadfb529dc11a2334d50fcc14ff120034da09ad337687625b06a0b5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A04_Look.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 366715,
+      "sha256": "615c8f53eebd89f12b3ca30fcbb0c5c472679383f92a58405f7b1ad1fb7f5bbf",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A05_PickUpBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 110740,
+      "sha256": "f1f8d3415d9540f2e0137064a963068b7fcf4fc53475f60f2abbfd6552fd3026",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A06_LiftBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 147051,
+      "sha256": "ef02cc12a50dd445d1ffd55661bb28f4fa7d00f0c542d11e0efe2d9fac1fea05",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A06_LiftBoxT2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 125521,
+      "sha256": "9e72c91b24b218fefa5f4e3fb2424c2e1646ee239211f38e09938ebbd46fb775",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A07_Crouch.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 89974,
+      "sha256": "a1639e579ed0948f6d5c1fb30e916bfa643baa426db4ee4c1fc1a51af2c72b85",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A08_CrouchToLie.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 112664,
+      "sha256": "5a889b714e9c91800c60c8cb4fd64a2935f0a72fb2a47737ebf2694e8d286fc8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A09_LieT2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 138714,
+      "sha256": "6db688e8659c91461bd8fec58a3ea4392966abedbd09fed0b786fc7849b38272",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A10_LieToCrouch.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 77762,
+      "sha256": "2bfeba5e4904feb107f154861de8558f574f02be4aea8d875df7f85233e09fd0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A11_CrawlForward.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 348552,
+      "sha256": "696771079cc0e9600605ad9f505e9456ef98fee345144a6578e684fdfa0df5e3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A12_CrawlBackwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 383953,
+      "sha256": "15604ac8bfad4a9773aeff5130a699ca9139201c69fe55b1ae027573627e4427",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A13_Skipping.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 81209,
+      "sha256": "fff4acaafb1cc4355d050331d6d703a5de12ac8a3cee7a0d9362410f33e91db2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A14_StandToSkip.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 80998,
+      "sha256": "80241e4d760fe68892821009745fd0f39458b714b5758899bdf3fa1201129618",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_A15_SkipToStand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 76657,
+      "sha256": "d836db1bfeb129165d92013be962ef9b5a9d8695a2baac5fd1d813db1d8d91c8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B01_StandToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 110221,
+      "sha256": "457380654d973564439a1fb356d0d9b3b40b7fef050e9acee7335c5a6fe9ca99",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B02_WalkToStand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 98181,
+      "sha256": "9a82df427de32c52034fe2bbfb8a7cd4332efd6b8f37ae9818ed7027bb881a3e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B02_WalkToStandT2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 87872,
+      "sha256": "39860644791f5731aaf8ab5613a4aae642f6c0a0bafe472bb3786d41be038e10",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B03_Walk1.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 133632,
+      "sha256": "10acc687217a734ed2cb06e4f8d8e842a86a0f5f6946c03db7a93f07eba5edd3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B04_StandToWalkBack.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 129616,
+      "sha256": "e3bdcecacffce678751c9d1aee9ce828375b2d9aa60a2d0bc9999154d6f5d30f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B05_WalkBackwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 201817,
+      "sha256": "b60e407af42c758d7dee611796ff2de2d5904d0765bd60e343cd5f64a0e8efb5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B06_WalkBackwardsToStand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 143622,
+      "sha256": "39be0978bf62a040c86cb6ef101bbf45fdba4dabd663c4c61004e06f2c272bbd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B07_WalkBackwardsTurnForwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 152572,
+      "sha256": "80b5c84bd3348f45c8cfa9100449335248ed0fd70361827971672e03fd749754",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B08_WalkBackwardsStopForwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 186988,
+      "sha256": "fcfe5eb5fc1d0732dd34a6710f62b0cad96e9ab270c788e4b8398164b1d6ea02",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B09_WalkTurnLeft90.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 124699,
+      "sha256": "9930bf3df5f800fae554d235c9f077cb6427b6e06e18197a95b2e74c662f2b92",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B10_WalkTurnLeft45.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 135139,
+      "sha256": "b42b1f60a27ab93b2e333f35f91fedad0fa78b0415efeb85afee764715b833b4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B11_WalkTurnLeft135.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 143681,
+      "sha256": "33b4d3b9a2398df752e3fe192922d6e63d1b14c922da24eff688064f60c9955d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B12_WalkTurnRight90.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 136453,
+      "sha256": "64ed9566a13ea24a89118fc94eaff139ddbf9ee3adc8b8b97452b3e07d1ac21a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B13_WalkTurnRight45.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 146190,
+      "sha256": "8f6045b52163fa6d731c67ff5e2409b38325537f9d2d14ed86e207d55a162dc7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B14_WalkTurnRight135.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 157132,
+      "sha256": "48b2cc585897cc57d2a1c89d209dd405b08982c6ff65976241eb52ef079642df",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B15_WalkTurnAround180.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 184609,
+      "sha256": "850f4a24e5aae2c8d6a22f4d03319c00a968858e63b53651ee3cd3209417e8d0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B16_WalkTurnChangeDirection.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 189674,
+      "sha256": "c35bf35d5a82ba1ebd3eeb29e12763da16b308b20da9f56480f12092aa786b13",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B17_WalkToHopToWalk1.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 110731,
+      "sha256": "49c9e9fef685a9111ea7991a46cafb4e182e6a785fd98b840c14fc4031ead61a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B18_WalkToLeapToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 101266,
+      "sha256": "95fb1252517c17a23ebed20b8d2df619c01f85ea4da5590731ebde3dc7783915",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B19_WalkToPickUpBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 121508,
+      "sha256": "013f589191b93340caa181b8d4745bded2e69c05af2a43c24d1a598c0f153a6f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B20_WalkWithBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 76588,
+      "sha256": "4f2e81111e6f08b8509ff36cea6d75b1ffc46c779878255fe3699fd98a0ecfeb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B21_PutDownBoxToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 164835,
+      "sha256": "3091e8b15a589f53bd52e71e9dfa6916aab577a3e2f09156c0c4263b2ffeaf73",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B21_S2_PutDownBoxToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 154676,
+      "sha256": "75336f46f4845fa4f93a003856da9ad1e79ee9347ddb6e49c886daa5f606cb25",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B21_S3_PutDownBoxToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 187031,
+      "sha256": "38701de489c9d1794ff0c1318bfc9c5a315e985cfaf7fb04d8b508968b64a2b9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B22_SideStepLeft.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 155715,
+      "sha256": "2a9fb8426852c85b897fe4d4578dae805485b7ba5e426b31e76f16e0b31037c2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B23_SideStepRight.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 147594,
+      "sha256": "98ae147551d32125361e071e509d7d7fe03c845ef1212124915844e3a34794a3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B24_WalkToCrouch.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 124265,
+      "sha256": "176a965c406458367862d149ac857ecfb6708594538157223bf8d6c48812d24a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B25_CrouchToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 104374,
+      "sha256": "c2688d72907239ca658e8dca04aa5cbb898da5febae890d265a6363d89b78236",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B26_WalkToSkip.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 98655,
+      "sha256": "657a582c1cd884d2172e7de9919eca3cfcc42884776a83ffd266b2a718373655",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_B27_SkipToWalk1.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 118866,
+      "sha256": "62d1c05490267fda80354616addecff07f55193d2abf233bbbd186fa2067713f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C02_RunToStand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 89027,
+      "sha256": "471db4d65fe7f4c2015be84f79d360a32ecce657c4e1ebe321b94949affe72cd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C03_Run.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 23760,
+      "sha256": "5d7cc9d93b44eccd6082f53a487b977d82c8fa8e3018a145d10480f3cad012c0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C04_RunToWalk1.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 59987,
+      "sha256": "11cce2f962ae1bbce280fa19ecd6b9807dae00d5ace6f48e203a2b94b7417247",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C05_WalkToRun.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 92341,
+      "sha256": "fea16616e263897a193fbf0aa6c7c1749778704cdbb74222d0cc6cdc09373edb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C06_StandToRunBackwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 131700,
+      "sha256": "08eee0fb9d191efbdd7a23fc4ccbb6fbcaaa69159bab9cf8feb910bcbbba56d1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C07_RunBackwards.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 56793,
+      "sha256": "876fdb07521ff525a8fb4708585214fd3d64d34af1217d47c5f3e52f01272e37",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C08_RunBackwardsToStand.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 70509,
+      "sha256": "1b1c39ca156130a6b8f246ad4ffa700297125f1915a900e7951f5ba937ddc08b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C09_RunBackwardsTurnRunForward.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 37616,
+      "sha256": "00634dedd1e2739b9f56f975c8cd585f24f174a119659fa1ccf01e610813a47a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C10_RunBackwardsStopRunForward.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 90684,
+      "sha256": "a84853f4975e3717ebc890598e5fa5077eebd012435cd01d95e565f41675b5c7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C11_RunTurnLeft90.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 39769,
+      "sha256": "3d57b622a5818875ecf40d99e1a16a828da3c89e1208cf4d0075dc18f05770f1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C12_RunTurnLeft45.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 46615,
+      "sha256": "93910a24928e4b966f29e0912c80384baf0b04c5e7425cf8fdb8d8fffe9a1bfd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C13_RunTurnLeft135.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 50717,
+      "sha256": "eae4869ebeba19aa7c43d6e88f1fb65ca525eb59c86ccaa8ab25a9e734882d3b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C14_RunTurnRight90.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 76561,
+      "sha256": "da6a1baef22bd07eeb4232ae54047dfb42a99daccfbb68998f24f765a17a6d34",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C15_RunTurnRight45.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 39620,
+      "sha256": "0192020de8e3535e1bb9a27f20b021a6a5dbfee704af099d66428d9c635df304",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C16_RunTurnRight135.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 43737,
+      "sha256": "566d97bed6c525bdf27e939dcdee53478cd31a9d8889e8b87ef875f1a7b017de",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C17_RunTurnAround.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 83920,
+      "sha256": "69afa1856a16b2bfc850663dfab8a9f60da83d95346354c0130bc60e4b561e3c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C18_RunChangeDirection.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 75346,
+      "sha256": "83cb96cfa3255531c163897760bcdbf55a0a2da68c8fcbf159138a77fcbeac12",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C19_RunToHopToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 72927,
+      "sha256": "87bf833dade048ecc9292944dd180918d12ff937d6de4d046bd08edfc7cb1ec8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C20_RunToJumpToWalk.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 72020,
+      "sha256": "a2f8efc0e32b091c602bd66ad6345babf55cd11cfbd9b8d08523e3f2dea0c5d2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C21_RunToPickUpBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 85696,
+      "sha256": "4c49e4515d50f7d40218f8a74d4dbd1195636862e9e96cafff74eb8684353ea7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C21_S2_RunToPickUpBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 39927,
+      "sha256": "c6fbd5d40f23c07b4d9f8cf9a085259e7c6840ec5d15145171ca09bdecdf4ba0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C22_RunWithBox.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 33025,
+      "sha256": "dd7f052754ac3c02f240cbff7c829d58aac9b8a586bc34a9567c62a81b4935c0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C23_PutDownBoxToRun.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 53180,
+      "sha256": "7b6ecacf1c4a44fd4c3a6c74cae6154b18950c66f495d21adbf860a2c27dcd2b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C24_SideStepLeft.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 71515,
+      "sha256": "b77616fd2fd3cd26686f228200d40a182690905f12f0de9645fbcce5de45d254",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C25_SideStepRight.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 77977,
+      "sha256": "bfc871e41354b7f4bc31a1057d086abcef9ad121ac8c138edfa1b4c775c1d7fa",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C26_RunToCrouch.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 52254,
+      "sha256": "68488f98b49e760f3a6fb47a6516216dab14895c9e3a38e164a1e4541b306954",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_C27_CrouchToRun1.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 53286,
+      "sha256": "624156d784575e95d6c6e493baa57d4d8506a282b49785bcbc1d17f6b96e6502",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D1_Urban.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 266514,
+      "sha256": "bf948f0550734de70f7e5ae251c42600e3a267060a7b78cc84e35c7327742807",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D2_Wait.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 667688,
+      "sha256": "8084ba7e67dd1e5c7188ab3ec6b1bc9935818aefb65fff6bf44587a20acf23bc",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D3_ConversationGestures.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 873739,
+      "sha256": "e04a5dfb68f58ef0d47bbbe062c7e021965b53d7d84c32fd43e7f0251256df66",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D4_RandomStuff.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 347474,
+      "sha256": "7d46f3c3271358c5a0f28d1af7e2edf44b99a67876875b1ae40e0108548e490a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D5_RandomStuff2.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 288921,
+      "sha256": "4fef80dd913810aebe5d1b40cd20fe346515b99848c09fb89604bbf7632c1840",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-female1/Female1_D6_CartWheel.bvh",
+      "source": "accad-female1",
+      "format": "bvh",
+      "bytes": 85301,
+      "sha256": "f7218310c17c8e40479a1140addd2d74a2b696949b0b947d6cd649f8d742ee01",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A10_LieToCrouch.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 118156,
+      "sha256": "58466b40f71df7292bd7aca32733a97d76453083ab4c3a3b929486bed8b70cd6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A11_CrawlForward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 189086,
+      "sha256": "a8def10aabf194976d0714d44080a314ea1c73669f884889eed420c6a55194ad",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A12_CrawlBackward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 289113,
+      "sha256": "4d89aa76ac78be45a15f22ff1ba73d3c34718114311cc721aaf16fe219cf1de9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A13_Skipping.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 69742,
+      "sha256": "8066e4cedb1002f1045dd3ad6d4aeacbc3361240f792b7c54cf83e3d5b45d554",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A14_StandToSkip.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 87066,
+      "sha256": "1ced4398d8dc947aae2174c904cc2568369a4b4dce5f419b652b495b581af292",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A15_SkipToStand_Take_001.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 98446,
+      "sha256": "caf16d04c0eb13abf70360c573c6280a89860b7b9facebf8e2ab7a66c2aec935",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A1_Stand.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 113134,
+      "sha256": "0f820d765d21e9748accbadfdd967e13b0ce71e182d03dc3129fc4d60b9271e2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A2_Sway.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 168795,
+      "sha256": "621e81232f23337b7f5942126b3d00801b1f1cbd1dc9c3cd7b86cf1b93295df1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A3_SwingArms.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 105299,
+      "sha256": "c60f4da38dfc551dfa649030547e9a2aee85324bb0beceea33d494d6c71d953c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A4_LookAround.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 285341,
+      "sha256": "0b758b20f06f9fe34e285edfb7f631913e1131941ced51e577e21a1cfc7b2d0f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A5_PickUpBox.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 87311,
+      "sha256": "7df4b39eef1e003a85c2cca2cbb3fe9c508af31e22d59bb3fafee6b8b4f3764c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A6_LiftBox.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 91432,
+      "sha256": "b2383fb417ab80b3752cdc392181d6205771f068b0938ba56638c05b348efa4b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A7_Crouch.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 109147,
+      "sha256": "f0e269e53fb931394f915b4c555f0695bc708aada4aebfb7794181b250f9490f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A8_CrouchToLie.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 119065,
+      "sha256": "dd08692482d2ed24e761294e67bc8aa0a176883f8b2bd4afc82c713a8dfea0fb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_A9_LieDown.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 149735,
+      "sha256": "eb359fc3db1c19d0168cbfb0f2c11b9b36fef83521d860227dffb8111e657552",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B10_WalkTurnLeft45.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 132870,
+      "sha256": "6185cec7ffd99e5c1e7ab8f7a4c9bfdd2d4eb6795d86c686436ae99faf49b9aa",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B11_WalkTurnLeft135.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 137700,
+      "sha256": "d2b0811bd9a7aee6aeb55c8ace2ad5b11006c10c2f20dfed45e59661e76ccfaf",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B12_WalkTurnRight90.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 161384,
+      "sha256": "452d8a43e8cfc14080b0195bf7eaa10b341903bed092330a0d1633c4db4e4fa3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B13_WalkTurnRight45.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 140291,
+      "sha256": "05a0f3ad47cbb40ece73e1b77873bb9297a695de5f59c6c7ed9115b558732bdf",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B14_WalkTurnRight135.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 131951,
+      "sha256": "b2ece2d5ea2b356d735aa93ee0663d0a67544d36fefcf4dc4a6ec28fb6b81730",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B15_WalkTurnAround.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 181305,
+      "sha256": "3634f1c7a6eee0e0cfdfe9912b6ec6408188716de2e7471f6da2809312b64785",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B16_WalkTrunChange.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 186191,
+      "sha256": "50649e1ebb3db4b42a88cf28da0aca68fe246601272eff6f48a84ff59666d51b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B17_Walk2Hop2Walk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 108468,
+      "sha256": "32782470cc24c2c6b50102d3ef141ce4d476f8e50dd7c3a05627a4a92b15700d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B18_Walk2Leap2Walk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 122964,
+      "sha256": "1b9f29cf341ce65c444d63af6e68d3f267793596d2e636a4322d5345371d71ce",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B19_WalkToPickUpBox_Working.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 163902,
+      "sha256": "19e879741ea853031f4bcb5d1a6ed57e2c942fc3bd62bb984a97f97c59b27d50",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B1_StandToWalk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 169681,
+      "sha256": "6841f6e6182068dda2df766998fbeecd6fdc441fa997531455ac8f9f3ec5e9a4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B20_WalkWithBox.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 103046,
+      "sha256": "4a1374b550f290eec620ed43a0cf2f03a44c6c39f1eb080377edb331e790d2fb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B21_PutDownBoxToWalk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 124975,
+      "sha256": "329d60481270d73b7aeefaa82542e55cfd333e7c13bb5880f5f82148cf692fcb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B22_SideStepLeft.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 84535,
+      "sha256": "40a0515afe63d89e13af6a9be022765cc711f81edc831b0cffa68cf4fcf8c8f1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B23_SideStepRight.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 66068,
+      "sha256": "cbf9ecdfc4728c1051ce3ac7b0b659af8bd530b003af21414c1dcbd33876bbb3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B24_WalkToCrouch.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 151481,
+      "sha256": "0970dfdcb13de7fb621ab06fbd9b55057a292b5c183d40176a7b9b0895aff204",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B25_CrouchToWalk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 155265,
+      "sha256": "2a8fe466e0fead2f2d5464ad20bf3b18444b3515c2f0fc1edb24e52330d8e530",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B26_WalkToSkip.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 88480,
+      "sha256": "0ebbb7367ad2ac259df7980fad08cdfa811d2072c72228f9f263ffb3c1b01eb8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B27_SkipToWalk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 102433,
+      "sha256": "844fb3ed65fe3459e890116005ee78bdedbf5939f9726f142ca8a63aea1819d0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B2_WalkToStand.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 136069,
+      "sha256": "8a96ee08904cb1c97da4054d0bc08aabfd70d1cb3d4c52710241f49ef4cc84e6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B3_Walk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 109597,
+      "sha256": "5acbd06ab7f5f0dcaa5b70c1caeba3e972e1472050ab92f9b8846ac1c8cd034e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B4_StandToWalkBack.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 210638,
+      "sha256": "85915b6ba70051acc71de9a21a0cd1672a22dcd2ea8113f423c7e869e83bbacf",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B5_WalkBackToStand.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 144632,
+      "sha256": "1a01ea5f34de7dcb03f1df2768b069b6b52bb76f7983640d3ba5b1b11786da64",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B6_WalkBackwards.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 149682,
+      "sha256": "f1503327bb4cb7d67997a4d18bb27d528eaa1eb1c4c685bc97f2b6df684f8922",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B7_WalkBackTurnForward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 141845,
+      "sha256": "a63409528636d48ebf0968640b60113aaab25c69322e7760a220ad513f4346e0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B8_WalkBackToForward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 227524,
+      "sha256": "4921916e7c92c22c7ba4986418df59c735a3b4852350777111d86f7908a3eb72",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_B9_WalkToTurnLeft90.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 153286,
+      "sha256": "1d876747a5d8bd6498d72ddcdcc1b604cae5fe8aea3e724bbd66a653a031df65",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C01_StandToRun.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 64558,
+      "sha256": "fa6b27ef00d00b238300898287f7cbb559b28ec0cc94b773a51827fb728349aa",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C02_RunToStand.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 60837,
+      "sha256": "0ad2dbdfa9753f4d57a3eae73ca3592111df040dd124c2d47822bcd54a5c86a9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C03_Run.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 30086,
+      "sha256": "90bec698aea33584e4792d581946c1452d7cad0a29a4ee2656df0e04613bb95a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C04_RunToWalk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 73379,
+      "sha256": "fc7fa1631e97771c33e4f245a0c6c3485b041df50cdd089999ab893b7a9c8040",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C05_WalkToRun.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 50381,
+      "sha256": "91eeb473862d4eb1fb02a545b32fac14b422bfabb56abf1d6509b2f449f01cb4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C06_StandToRunBack.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 125170,
+      "sha256": "586ae7d4c7ceeecc5a0830cd62bde802a71a8c4678474ee746ceb7fac0cced23",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C07_RunBack.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 47355,
+      "sha256": "2acfe7c5997985404b8b4cf43db08fdf253202361131f2a0a9fe1d0dd328df90",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C08_RunBackToStand.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 99815,
+      "sha256": "e64218050c9bafaf664bc1ad4a495885ef5b6c7c5faee4e8bc44556de7b0f21e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C09_RunBackTurnRunForward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 35932,
+      "sha256": "7160781e04ebb247982ac33544173de778cc61ed4526dec0000c3039896b206c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C10_RunBackStopRunForward.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 87319,
+      "sha256": "5de155cf9bfea9b419315ec3763e58d3a76b8c8c311e2ac451c66c5200d98967",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C11_RunTurnLeft90.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 42219,
+      "sha256": "6d376fb649e99ca7c19240edd41182b5d79f6e514c47eb12fe163d93aa81fcdf",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C12_RunTurnLeft45.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 39199,
+      "sha256": "ca392a39e1c859a596827ee5c93915e95a788083ffc1589da70e99d31ac9276b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C13_RunTurnLeft135.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 46848,
+      "sha256": "7225905a686f8834cc1cf1d5b035de2998c80ae36d1ecf1dafcc9e67e580717e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C14_RunTurnRight90.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 44163,
+      "sha256": "61617fc4741b329b918eab61fe42d93976a95f53a994bb1da57b5c35cb159120",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C15_RunTurnRight45.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 33783,
+      "sha256": "c5478e7b4d94531f7d08a5b8eacfbeb5b7e012aae27692a0722dfa8a28c363b2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C16_RunTurnRight135.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 45133,
+      "sha256": "949792c1a13247abf92d455bfea77ccdb73cd19367d954aa11564bb9d8d9ecd2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C17_RunTurnAround.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 62011,
+      "sha256": "0bd09c31d909c2c2887adaf14890ecff1706f02feaae8b351191b476edf00fd8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C18_RunTurnChangeDirection.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 39917,
+      "sha256": "489f1f8ff06206c2ec77f8962a2b96a9e84c445fd7ff80c9b68c30a3fbfdfcff",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C19_Run2Hop2Walk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 69525,
+      "sha256": "4d96ed0fccfe9671a892a4593cc9ba787208620a3b04d79731f82d17c27d5d2d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C20_Run2Jump2Walk.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 64232,
+      "sha256": "8c5c81c1bd1d78f0e0a34907e9e9a84b9f296c55a698fd619f006ca41ff8ef44",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C21_RunToPickupBox.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 37776,
+      "sha256": "041d39838566222ab6ed7d86605db8e1b52ea10364067113014a2be0d535208e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C22_RunWithBox.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 24530,
+      "sha256": "6bf3509f59d9c89ecefd9219886f94fa4bae582b174156ea12d97b41493abeeb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C23_PutDownBoxToRun.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 67612,
+      "sha256": "9f1b3f0729605a3380320b8788ee88be2b0e54c95c568484a181417d410a9b3d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C24_QuickSideStepLeft.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 55675,
+      "sha256": "3c2735262b071ce3008b31b488f57a3ba7a51fdec965fd0a9fb590137cf135c9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C25_QuickSideStepRight.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 61458,
+      "sha256": "362e141b331266061937c4ef342abe55a40974931a4ecec521e2bb6c1fef9f75",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C26_RunToCrouch.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 76260,
+      "sha256": "2ea5561ea95de3bad834f9e91e095ff37fcc9e14f53208737f1d11a0f1f2998e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male1/Male1_C27_CrouchToRun.bvh",
+      "source": "accad-male1",
+      "format": "bvh",
+      "bytes": 53220,
+      "sha256": "607b398e7a8a2d541dc05af392a3fe9d3f17630c7367a137910a2e83664a7f4b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A10_LieToCrouch.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 84341,
+      "sha256": "1d1b6000f3afe112024ba61f079bcb327af5bbf4d061c6a755b3b35bdcd6c7a7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A11_Crawl.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 220766,
+      "sha256": "7635caa500a480c8fbd6c9d135a638c9478f5361dca9024ff51400ca17a5671a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A12_CrawlBackwards.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 287106,
+      "sha256": "58ee3478add442ff981cbbccf269559651123bdecd3bbe921f95ea25f7d06525",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A13_Skip.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 245866,
+      "sha256": "ffbfd85384952d22492e1997cba355b6ac5dc1b1d22d3f7a4edfb5c296d2246e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A14_StandToSkip.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 293419,
+      "sha256": "b50fb4462c26d4d6efe4700c377ef1cf9c6a1e9a59328a53d899788c44c66bac",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A15_SkipToStand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 240849,
+      "sha256": "0e2631b1250348974dcddde9482054f3a703fdd5b75dc4b8a604ce2f06b42c8a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A1_Stand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 71415,
+      "sha256": "c73f9f931ee72a5241fe8537ba48a6e70a8fa7f7f011431e3012d5247fb1d077",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A2_Sway.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 759017,
+      "sha256": "1e33b5fab47db37d88f2c79a3e0fcae58aec2bb431932ee8b04af941b8197f86",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A3_SwingArms.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 756355,
+      "sha256": "dbf142b4062bb5af4137e02c1c0767421068e1b73ac456c0f73872b2cb5dd8ce",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A4_LookAround.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 1143364,
+      "sha256": "021e24b0006ea1ecaf94f1c9450d31c68cb2779339a14b94e321707293b17efd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A5_PickUpBox.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 424951,
+      "sha256": "fca7415d3ab684423a911e855fc0990683621bcafc04ce84230082ba5473611f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A6_BoxLift.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 782171,
+      "sha256": "b4a7831185986c68b97beb1e0b0afe2eb68568c8a069c5505a07011d29eccb1c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A7_Crouch.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 315871,
+      "sha256": "b121aae29ca3b12753ffd001ff265b6a97c1e605b9c92a643da8d9e329785987",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A8_CrouchToLie.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 105048,
+      "sha256": "803f5daf2eb495f9fdc0ea34541409bf19aee1d77dc838050b0ad55533cbbbbe",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_A9_Lie.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 58789,
+      "sha256": "da90f046090e73dc33558e0938f1755b07a04d0d086cf2c33b616832b506c7cc",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B10_WalkTurnLeft45.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 90752,
+      "sha256": "f7dd79efbef187daed5b4c212d1c9d863886e33dc2ed593f459d9089282443d7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B11_WalkTurnLeft135.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 101178,
+      "sha256": "4693e2e6c8b8d936e9f32ce9b2d4c2d18b3a3f4a45d4c9d1bd642bc71b1c56b1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B12_WalkTurnRight90.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 98337,
+      "sha256": "215db16d8845535b03200ae1b0da1c41a747ce9169bb3bedc7319762d6573823",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B13_WalkTurnRight135.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 115495,
+      "sha256": "f36810e55b7f19f1b63acd6bbfd7ba10581e52262c217fe8b8cf7f1699685d26",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B14_WalkTurnRight45.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 90916,
+      "sha256": "ee8e591f03c85da89a5093cb91315fe7b6d6557a41f303589ff9167b177df5dd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B15_WalkTurnAround.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 124748,
+      "sha256": "540cf8e9712116eecfc9004380256b06b22be25e10ba788f046600317d681795",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B16_WalkTurnChange.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 130294,
+      "sha256": "abf3e89b89ffe595002cb6c3eb06c1b0220843ef90f62de739678b0e91634656",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B17_WalkToHopToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 69862,
+      "sha256": "984eba23bbfaa8265d3241bb0de70b5528a0a944fccb53298fed71aa99fa38ad",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B18_WalkToLeapToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 76770,
+      "sha256": "645b94b4f932b33c8dafd6c7fd7ef772e777c86f7cf588c5633f996174fa1ce0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B19_WalkToPickUpBox.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 100406,
+      "sha256": "b38366081a22c1523008babd4c00340d54a6f526523f3487af3989f05e639eb1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B1_StandToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 259183,
+      "sha256": "deb6cf43aa2faaaccd734853dff8567736a49126e1263aee532478d49beea7c6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B20_WalkWithBox.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 84585,
+      "sha256": "7b387692b75e3c2a92c595abaff5f93b97496df844c88ca3b674fd9c288de516",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B21_PutDownBoxToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 99056,
+      "sha256": "b8c69aaed7f02b058ce88bdddba14cdd88a742ef48742eb5551d9f91d6a83de4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B22_SideStepLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 47766,
+      "sha256": "6ce9c1f53114d247bee6823b2d0980869cfb843948b4c69f5e50ffd2e6dcd961",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B23_SideStepRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 57311,
+      "sha256": "bd3f28bd438e3d69dfec7d86ed5a6d6348bcaeda51d7001cdb2275fd5443e2ce",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B24_WalkToCrouch.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 79965,
+      "sha256": "4aca6ac17fe8d3996862a474a43c48f85445d8060ab820ab2a3418eedc614e5f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B25_CrouchToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 91494,
+      "sha256": "2b7fa39d7b51d55b9e09d99ad2ce17c8409c73544b9091a01168fd024067f77d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B26_WalkToSkip.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 73266,
+      "sha256": "22ea5cbd2843e93dd2b3cbb83570552603bdbd37d3dcb1587251eca24f232eb5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B27_SkipToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 72148,
+      "sha256": "c7404df27fd24a42e76d8041a8097c358c8ed9ecc37b96e6244e20863d06c73e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B2_WalkToStand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 260647,
+      "sha256": "793c7f48418c9eee4dea95077e2a2685a786f66a74dc0046b55510ed00075347",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B3_Walk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 314427,
+      "sha256": "6cf2fcba98c7dc5c827896edccc16a8a9444350a8833a24e8ac7f6267c81cab3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B4_StandToWalkBackwards.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 328974,
+      "sha256": "b0eea124202d7e923c985f01eac0b5d339c8ab4ed1b2b130c3a1db6653150867",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B5_WalkBackwards.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 115197,
+      "sha256": "736e9c33d4928ef3ecb246c0f379375821c7cf2cf110e590131fcd8b7f8f1987",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B6_WalkBackwardsToStand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 113850,
+      "sha256": "4629389f6db4f81c6b26f96f03d54c7d3c2921f600f9c1f4a1bdef572adcc947",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B7_WalkBackwardsTurnForward.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 110997,
+      "sha256": "7d2a3bc6c27f2bad77385b63338af779e3577bfb9241ee8735dae6d94c766f84",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B8_WalkBackwardsStopForward.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 116607,
+      "sha256": "e8c121b8a723870352c51a58435b6182a2835cd86d9fbf7c0ad71a6d98530269",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_B9_WalkTurnLeft90.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 92636,
+      "sha256": "2eb61cd24219ecc6b523b886cfb58ab718046c348ddff28472f86615b2ca39ec",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C10_RunBackwardsStopRunForward.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 71380,
+      "sha256": "724f716beb14a84df8ad2f843eb06a441f30ab2a8c359c3bf8faffadee74ec66",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C11_RunTurnLeft90.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 41152,
+      "sha256": "e78291c4690cd6ae1f7ce36d58085c03f22509f644cc7ebc84f0531e65c648de",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C12_RunTurnLeft45.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 34622,
+      "sha256": "aaea9ee258959f0299a76d8ea4a77a9c7b6acf835395fee9e7e24793f5e6cbd3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C13_RunTurnLeft135.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49160,
+      "sha256": "edf2a7ce5e27002562583406bb814a4e3983da6786302f9ca44e39a3a351cae7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C14_RunTurnRight90.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 47386,
+      "sha256": "38de8423a49d359a55d6ba90ee9b43ea212cb7d8fd27409d9c2c825f03364b29",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C15_RunTurnRight45.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48087,
+      "sha256": "43d59eab1a4dd891ada3e53efaee85e71c0782a9b04feb98c957d0a65783af7d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C16_RunTurnAround.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 64973,
+      "sha256": "1a1a3d49713aec84dd04a52067993cb7df98cc19fc160483b79f0b80e326c9d9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C16_RunTurnRight135.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49809,
+      "sha256": "fd55608f8b76539bef11f96a5767d10cbd560f712be0e15633f9eb7017d92812",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C17_RunChangeDirection.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48707,
+      "sha256": "5eda58104342498365ac1d9c24702bc0dc88188143ce68c5ee8a81124b85ce4d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C18_RunToHopToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 73810,
+      "sha256": "da0893372b00026f6da59feefe7947e1c5d4a87a617ce060f0a6d6a480a1752d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C19_RunToJumpToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 46887,
+      "sha256": "1c7d2755f5da18155bbc926c13908e36e438c204ffd432f5abeda74a1428dd4b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C1_StandToRun.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 69279,
+      "sha256": "d026465c5db9008975563e5adf69a96c50480edffa91ac5817bb5af69acdf11f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C20_RunToPickupBox.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 42508,
+      "sha256": "49feacf3efe2dedd7e49c3b003b9bde9911225f798b6e7d24524dc8360eb2efd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C22_RunWithBox.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 18265,
+      "sha256": "8879b2efe1c2edc02c3076de775c2de1bfe0fe93af2085223a393340ca1f68e5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C23_PutDownBoxToRun.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 50462,
+      "sha256": "199258f77866ab81719c73cecc17e6609b7c646e95059d8f4ffced40a254b595",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C24_QuickSidestepLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 39504,
+      "sha256": "e40839b876aec615f351e2658c45e2fbaad6707a772c29dc0737127318e31278",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C25_QuickSidestepRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 39532,
+      "sha256": "d39dc049c8310e2f8f188c067abc191109666a91041a4a0f31252a80db7fb8b5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C26_RunToCrouch.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 38684,
+      "sha256": "2d5b5782504e7d89ed9ffd43a3b9c756d9b04f0f0eef831d526c27381f06436a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C27_CrouchToRun.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 38662,
+      "sha256": "67ad5fb4289d8e90129fbba5b8adb6a44b4d38bc849312b0731e92bd6f1b435b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C2_RunToStand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 42938,
+      "sha256": "a5ce87def5ebb74267329b75c1221975efb1834e84bde257534d377d2655d63f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C3_Run.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 37364,
+      "sha256": "ef33bc8c0c3472f35cb01f494265bdf383dcff006efbe88d0762ab1572f0021c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C4_RunToWalk.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 62122,
+      "sha256": "aeed23dc64b38ba5e935c75bb67340cca6bae75801ebc03debb36ea9cd929589",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C5_WalkToRun.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 54973,
+      "sha256": "329b6dadf6d8e4a10394371a95f349dbd879844da7bbde8c2529e6ef7e487326",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C6_StandToRunBackwards.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 99751,
+      "sha256": "2949339a5714ace255c245a5749ea24d80cb23b54d31180b225d505c576d42c8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C7_RunBackwards.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49335,
+      "sha256": "ad18c5b27272e9a344190f0042109f7c8e295cd4d9ac75237906a4a7fa0c35c4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C8_RunBackwardsToStand.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 60420,
+      "sha256": "c7ca309daa8afc3b2e101d87c01512750d08b890c042bdf21bc51b2785f4e180",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_C9_RunBackwardsTurnRunForward.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 55144,
+      "sha256": "9f8dee47e19977f489a329d8c7a228b98edcce8743a9f2bf55df2d790dc44f29",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D10_Victory2.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 190755,
+      "sha256": "2ee7a13ebee290eade9f3b66a04f00bb8615bdba429d00285b32db79472ad536",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D11_ReadyToTaunt1ToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 98768,
+      "sha256": "5a6afbe63d0abb12e186f09f687c2212609c6f95878470c2191a57959ea790dc",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D12_ReadyToTaunt1ToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 98939,
+      "sha256": "ccc6f401b0ba33fd01c0fd42fe56b9efc136facb87ccf7f7761ebc9690c590b2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D13_CrouchToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 69888,
+      "sha256": "77842e2b613ab7aefade8cb270c4204f7c8f946d2eaf4b1a368bd8f13cf90163",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D14_ReadyToCrouch.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 62165,
+      "sha256": "4a7a4ff9d9fe51ce0c824b45cb3398c51b2e5151a7ba211e0a80e582012c398d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D15_SwitchStance.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 57161,
+      "sha256": "c4fb5c1d1fbd7e01bdfdabf90f2400669cb7989974ecf6dedfe726960b84c142",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D16_SwitchStanceMore.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 89615,
+      "sha256": "c9e1d29b3c698139e91169446dce28f4678a180ba00eb552a4429bc14b700c80",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D1_StandToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 56058,
+      "sha256": "1aeebbc888da69fb55128aabff7138e351d0677b3d1ebefb20aa5383aab61e93",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D2_WalkToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 80984,
+      "sha256": "2a96ef9732f7a0bc24430c7622d072f2590671fba7793492f48378ca24e60dae",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D3_RunToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 45148,
+      "sha256": "6742d6860b1817def7c4a62e95c42ec8b0c8a211c0f1b63464a5729f31c09fa0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D4_ReadyToRelax.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 75828,
+      "sha256": "9a2324c7ce58a6d83c457e96d381bac432171c4ff195a467112e6038baec7dd6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D5_ReadyToWalkAway.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 82039,
+      "sha256": "b004429ec6587b6fe546804bc5352de6eb426675bb4c3790be28667b2a867fba",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D6_ReadyToRun.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49287,
+      "sha256": "7e09f045bab026801eedcd0d65d3da5bee993608691bcf93eb482301516f74b0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D7_WalkToBow.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 111306,
+      "sha256": "4799a559b2360b0fd010918faa9ad9abc20042d5f4516ea6ef9e038c5bdf36a8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D8_BowToReady.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 79371,
+      "sha256": "5da9be08c24df8523e026821c1a339de7ddfb8272f112c417d5673c52bbce7da",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D9_Victory1.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 236009,
+      "sha256": "2e5af601c9aab4c514638410d388b5756e90d192dadf805212797e0c0b90e216",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_D9_WarmUpToReadyToWarmUp.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 156649,
+      "sha256": "21baf94fb92750d7353356667c207186a2f04c43feca20da1bd665da97cd8995",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E10_BodyHookRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 45755,
+      "sha256": "065778aeb0e046580de548d4a5c98e96a1351f04fe527dc8d4b4ea16505bcb88",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E10_SideStepRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 38090,
+      "sha256": "3c3c48c4d1e46abc710e1def8b79de305679f5355624adfa37fb1aab8eea2560",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E11_BackfistLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 45390,
+      "sha256": "9a89f5caae02180d8ae072c86ada632643703f661a2fc4e86359d5b27f8da6d8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E11_BlockLeftHigh.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 51693,
+      "sha256": "5d236f72108468793d87242c7c99e30e496e0ea7a3434922a77276265913e629",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E12_BackfistRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 45720,
+      "sha256": "7d7fa25ab473df8157c3aaced8b9921331fcf5f4370b801970ee07ca4a02b8ee",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E12_BlockLeftLow.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 47665,
+      "sha256": "c373d563f19be20d0fc17f96d56fcc0494aa5357c609ffde0caae8e992003dee",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E13_BlockRightHigh.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 58843,
+      "sha256": "96f498f3a35ac48f5ff39a5a0e8d710a53f30d33b08c96408768f3fa2cea6c4f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E13_BodyCrossLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 42236,
+      "sha256": "2044f0e61b7ff4b9d42487ddf2222128643857f0e7a97e15e0b14215f2f54d18",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E14_BlockRightLow.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 56042,
+      "sha256": "0787ff815f31ae680906f6011f3dfb500946c68e8b6d18682f863f0b1e17d27d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E14_BodyCrossRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 46884,
+      "sha256": "75da859d238dbbb357cb36515a8edec1695aa77cabf21a69c559d9213d792fa1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E15_BlockLeftMiddle.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 44651,
+      "sha256": "9eee39120ea28845c7a144cb25d50761d1e8da34ab6111ef5a633978398ac5c8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E15_BodyJabRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 34025,
+      "sha256": "c35fcea38fa92b81298a24f3077497e568b9819097796f12c126a5a66fc3f28e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E16_BlockRightMiddle.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48008,
+      "sha256": "63daa170be1cf7492592052f897981013a053df8e7fe72f6b2702ae024e4a7ba",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E16_BodyJabLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48814,
+      "sha256": "68c84db089c4c215cdae8ad2e060121de2dcc9f4ea7e14de972f7e38edb1cc0f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E17_BlockMiddleHigh.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48312,
+      "sha256": "c76ee127d998606d1491bfdd83aca5223291c56e78003b80ece30d741f88f2a3",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E18_BlockMiddleLow.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 56159,
+      "sha256": "3c6e5509c5c90a125ac6bae67553ea4c44d785f61dc9e39065474fa83f4aa82e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E19_DodgeLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49339,
+      "sha256": "6939bd3ce70ee223ccc416cf34e0036e54337d64b9485e6b53bb91b07b30a7c2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E1_JabLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 63158,
+      "sha256": "4decf021c38de4ba56120ffe4013964a12e34db1fbcd64c33a4cd5861370e91c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E1_TurnAroundRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 255217,
+      "sha256": "c8fece1ff576b4f443155605ffbb268c4a83c499fb5e34a0c13f45e45cff1247",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E20_DodgeRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 53296,
+      "sha256": "bf2a21299cce1d4594f74eef6c4b80400bc42cc266a632e554e698b400cb57c9",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E21_DuckLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52137,
+      "sha256": "6ed6da46bbedea16d69cb84fc3f1c9b08bc397a7dc7260eae3b2425a1bafa9d0",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E22_DuckRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 48712,
+      "sha256": "210ad1724a06c21161e659d75a0521fea9a52b7aca4291a528746ae896a420e7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E2_JabRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 54066,
+      "sha256": "8a56bfb4422138f061a0e36148354a43dd62a5b9645cbdf6cee8122e5c40fde8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E2_TurnAroundLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 231964,
+      "sha256": "c160c766acf8c732f43ddc372e0a9c71d10d578e47e2c12083feb0ea685a745d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E3_Advance.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 112236,
+      "sha256": "a75c868714caf4dabe72004340e9b70c83f9d303a2eab15956b47a1493faaee5",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E3_CrossLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 61432,
+      "sha256": "d1c2644a40e10b70d09a9de65db65fa8bc77c49d54f32be708e71f83adc9e94d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E4_CrossRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 47161,
+      "sha256": "d218e221170a04b06cfda704470a62100c1bbe751807f28026c0f3ece5aa6cd7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E4_QuickAdvance.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 69597,
+      "sha256": "2433fdc74a14fded1f27fa54b9f90a68fefeed8e50b8b0ebd460a64115658750",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E5_HookLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52006,
+      "sha256": "95e1e603bee388a0697db428947fdd03dd29885c77fabaf7411a810934b4af27",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E5_Retreat.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 139642,
+      "sha256": "2dcf9d589c547fd6f574c3c93340fab655a4608346e5b9034030cb3e21e9b04f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E6_HookRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49072,
+      "sha256": "f76659d78ceca948ca294b3772f40bdbdbe35006cb81b64b44197177a5d38681",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E6_QuickRetreat.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 98221,
+      "sha256": "b67b409845fb006998ae76f04fe8c83be116fc82442adb47060aa23068cf3dfd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E7_SuperFastAdvance.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 78739,
+      "sha256": "66faa5ca4b935a706fdddbb8871ec2683395b0026ab6c4df7a4bb4ced2aa3652",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E7_UppercutLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49947,
+      "sha256": "5188f5943c750c08eab5ec6e18aa17e1082758ba409958513185358fb4657946",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E8_Bounce.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 136365,
+      "sha256": "aed685fc753f8d260002fe4b75f615e4f4638029fc48ccf5ae1c2bfcdeaa6438",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E8_UppercutRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 47517,
+      "sha256": "c705cb97efc2c41e0a8cc88a0cc73253b030e3ed082081e34f0f3425eee25240",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E9_BodyHookLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52353,
+      "sha256": "dd217d1ed51395445be644efe81ddf8f462d83d3e72c246e5878f424e67e17df",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_E9_SideStepLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 43880,
+      "sha256": "8af9c36343fdbe30aae7bf4de5052503009b8fc1f700fcbbf4124c12d525e3a4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_Extended_1.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 355996,
+      "sha256": "696158c170e09b4e36e1e2fbec14d8d4e7dbf18225ca6857328e67afcda9f25c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_Extended_2.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 315454,
+      "sha256": "4e224d2d372427a2d137c04cfde09295501b439c30da073484931959bc4c5f50",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_Extended_3.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 935152,
+      "sha256": "37fc2ccc7c3d9de19d84dd42869e8f1c23ffc5e8232c795140579199c02c3e6a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_Form_1.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 329955,
+      "sha256": "b1cc77a2adae9e8d5597d0010d35c8eaf2e5f9e85a0879cf2a0ef21e8f747d06",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G10_RoundhouseLeadingLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 50031,
+      "sha256": "5fa254db6ba0d685e07d13e33788983613a2a396fe84adc63b20e46044fe87d4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G11_RoundhouseLeadingRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 62566,
+      "sha256": "d0392d4d48d496ed425e9a5173a0f01f3ce393d1c11e4a57479290caa9238a6e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G12_CrescentLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52730,
+      "sha256": "c1d1b3fca87ea1e77a9b4ecfcb9093d53fa6ad605b174b42e22d34a8df45e0eb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G13_CrescentRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 50007,
+      "sha256": "8a56be8b7281d935d69b86e789446b0219205b9ab9b6d7840f509ac0f94ba08d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G14_RoundhouseBodyLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52094,
+      "sha256": "b3d56a86a4ad9d94543d754e9681f3526f9a4bbe91e7035bfbb27e19199324a8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G15_RoundhouseBodyRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52301,
+      "sha256": "7970285a1fac2c314c7dd92699f032308fcdb07ea0c7b389261d86ba6b0d3d8a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G16_DoubleKick.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 73624,
+      "sha256": "07a420107b8e3d461161dfbc59964a069e7acc7e7d1590d355ef5a26b506e6bd",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G17_PushKickLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 84112,
+      "sha256": "400caebbd55732462ad93bab20cc34024fe9e6bde399b3e9395beade3c79986c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G18_PushKickRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 54876,
+      "sha256": "dd9681292f5a0af6427f3361f607b562f57bf75dcf96ccffcc3d911f3ac5865e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G19_ReverseSpinCrescentLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 59293,
+      "sha256": "8eece7c89a4a2a72060dfc5ee5ce241b7fb40e15796ff76603f17e9dd7ed5197",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G1_SidekickLeadingLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 53419,
+      "sha256": "4b3f04e20fcbb67ab734c9714284d1e8899c503cc82770d0619acec70857ab63",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G20_ReverseSpinCrescentRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 54069,
+      "sha256": "148fddc7f41e2f247525df7992d60707b8b9d7004e0b7571fb0bf71b46d2d63d",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G2_FrontKick.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 44313,
+      "sha256": "2a811aed679dca3df98bf4dc1cdd39ae1353aa49dd64210ab7df32ec02dd8592",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G3_SidekickLeadingRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 38631,
+      "sha256": "0d21dd0f27a88b95b4b475eb33915113ad47f598945db7b0f5daa2c845269f33",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G4_SpinningBackKick.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 52289,
+      "sha256": "0a13974756cdbde65652011357d8097a052b9512c5430caf49066ec59d02f5cb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G5_BackKick.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 44011,
+      "sha256": "6268861f86557d8cafab74c39519b9bdc9e5b55312d92f72f19799e758ff7894",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G6_AxeKick.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 54703,
+      "sha256": "ccd85384cc0de73caa18911f7d35051c1694d2ad4ee65bb4b94d788fb5423062",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G7_Capoeira.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 45849,
+      "sha256": "bd6f3765301a1bb33f7f6474e818b1955981e52d2032bcd3553cd3269d0fd02f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G8_RoundhouseLeft.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 49251,
+      "sha256": "72c80cb4c54525856fca34393b0d397d73d0816016971602dd97325c381dfb18",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G9_RoundhouseRight.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 35775,
+      "sha256": "65d00dae836f0ac567883ce940c9c7329ebb105d2c3003f56acfac275c718519",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/accad-male2/Male2_G9_RoundhouseRightT2.bvh",
+      "source": "accad-male2",
+      "format": "bvh",
+      "bytes": 53309,
+      "sha256": "87a9481e85ea045417ee70d3f21ac8357b6cbdf27cea47ac3c33822e71dbc0ed",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/002/02_01.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 260091,
+      "sha256": "cf56db43157acc3d200b3d4215523f54d354a8926bea67e1f6c8031bd335ba7e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/002/02_02.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 228144,
+      "sha256": "569a1dcb5dba169249761fe32c9fc1e5fed5e75db43bd50576a514e57d1ca7a1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/002/02_04.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 366467,
+      "sha256": "1b9f80f045608eaf50e2912c2f9180e97cffc708ce717c227f52ce1bc6fe091b",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/002/02_05.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1400429,
+      "sha256": "19e935a336e06981c1680b79c7db7cd9b2c95ff404696f6742181b9e4da39057",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/005/05_02.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 856244,
+      "sha256": "e0ed825644ba91538e1931673e24e0b7095c6caffe03cd647bf2df7de6a5e5fc",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/005/05_03.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 334600,
+      "sha256": "e754d009338bd6a7e5c7e4f5fd30375288af45c83a584de36d3d1043af52049a",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/007/07_01.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 241649,
+      "sha256": "f8d82ea6ed1aab0cb7d9ee680f476b65471e2322e1da84add8a8527a2cb0b9a2",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/007/07_12.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 202212,
+      "sha256": "704b63c1ecb291cde10625d2cd6b90d8f77d14763ba9931233ab2dc02148a578",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/008/08_01.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 211678,
+      "sha256": "4e6cc1e0aa8b6b112be25b6aab5db8f176094181280b2c8ebcf903ede66e6e98",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_01.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1747390,
+      "sha256": "f9e1fa1da61569a14ca8ecd7bd7782e02a55e6189351148e958c9b75ab89889f",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_02.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 2622421,
+      "sha256": "636265a85b5f0a1b7546ae20362d273b84dbc828f50f3939237b3544f22ac050",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_04.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 3598126,
+      "sha256": "e3170b370d5615604448ed7b5caa2e9f3733a323d71ae383fe5f8f9ad6d4c8b1",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_14.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1824950,
+      "sha256": "743dd4e8f497df33f8ce84182ab34710fe864fabb5e7ba21f3e220f7d11affcb",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_26.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 2288964,
+      "sha256": "73ac49cfdb65ac0c85a4a931c2c408720ec7e125f2753a68d64e5f0322c3cab4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_27.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 3154179,
+      "sha256": "a39a336da6aedd372ea4f129f02a634a775853a92786510fad5a2a64356ad3ed",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_29.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 3450144,
+      "sha256": "bdfcb61b78f4cc0c03c88f275de1e109fe94581a124dae604f1113dbb66691b7",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/013/13_30.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1859333,
+      "sha256": "00d597df6c2aae9a16b5261c40907c169d95f7810f244ac0738b021adbca84d4",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/014/14_06.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4040400,
+      "sha256": "e75bcdec4d6fdeac91571020d0b75d45cd4b2532113e699f465b5b297373ac05",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/014/14_24.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 2793234,
+      "sha256": "91017c6f937735510f3460897bb660e85e4ef3891da89f7e0c654fc9c93f1278",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/017/17_01.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4767431,
+      "sha256": "2eaef168dbe50d87fcc8eb5bbc8da4bac73af116a92b799524cc9869b3f7bab6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/017/17_02.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4833937,
+      "sha256": "0cc935eedae3348adb7c5ed1e8a67bf2798b08962e9d0ec986dbb1f78a601e65",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/017/17_03.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4843179,
+      "sha256": "b6f6230023fec96c27a489d442eac6c541f2c1540b5be5df9ada325dca32ca38",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/017/17_04.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4843756,
+      "sha256": "f5950a32629947e12905f3135ebbfb30e031d82d47eac4da5f32fc411eddf2b6",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/017/17_05.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 4763731,
+      "sha256": "0f10cf0f9273655b3fd146eee328856f385619ec3863406a76af2df6e5a03d3e",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/018/18_08.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1567012,
+      "sha256": "b57e6ba15cf2bde4e6e4233da53425dde6d91952fb2bff17a89c5fce18a1a0ce",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/cmu-curated/018/18_10.bvh",
+      "source": "cmu-curated",
+      "format": "bvh",
+      "bytes": 1371839,
+      "sha256": "5dd2d8c4985e0b56c352f1276a428bf10f81f698baa791840ef10528b7d093a8",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/quaternius-ual-standard/Godot/AnimationLibrary_Godot_Standard.glb",
+      "source": "quaternius-ual-standard",
+      "format": "glb",
+      "bytes": 6671104,
+      "sha256": "1b7bf67866360665426bb99e4c71bd619f19b408453c24e30f0c3071601eee5c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.bin",
+      "source": "quaternius-ual-standard",
+      "format": "bin",
+      "bytes": 1587224,
+      "sha256": "6e65377d81558333c4093dbb144a48fd19019343d82b1a3a7992a98ec0e0543c",
+      "status": "pending_verification",
+      "integrated": false
+    },
+    {
+      "path": "sources/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.gltf",
+      "source": "quaternius-ual-standard",
+      "format": "gltf",
+      "bytes": 2459987,
+      "sha256": "0ff075c7ad6855c5c2c37a171592ee8f0d6ab2f58259e2be77a9b63dd8027765",
+      "status": "pending_verification",
+      "integrated": false
+    }
+  ]
+}

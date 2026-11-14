@@ -1,0 +1,4 @@
+# Local verification runs (screenshots / CSV) — never commit evidence dumps here
+verification/runs/
+tmp/
+*.log
