@@ -469,17 +469,17 @@
         ],
         [
             'lie-back',
-            'sdraiati sulla schiena|a pancia in su|(?:lie )?on your back|boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
+            '(?:sdraiati |stenditi |mettiti )?(?:sulla schiena|a pancia in su)|(?:lie |lay )?on your back|(?:túmbate |acuéstate )?boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
             /仰向け|똑바로\s?누워|躺平|仰躺/u,
         ],
         [
             'lie-front',
-            'a pancia in giù|sulla pancia|(?:lie )?on your (?:stomach|front|belly)|boca abajo|sur le ventre|auf den bauch|de bruços',
+            '(?:sdraiati |stenditi |mettiti )?(?:a pancia in giù|sulla pancia|a pancia sotto)|(?:lie |lay )?on your (?:stomach|front|belly)|(?:túmbate |acuéstate )?boca abajo|sur le ventre|auf den bauch|de bruços',
             /うつ伏せ|엎드려|趴着|趴下/u,
         ],
         [
             'lie-side',
-            '(?:sdraiati )?sul fianco|(?:lie )?on your side|de lado|de costado|sur le côté|auf die seite',
+            '(?:sdraiati |stenditi |mettiti )?sul fianco|(?:lie |lay )?on your side|(?:túmbate |acuéstate )?de lado|de costado|sur le côté|auf die seite',
             /横向き|옆으로\s?누워|侧躺/u,
         ],
         [
@@ -497,6 +497,14 @@
         `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
         'iu'
     );
+    const TURN_WORDS = new RegExp(
+        `^(?:(?:adesso|ora|now|ahora|maintenant|jetzt|agora)\\s+)?(?:${word(
+            'girati|voltati|gira ti|turn around|turn round|show me your back|let me see your back|fammi vedere la schiena|mostrami la schiena|date la vuelta|date vuelta|muéstrame la espalda|muestrame la espalda|retourne-toi|tourne-toi|montre-moi ton dos|dreh dich um|zeig mir deinen rücken|vira-te|mostra-me as costas'
+        )})`,
+        'iu'
+    );
+    const TURN_CJK = /振り向いて|後ろを向いて|背中を見せて|뒤돌아|등\s?보여\s?줘|转过身|转身|让我看看你的背/u;
+
     /** "Torna come prima" — the previous position, while one is held. */
     const AS_BEFORE = new RegExp(
         `^(?:${word('torna come prima|come prima|come eri prima|as before|like before|as you were|go back to how you were|como antes|vuelve como antes|comme avant|reviens comme avant|wie vorher|wie eben|como estavas')})|元に戻って|아까처럼|像刚才那样`,
@@ -532,6 +540,9 @@
                 return action('avatar.pose', { pose: key }, 'avatar');
         if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
         if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
+        // While she holds a position, turning keeps it (her whole body turns in place).
+        if (c.poseHeld && (TURN_WORDS.test(body) || TURN_CJK.test(body)))
+            return action('avatar.pose', { pose: 'turn' }, 'avatar');
         return null;
     }
 

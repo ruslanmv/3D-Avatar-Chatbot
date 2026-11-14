@@ -1384,15 +1384,15 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         await say('spogliati');
         await flush();
         expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Garter Set']);
-        await say('Mettiti a quattro zampe');
+        await say('Piegati in avanti');
         await flush();
-        expect(w.pose.calls).toEqual(['claim', 'apply:allFoursArched']);
-        expect(prompt()).toMatch(/Your body is in that position now \(all fours\)/);
+        expect(w.pose.calls).toEqual(['claim', 'apply:standingBendForward']);
+        expect(prompt()).toMatch(/Your body is in that position now \(bend forward\)/);
         await say('spogliati');
         await flush();
         expect(worn(w).slice(-1)).toEqual(['Black Micro Tailored Thong']);
         // Let go before the swap, the same position again on the new outfit.
-        expect(w.pose.calls.slice(2)).toEqual(['release', 'claim', 'apply:allFoursArched']);
+        expect(w.pose.calls.slice(2)).toEqual(['release', 'claim', 'apply:standingBendForward']);
         await say('Ho finito, rivestiti');
         await flush();
         expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
@@ -1401,14 +1401,14 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(w.adult.level).toBe(4);
     });
 
-    test('below level 4 she kneels when asked, but the adult position waits; nothing moves the level', async () => {
+    test('below level 4 she kneels when asked, the gated position waits; nothing moves the level', async () => {
         const w = await at(2);
         await say('inginocchiati');
         await flush();
         expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
         await say('mettiti a quattro zampe');
         await flush();
-        expect(w.pose.calls.filter((c) => c === 'apply:allFoursArched')).toEqual([]);
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:') && c !== 'apply:kneeling')).toEqual([]);
         expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'blocked', why: 'pace' });
         expect(prompt()).toMatch(/not close enough for yet/);
         await say('alzati');
@@ -1417,9 +1417,23 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(w.adult.level).toBe(2);
     });
 
-    test('with Spicy mode off the adult preset is not offered, so it is refused, never substituted', async () => {
-        const w = await at(4, { spicyOff: true });
+    test('on all fours is not in the library yet: at level 4 it is an honest "not available", never another pose', async () => {
+        const w = await at(4);
         await say('mettiti a quattro zampe');
+        await flush();
+        expect(w.pose.calls).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'avatar.pose',
+            status: 'failed',
+            why: 'unsupported-pose',
+        });
+        expect(prompt()).toMatch(/cannot take here yet\. Say so honestly/);
+    });
+
+    test('a preset this build does not list is refused, never substituted', async () => {
+        const w = await at(4);
+        w.pose.getPresetList = () => [{ name: 'lyingBack' }];
+        await say('inginocchiati');
         await flush();
         expect(w.pose.calls).toEqual([]);
         expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'unknown-pose' });
@@ -1501,7 +1515,7 @@ describe('UN5. one position after another, and back again', () => {
                 pose.current = name;
             },
             getCurrentPreset: () => pose.current,
-            getPresetList: () => ['kneeling', 'lyingBack', 'allFoursArched'].map((name) => ({ name })),
+            getPresetList: () => ['kneeling', 'lyingBack'].map((name) => ({ name })),
         });
         window.vrPoseSystem = pose;
         const w = await begin({ adult: true });
@@ -1566,4 +1580,17 @@ describe('UN5. one position after another, and back again', () => {
         ])
             expect(FastPath.match(said)).toMatchObject({ label: 'turn_around' });
     });
+});
+
+describe('UN5. lying positions in their words', () => {
+    test.each([
+        ['Sdraiati sulla pancia', 'lie-front'],
+        ['stenditi a pancia in giù', 'lie-front'],
+        ['sdraiati sulla schiena', 'lie-back'],
+        ['mettiti sul fianco', 'lie-side'],
+        ['lie on your stomach', 'lie-front'],
+        ['túmbate boca abajo', 'lie-front'],
+    ])('%s → %s', (said, key) =>
+        expect(Intent.parse(said)).toMatchObject({ name: 'avatar.pose', params: { pose: key } })
+    );
 });

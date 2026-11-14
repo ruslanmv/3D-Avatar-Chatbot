@@ -191,6 +191,7 @@
         } catch (_) {
             /* the pose system restores itself on its own reset */
         }
+        faceFront(s);
         if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
@@ -698,13 +699,38 @@
         return out;
     }
 
+    /**
+     * UN5. Her whole body turned in place, the pose kept: the try-on's own turner (it eases the
+     * root's yaw and keeps it across an outfit swap, so a layer coming off does not spin her
+     * back to the front). Made once per session, on first use.
+     */
+    function turnerOf(s) {
+        if (s.turner !== undefined) return s.turner;
+        const haul = pick(s.win, 'NEXUS_TRY_ON_HAUL_ACTIVITY', '../../wardrobe/TryOnHaulActivity.js');
+        const manager = s.win && s.win.NEXUS_VIEWER && s.win.NEXUS_VIEWER.avatarManager;
+        s.turner =
+            haul && typeof haul.makeTurner === 'function' && manager && 'currentRoot' in manager
+                ? haul.makeTurner(manager, s.win)
+                : null;
+        return s.turner;
+    }
+
+    function faceFront(s) {
+        try {
+            if (s.turner && typeof s.turner.reset === 'function') s.turner.reset();
+        } catch (_) {
+            /* she faces wherever the turner left her */
+        }
+    }
+
     const ORIGINAL = { original: true };
 
     async function redress(s, action, alive) {
         if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
         if (!s.dressedLook) return settle(action, 'failed', 'already-dressed');
         const back = s.dressedLook;
-        if (s.poses) s.poses.release(); // dressed again, she stands
+        if (s.poses) s.poses.release(); // dressed again, she stands, facing them
+        faceFront(s);
         const out = back === ORIGINAL ? await s.closet.wearOriginal(alive) : await s.closet.wearLook(back, alive);
         if (out.ok) s.dressedLook = null;
         return settle(
@@ -719,7 +745,14 @@
         if (!s.poses) return settle(action, 'failed', 'no-pose-system');
         if (action.params.pose === 'stand') {
             s.poses.release();
+            faceFront(s);
             return settle(action, 'completed', null, { name: 'stand' });
+        }
+        if (action.params.pose === 'turn') {
+            const turner = turnerOf(s);
+            if (!turner) return settle(action, 'failed', 'no-turn');
+            const back = turner.toggle();
+            return settle(action, 'completed', null, { name: back ? 'turned' : 'front' });
         }
         if (action.params.pose === 'back') {
             const out = s.poses.back();
@@ -1285,9 +1318,8 @@
         lines.push('- Dancing: when they ask you to dance, you do.');
         // UN5. Positions and dressing again, as the app can do them.
         if (s.poses) {
-            const open = levelOf(s) >= UNDRESS_AT;
             lines.push(
-                `- Positions: when they ask you to kneel, lie on your back, front or side, bend forward or arch your back${open ? ', or get on all fours' : ''}, the app puts your body in that position and holds it until they ask you to stand. Say it in a few words, in the moment.`
+                '- Positions: when they ask you to kneel, lie on your back, front or side, bend forward or arch your back, the app puts your body in that position and holds it — turning round keeps it — until they ask you to stand or to go back to how you were. Say it in a few words, in the moment.'
             );
             if (s.dressedLook)
                 lines.push(
@@ -1446,6 +1478,10 @@
             const named = String(body.params.pose || '').replace(/-/g, ' ');
             const result = (body.result && body.result.name) || body.params.pose;
             if (body.status === 'completed' && result === 'stand') now.push('You are standing again.');
+            else if (body.status === 'completed' && result === 'turned')
+                now.push('You have turned round, holding your position: they see your back now.');
+            else if (body.status === 'completed' && result === 'front')
+                now.push('You have turned to face them again, holding your position.');
             else if (body.status === 'completed' && body.params.pose === 'back')
                 now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
             else if (body.status === 'completed')
@@ -1453,6 +1489,10 @@
             else if (body.why === 'pace')
                 now.push(
                     'They asked for a position the evening is not close enough for yet. Say "not yet", warmly and teasing.'
+                );
+            else if (body.why === 'unsupported-pose')
+                now.push(
+                    'They asked for a position your body cannot take here yet. Say so honestly and lightly, offer one you can (kneeling, lying on your back, front or side, bending forward), and stay as you are until they choose.'
                 );
             else now.push('They asked for a position you cannot take here. Say so lightly and stay as you are.');
         }

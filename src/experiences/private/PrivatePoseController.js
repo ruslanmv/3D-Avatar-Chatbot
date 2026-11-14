@@ -29,7 +29,12 @@
     const POSES = Object.freeze({
         kneel: { preset: 'kneeling', adult: false },
         'kneel-up': { preset: 'kneelingUp', adult: false },
-        'all-fours': { preset: 'allFoursArched', adult: true },
+        // Not available yet. The library has no hands-and-knees pose: `allFoursArched` (panel
+        // label "All Fours (Arched)") and `doggyStyle` are both defined as STANDING forward bends,
+        // and `allFoursArched` rendered as a near-rest pose on AvatarSample_A in the real-3D check
+        // (UN5, 2026-11-14). Asked for, this answers "unsupported" honestly instead of showing a
+        // different position; it opens the day a verified preset exists.
+        'all-fours': { preset: null, adult: true },
         'lie-back': { preset: 'lyingBack', adult: false },
         'lie-front': { preset: 'lyingFront', adult: false },
         'lie-side': { preset: 'lyingSide', adult: false },
@@ -99,6 +104,7 @@
                 if (key === 'back') return this.back();
                 const entry = POSES[key];
                 if (!entry) return { ok: false, why: 'unknown-pose' };
+                if (!entry.preset) return { ok: false, why: 'unsupported-pose' };
                 const vps = system();
                 if (!vps || typeof vps.applyPreset !== 'function') return { ok: false, why: 'no-pose-system' };
                 if (!known(vps, entry.preset)) return { ok: false, why: 'unknown-pose' };

@@ -71,6 +71,7 @@
         'lounge',
         'stand',
         'back',
+        'turn',
     ];
     const ADULT_POSES = ['all-fours'];
 
