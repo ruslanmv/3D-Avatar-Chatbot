@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Animation library for NEXUS 3D Avatar — BVH clips from SillyTavern VRM Pack, VRMA clips from vrm-viewer",
+  "description": "Animation library for NEXUS 3D Avatar — BVH clips from SillyTavern VRM Pack; VRMA clips from tk256 vrm-viewer, pixiv ChatVRM, VRoid Project (BOOTH) and mocopi samples (see credits)",
   "basePath": "vendor/animations",
   "categories": {
     "dance": {
@@ -168,7 +168,25 @@
         "vrma/Sad.vrma",
         "vrma/Thinking.vrma",
         "vrma/Surprised.vrma",
-        "vrma/Relax.vrma"
+        "vrma/Relax.vrma",
+        "vrma/idle_loop.vrma",
+        "vrma/Blush.vrma",
+        "vrma/Clapping.vrma",
+        "vrma/Goodbye.vrma",
+        "vrma/Jump.vrma",
+        "vrma/LookAround.vrma",
+        "vrma/Sleepy.vrma",
+        "vrma/show_outfit.vrma",
+        "vrma/peace_sign.vrma",
+        "vrma/finger_gun.vrma",
+        "vrma/spin.vrma",
+        "vrma/model_pose.vrma",
+        "vrma/playful_dip.vrma",
+        "vrma/turn_aside.vrma",
+        "vrma/open_arms.vrma",
+        "vrma/hand_on_heart.vrma",
+        "vrma/explain.vrma",
+        "vrma/present.vrma"
       ]
     }
   },
@@ -197,7 +215,10 @@
     "vrma_pack": {
       "source": "tk256ailab vrm-viewer",
       "url": "https://github.com/tk256ailab/vrm-viewer",
-      "license": "Open source"
-    }
+      "license": "MIT"
+    },
+    "vrma_chatvrm": {"source": "pixiv ChatVRM (idle_loop.vrma)", "url": "https://github.com/pixiv/ChatVRM", "license": "MIT"},
+    "vrma_vroid_booth": {"source": "VRoid Project VRMA motion pack, BOOTH 5512385", "url": "https://booth.pm/ja/items/5512385", "license": "BOOTH terms — credit required", "credit": "Character animation credits to pixiv Inc.'s VRoid Project"},
+    "vrma_mocopi": {"source": "tfuru vrma-loader-sample (mocopi captures)", "url": "https://github.com/tfuru/vrma-loader-sample", "license": "None declared upstream"}
   }
 }

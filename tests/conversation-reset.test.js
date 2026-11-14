@@ -263,12 +263,15 @@ describe('the epoch — pressing CLEAR mid-reply', () => {
         // The fallback captures a *fresh* epoch and would therefore consider itself current,
         // putting the old question's answer into the new conversation. The one hole a per-turn
         // token does not close by itself.
+        // The property, not a distance: inside the catch, the turn is checked before anything is
+        // asked again (PX13 put the usage-limit stop between the two).
         const streaming = mainSrc.slice(mainSrc.indexOf('async function _handleStreamingResponse'));
         const catchBlock = streaming.slice(
-            streaming.indexOf('Fallback to non-streaming') - 500,
-            streaming.indexOf('Fallback to non-streaming')
+            streaming.indexOf("logError('Streaming error, falling back'"),
+            streaming.indexOf('await _handleNonStreamingResponse(text);')
         );
         expect(catchBlock).toContain('_turnIsCurrent(turn)');
+        expect(catchBlock.indexOf('_turnIsCurrent(turn)')).toBeLessThan(catchBlock.indexOf("=== 'limit'"));
     });
 
     test('a missing reset module leaves turns behaving exactly as before', () => {

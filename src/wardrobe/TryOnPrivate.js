@@ -66,7 +66,11 @@
         options = options || {};
         if (!options.privateOn) return { mode: 'off' };
         if (!options.canCreate) {
-            return { mode: 'locked', why: 'Private outfits are made by Wardrobe Forge, which is not connected.' };
+            return {
+                mode: 'locked',
+                why: 'Private outfits are made by Wardrobe Forge, which is not connected.',
+                whyKey: 'private.locked.forge',
+            };
         }
         var identity = options.identity;
         var name = (identity && identity.name) || 'this avatar';
@@ -78,12 +82,15 @@
                     'has declared adult. ' +
                     name +
                     ' is not one of them.',
+                whyKey: 'private.locked.library',
+                whyVars: { name: name },
             };
         }
         if (!Array.isArray(options.published)) {
             return {
                 mode: 'locked',
                 why: 'Wardrobe Forge can’t be reached, so private outfits aren’t available right now.',
+                whyKey: 'private.locked.offline',
             };
         }
         var entry = options.published.find(function (item) {
@@ -92,12 +99,15 @@
         if (entry && entry.depictsAdult === true) return { mode: 'open', picks: PICKS.slice() };
         // The avatar picker names her by file ("AvatarSample_A.vrm"); Forge's library has the
         // name a person recognises, so the sentence uses that when Forge knows her.
+        var who = (entry && entry.name) || name;
         return {
             mode: 'locked',
             why:
                 'Private outfits are off for ' +
-                ((entry && entry.name) || name) +
+                who +
                 ': Wardrobe Forge’s operator has not declared this avatar adult.',
+            whyKey: 'private.locked.adult',
+            whyVars: { name: who },
         };
     }
 

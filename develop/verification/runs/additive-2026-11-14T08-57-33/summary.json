@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "generator": "develop/verification/audit-additive.mjs",
+  "avatar": "AvatarSample_A.vrm",
+  "scope": "develop/addons/stable/**/*.{vrma,bvh}",
+  "summary": {
+    "jobs": 5,
+    "ok": 5,
+    "warn": 0,
+    "fail": 0
+  },
+  "rows": [
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "MCPM_20230806_154241.vrma",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154241.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.051,
+      "hipsY": 0.895,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "MCPM_20230806_154323.vrma",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154323.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.035,
+      "hipsY": 0.906,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "MCPM_20230806_154402.vrma",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154402.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.084,
+      "hipsY": 0.896,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "MCPM_20230806_154429.vrma",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154429.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.146,
+      "hipsY": 0.888,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "MCPM_20230806_154455.vrma",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154455.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.149,
+      "hipsY": 0.893,
+      "error": ""
+    }
+  ]
+}

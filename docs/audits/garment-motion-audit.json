@@ -1,0 +1,427 @@
+{
+  "generated": "2026-11-14",
+  "method": "Forge prebuilt looks for fem-vroid loaded with loadAvatar(); commands typed in the chat; hips and root sampled after each step",
+  "avatarBase": "fem_vroid (VRM 0.x) dressed by Forge, from ruslanmv/3d-wardrobe-garments",
+  "looks": [
+    {
+      "look": "skirt-pleated-mini-v1 (black)",
+      "steps": [
+        {
+          "step": "sit down",
+          "hips": 0.526,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "sit",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 28.529099999999627
+          }
+        },
+        {
+          "step": "stand up",
+          "hips": 0.891,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 43.66340000000037
+          }
+        },
+        {
+          "step": "dance",
+          "hips": 0.327,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "dance",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 52.58620000000112
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.879,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 66.91570000000112
+          }
+        },
+        {
+          "step": "come with me",
+          "hips": 0.897,
+          "root": [
+            0,
+            3.27
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 66.91570000000112
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.892,
+          "root": [
+            0,
+            3.27
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 92.94940000000037
+          }
+        }
+      ],
+      "pageErrors": [],
+      "garmentNotes": "Beige foundation briefs show as a band at the waist and poke through the pleats (stop, follow frames).",
+      "evidence": [
+        "docs/audits/garment-motion/skirt-pleated-mini-1-sit_down.jpg",
+        "docs/audits/garment-motion/skirt-pleated-mini-2-stand_up.jpg",
+        "docs/audits/garment-motion/skirt-pleated-mini-3-dance.jpg",
+        "docs/audits/garment-motion/skirt-pleated-mini-4-stop.jpg",
+        "docs/audits/garment-motion/skirt-pleated-mini-5-come_with_me.jpg",
+        "docs/audits/garment-motion/skirt-pleated-mini-6-stop.jpg"
+      ]
+    },
+    {
+      "look": "dress-a-line-v1 (black)",
+      "steps": [
+        {
+          "step": "sit down",
+          "hips": 0.526,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "sit",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 26.960800000000745
+          }
+        },
+        {
+          "step": "stand up",
+          "hips": 0.895,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 41.06840000000037
+          }
+        },
+        {
+          "step": "dance",
+          "hips": 0.832,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "dance",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 47.71070000000112
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.882,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 60.1855
+          }
+        },
+        {
+          "step": "come with me",
+          "hips": 0.87,
+          "root": [
+            0,
+            3.36
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 60.1855
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.891,
+          "root": [
+            0,
+            3.36
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 83.7471000000015
+          }
+        }
+      ],
+      "pageErrors": [],
+      "garmentNotes": "Seated, the skirt forms a floating hoop (known cloth issue, Forge #22); dancing deforms the skirt.",
+      "evidence": [
+        "docs/audits/garment-motion/dress-a-line-1-sit_down.jpg",
+        "docs/audits/garment-motion/dress-a-line-2-stand_up.jpg",
+        "docs/audits/garment-motion/dress-a-line-3-dance.jpg",
+        "docs/audits/garment-motion/dress-a-line-4-stop.jpg",
+        "docs/audits/garment-motion/dress-a-line-5-come_with_me.jpg",
+        "docs/audits/garment-motion/dress-a-line-6-stop.jpg"
+      ]
+    },
+    {
+      "look": "jeans-straight-v1 (black)",
+      "steps": [
+        {
+          "step": "sit down",
+          "hips": 0.526,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "sit",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 22.315099999999628
+          }
+        },
+        {
+          "step": "stand up",
+          "hips": 0.891,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 35.808699999999256
+          }
+        },
+        {
+          "step": "dance",
+          "hips": 0.893,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "dance",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 43.17179999999888
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.886,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 55.428099999999624
+          }
+        },
+        {
+          "step": "come with me",
+          "hips": 0.888,
+          "root": [
+            0,
+            3.33
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 55.428099999999624
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.892,
+          "root": [
+            0,
+            3.33
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 79.51929999999888
+          }
+        }
+      ],
+      "pageErrors": [],
+      "garmentNotes": "Beige briefs show through the jeans at the hips (dance, follow frames).",
+      "evidence": [
+        "docs/audits/garment-motion/jeans-straight-1-sit_down.jpg",
+        "docs/audits/garment-motion/jeans-straight-2-stand_up.jpg",
+        "docs/audits/garment-motion/jeans-straight-3-dance.jpg",
+        "docs/audits/garment-motion/jeans-straight-4-stop.jpg",
+        "docs/audits/garment-motion/jeans-straight-5-come_with_me.jpg",
+        "docs/audits/garment-motion/jeans-straight-6-stop.jpg"
+      ]
+    },
+    {
+      "look": "under-bodysuit-v1 (black)",
+      "steps": [
+        {
+          "step": "sit down",
+          "hips": 0.526,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "sit",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 23.988799999998882
+          }
+        },
+        {
+          "step": "stand up",
+          "hips": 0.891,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 38.73379999999888
+          }
+        },
+        {
+          "step": "dance",
+          "hips": 0.926,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "dance",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 45.76919999999925
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.886,
+          "root": [
+            0,
+            0
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 57.67459999999963
+          }
+        },
+        {
+          "step": "come with me",
+          "hips": 0.913,
+          "root": [
+            0,
+            3.35
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 57.67459999999963
+          }
+        },
+        {
+          "step": "stop",
+          "hips": 0.891,
+          "root": [
+            0,
+            3.35
+          ],
+          "body": {
+            "action": "idle",
+            "status": "playing",
+            "clip": null,
+            "reason": null,
+            "at": 79.93869999999926
+          }
+        }
+      ],
+      "pageErrors": [],
+      "garmentNotes": "No garment defect visible in these frames.",
+      "evidence": [
+        "docs/audits/garment-motion/bodysuit-1-sit_down.jpg",
+        "docs/audits/garment-motion/bodysuit-2-stand_up.jpg",
+        "docs/audits/garment-motion/bodysuit-3-dance.jpg",
+        "docs/audits/garment-motion/bodysuit-4-stop.jpg",
+        "docs/audits/garment-motion/bodysuit-5-come_with_me.jpg",
+        "docs/audits/garment-motion/bodysuit-6-stop.jpg"
+      ]
+    }
+  ]
+}

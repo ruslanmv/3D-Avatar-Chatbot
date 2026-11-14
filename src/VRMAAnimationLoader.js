@@ -250,13 +250,35 @@
     function getAnimationHipsRestY(gltf, vrmaData) {
         try {
             var json = C.safeGet(gltf, ['parser', 'json']);
-            var hipsIdx = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones', 'hips', 'node']);
-            if (json && json.nodes && hipsIdx != null && json.nodes[hipsIdx]) {
+            // MO8. Not C.safeGet for the index: it returns `value || null`, and the hips are glTF
+            // node 0 in every tk256 clip — so the rest height read as 0, the scale fell back to 1,
+            // and the file's absolute hips height (~0.87 m, authored on a 0.90 m rig) was written
+            // onto every avatar verbatim. On VRM_Viewer_Sample (hips 0.69) Clapping and the idle
+            // waiting-standard held her 0.2 m off the floor; on Vita (0.98) Jump and Sleepy sank
+            // her into it. That, not the skeleton, is why the vrma README marked six clips
+            // "incompatible".
+            var hb = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones']);
+            var hipsIdx = hb && hb.hips ? hb.hips.node : null;
+            if (json && json.nodes && typeof hipsIdx === 'number' && json.nodes[hipsIdx]) {
                 var t = json.nodes[hipsIdx].translation;
                 if (t && isFinite(t[1])) return Math.abs(t[1]);
             }
         } catch (_) {}
         return 0;
+    }
+
+    /** The clip's hips rest Y with its sign (null when unknown); see normalizeHipsTrack. */
+    function getAnimationHipsRestSigned(gltf, vrmaData) {
+        try {
+            var json = C.safeGet(gltf, ['parser', 'json']);
+            var hb = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones']);
+            var idx = hb && hb.hips ? hb.hips.node : null;
+            var t =
+                json && json.nodes && typeof idx === 'number' && json.nodes[idx] ? json.nodes[idx].translation : null;
+            return t && isFinite(t[1]) ? t[1] : null;
+        } catch (_) {
+            return null;
+        }
     }
 
     /**
@@ -286,12 +308,40 @@
     function normalizeHipsTrack(values, gltf, vrmaData, normNode) {
         var out = new Float32Array(values.length);
         var animRestY = getAnimationHipsRestY(gltf, vrmaData);
-        var targetRestY = normNode && normNode.position ? Math.abs(normNode.position.y) : 0;
+        // MO8. Her REST hips height, recorded when the avatar registered — not where the last clip
+        // left the normalized hips. Reading the live value compounded: after one clip held her at
+        // 0.88 m, the next clip was scaled to 0.88 m too (the BVH loader got the same fix in MO6).
+        var targetRestY = 0;
+        try {
+            var rawHips = S.cachedBoneMap && S.cachedBoneMap.hips;
+            var rest = rawHips && rawHips.userData ? rawHips.userData.nexusRestHips : null;
+            if (rest && isFinite(rest.y)) targetRestY = Math.abs(rest.y);
+        } catch (_) {
+            /* fall back to the live node below */
+        }
+        if (!(targetRestY > 1e-6)) targetRestY = normNode && normNode.position ? Math.abs(normNode.position.y) : 0;
         var scale = animRestY > 1e-6 && targetRestY > 1e-6 ? targetRestY / animRestY : 1;
 
         // Some clips encode hips translation absolutely (official VRoid), others
         // relative to the rest pose (bvh2vrma subtracts the rest offset). Decide
         // from the first frame: a value near zero cannot be an absolute height.
+        // MO10. A hips rest at or below the floor is not a standing height. The Mixamo-origin
+        // add-ons (FBX2glTF) declare rest Y = −0.272 while their track holds real standing hips
+        // near 0.72 m; abs(rest) made the scale 0.89 / 0.272 ≈ 3.3 and floated her 2.4–3.6 m — the
+        // float #152 quarantined 21 clips for. Fall back to the clip's own median hips height.
+        var restRaw = getAnimationHipsRestSigned(gltf, vrmaData);
+        if (restRaw !== null && restRaw <= 1e-6 && values.length >= 3) {
+            var ys = [];
+            for (var m = 1; m < values.length; m += 3) ys.push(values[m]);
+            ys.sort(function (a, b) {
+                return a - b;
+            });
+            var med = ys[ys.length >> 1];
+            if (med > 1e-6) {
+                animRestY = med;
+                scale = targetRestY > 1e-6 ? targetRestY / animRestY : 1;
+            }
+        }
         var firstY = values.length > 1 ? Math.abs(values[1]) : 0;
         var isRelative = animRestY > 1e-6 && firstY < animRestY * 0.5;
 
@@ -310,6 +360,81 @@
             out[i] = restX; // no horizontal travel — pinned to the rest pose
             out[i + 1] = y * scale;
             out[i + 2] = restZ;
+        }
+        return out;
+    }
+
+    // =====================================================================
+    // MO10. REST-FRAME CONVERSION
+    // =====================================================================
+
+    /**
+     * A VRMA bone track is a LOCAL rotation in the clip's own skeleton, relative to the rest pose
+     * that skeleton was authored in. Every clip we shipped so far has identity rest rotations, so
+     * playing the track as-is worked. VRoid's BOOTH motion pack does not: Spin, Model pose and
+     * Squat carry their hips under a `root` node with a ~120° rest rotation (a Blender Z-up
+     * export), and played raw they tipped her over to lie horizontally in mid-air, hips still at
+     * standing height — which is why no hips-height audit caught it.
+     *
+     * The conversion is the one @pixiv/three-vrm-animation applies:
+     *     out = parentRestWorld · track · boneRestWorld⁻¹
+     * For identity rests it is the identity, so no existing clip changes.
+     *
+     * Plain-array quaternion math ([x, y, z, w]) so it runs without THREE.
+     */
+    function qMul(a, b) {
+        return [
+            a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+            a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+            a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+            a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+        ];
+    }
+    function qInv(q) {
+        return [-q[0], -q[1], -q[2], q[3]];
+    }
+    function qIsIdentity(q) {
+        return Math.abs(q[0]) < 1e-6 && Math.abs(q[1]) < 1e-6 && Math.abs(q[2]) < 1e-6;
+    }
+
+    /** World rest rotation of every node in the clip's glTF, and each node's parent world rotation. */
+    function restWorldRotations(gltf) {
+        var json = C.safeGet(gltf, ['parser', 'json']);
+        var nodes = (json && json.nodes) || [];
+        var parent = {};
+        for (var i = 0; i < nodes.length; i++) {
+            var kids = (nodes[i] && nodes[i].children) || [];
+            for (var k = 0; k < kids.length; k++) parent[kids[k]] = i;
+        }
+        var world = {};
+        function worldOf(n) {
+            if (world[n]) return world[n];
+            var local = nodes[n] && nodes[n].rotation ? nodes[n].rotation.slice() : [0, 0, 0, 1];
+            world[n] = parent[n] !== undefined ? qMul(worldOf(parent[n]), local) : local;
+            return world[n];
+        }
+        var byName = {};
+        for (var j = 0; j < nodes.length; j++) {
+            if (!nodes[j] || !nodes[j].name) continue;
+            byName[nodes[j].name] = {
+                rest: worldOf(j),
+                parentRest: parent[j] !== undefined ? worldOf(parent[j]) : [0, 0, 0, 1],
+            };
+        }
+        return byName;
+    }
+
+    /** Re-express a rotation track out of the clip's rest frame; untouched when both rests are identity. */
+    function restCorrectRotations(values, frame) {
+        if (!frame || (qIsIdentity(frame.rest) && qIsIdentity(frame.parentRest))) return values;
+        var out = new Float32Array(values.length);
+        var restInv = qInv(frame.rest);
+        for (var i = 0; i + 3 < values.length; i += 4) {
+            var q = qMul(qMul(frame.parentRest, [values[i], values[i + 1], values[i + 2], values[i + 3]]), restInv);
+            out[i] = q[0];
+            out[i + 1] = q[1];
+            out[i + 2] = q[2];
+            out[i + 3] = q[3];
         }
         return out;
     }
@@ -336,6 +461,7 @@
             nodeToHumanoid = buildJBipFallbackMap();
         }
         var nodeToExpression = vrmaData ? buildNodeToExpressionMap(vrmaData.ext, vrmaData.nodes) : {};
+        var restFrames = restWorldRotations(gltf);
 
         // Proxy root for VRMRoot + expression tracks (lightweight)
         var proxyRoot = new THREE.Object3D();
@@ -430,7 +556,8 @@
                 // Official approach: target normalized bone node name directly.
                 // The AnimationMixer on vrm.scene finds these nodes by name.
                 var targetName = normNode.name;
-                var qValues = isVRM0 ? transformQuatForVRM0(track.values) : track.values;
+                var restValues = restCorrectRotations(track.values, restFrames[trackNode]);
+                var qValues = isVRM0 ? transformQuatForVRM0(restValues) : restValues;
                 newTracks.push(new THREE.QuaternionKeyframeTrack(targetName + '.quaternion', track.times, qValues));
                 _dbg.mapped.push(humanoidName);
             } else if (property === 'position' || property === 'translation') {

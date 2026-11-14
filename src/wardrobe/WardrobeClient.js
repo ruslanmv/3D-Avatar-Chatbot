@@ -129,9 +129,29 @@
             options = options || {};
             var deadline = Date.now() + (options.timeoutMs || this.timeoutMs);
             var lastState = null;
+            var misses = 0;
 
             while (Date.now() < deadline) {
-                var job = await this.getJob(jobId);
+                // LT8. One failed poll is not a failed job. Measured on the public Space: a look
+                // finished on Forge in 32 s, but one poll in between came back as a proxy error
+                // without CORS headers (the browser reports a network TypeError) and this loop
+                // threw — the haul never wore the look it had asked for. Network errors, 5xx and
+                // 429 are retried with backoff; a real answer (404, a failed job) still ends it.
+                var job;
+                try {
+                    job = await this.getJob(jobId);
+                    misses = 0;
+                } catch (error) {
+                    var status = error && error.status;
+                    var transient = !status || status >= 500 || status === 429;
+                    if (!transient || ++misses > 8) throw error;
+                    await new Promise(
+                        function (resolve) {
+                            global.setTimeout(resolve, Math.min(8000, this.pollIntervalMs * Math.pow(2, misses)));
+                        }.bind(this)
+                    );
+                    continue;
+                }
                 if (job.state !== lastState) {
                     lastState = job.state;
                     if (options.onState) {

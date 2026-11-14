@@ -1313,7 +1313,7 @@ export class ViewerEngine {
     }
 
     // Forward load calls to AvatarManager
-    async loadAvatar(url, name = '', index = undefined) {
+    async loadAvatar(url, name = '', index = undefined, options = undefined) {
         if (this.renderer.xr.isPresenting) {
             console.log('[ViewerEngine] Skipping desktop loadAvatar because VR is active');
             return;
@@ -1322,8 +1322,8 @@ export class ViewerEngine {
         console.log(`[ViewerEngine] Loading desktop avatar: ${url}`);
         const info =
             index === undefined
-                ? await this.avatarManager.setAvatarByUrl(url, name)
-                : await this.avatarManager.setAvatarByUrl(url, name, index);
+                ? await this.avatarManager.setAvatarByUrl(url, name, -1, options)
+                : await this.avatarManager.setAvatarByUrl(url, name, index, options);
 
         // Stale load was superseded by a newer one — bail out
         if (!info) {

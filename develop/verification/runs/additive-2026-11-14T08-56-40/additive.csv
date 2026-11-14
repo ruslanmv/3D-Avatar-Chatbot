@@ -1,0 +1,12 @@
+avatar,avatarFile,kind,category,id,path,played,verdict,flags,motion,hipsY,frameMean,frameSd,frameVerdict,shot,error
+AvatarSample_A,,vrma,develop-stable,VRMA_01.vrma,develop/verification/scratch-candidates/booth/VRMA_01.vrma,1,ok,,0.161,0.858,,,,,
+AvatarSample_A,,vrma,develop-stable,VRMA_03.vrma,develop/verification/scratch-candidates/booth/VRMA_03.vrma,1,ok,,0.142,0.847,,,,,
+AvatarSample_A,,vrma,develop-stable,VRMA_04.vrma,develop/verification/scratch-candidates/booth/VRMA_04.vrma,1,ok,,0.099,0.849,,,,,
+AvatarSample_A,,vrma,develop-stable,VRMA_05.vrma,develop/verification/scratch-candidates/booth/VRMA_05.vrma,1,ok,,0.742,0.847,,,,,
+AvatarSample_A,,vrma,develop-stable,VRMA_06.vrma,develop/verification/scratch-candidates/booth/VRMA_06.vrma,1,ok,,0.649,0.88,,,,,
+AvatarSample_A,,vrma,develop-stable,VRMA_07.vrma,develop/verification/scratch-candidates/booth/VRMA_07.vrma,1,ok,,0.23,0.902,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154241.vrma,develop/verification/scratch-candidates/mocopi/MCPM_20230806_154241.vrma,1,ok,,0.618,0.895,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154323.vrma,develop/verification/scratch-candidates/mocopi/MCPM_20230806_154323.vrma,1,ok,,0.037,0.906,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154402.vrma,develop/verification/scratch-candidates/mocopi/MCPM_20230806_154402.vrma,1,ok,,0.087,0.896,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154429.vrma,develop/verification/scratch-candidates/mocopi/MCPM_20230806_154429.vrma,1,ok,,0.141,0.878,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154455.vrma,develop/verification/scratch-candidates/mocopi/MCPM_20230806_154455.vrma,1,ok,,0.135,0.894,,,,,

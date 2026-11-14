@@ -643,6 +643,8 @@
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
+        s.topic = topic;
+        s.topicTurn = s.turnId;
         if (!parsed) {
             // Talk about music or clothes: remembered, so "you choose" next has a subject — and a
             // statement (not a question) about music lets a tag she writes for it run.
@@ -664,6 +666,26 @@
     function fromModel(name, params) {
         if (!state) return Promise.resolve(null);
         return request(name, params, { source: 'model', turnId: state.turnId });
+    }
+
+    /**
+     * PX14. What really happened to her outfit on the person's latest turn, for the reply check
+     * (TogetherCapability.privateRevise): `changed` once the wardrobe confirmed it, `pending` while
+     * it is loading or being made, otherwise why not — `offer` (waiting for their yes), `failed`,
+     * or `none` (nothing ran).
+     */
+    function outfitTruth() {
+        const s = state;
+        if (!s) return { state: 'none' };
+        const w = s.wardrobe;
+        if (!w || w.turnId !== s.turnId) {
+            const offer = s.offer && s.offer.turnId === s.turnId;
+            return { state: offer ? 'offer' : 'none' };
+        }
+        if (w.status === 'completed') return { state: 'changed', name: (w.result && w.result.name) || '' };
+        if (w.status === 'pending') return { state: 'pending' };
+        if (w.why === 'needs-approval') return { state: 'offer' };
+        return { state: 'failed', why: w.why };
     }
 
     function snapshot() {
@@ -720,6 +742,41 @@
      * English, like the rest of Private's prompt; `languageLines` beside it names the language
      * she answers in. Facts only: she never says music is playing unless the player said so.
      */
+    /**
+     * PB5. Her saved looks for the prompt: at most ten names, at least one of every kind she has
+     * (so lingerie is never crowded out by tees), and the kinds counted over all of them.
+     */
+    const KIND_LABEL = {
+        lingerie: 'lingerie',
+        hosiery: 'stockings',
+        night: 'nightwear',
+        swim: 'swimwear',
+        dress: 'dresses',
+        top: 'tops',
+        bottom: 'skirts and trousers',
+        shoes: 'shoes',
+        outer: 'outerwear',
+    };
+    function closetSummary(allNames, Intent, max) {
+        const limit = max || 10;
+        const list = (allNames || []).map((n) => String(n || '')).filter(Boolean);
+        const byKind = new Map();
+        for (const name of list) {
+            const cats = Intent && typeof Intent.garmentsIn === 'function' ? Intent.garmentsIn(name) : [];
+            for (const g of cats) {
+                if (!KIND_LABEL[g.cat]) continue;
+                if (!byKind.has(g.cat)) byKind.set(g.cat, []);
+                if (!byKind.get(g.cat).includes(name)) byKind.get(g.cat).push(name);
+            }
+        }
+        const names = [];
+        for (const named of byKind.values())
+            if (names.length < limit && !names.includes(named[0])) names.push(named[0]);
+        for (const name of list) if (names.length < limit && !names.includes(name)) names.push(name);
+        const kinds = [...byKind.entries()].map(([cat, named]) => `${KIND_LABEL[cat]} (${named.length})`);
+        return { names, kinds };
+    }
+
     function promptLines() {
         const s = state;
         if (!s || s.session._stopped || s.session._care) return [];
@@ -730,12 +787,21 @@
             '- Music: when they ask for music, the app finds it and plays it here. Never say you cannot play music, and never say you are only text.'
         );
         const closet = s.closet;
-        const names = closet && typeof closet.names === 'function' ? closet.names().slice(0, 10) : [];
+        const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
+        const ready = closetSummary(closet && typeof closet.names === 'function' ? closet.names() : [], Intent);
+        const names = ready.names;
         const outfit = closet ? closet.snapshot() : null;
         if (closet && closet.availability().ok) {
             lines.push(
                 `- Your outfit: you can change clothes right here, without leaving. You are wearing: ${(outfit && outfit.name) || 'your own outfit'}.${names.length ? ` Your saved looks: ${names.join('; ')}.` : ''}`
             );
+            // PB5. "¿Quieres lencería?" — "Sí" — "No tengo lencería guardada", while a prebuilt
+            // lingerie set was hers all along: the ten names she was shown happened not to include
+            // one. She is told every kind she has ready, so a kind she has is never denied.
+            if (ready.kinds.length)
+                lines.push(
+                    `  Ready to wear now, no waiting: ${ready.kinds.join(', ')}. When they want one of these kinds, offer a saved look of that kind by its name — never say you have none.`
+                );
             if (autonomy === 'autonomous')
                 lines.push(
                     '  When a saved look suits the moment you may change into it: one short sentence, then <wardrobe action="wear" look="NAME"/> on its own line. Rarely — at most once in a while.'
@@ -746,6 +812,12 @@
                 );
             else lines.push('  Change only when they ask. Talking about clothes is not asking.');
         }
+        // PX14. The rule that stops the reported transcript: "Mi tolgo il vestito per te. Ora ho
+        // solo mutande e reggiseno." while the avatar wore exactly what she had on. Her clothes are
+        // the wardrobe's to change; her words follow it. Said whether or not a wardrobe exists here.
+        lines.push(
+            '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
+        );
         lines.push('- Dancing: when they ask you to dance, you do.');
         lines.push(
             'An executable request is never answered with "tell me more" or a list of options: acknowledge it in one short sentence, as something you are doing.'
@@ -823,6 +895,9 @@
                     `They asked you to change and it did not happen: ${WHY_OUTFIT[w.why] || 'it could not be done'}. Tell them so once, in your own voice, and stay as you are.`
                 );
         }
+        // PX14. They talked about her clothes and nothing ran: say so, so the reply cannot invent it.
+        if (!(w && w.turnId === s.turnId) && s.topicTurn === s.turnId && s.topic === 'wardrobe')
+            now.push('Nothing about your outfit has changed this turn. You are still wearing the same thing.');
         const d = last && last.turnId === s.turnId && last.name === 'avatar.dance' ? last : null;
         if (d)
             now.push(
@@ -847,9 +922,11 @@
         approveOffer,
         declineOffer,
         snapshot,
+        outfitTruth,
         log,
         onChange,
         promptLines,
+        closetSummary,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTIONS = api;

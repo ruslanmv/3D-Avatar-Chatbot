@@ -243,6 +243,32 @@
     // AVATAR REGISTRATION
     // =========================================================================
 
+    /**
+     * MO6. Her standing hips position, kept on the hips bone for the BVH retargeter.
+     *
+     * The retargeter scaled every BVH clip's hips track by — and re-centred standing clips on —
+     * `hips.position.y` read at the moment the clip was first loaded, then cached the result. A
+     * clip first loaded while she sat was built around her seated hips (0.52 m instead of 0.89):
+     * after "sit down" → "stand up" the standing idle played with her sunk 0.37 m into the floor,
+     * for the rest of the session. Which clips were hit depended on what she was doing when each
+     * first loaded, so it looked intermittent. The VRM's normalized rig never moves, so its hips
+     * are the rest; a non-VRM avatar keeps the position first seen at registration (she loads
+     * standing).
+     * @private
+     */
+    function _recordRestHips(hips, vrm) {
+        if (!hips || !hips.position) return;
+        try {
+            var norm =
+                vrm && vrm.humanoid && vrm.humanoid.getNormalizedBoneNode && vrm.humanoid.getNormalizedBoneNode('hips');
+            hips.userData = hips.userData || {};
+            if (norm && norm.position) hips.userData.nexusRestHips = norm.position.clone();
+            else if (!hips.userData.nexusRestHips) hips.userData.nexusRestHips = hips.position.clone();
+        } catch (e) {
+            console.warn('[ClipAnimationLoader] could not record the rest hips height:', e);
+        }
+    }
+
     function registerAvatar(root, vrm) {
         S.avatarRoot = root || null;
         S.avatarVRM = vrm || null;
@@ -269,6 +295,7 @@
         resetPlaybackState();
         if (S.avatarRoot) {
             S.cachedBoneMap = C.buildAvatarBoneMap(S.avatarRoot, S.avatarVRM);
+            _recordRestHips(S.cachedBoneMap.hips, S.avatarVRM);
             // Start in procedural mode: autoUpdateHumanBones=false so
             // ProceduralAnimator's raw bone writes aren't overwritten.
             C.setHumanoidAutoUpdate(false, S.avatarVRM);

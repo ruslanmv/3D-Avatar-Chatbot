@@ -1,0 +1,1339 @@
+[
+  {
+    "name": "Fitted Tee",
+    "category": "Tops (13)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 3.8,
+    "limit": 1,
+    "mesh": "Black Fitted Tee"
+  },
+  {
+    "name": "Fitted Tee",
+    "category": "Tops (13)",
+    "pose": "sittingWide",
+    "metric": "maxEdgeStretch",
+    "value": 6.54,
+    "limit": 6,
+    "mesh": "Black Fitted Tee"
+  },
+  {
+    "name": "Fitted V-Neck Blouse",
+    "category": "Tops (13)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 3.6,
+    "limit": 1,
+    "mesh": "Black Fitted V-Neck Blouse"
+  },
+  {
+    "name": "Baggy Jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Baggy Jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 3.6,
+    "limit": 1,
+    "mesh": "Black Baggy Jeans"
+  },
+  {
+    "name": "Balloon Trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Balloon Trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 3.6,
+    "limit": 1,
+    "mesh": "Black Balloon Trousers"
+  },
+  {
+    "name": "High-Waist Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "High-Waist Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 4.1,
+    "limit": 1,
+    "mesh": "Black High-Waist Leggings"
+  },
+  {
+    "name": "High-Waist Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 4.3,
+    "limit": 1,
+    "mesh": "Black High-Waist Leggings"
+  },
+  {
+    "name": "High-Waist Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 38.72,
+    "limit": 6,
+    "mesh": "Black High-Waist Leggings"
+  },
+  {
+    "name": "Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 1.6,
+    "limit": 1,
+    "mesh": "Black Leggings"
+  },
+  {
+    "name": "Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 6.1,
+    "limit": 1,
+    "mesh": "Black Leggings"
+  },
+  {
+    "name": "Leggings",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 39.22,
+    "limit": 6,
+    "mesh": "Black Leggings"
+  },
+  {
+    "name": "Seamless Scrunch Leggings",
+    "status": "not-captured",
+    "reason": "Named in --skip. The cloth correction on this mesh did not finish in a still capture."
+  },
+  {
+    "name": "Slim jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Slim jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 3.4,
+    "limit": 1,
+    "mesh": "Black Slim Jeans"
+  },
+  {
+    "name": "Straight Jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Straight Jeans",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 3.1,
+    "limit": 1,
+    "mesh": "Black Straight Jeans"
+  },
+  {
+    "name": "Straight trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Straight trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 3.7,
+    "limit": 1,
+    "mesh": "Black Straight Trousers"
+  },
+  {
+    "name": "Straight trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 7.79,
+    "limit": 6,
+    "mesh": "Black Straight Trousers"
+  },
+  {
+    "name": "Wide-leg trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Wide-leg trousers",
+    "category": "Trousers & jeans (9)",
+    "pose": "sittingDesk",
+    "metric": "maxEdgeStretch",
+    "value": 6.01,
+    "limit": 6,
+    "mesh": "Black Wide-Leg Trousers"
+  },
+  {
+    "name": "A-line dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 39,
+    "limit": 8,
+    "mesh": "Black A-Line Dress"
+  },
+  {
+    "name": "A-line dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 57.2,
+    "limit": 8,
+    "mesh": "Black A-Line Dress"
+  },
+  {
+    "name": "A-line dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 56.8,
+    "limit": 8,
+    "mesh": "Black A-Line Dress"
+  },
+  {
+    "name": "Bodycon Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 38.1,
+    "limit": 8,
+    "mesh": "Black Bodycon Mini Dress"
+  },
+  {
+    "name": "Bodycon Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 46.3,
+    "limit": 8,
+    "mesh": "Black Bodycon Mini Dress"
+  },
+  {
+    "name": "Bodycon Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 53.2,
+    "limit": 8,
+    "mesh": "Black Bodycon Mini Dress"
+  },
+  {
+    "name": "Cocktail dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 37.3,
+    "limit": 8,
+    "mesh": "Black Cocktail Dress"
+  },
+  {
+    "name": "Cocktail dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 59,
+    "limit": 8,
+    "mesh": "Black Cocktail Dress"
+  },
+  {
+    "name": "Cocktail dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 56.1,
+    "limit": 8,
+    "mesh": "Black Cocktail Dress"
+  },
+  {
+    "name": "Evening column gown",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 40.5,
+    "limit": 8,
+    "mesh": "Black Evening"
+  },
+  {
+    "name": "Evening column gown",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 56.2,
+    "limit": 8,
+    "mesh": "Black Evening"
+  },
+  {
+    "name": "Evening column gown",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 48.4,
+    "limit": 8,
+    "mesh": "Black Evening"
+  },
+  {
+    "name": "Long-sleeved wrap dress",
+    "category": "Dresses (9)",
+    "pose": "standing",
+    "metric": "maxSpanDropMm",
+    "value": 104,
+    "limit": 8,
+    "mesh": "Black Long-Sleeved Wrap Dress"
+  },
+  {
+    "name": "Long-sleeved wrap dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 50.6,
+    "limit": 8,
+    "mesh": "Black Long-Sleeved Wrap Dress"
+  },
+  {
+    "name": "Long-sleeved wrap dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 103.7,
+    "limit": 8,
+    "mesh": "Black Long-Sleeved Wrap Dress"
+  },
+  {
+    "name": "Long-sleeved wrap dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 103.9,
+    "limit": 8,
+    "mesh": "Black Long-Sleeved Wrap Dress"
+  },
+  {
+    "name": "Maxi Sundress",
+    "category": "Dresses (9)",
+    "pose": "standing",
+    "metric": "maxSpanDropMm",
+    "value": 11.2,
+    "limit": 8,
+    "mesh": "Black Maxi Sundress"
+  },
+  {
+    "name": "Maxi Sundress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 40.5,
+    "limit": 8,
+    "mesh": "Black Maxi Sundress"
+  },
+  {
+    "name": "Maxi Sundress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 60.5,
+    "limit": 8,
+    "mesh": "Black Maxi Sundress"
+  },
+  {
+    "name": "Maxi Sundress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 55,
+    "limit": 8,
+    "mesh": "Black Maxi Sundress"
+  },
+  {
+    "name": "Shirt Dress",
+    "category": "Dresses (9)",
+    "pose": "standing",
+    "metric": "maxSpanDropMm",
+    "value": 41.4,
+    "limit": 8,
+    "mesh": "Black Shirt Dress"
+  },
+  {
+    "name": "Shirt Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 38.8,
+    "limit": 8,
+    "mesh": "Black Shirt Dress"
+  },
+  {
+    "name": "Shirt Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 57.1,
+    "limit": 8,
+    "mesh": "Black Shirt Dress"
+  },
+  {
+    "name": "Shirt Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 51.4,
+    "limit": 8,
+    "mesh": "Black Shirt Dress"
+  },
+  {
+    "name": "Skater Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 35.5,
+    "limit": 8,
+    "mesh": "Black Skater Mini Dress"
+  },
+  {
+    "name": "Skater Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 52.5,
+    "limit": 8,
+    "mesh": "Black Skater Mini Dress"
+  },
+  {
+    "name": "Skater Mini Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 55.7,
+    "limit": 8,
+    "mesh": "Black Skater Mini Dress"
+  },
+  {
+    "name": "Slip Dress",
+    "category": "Dresses (9)",
+    "pose": "standing",
+    "metric": "maxSpanDropMm",
+    "value": 11.2,
+    "limit": 8,
+    "mesh": "Black Slip Dress"
+  },
+  {
+    "name": "Slip Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 40.1,
+    "limit": 8,
+    "mesh": "Black Slip Dress"
+  },
+  {
+    "name": "Slip Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxPenetrationMm",
+    "value": 2.1,
+    "limit": 1,
+    "mesh": "Black Slip Dress"
+  },
+  {
+    "name": "Slip Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 57.9,
+    "limit": 8,
+    "mesh": "Black Slip Dress"
+  },
+  {
+    "name": "Slip Dress",
+    "category": "Dresses (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 58.5,
+    "limit": 8,
+    "mesh": "Black Slip Dress"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 29.3,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 30.9,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt Waistband"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxPenetrationMm",
+    "value": 2.2,
+    "limit": 1,
+    "mesh": "Black A-Line Skirt"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 45.3,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 42.3,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt Waistband"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 48.2,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt"
+  },
+  {
+    "name": "A-line skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 41.6,
+    "limit": 8,
+    "mesh": "Black A-Line Skirt Waistband"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 33.3,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 29.5,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt Waistband"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxPenetrationMm",
+    "value": 28.2,
+    "limit": 1,
+    "mesh": "Black Maxi Skirt"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 43.1,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 37.4,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt Waistband"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 40.3,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt"
+  },
+  {
+    "name": "Maxi skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 31,
+    "limit": 8,
+    "mesh": "Black Maxi Skirt Waistband"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 21.6,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 18,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt Waistband"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 35.4,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 14.6,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt Waistband"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 31.2,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt"
+  },
+  {
+    "name": "Pencil Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 20.8,
+    "limit": 8,
+    "mesh": "Black Pencil Mini Skirt Waistband"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 32.8,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 28.4,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt Waistband"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 50.3,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 39.5,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt Waistband"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 41.1,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt"
+  },
+  {
+    "name": "Pencil skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 41.1,
+    "limit": 8,
+    "mesh": "Black Pencil Skirt Waistband"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxEdgeStretch",
+    "value": 6.67,
+    "limit": 6,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 36.3,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 23.9,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt Waistband"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxEdgeStretch",
+    "value": 6.52,
+    "limit": 6,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 54.5,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 32.6,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt Waistband"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 6.13,
+    "limit": 6,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 53.5,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt"
+  },
+  {
+    "name": "Pleated Mini Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 53.9,
+    "limit": 8,
+    "mesh": "Black Pleated Mini Skirt Waistband"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 35.2,
+    "limit": 8,
+    "mesh": "Black Skater Skirt"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 15.7,
+    "limit": 8,
+    "mesh": "Black Skater Skirt Waistband"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 40.9,
+    "limit": 8,
+    "mesh": "Black Skater Skirt"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 40.3,
+    "limit": 8,
+    "mesh": "Black Skater Skirt Waistband"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 43,
+    "limit": 8,
+    "mesh": "Black Skater Skirt"
+  },
+  {
+    "name": "Skater Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 40.6,
+    "limit": 8,
+    "mesh": "Black Skater Skirt Waistband"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 31,
+    "limit": 8,
+    "mesh": "Black Slip Skirt"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 15.1,
+    "limit": 8,
+    "mesh": "Black Slip Skirt Waistband"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 45,
+    "limit": 8,
+    "mesh": "Black Slip Skirt"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 40.1,
+    "limit": 8,
+    "mesh": "Black Slip Skirt Waistband"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 40.9,
+    "limit": 8,
+    "mesh": "Black Slip Skirt"
+  },
+  {
+    "name": "Slip Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 33.5,
+    "limit": 8,
+    "mesh": "Black Slip Skirt Waistband"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 32.5,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 32.5,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt Waistband"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 45.4,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 39.4,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt Waistband"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 46.8,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt"
+  },
+  {
+    "name": "Tiered Maxi Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 32.8,
+    "limit": 8,
+    "mesh": "Black Tiered Maxi Skirt Waistband"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 33,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 33,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt Waistband"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 45.2,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 41.5,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt Waistband"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 45.1,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt"
+  },
+  {
+    "name": "Wrap Skirt",
+    "category": "Skirts (9)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 31.3,
+    "limit": 8,
+    "mesh": "Black Wrap Skirt Waistband"
+  },
+  {
+    "name": "Combat Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 13.8,
+    "limit": 1,
+    "mesh": "Black Combat Boots"
+  },
+  {
+    "name": "Combat Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 7.95,
+    "limit": 6,
+    "mesh": "Black Combat Boots"
+  },
+  {
+    "name": "Combat Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 14.6,
+    "limit": 1,
+    "mesh": "Black Combat Boots Lining"
+  },
+  {
+    "name": "Over-the-Knee Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 1.7,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Boots"
+  },
+  {
+    "name": "Over-the-Knee Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 13.4,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Boots"
+  },
+  {
+    "name": "Over-the-Knee Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 5.2,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Boots Lining"
+  },
+  {
+    "name": "Over-the-Knee Stiletto Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 1.7,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Stiletto Boots"
+  },
+  {
+    "name": "Over-the-Knee Stiletto Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 13.4,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Stiletto Boots"
+  },
+  {
+    "name": "Over-the-Knee Stiletto Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 5.2,
+    "limit": 1,
+    "mesh": "Black Over-The-Knee Stiletto Boots Lining"
+  },
+  {
+    "name": "Platform Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 13.2,
+    "limit": 1,
+    "mesh": "Black Platform Boots"
+  },
+  {
+    "name": "Platform Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxEdgeStretch",
+    "value": 6.89,
+    "limit": 6,
+    "mesh": "Black Platform Boots"
+  },
+  {
+    "name": "Platform Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 10.2,
+    "limit": 1,
+    "mesh": "Black Platform Boots Zip Tape"
+  },
+  {
+    "name": "Platform Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 11.4,
+    "limit": 1,
+    "mesh": "Black Platform Boots Lining"
+  },
+  {
+    "name": "Platform Boots",
+    "category": "Shoes (7)",
+    "pose": "sittingCrossed",
+    "metric": "maxPenetrationMm",
+    "value": 10.9,
+    "limit": 1,
+    "mesh": "Black Platform Boots Hardware"
+  },
+  {
+    "name": "Denim Shorts",
+    "category": "Shorts (3)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Linen Shorts",
+    "category": "Shorts (3)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Slip Shorts",
+    "category": "Shorts (3)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Pajama Trousers",
+    "category": "Nightwear (3)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2,
+    "limit": 1,
+    "mesh": "Beige Tailored Briefs"
+  },
+  {
+    "name": "Satin Nightgown",
+    "category": "Nightwear (3)",
+    "pose": "standing",
+    "metric": "maxSpanDropMm",
+    "value": 11.2,
+    "limit": 8,
+    "mesh": "Black Satin Nightgown"
+  },
+  {
+    "name": "Satin Nightgown",
+    "category": "Nightwear (3)",
+    "pose": "sittingDesk",
+    "metric": "maxSpanDropMm",
+    "value": 40.1,
+    "limit": 8,
+    "mesh": "Black Satin Nightgown"
+  },
+  {
+    "name": "Satin Nightgown",
+    "category": "Nightwear (3)",
+    "pose": "sittingWide",
+    "metric": "maxPenetrationMm",
+    "value": 2.6,
+    "limit": 1,
+    "mesh": "Black Satin Nightgown"
+  },
+  {
+    "name": "Satin Nightgown",
+    "category": "Nightwear (3)",
+    "pose": "sittingWide",
+    "metric": "maxSpanDropMm",
+    "value": 57.9,
+    "limit": 8,
+    "mesh": "Black Satin Nightgown"
+  },
+  {
+    "name": "Satin Nightgown",
+    "category": "Nightwear (3)",
+    "pose": "sittingCrossed",
+    "metric": "maxSpanDropMm",
+    "value": 55.6,
+    "limit": 8,
+    "mesh": "Black Satin Nightgown"
+  },
+  {
+    "name": "Thigh-High Stockings",
+    "category": "Legwear (2)",
+    "pose": "sittingDesk",
+    "metric": "maxPenetrationMm",
+    "value": 2.1,
+    "limit": 1,
+    "mesh": "Black Thigh-High Stockings"
+  }
+]

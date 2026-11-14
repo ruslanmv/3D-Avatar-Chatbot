@@ -1837,7 +1837,11 @@ const PlaygroundActivity = (() => {
             // Generated plans are language-dependent: never replay a cached English
             // story after Settings has switched the app to Italian (or vice versa).
             const locale = (win && win.AppLanguage && win.AppLanguage.code) || 'en-US';
-            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}|${locale}`;
+            // PX13. Keyed on the scene *chosen*, not on its label: with no choice yet the label of
+            // "here" changed from "Current Scene" to "this place" between choosing a style and
+            // pressing Get ready, and every session paid for a second plan it threw away.
+            const where = this.sceneChoice || 'current';
+            const key = `${(preset && preset.id) || ''}|${where}|${this.mood || ''}|${locale}`;
             const cached = this._planCache.get(key);
             if (cached) return cached;
             let attempt;

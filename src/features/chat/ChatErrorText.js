@@ -24,7 +24,14 @@
         timeout: 'The model took too long to answer — retry in a moment.',
         gateway: 'The AI gateway is briefly unavailable — retry in a moment.',
         model: 'The chosen model is not available — pick another one in Settings.',
+        // PX13. The free providers behind the gateway have used today's allowance (OpenRouter's
+        // 50 requests a day, Hugging Face's free credits). Retrying now only spends more of it.
+        limit: 'The free AI service has reached its usage limit for now — try again later, or add your own provider key in Settings.',
     });
+
+    /** PX13. A usage limit, in any of the ways a gateway reports one. */
+    const LIMIT =
+        /\b(429|402)\b|rate.?limit|too many requests|quota|credits? (?:are |is )?(?:exhausted|used)|free.?tier|requests per (?:day|minute)|daily limit|payment required|insufficient_quota|all providers (?:failed|exhausted)/i;
 
     function textOf(error) {
         if (!error) return '';
@@ -43,6 +50,7 @@
             (check && typeof check.looksLikeAuth === 'function' ? check.looksLikeAuth(error) : false) ||
             /\b(401|403|authentication_required|unauthori[sz]ed|forbidden|no api key or pairing token)\b/i.test(text);
         if (auth) return 'auth';
+        if (status === 429 || status === 402 || LIMIT.test(text)) return 'limit';
         if (/no model selected|model_not_found|persona_unpublished|no longer available/i.test(text)) return 'model';
         if (
             status === 504 ||
@@ -61,7 +69,7 @@
         return SENTENCES[kind(error)] || '';
     }
 
-    const api = { describe, kind, SENTENCES };
+    const api = { describe, kind, SENTENCES, LIMIT };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_CHAT_ERROR_TEXT = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

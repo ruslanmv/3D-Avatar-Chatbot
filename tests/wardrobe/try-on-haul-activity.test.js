@@ -154,6 +154,18 @@ describe('try-on-haul activity', () => {
         expect(manager.currentRoot.rotation.y).toBeCloseTo(0.5 + Math.PI);
     });
 
+    test('LT6: a swap that kept her back still calls that the back', () => {
+        const manager = { currentRoot: { rotation: { y: Math.PI } } };
+        const turner = TryOn.makeTurner(manager, {});
+        expect(turner.toggle()).toBe(true);
+        const back = manager.currentRoot.rotation.y;
+        // The wardrobe copies that yaw onto the next file instead of facing the camera.
+        manager.currentRoot = { rotation: { y: back } };
+        expect(turner.showingBack()).toBe(true);
+        expect(turner.toggle()).toBe(false); // Front, not another half-turn
+        expect(manager.currentRoot.rotation.y).toBeCloseTo(Math.PI);
+    });
+
     test('the panel’s Stop and the view’s End both restore her, once between them', async () => {
         const service = fakeService();
         const panel = {
@@ -315,8 +327,9 @@ describe('W17: a shared Forge wardrobe', () => {
         };
         const identity = { kind: 'library', slug: 'avatar-sample-a' };
         const looks = await TryOn.loadLooks({ library, identity });
-        expect(looks.map((l) => l.id)).toEqual(['a', 'd']);
-        expect(looks[0].vrmUrl).toBe('https://forge.test/v1/assets/looks/a/look.vrm');
+        // Which looks survive is W17's; the order they are shown in is LT9's.
+        expect(looks.map((l) => l.id).sort()).toEqual(['a', 'd']);
+        expect(looks.find((l) => l.id === 'a').vrmUrl).toBe('https://forge.test/v1/assets/looks/a/look.vrm');
     });
 });
 

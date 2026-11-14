@@ -29,14 +29,17 @@ const MotionClipMap = (() => {
     // start; the converted dance_* clips below cover the same ground correctly.
     // The files are still on disk — restore them here if the retarget ever
     // grows rest-pose conjugation for non-conformant sources.
+    // MO4. Only dances the runtime audit saw dance on the avatar: the four converted VRMA that keep
+    // her on her feet, then their BVH originals (all eleven pass) for avatars without a VRM rig.
+    // dance_dab / dance_1 / dance_2 .vrma were here and sink her into the floor — see QUARANTINE.
     const DANCE_CLIPS = [
         DANCE + 'dance_gangnam_style.vrma',
-        DANCE + 'dance_dab.vrma',
         DANCE + 'dance_northern_soul_spin.vrma',
         DANCE + 'dance_rumba.vrma',
-        DANCE + 'dance_1.vrma',
-        DANCE + 'dance_2.vrma',
         DANCE + 'dance_marachinostep.vrma',
+        VEND + 'dance/dance_1.bvh',
+        VEND + 'dance/dance_2.bvh',
+        VEND + 'dance/dance_dab.bvh',
     ];
 
     /**
@@ -115,26 +118,89 @@ const MotionClipMap = (() => {
                 VEND + 'idle/neutral3.bvh',
                 VEND + 'idle/neutral4.bvh',
                 VEND + 'vrma/waiting-standard.vrma',
+                // MO9. ChatVRM's breathing idle (MIT, audited in PR #153): a calm, centred loop
+                // that reads as "listening" rather than a mocap performer shifting her weight.
+                // Authored in centimetres (hips rest 90.57); the loader scales it (MO8).
+                VEND + 'vrma/idle_loop.vrma',
             ],
+            // MO9. Preferred, not exclusive: three tickets in the shuffle bag, so it is 3 of every
+            // 10 idles — the single most likely one — and the BVH idles keep their variety. The
+            // weight lives here, not as repeated candidates, so the pool stays a list of files.
+            weights: { [VEND + 'vrma/idle_loop.vrma']: 3 },
             loop: true,
             sticky: true,
             random: true,
             ambient: true,
             curated: true,
         },
-        idle_happy: { candidates: [ACT + 'happyIdle.vrma'], loop: true, sticky: true },
-        idle_sad: { candidates: [ACT + 'sadIdle.vrma'], loop: true, sticky: true },
-        talking: { candidates: [ACT + 'talking.vrma'], loop: true, sticky: true },
+        // MO4. The VRMA first is quarantined (it floats); a standing BVH idle keeps her on her feet.
+        idle_happy: { candidates: [ACT + 'happyIdle.vrma', VEND + 'idle/neutral2.bvh'], loop: true, sticky: true },
+        idle_sad: { candidates: [ACT + 'sadIdle.vrma', VEND + 'idle/neutral4.bvh'], loop: true, sticky: true },
+        talking: { candidates: [ACT + 'talking.vrma', VEND + 'idle/neutral_idle.bvh'], loop: true, sticky: true },
 
         wave: { candidates: [ACT + 'waving.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
         greeting: { candidates: [ACT + 'standingGreeting.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
-        bow: { candidates: [ACT + 'bowing.vrma'], loop: false },
-        shrug: { candidates: [ACT + 'shrugging.vrma'], loop: false },
-        clap: { candidates: [ACT + 'standingClap.vrma'], loop: false },
-        victory: { candidates: [ACT + 'victory.vrma'], loop: false },
-        sing: { candidates: [ACT + 'singing.vrma'], loop: true, sticky: true },
+        // MO7. #152 quarantined the Mixamo action pack (it floats her 2.3–3.7 m, or folds her
+        // body), which was right — but for these seven it was the ONLY candidate, so "bow",
+        // "clap" and the rest resolved to an empty list and she did nothing while the chat said
+        // she had. Each now falls through to a shipped clip measured to keep her on her feet
+        // (hips within ±0.13 m of standing on AvatarSample_A, frames checked by eye), chosen for
+        // what it looks like rather than what it is called:
+        //
+        //   clap          emotion/approval2.bvh        hands together at the chest
+        //   jumping_jacks exercise_jumping_jacks.bvh   the real exercise, arms to shoulder height
+        //   victory       emotion/excitement2.bvh      both arms up over her head
+        //   shrug         emotion/confusion.bvh        hand to the face — the "I don't know" read
+        //   sing          emotion/joy.bvh              a gentle looping sway while she sings
+        //   bow           procedural (MotionIntegration) — nothing in the library is a bow
+        //
+        // All five come from manifest categories library-only mode trusts. vrma/Clapping.vrma
+        // played on AvatarSample_A but its own README lists it as incompatible with other rigs, so
+        // it is not used.
+        //
+        // backflip keeps no stand-in: a jump is not a backflip, and offering one would be the
+        // same lie in a different shape. availableNames() leaves it out of the model's
+        // vocabulary while its only clip is quarantined.
+        bow: { candidates: [ACT + 'bowing.vrma'], loop: false, procedural: 'bow' },
+        shrug: { candidates: [ACT + 'shrugging.vrma', VEND + 'emotion/confusion.bvh'], loop: false },
+        clap: {
+            candidates: [ACT + 'standingClap.vrma', VEND + 'vrma/Clapping.vrma', VEND + 'emotion/approval2.bvh'],
+            loop: false,
+        },
+        victory: { candidates: [ACT + 'victory.vrma', VEND + 'emotion/excitement2.bvh'], loop: false },
+        sing: { candidates: [ACT + 'singing.vrma', VEND + 'emotion/joy.bvh'], loop: true, sticky: true },
         backflip: { candidates: [ACT + 'backflip.vrma'], loop: false },
-        jumping_jacks: { candidates: [ACT + 'jumpingJacks.vrma'], loop: false },
+        // MO9. The tk256 six, re-enabled once MO8 scaled their hips to the avatar (they were
+        // parked as "skeleton-incompatible"; it was a lookup bug). Native VRMA, MIT, measured
+        // grounded on AvatarSample_A, VRM_Viewer_Sample (0.69 m), Vita (0.98 m) and others.
+        goodbye: { candidates: [VEND + 'vrma/Goodbye.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
+        look_around: { candidates: [VEND + 'vrma/LookAround.vrma'], loop: false },
+        blush: { candidates: [VEND + 'vrma/Blush.vrma'], loop: false },
+        sleepy: { candidates: [VEND + 'vrma/Sleepy.vrma'], loop: false },
+        jump: { candidates: [VEND + 'vrma/Jump.vrma', VEND + 'action/action_jump.bvh'], loop: false },
+
+        // MO10. VRoid Project's BOOTH motion pack (credit pixiv Inc.'s VRoid Project) and five
+        // mocopi captures from tfuru/vrma-loader-sample. Spin, Model pose and Squat were authored
+        // with a rotated rest pose and played lying sideways until the loader learned to convert
+        // out of the clip's rest frame (MO10); all eleven are measured upright and grounded on
+        // AvatarSample_A, VRM_Viewer_Sample (0.69 m) and Vita (0.98 m), frames checked by eye.
+        show_outfit: { candidates: [VEND + 'vrma/show_outfit.vrma'], loop: false },
+        peace_sign: { candidates: [VEND + 'vrma/peace_sign.vrma'], loop: false },
+        finger_gun: { candidates: [VEND + 'vrma/finger_gun.vrma'], loop: false },
+        spin: { candidates: [VEND + 'vrma/spin.vrma'], loop: false },
+        model_pose: { candidates: [VEND + 'vrma/model_pose.vrma'], loop: false },
+        // Named for what it is: the pack calls it Squat, but it is a playful dip, and the
+        // exercise coach must never demo it as a squat (it picks clips by intent).
+        playful_dip: { candidates: [VEND + 'vrma/playful_dip.vrma'], loop: false },
+        turn_aside: { candidates: [VEND + 'vrma/turn_aside.vrma'], loop: false },
+        open_arms: { candidates: [VEND + 'vrma/open_arms.vrma'], loop: false },
+        hand_on_heart: { candidates: [VEND + 'vrma/hand_on_heart.vrma'], loop: false },
+        explain: { candidates: [VEND + 'vrma/explain.vrma'], loop: false },
+        present: { candidates: [VEND + 'vrma/present.vrma'], loop: false },
+        jumping_jacks: {
+            candidates: [ACT + 'jumpingJacks.vrma', VEND + 'exercise/exercise_jumping_jacks.bvh'],
+            loop: false,
+        },
 
         // Posture — sit_down/stand_up come from the generated pack; the
         // shipped sit_idle/standup assets are the always-working fallback.
@@ -261,7 +327,82 @@ const MotionClipMap = (() => {
         no: 'headshake',
         yes: 'nod',
         celebrate: 'victory',
+        bye: 'goodbye',
+        farewell: 'goodbye',
+        see_you: 'goodbye',
+        look: 'look_around',
+        curious: 'look_around',
+        shy: 'blush',
+        embarrassed: 'blush',
+        tired: 'sleepy',
+        yawn: 'sleepy',
+        hop: 'jump',
+        show_full_body: 'show_outfit',
+        show_off: 'show_outfit',
+        peace: 'peace_sign',
+        v_sign: 'peace_sign',
+        bang: 'finger_gun',
+        twirl: 'spin',
+        pose: 'model_pose',
+        strike_a_pose: 'model_pose',
+        dip: 'playful_dip',
+        welcome: 'open_arms',
+        heart: 'hand_on_heart',
+        sincere: 'hand_on_heart',
+        explaining: 'explain',
+        presenting: 'present',
+        over_there: 'present',
     };
+
+    /**
+     * MO10. When to use each gesture, in a few words, for the model. A bare list of names told it
+     * nothing about `present` or `turn_aside`, so it either never used them or used them at
+     * random. Rendered by MotionContract next to the names; only names that can actually play are
+     * ever shown (availableNames()). Keep each line short — it is paid for on every turn.
+     */
+    const USE = {
+        sit: 'sit down',
+        stand: 'stand up',
+        lay: 'lie down',
+        talking: 'idle talking stance',
+        wave: 'hello',
+        greeting: 'a warm hello',
+        goodbye: 'bye / see you',
+        bow: 'thanks, respect, a formal hello',
+        nod: 'yes, agreeing',
+        headshake: 'no, disagreeing',
+        clap: 'applause, well done',
+        victory: 'arms up, we did it',
+        shrug: "I don't know",
+        sing: 'while singing',
+        dance: 'dancing',
+        jump: 'excited hop',
+        jumping_jacks: 'exercise',
+        look_around: 'curious, looking about',
+        blush: 'shy, flattered',
+        sleepy: 'tired, yawning',
+        point: 'pointing at something',
+        offer_hand: 'offering a hand',
+        high_five: 'high five',
+        handshake: 'shaking hands',
+        raise_hand: 'hand up, me / a question',
+        show_outfit: 'showing off her outfit, head to toe',
+        peace_sign: 'playful V sign, photos, fun',
+        finger_gun: 'cheeky "gotcha" point',
+        spin: 'twirl, show the outfit from all sides',
+        model_pose: 'confident fashion pose',
+        playful_dip: 'playful dip, cute moment',
+        turn_aside: 'turn and gesture to the side',
+        open_arms: 'welcome, a big open hello',
+        hand_on_heart: 'sincere, grateful, touched',
+        explain: 'explaining, talking with her hands',
+        present: '"look at this", presenting something',
+    };
+
+    /** "name = when to use" pairs for the names given (unknown names are left out). */
+    function gestureGuide(names) {
+        return (names || []).filter((n) => USE[n]).map((n) => n + ' = ' + USE[n]);
+    }
 
     /** Paths that failed to load once are skipped next time (missing pack). */
     const _unavailable = Object.create(null);
@@ -435,7 +576,59 @@ const MotionClipMap = (() => {
     }
 
     /** In library mode, keep only paths from the proven set. @private */
+    /**
+     * MO4. Clips the runtime audit measured as broken on a VRM avatar
+     * (tools/qa/animation-runtime-audit.mjs → docs/audits/animation-runtime-audit.json). Every
+     * path that resolves a clip passes through _restrict, so a quarantined clip is unreachable
+     * from "dance", the library index, a fuzzy match or the model alike. The files stay on disk;
+     * re-run the audit after fixing one and take it off this list.
+     *
+     *   sink  — converted VRMA whose hips track drives her below the floor (hips −0.24…0.004 m;
+     *           "I say dance and she disappears into the ground"). The BVH originals pass.
+     *   float — Mixamo-origin VRMA whose root rides 2.3–3.0 m up, out of frame.
+     */
+    // Every path here is also tagged, with its measured failure and the next step, in
+    // develop/NEEDS_FIX.md (develop/needs-fix.json).
+    const QUARANTINE = {
+        'addons/vrma-dance/dance_1.vrma': 'sink',
+        'addons/vrma-dance/dance_2.vrma': 'sink',
+        'addons/vrma-dance/dance_backup.vrma': 'sink',
+        'addons/vrma-dance/dance_dab.vrma': 'sink',
+        'addons/vrma-dance/dance_headdrop.vrma': 'sink',
+        'addons/vrma-dance/dance_ontop.vrma': 'sink',
+        'addons/vrma-dance/dance_pushback.vrma': 'sink',
+        'addons/vrma-dance/breakdanceUprock.vrma': 'float',
+        'addons/vrma-dance/dancingTwerk.vrma': 'float',
+        'addons/vrma-dance/hipHopDancing.vrma': 'float',
+        'addons/vrma-dance/rumbaDancing.vrma': 'float',
+        'addons/vrma-dance/sambaDancing.vrma': 'float',
+        'addons/vrma-dance/sillyDancing.vrma': 'float',
+        // The Mixamo-origin action pack does the same: measured 2.3–3.7 m on a fresh page. "wave"
+        // drew waving.vrma first and she left the frame; the talking idle that plays while she
+        // speaks drew talking.vrma, so turning the motion stack on would have floated her away
+        // mid-sentence. bowing.vrma stays on the floor but folds her body visibly wrong.
+        'addons/vrma-actions/backflip.vrma': 'float',
+        'addons/vrma-actions/happyIdle.vrma': 'float',
+        'addons/vrma-actions/jumpingJacks.vrma': 'float',
+        'addons/vrma-actions/sadIdle.vrma': 'float',
+        'addons/vrma-actions/shrugging.vrma': 'float',
+        'addons/vrma-actions/singing.vrma': 'float',
+        'addons/vrma-actions/standingClap.vrma': 'float',
+        'addons/vrma-actions/standingGreeting.vrma': 'float',
+        'addons/vrma-actions/talking.vrma': 'float',
+        'addons/vrma-actions/victory.vrma': 'float',
+        'addons/vrma-actions/waving.vrma': 'float',
+        'addons/vrma-actions/bowing.vrma': 'contorted',
+    };
+
+    let _quarantineOn = true;
+    /** Tests of selection mechanics use clips that happen to be quarantined; they switch it off. */
+    function _setQuarantine(on) {
+        _quarantineOn = on !== false;
+    }
+
     function _restrict(paths) {
+        if (_quarantineOn) paths = paths.filter((p) => !QUARANTINE[p]);
         // Format policy first, in EVERY mode. BVH is on by default; switching
         // it off leaves only VRMA — but only where a VRM humanoid exists for
         // those to retarget onto (see _formatPolicyApplies).
@@ -570,11 +763,15 @@ const MotionClipMap = (() => {
 
     /** Shuffle bags per name, so repeats do not come back-to-back. @private */
     const _bags = Object.create(null);
-    function _drawFrom(key, paths) {
+    function _drawFrom(key, paths, weights) {
         if (paths.length === 1) return paths.slice();
         let bag = _bags[key];
         if (!bag || !bag.length) {
-            bag = paths.slice();
+            bag = [];
+            for (const p of paths) {
+                const n = weights && weights[p] > 1 ? Math.floor(weights[p]) : 1;
+                for (let k = 0; k < n; k++) bag.push(p);
+            }
             for (let i = bag.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 const t = bag[i];
@@ -660,7 +857,7 @@ const MotionClipMap = (() => {
                     direct.candidates.concat(extra.filter((p) => direct.candidates.indexOf(p) === -1))
                 );
                 if (pool.length) {
-                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool) });
+                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool, direct.weights) });
                 }
                 return Object.assign({}, direct, { candidates: [] });
             }
@@ -819,6 +1016,18 @@ const MotionClipMap = (() => {
             }
         }
 
+        // MO13. Latest *explicit* request wins. Loading a clip is a fetch + parse that can take
+        // seconds on a slow device; a "stop" (or a newer gesture) that arrived during that await
+        // used to be overtaken by the late clip starting anyway — measured by the motion audit as
+        // a dance still playing through the next two actions. Each play() holds a ticket; stop()
+        // and every explicit play() issue a new one, and a stale ticket never reaches playClip.
+        //
+        // Ambient requests (idle, talking, the sit / lay holds) do NOT issue a ticket: speech
+        // starting asks for `talking` at the same moment the reply's gesture is loading, and
+        // that automatic request must never cancel the gesture the person is meant to see. They
+        // hold the current ticket, so a gesture or stop arriving during their load cancels them.
+        const passive = !!entry.ambient || /(^|_)idle$|^talking$/.test(String(name || '').toLowerCase());
+        const ticket = passive ? _playTicket : ++_playTicket;
         const tried = [];
         for (let i = 0; i < candidates.length; i++) {
             const path = candidates[i];
@@ -838,6 +1047,10 @@ const MotionClipMap = (() => {
             _trace('trying', path);
             try {
                 const clip = await loader.loadClip(path);
+                if (ticket !== _playTicket) {
+                    _trace('superseded while loading', path);
+                    return Object.assign(fail, { reason: 'superseded', procedural: null });
+                }
                 if (!clip) {
                     _unavailable[path] = true;
                     if (typeof console !== 'undefined' && console.warn) {
@@ -920,7 +1133,10 @@ const MotionClipMap = (() => {
     }
 
     /** Stop the current clip (crossfade handled by the loader). */
+    let _playTicket = 0;
+
     function stop(opts) {
+        _playTicket++; // a clip still loading for an earlier play() must not start after this
         const loader = _loader();
         if (loader && typeof loader.stopClip === 'function') loader.stopClip(opts || { fadeOut: 0.3 });
     }
@@ -971,7 +1187,25 @@ const MotionClipMap = (() => {
         // does the rest. Matching the `_idle` suffix rather than naming each
         // one keeps a future posture from leaking into the vocabulary the way
         // `lay_idle` just did.
-        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && !/_idle$/.test(n));
+        //
+        // MO7. And only names her body can actually perform. A name whose every candidate is
+        // quarantined or filtered out, with no procedural stand-in, resolves to nothing — offering
+        // it taught the model to promise a backflip the avatar then never did.
+        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && !/_idle$/.test(n) && _performable(n));
+    }
+
+    /** Can this entry move her at all: a playable candidate, the library behind it, or a procedural? */
+    function _performable(name) {
+        const e = ENTRIES[name];
+        if (!e) return false;
+        if (e.procedural) return true;
+        // Before the manifest has loaded, library-only mode trusts nothing yet, and every vendor
+        // clip would read as unplayable for a moment. Judge by the quarantine alone until then —
+        // that is the filter which empties names for good.
+        if (!_manifest()) return e.candidates.some((c) => !(_quarantineOn && QUARANTINE[c]));
+        if (_restrict(e.candidates).length) return true;
+        if (e.curated) return false;
+        return _restrict(_idx()[name] || []).length > 0;
     }
 
     return {
@@ -979,6 +1213,8 @@ const MotionClipMap = (() => {
         play,
         stop,
         availableNames,
+        gestureGuide,
+        USE,
         catalogLine,
         _setManifest,
         _setLibraryOnly,
@@ -989,6 +1225,8 @@ const MotionClipMap = (() => {
         probeCandidates,
         _keysFor,
         ADDON_DANCE,
+        QUARANTINE,
+        _setQuarantine,
         ADDON_ACTIONS,
         ENTRIES,
         ALIASES,

@@ -1,0 +1,6 @@
+avatar,avatarFile,kind,category,id,path,played,verdict,flags,motion,hipsY,frameMean,frameSd,frameVerdict,shot,error
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154241.vrma,develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154241.vrma,1,ok,,0.051,0.895,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154323.vrma,develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154323.vrma,1,ok,,0.035,0.906,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154402.vrma,develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154402.vrma,1,ok,,0.084,0.896,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154429.vrma,develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154429.vrma,1,ok,,0.146,0.888,,,,,
+AvatarSample_A,,vrma,develop-stable,MCPM_20230806_154455.vrma,develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154455.vrma,1,ok,,0.149,0.893,,,,,

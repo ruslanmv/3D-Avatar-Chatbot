@@ -193,3 +193,31 @@ describe('degenerate input does not throw or displace', () => {
         expect(out[1]).toBeCloseTo(1, 6); // 10 * 0.1, written through
     });
 });
+
+describe('MO6 — a clip first loaded while she sits still stands her at full height', () => {
+    // Measured in the browser: "sit down" → "stand up" left the standing idle at hips 0.52 m
+    // instead of 0.89 — sunk 0.37 m into the floor — because the retargeter read the hips' LIVE
+    // position (seated) when the idle was first loaded, and cached the clip.
+    const seatedBone = () => ({
+        position: { x: 0, y: 0.59 * REST_Y, z: 0 },
+        userData: { nexusRestHips: { x: 0, y: REST_Y, z: 0 } },
+    });
+
+    test('neutral_idle loaded while seated is written at the standing height', () => {
+        const { offsetY, values } = hipsTrack('idle/neutral_idle.bvh');
+        const scale = REST_Y / Math.abs(offsetY);
+        const out = BVH._scaleHipsPosition(values, scale, false, seatedBone());
+        let lo = Infinity;
+        let hi = -Infinity;
+        for (let i = 1; i < out.length; i += 3) {
+            lo = Math.min(lo, out[i]);
+            hi = Math.max(hi, out[i]);
+        }
+        expect((lo + hi) / 2).toBeCloseTo(REST_Y, 2);
+    });
+
+    test('without a recorded rest the live position is still used, as before', () => {
+        const out = BVH._scaleHipsPosition([0, 10, 0], 0.1, false, { position: { x: 0, y: 0, z: 0 } });
+        expect(out[1]).toBeCloseTo(1, 6);
+    });
+});

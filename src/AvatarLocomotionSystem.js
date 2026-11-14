@@ -135,7 +135,13 @@
             var viewer = window.NEXUS_VIEWER;
             inVR = !!viewer?.renderer?.xr?.isPresenting;
         }
-        if (!inVR) return;
+        // MO1. Outside VR only the follow-user auto-walk has nothing to read (proximityData is
+        // VR-fed), so only an IDLE machine stops here. A point-walk already under way — the
+        // Living-NPC "come with me" / "come here" hands its walks to walkToPoint() — has a fixed
+        // target and must keep running on desktop and phones. It used to return here for every
+        // state: walkToPoint() set TURNING, the machine never ticked again, isWalking() stayed
+        // true forever and she never moved, while the conversation said she was following.
+        if (!inVR && (state === STATE.IDLE || !pointWalkTarget)) return;
 
         // Ensure preloaded (non-blocking — let state machine run even
         // if animations failed, so the avatar still moves physically)

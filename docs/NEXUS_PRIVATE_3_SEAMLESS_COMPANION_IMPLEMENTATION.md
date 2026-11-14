@@ -273,3 +273,105 @@ way to make it discoverable.
   something is already playing.
 - **Low volume (PX11).** Every Private soundtrack — asked for during the evening or chosen at
   setup — plays at 10 %, so her voice is always clear; "slow down" takes it to 6.
+
+## 13. Several outfits in one evening (PX14–PX15, 2026-11-13)
+
+Verified in a real browser with the real model (Italian): five outfit changes in one Private session — elegant → comfortable → yellow → back → "Cambia vestito" — each reaching the avatar, Private staying the running session.
+
+Fixed:
+
+- **Requests the parser missed:** the typo "indossaare", underwear words, "togliti / spogliati / quítate / take off".
+- **False claims:** her prompt says what she wears changes only when the app changes it; a reply that still claims a change that did not happen has that sentence replaced by one true line in the app language (no extra model call).
+- **An underwear request worn as an ordinary look** ("Ponte el sujetador negro" → crop top): the private gate is checked first, and a lingerie request only ever matches lingerie.
+- **English silence lines in Italian sessions:** localized for all nine languages; none spoken in a language without lines.
+
+### Garments understood (English · Italian · Spanish)
+
+Each line maps every word to one English name, the vocabulary looks are named in. Source: `GARMENTS` in `src/experiences/private/PrivateActionIntent.js`.
+
+**Lingerie and underwear (private outfits: only behind the adult-avatar gate)**
+
+| Garment | Words |
+| --- | --- |
+| lingerie set | lingerie set, lingerie, underwear set, completo intimo, completino intimo, biancheria intima, intimo, conjunto de lencería, lencería, ropa interior |
+| bra | push-up bra, bralette, brassiere, bra, reggiseno, reggiseni, sujetador, sostén, brasier |
+| panties | g-string, thong, knickers, panties, briefs, mutandine, mutande, slip, tanga, perizoma, bragas, braguitas, culotte, culotes |
+| corset | corset, bustier, basque, corsetto, bustino, corsé, corpiño |
+| bodysuit | lace bodysuit, bodysuit, teddy, body di pizzo, body de encaje, body |
+| babydoll | baby doll, baby-doll, babydoll |
+| garter belt | suspender belt, garter belt, garters, reggicalze, liguero, ligas |
+| negligee | negligee, négligé, chemise, sottoveste, combinación, picardías, salto de cama |
+
+**Hosiery**
+
+| Garment | Words |
+| --- | --- |
+| fishnets | fishnet stockings, fishnets, calze a rete, medias de red, medias de rejilla |
+| stockings | thigh-highs, hold-ups, stockings, calze autoreggenti, autoreggenti, calze, medias de liga, medias |
+| tights | pantyhose, tights, collant, collants, pantis, panties de nylon |
+
+**Night and lounge**
+
+| Garment | Words |
+| --- | --- |
+| nightdress | nightdress, nightgown, camicia da notte, camisón |
+| robe | dressing gown, bathrobe, robe, kimono, vestaglia, accappatoio, bata, albornoz |
+| pyjamas | pyjamas, pajamas, pigiama, pijama |
+
+**Swim**
+
+| Garment | Words |
+| --- | --- |
+| bikini | bikini |
+| swimsuit | one-piece swimsuit, swimsuit, bathing suit, costume da bagno, costume intero, bañador, traje de baño |
+
+**Dresses**
+
+| Garment | Words |
+| --- | --- |
+| slip dress | slip dress, abito sottoveste, vestito sottoveste, vestido lencero |
+| evening gown | evening gown, ball gown, gown, abito da sera, vestito da sera, vestido de noche, vestido de gala |
+| cocktail dress | cocktail dress, little black dress, abito da cocktail, tubino nero, tubino, vestido de cóctel |
+| bodycon dress | bodycon dress, bodycon, abito aderente, vestito aderente, vestido ajustado, vestido ceñido |
+| mini dress | mini dress, minidress, minivestito, vestitino, vestido corto, minivestido |
+| sundress | sundress, abito estivo, vestito estivo, prendisole, vestido de verano |
+| dress | dress, vestito, abito, vestido |
+
+**Tops**
+
+| Garment | Words |
+| --- | --- |
+| crop top | crop top, top corto, top cropped, top |
+| tank top | tank top, camisole, cami, canotta, canottiera, camiseta de tirantes, camisola |
+| blouse | sheer blouse, blouse, camicetta, blusa |
+| shirt | shirt, camicia, camisa |
+| tee | t-shirt, tshirt, tee, maglietta, camiseta |
+| sweater | sweater, jumper, cardigan, maglione, golfino, jersey, suéter, chaqueta de punto |
+| hoodie | hoodie, sweatshirt, felpa, sudadera |
+
+**Bottoms**
+
+| Garment | Words |
+| --- | --- |
+| miniskirt | miniskirt, mini skirt, minigonna, minifalda |
+| pencil skirt | pencil skirt, gonna a tubino, falda lápiz, falda de tubo |
+| skirt | skirt, gonna, gonnellina, falda |
+| jeans | jeans, denim, vaqueros, tejanos |
+| shorts | hot pants, shorts, pantaloncini, calzoncini, pantalones cortos, short |
+| leggings | leggings, leggins, mallas |
+| trousers | trousers, pants, pantaloni, pantalones |
+
+**Shoes**
+
+| Garment | Words |
+| --- | --- |
+| heels | high heels, stilettos, heels, pumps, tacchi a spillo, tacchi, décolleté, tacones, zapatos de tacón |
+| boots | thigh-high boots, ankle boots, boots, stivali, stivaletti, botas, botines |
+
+**Outerwear**
+
+| Garment | Words |
+| --- | --- |
+| jacket | leather jacket, jacket, blazer, giacca, giubbotto, chaqueta, americana |
+| coat | trench coat, coat, cappotto, abrigo, gabardina |
+

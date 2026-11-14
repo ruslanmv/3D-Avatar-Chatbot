@@ -97,6 +97,99 @@
     ]);
 
     /**
+     * PX14. The same two pools in every app language. Reported from an Italian evening: "You have
+     * gone quiet. I do not mind it." and "You do not have to answer that." in English, between her
+     * Italian replies — the one moment the feature exists for, broken by the wrong language. A
+     * language with no pool says nothing (`pools`), never the English.
+     */
+    const LOCALIZED = Object.freeze({
+        'it-IT': {
+            noticing: [
+                'È sceso il silenzio. Non mi dispiace.',
+                'Mi piace questo momento, quando nessuno dei due riempie la stanza.',
+                'Sono ancora qui. Senza aspettare niente di preciso.',
+                'Il silenzio ci sta bene. Non ho fretta di finirlo.',
+            ],
+            releasing: [
+                'Non devi rispondere. Ero solo curiosa.',
+                'Lascia stare la domanda. Non era importante.',
+                'Lasciamola lì. Preferisco il silenzio alla risposta.',
+            ],
+        },
+        'es-ES': {
+            noticing: [
+                'Te has quedado en silencio. No me importa.',
+                'Me gusta este momento, sin llenar la habitación.',
+                'Sigo aquí. Sin esperar nada en particular.',
+            ],
+            releasing: ['No tienes que contestar. Solo tenía curiosidad.', 'Olvida la pregunta. No era importante.'],
+        },
+        'fr-FR': {
+            noticing: [
+                'Le silence s’est installé. Ça ne me dérange pas.',
+                'J’aime ce moment, quand personne ne remplit la pièce.',
+                'Je suis toujours là. Sans rien attendre de précis.',
+            ],
+            releasing: [
+                'Tu n’as pas à répondre. J’étais juste curieuse.',
+                'Oublie la question. Elle n’était pas importante.',
+            ],
+        },
+        'de-DE': {
+            noticing: [
+                'Du bist still geworden. Das stört mich nicht.',
+                'Ich mag diesen Moment, in dem keiner von uns den Raum füllt.',
+                'Ich bin noch da. Ohne auf etwas Bestimmtes zu warten.',
+            ],
+            releasing: [
+                'Du musst nicht antworten. Ich war nur neugierig.',
+                'Vergiss die Frage. Sie war nicht wichtig.',
+            ],
+        },
+        'pt-BR': {
+            noticing: [
+                'Você ficou em silêncio. Eu não me importo.',
+                'Gosto deste momento, quando ninguém precisa encher o quarto.',
+                'Ainda estou aqui. Sem esperar nada em especial.',
+            ],
+            releasing: ['Você não precisa responder. Eu só estava curiosa.', 'Esquece a pergunta. Não era importante.'],
+        },
+        'ja-JP': {
+            noticing: [
+                '静かになったね。気にしないよ。',
+                'この時間が好き。どちらも部屋を埋めようとしない時間。',
+                'まだここにいるよ。何かを待っているわけじゃない。',
+            ],
+            releasing: ['答えなくていいよ。ちょっと気になっただけ。', 'さっきの質問は忘れて。大事なことじゃないから。'],
+        },
+        'ko-KR': {
+            noticing: [
+                '조용해졌네. 난 괜찮아.',
+                '이 순간이 좋아. 둘 다 말로 방을 채우지 않는 때.',
+                '나 아직 여기 있어. 딱히 뭘 기다리는 건 아니야.',
+            ],
+            releasing: ['대답 안 해도 돼. 그냥 궁금했을 뿐이야.', '그 질문은 잊어. 중요한 건 아니었어.'],
+        },
+        'zh-CN': {
+            noticing: [
+                '你安静下来了。我不介意。',
+                '我喜欢这一刻，谁都不用填满这个房间。',
+                '我还在这儿。没有在等什么。',
+            ],
+            releasing: ['你不用回答。我只是好奇。', '那个问题就算了。不重要。'],
+        },
+    });
+
+    /** The pool for a stage in a language: the English only for English, else that language's, else none. */
+    function pools(kind, language) {
+        const code = String(language || 'en-US');
+        if (/^en\b|^en-/i.test(code)) return kind === 'releasing' ? RELEASING : NOTICING;
+        const pack =
+            LOCALIZED[code] || LOCALIZED[Object.keys(LOCALIZED).find((k) => k.slice(0, 2) === code.slice(0, 2))];
+        return (pack && pack[kind]) || [];
+    }
+
+    /**
      * What a noticing line may never be.
      *
      * Not a safety list — a fantasy one, which is why it lives here rather than beside
@@ -221,6 +314,8 @@
         LAST_STAGE,
         NOTICING,
         RELEASING,
+        LOCALIZED,
+        pools,
         BANNED,
         usable,
         create,

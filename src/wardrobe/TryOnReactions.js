@@ -56,6 +56,28 @@
     }
 
     /**
+     * English stays the line the tests pin. Another app language speaks the same beat
+     * from TryOnLocale, keyed so a random pick lands on the matching translation.
+     */
+    function said(key, english, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        var code = api && typeof api.code === 'function' ? api.code() : 'en-US';
+        if (!api || typeof api.t !== 'function' || !code || code === 'en-US' || code === 'en-GB') return english;
+        var value = api.t(key, vars);
+        return value || english;
+    }
+
+    function pickLine(keys, lines, random, vars) {
+        var i = Math.min(lines.length - 1, Math.floor((random || Math.random)() * lines.length));
+        return said(keys[i], lines[i], vars);
+    }
+
+    function action(id) {
+        var base = ACTIONS[id];
+        return { id: base.id, label: said('react.action.' + id, base.label) };
+    }
+
+    /**
      * OD2. Whether a look is one of the private ones — lingerie, swimwear, sheer, stockings, or
      * any look with a tattoo. Forge's rating, the dictionary's `private`, or the view's own flag.
      */
@@ -103,7 +125,18 @@
         if (isPrivate(look)) {
             var tattoo = Boolean(event.generated && look.bodyArt && look.bodyArt.length);
             var lines = tattoo ? PRIVATE_LINES.tattoo : event.generated ? PRIVATE_LINES.made : PRIVATE_LINES.shelf;
-            return { line: pick(lines, random), actions: [ACTIONS.turn, ACTIONS.save, ACTIONS.keep] };
+            return {
+                line: pickLine(
+                    lines === PRIVATE_LINES.tattoo
+                        ? ['react.private.tattoo.0', 'react.private.tattoo.1', 'react.private.tattoo.2']
+                        : event.generated
+                          ? ['react.private.made.0', 'react.private.made.1', 'react.private.made.2']
+                          : ['react.private.shelf.0', 'react.private.shelf.1', 'react.private.shelf.2'],
+                    lines,
+                    random
+                ),
+                actions: [action('turn'), action('save'), action('keep')],
+            };
         }
 
         if (event.generated) {
@@ -111,20 +144,26 @@
             if (slot && SLOT_WORDS[slot]) {
                 var word = SLOT_WORDS[slot];
                 return {
-                    line: pick(
+                    line: pickLine(
+                        ['react.change.0', 'react.change.1', 'react.change.2'],
                         [
                             'The new ' + word + ' changes the whole look.',
                             'Same everything else, new ' + word + '. Better?',
                             'Oh, I like this ' + word + '.',
                         ],
-                        random
+                        random,
+                        { word: said('slot.' + slot, word) }
                     ),
-                    actions: [ACTIONS.compare, ACTIONS.color, ACTIONS.keep],
+                    actions: [action('compare'), action('color'), action('keep')],
                 };
             }
             return {
-                line: pick(['Made just for me — what do you think?', 'Fresh off the rail!', 'Ooh, new.'], random),
-                actions: [ACTIONS.turn, ACTIONS.save, ACTIONS.keep],
+                line: pickLine(
+                    ['react.fresh.0', 'react.fresh.1', 'react.fresh.2'],
+                    ['Made just for me — what do you think?', 'Fresh off the rail!', 'Ooh, new.'],
+                    random
+                ),
+                actions: [action('turn'), action('save'), action('keep')],
             };
         }
 
@@ -134,15 +173,27 @@
             return {
                 line:
                     now === 'casual'
-                        ? pick(['This one feels much more casual.', 'Much more relaxed.'], random)
-                        : pick(['Now this is dressed up.', 'Ooh, going somewhere?'], random),
-                actions: [ACTIONS.turn, ACTIONS.save],
+                        ? pickLine(
+                              ['react.casual.0', 'react.casual.1'],
+                              ['This one feels much more casual.', 'Much more relaxed.'],
+                              random
+                          )
+                        : pickLine(
+                              ['react.dressy.0', 'react.dressy.1'],
+                              ['Now this is dressed up.', 'Ooh, going somewhere?'],
+                              random
+                          ),
+                actions: [action('turn'), action('save')],
             };
         }
         if ((event.wears || 0) % EVERY !== 0) return null;
         return {
-            line: pick(['Want to see the back?', 'I like this one.', 'This suits me, right?'], random),
-            actions: [ACTIONS.turn, ACTIONS.save, ACTIONS.keep],
+            line: pickLine(
+                ['react.shelf.0', 'react.shelf.1', 'react.shelf.2'],
+                ['Want to see the back?', 'I like this one.', 'This suits me, right?'],
+                random
+            ),
+            actions: [action('turn'), action('save'), action('keep')],
         };
     }
 

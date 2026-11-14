@@ -1,0 +1,180 @@
+{
+  "result": {
+    "loadOk": true,
+    "animCount": 46,
+    "animNames": [
+      "A_TPose",
+      "Crouch_Fwd_Loop",
+      "Crouch_Idle_Loop",
+      "Dance_Loop",
+      "Death01",
+      "Driving_Loop",
+      "Fixing_Kneeling",
+      "Hit_Chest",
+      "Hit_Head",
+      "Idle_Loop",
+      "Idle_Talking_Loop",
+      "Idle_Torch_Loop",
+      "Interact",
+      "Jog_Fwd_Loop",
+      "Jump_Land",
+      "Jump_Loop",
+      "Jump_Start",
+      "PickUp_Table",
+      "Pistol_Aim_Down",
+      "Pistol_Aim_Neutral"
+    ],
+    "sampleTracks": [
+      "root.position",
+      "root.quaternion",
+      "root.scale",
+      "DEF-hips.position",
+      "DEF-hips.quaternion",
+      "DEF-hips.scale",
+      "DEF-spine001.position",
+      "DEF-spine001.quaternion",
+      "DEF-spine001.scale",
+      "DEF-spine002.position",
+      "DEF-spine002.quaternion",
+      "DEF-spine002.scale"
+    ],
+    "trackRoots": [
+      "root",
+      "DEF-hips",
+      "DEF-spine001",
+      "DEF-spine002",
+      "DEF-spine003",
+      "DEF-neck",
+      "DEF-head",
+      "DEF-shoulderL",
+      "DEF-upper_armL",
+      "DEF-forearmL",
+      "DEF-handL",
+      "DEF-f_index01L",
+      "DEF-f_index02L",
+      "DEF-f_index03L",
+      "DEF-f_middle01L",
+      "DEF-f_middle02L",
+      "DEF-f_middle03L",
+      "DEF-f_pinky01L",
+      "DEF-f_pinky02L",
+      "DEF-f_pinky03L",
+      "DEF-f_ring01L",
+      "DEF-f_ring02L",
+      "DEF-f_ring03L",
+      "DEF-thumb01L",
+      "DEF-thumb02L",
+      "DEF-thumb03L",
+      "DEF-shoulderR",
+      "DEF-upper_armR",
+      "DEF-forearmR",
+      "DEF-handR"
+    ],
+    "vrmBoneNames": [
+      {
+        "humanoid": "hips",
+        "node": "Normalized_J_Bip_C_Hips"
+      },
+      {
+        "humanoid": "spine",
+        "node": "Normalized_J_Bip_C_Spine"
+      },
+      {
+        "humanoid": "chest",
+        "node": "Normalized_J_Bip_C_Chest"
+      },
+      {
+        "humanoid": "head",
+        "node": "Normalized_J_Bip_C_Head"
+      },
+      {
+        "humanoid": "leftUpperArm",
+        "node": "Normalized_J_Bip_L_UpperArm"
+      },
+      {
+        "humanoid": "rightUpperArm",
+        "node": "Normalized_J_Bip_R_UpperArm"
+      },
+      {
+        "humanoid": "leftUpperLeg",
+        "node": "Normalized_J_Bip_L_UpperLeg"
+      },
+      {
+        "humanoid": "rightUpperLeg",
+        "node": "Normalized_J_Bip_R_UpperLeg"
+      }
+    ],
+    "nameOverlap": [],
+    "standingHipsY": 0.896,
+    "trials": [
+      {
+        "name": "Idle_Loop",
+        "played": true,
+        "resolvable": 0,
+        "totalTracks": 159,
+        "hipsY": 0.947,
+        "hipsDelta": 0.051,
+        "effective": false
+      },
+      {
+        "name": "Idle_Talking_Loop",
+        "played": true,
+        "resolvable": 0,
+        "totalTracks": 159,
+        "hipsY": 0.947,
+        "hipsDelta": 0.051,
+        "effective": false
+      },
+      {
+        "name": "Dance_Loop",
+        "played": true,
+        "resolvable": 0,
+        "totalTracks": 159,
+        "hipsY": 0.947,
+        "hipsDelta": 0.051,
+        "effective": false
+      },
+      {
+        "name": "Jump_Start",
+        "played": true,
+        "resolvable": 0,
+        "totalTracks": 159,
+        "hipsY": 0.947,
+        "hipsDelta": 0.051,
+        "effective": false
+      },
+      {
+        "name": "A_TPose",
+        "played": true,
+        "resolvable": 0,
+        "totalTracks": 159,
+        "hipsY": 0.947,
+        "hipsDelta": 0.051,
+        "effective": false
+      }
+    ],
+    "clipLoaderSupportsGlb": false
+  },
+  "logs": [
+    "[Main] init() called {readyState: interactive, useGltfEngine: true, hasNexusViewer: true, hasReadyPromise: true, device: desktop}",
+    "[AnimationResolver] Initialized - clip-first animation routing",
+    "[ClipAnimationShared] Initialized",
+    "[ClipAnimationLoader] Initialized (orchestrator)",
+    "[Main] Failed to load microphones: NotFoundError: Requested device not found",
+    "[ClipAnimationLoader] Manifest loaded: 9 categories",
+    "[BD] Behavior Director up in 376ms — 166 clips (107 bvh, 15 procedural, 44 vrma), 62 intents, 6 gated",
+    "[BD] adapters: PanelRenderer, Assistant, LLMTagAdapter, SentimentFallback, SpeechAdapter, IdleAdapter, GazeAdapter, SessionAdapter, VoiceAdapter, MediaAdapter, ConsentIndicator, TogetherPanel, TogetherLauncher, WatchActivity, MusicActivity, SceneJourney, Playground, , ScreenInsight, Copilot, Coach, Focus, CoHost, Meeting, ClipRecorder, ClipButton, CompanionDestinations",
+    "[Main] Avatar loaded via ViewerEngine {root: false, vrmLoader: false, clips: 0, proceduralAnimator: true}",
+    "[ProceduralAnimator] Registered avatar. bakedClips= false bones= {head: true, spine: true, hips: true, leftUpperArm: false, rightUpperArm: false}",
+    "[AvatarManager] Registered with ProceduralAnimator {hasClips: false}",
+    "[ClipAnim] Bone map via VRM humanoid: 54 bones",
+    "[ClipAnimationLoader] Avatar registered. Bones: hips, spine, chest, upperChest, neck, head, leftShoulder, rightShoulder, leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm, leftHand, rightHand, leftUpperLeg, rightUpperLeg, leftLowerLeg, rightLowerLeg, leftFoot, rightFoot, leftToes, rightToes, leftEye, rightEye, leftThumbMetacarpal, rightThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, leftMiddleProximal, leftMiddleIntermediate, leftMiddleDistal, leftRingProximal, leftRingIntermediate, leftRingDistal, leftLittleProximal, leftLittleIntermediate, leftLittleDistal, rightThumbProximal, rightThumbDistal, rightIndexProximal, rightIndexIntermediate, rightIndexDistal, rightMiddleProximal, rightMiddleIntermediate, rightMiddleDistal, rightRingProximal, rightRingIntermediate, rightRingDistal, rightLittleProximal, rightLittleIntermediate, rightLittleDistal",
+    "[ClipAnimationLoader] Required dance bones: hips, spine, chest, upperChest, neck, head, leftShoulder, leftUpperArm, leftLowerArm, leftHand, rightShoulder, rightUpperArm, rightLowerArm, rightHand, leftUpperLeg, leftLowerLeg, leftFoot, leftToes, rightUpperLeg, rightLowerLeg, rightFoot, rightToes",
+    "[AvatarManager] Registered with ClipAnimationLoader",
+    "[ClipAnim] Bone map via VRM humanoid: 54 bones",
+    "[ClipAnimationLoader] Avatar registered. Bones: hips, spine, chest, upperChest, neck, head, leftShoulder, rightShoulder, leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm, leftHand, rightHand, leftUpperLeg, rightUpperLeg, leftLowerLeg, rightLowerLeg, leftFoot, rightFoot, leftToes, rightToes, leftEye, rightEye, leftThumbMetacarpal, rightThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, leftMiddleProximal, leftMiddleIntermediate, leftMiddleDistal, leftRingProximal, leftRingIntermediate, leftRingDistal, leftLittleProximal, leftLittleIntermediate, leftLittleDistal, rightThumbProximal, rightThumbDistal, rightIndexProximal, rightIndexIntermediate, rightIndexDistal, rightMiddleProximal, rightMiddleIntermediate, rightMiddleDistal, rightRingProximal, rightRingIntermediate, rightRingDistal, rightLittleProximal, rightLittleIntermediate, rightLittleDistal",
+    "[ClipAnimationLoader] Required dance bones: hips, spine, chest, upperChest, neck, head, leftShoulder, leftUpperArm, leftLowerArm, leftHand, rightShoulder, rightUpperArm, rightLowerArm, rightHand, leftUpperLeg, leftLowerLeg, leftFoot, leftToes, rightUpperLeg, rightLowerLeg, rightFoot, rightToes",
+    "[Motion] ready — enabled=false movement=off libraryAnims=true debug=false | avatar ✓ dsl ✓ executor ✓ clips ✓ loader ✓",
+    "[AvatarLocomotionSystem] Walk/run clips preloaded"
+  ]
+}

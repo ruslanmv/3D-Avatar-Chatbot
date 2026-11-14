@@ -1,0 +1,9 @@
+avatar,avatarFile,kind,category,id,path,played,verdict,flags,motion,hipsY,frameMean,frameSd,frameVerdict,shot,error
+AvatarSample_A,,vrma,develop-stable,idle_loop.vrma,develop/addons/stable/vrma-mit/idle_loop.vrma,1,ok,,0.062,0.894,,,,,
+AvatarSample_A,,vrma,develop-stable,test.vrma,develop/addons/stable/vrma-mit/test.vrma,1,ok,,0.22,0.896,,,,,
+AvatarSample_A,,vrma,develop-stable,Blush.vrma,develop/addons/stable/vrma-tk256-candidates/Blush.vrma,1,ok,,0.121,0.866,,,,,
+AvatarSample_A,,vrma,develop-stable,Clapping.vrma,develop/addons/stable/vrma-tk256-candidates/Clapping.vrma,1,ok,,0.071,0.897,,,,,
+AvatarSample_A,,vrma,develop-stable,Goodbye.vrma,develop/addons/stable/vrma-tk256-candidates/Goodbye.vrma,1,ok,,0.104,0.893,,,,,
+AvatarSample_A,,vrma,develop-stable,Jump.vrma,develop/addons/stable/vrma-tk256-candidates/Jump.vrma,1,ok,,0.185,1.05,,,,,
+AvatarSample_A,,vrma,develop-stable,LookAround.vrma,develop/addons/stable/vrma-tk256-candidates/LookAround.vrma,1,ok,,0.205,0.882,,,,,
+AvatarSample_A,,vrma,develop-stable,Sleepy.vrma,develop/addons/stable/vrma-tk256-candidates/Sleepy.vrma,1,ok,,0.17,0.866,,,,,

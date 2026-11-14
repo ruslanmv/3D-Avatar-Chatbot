@@ -93,6 +93,9 @@ const SKIP_DIRS = new Set([
     'tests',
     'docs',
     'scripts',
+    // Audit pipelines (audits/motion reads the KB to brief conversation design): measurement
+    // tooling like tests/ and scripts/, never loaded by the shipping app.
+    'audits',
     'config',
     '.github',
 ]);

@@ -1,0 +1,110 @@
+name: Wardrobe visual audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'looks does not generate. catalog and both submit real Forge jobs and need allow_generation.'
+        required: true
+        type: choice
+        options: [looks, catalog, both]
+        default: looks
+      max_items:
+        description: 'First N per source. 0 means all. Catalog jobs are expensive.'
+        required: false
+        default: '1'
+        type: string
+      allow_generation:
+        description: 'Must be true before catalog or both is allowed to run.'
+        required: false
+        type: boolean
+        default: false
+      poses:
+        description: 'Comma-separated standing,sittingDesk,sittingWide,sittingCrossed'
+        required: false
+        default: 'standing,sittingDesk,sittingWide,sittingCrossed'
+        type: string
+  schedule:
+    # Weekly shipped looks only. Catalog generation stays manual so a schedule cannot spend Forge quota.
+    - cron: '30 4 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install -r audits/wardrobe_sitting_desk/requirements.txt
+      - name: Pose cloth regression and audit unit tests
+        run: |
+          npx jest tests/wardrobe/pose-cloth-correction.test.js --no-coverage
+          python -m unittest discover -s audits/wardrobe_sitting_desk -p 'test_*.py' -v
+
+  capture:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install -r audits/wardrobe_sitting_desk/requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Start avatar app
+        run: |
+          npm start > /tmp/wardrobe-app.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8080/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/wardrobe-app.log
+          exit 1
+      - name: Capture Try-On outfits
+        env:
+          AUDIT_SOURCE: ${{ github.event_name == 'schedule' && 'looks' || inputs.source }}
+          AUDIT_MAX: ${{ github.event_name == 'schedule' && '0' || inputs.max_items }}
+          AUDIT_POSES: ${{ github.event_name == 'schedule' && 'standing,sittingDesk,sittingWide,sittingCrossed' || inputs.poses }}
+          ALLOW_GENERATION: ${{ github.event_name == 'schedule' && 'false' || inputs.allow_generation }}
+        run: |
+          if [ "$AUDIT_SOURCE" != "looks" ] && [ "$ALLOW_GENERATION" != "true" ]; then
+            echo "Refusing source=$AUDIT_SOURCE without allow_generation. This would submit Forge jobs."
+            exit 1
+          fi
+          python audits/wardrobe_sitting_desk/capture.py \
+            --source "$AUDIT_SOURCE" --max-items "$AUDIT_MAX" \
+            --poses "$AUDIT_POSES" \
+            --avatar fem_vroid.vrm \
+            --mobile-ui \
+            --out audits/wardrobe_sitting_desk/runs/ci-${{ github.run_id }}
+      - name: Upload evidence, including partial runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wardrobe-audit-${{ github.run_id }}
+          path: |
+            audits/wardrobe_sitting_desk/runs/
+            /tmp/wardrobe-app.log
+          retention-days: 14
+          if-no-files-found: warn

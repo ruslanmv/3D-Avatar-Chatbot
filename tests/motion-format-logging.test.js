@@ -14,6 +14,11 @@
 
 const ClipMap = require('../src/xr/MotionClipMap');
 
+// MO4. These tests exercise selection mechanics with clips (wave, victory, talking) that the
+// runtime audit quarantined for floating; the quarantine has its own test in motion-runtime-mo.
+beforeAll(() => ClipMap._setQuarantine(false));
+afterAll(() => ClipMap._setQuarantine(true));
+
 const MANIFEST = {
     categories: {
         dance: { experimental: true, files: ['dance/dance_1.bvh'] },
