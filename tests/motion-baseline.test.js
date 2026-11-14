@@ -112,13 +112,16 @@ const BASELINE_RULES = [
     'look_at_me',
     'wave',
     'dance',
+    'goodbye', // MO9 — the tk256 VRMA gestures
+    'jump', // MO9
+    'look_around', // MO9
     'bow',
     'nod_yes',
     'backflip',
 ];
 
 describe('baseline: IntentFastPath', () => {
-    test('the rule set is exactly these 19 labels, in this order', () => {
+    test('the rule set is exactly these 22 labels, in this order', () => {
         expect(FastPath.RULES.map((r) => r.label)).toEqual(BASELINE_RULES);
     });
 
@@ -133,6 +136,9 @@ describe('baseline: IntentFastPath', () => {
             ['shake my hand', 'handshake'],
             ['look at me', 'look_at_me'],
             ['dance', 'dance'],
+            ['bye', 'goodbye'],
+            ['look around', 'look_around'],
+            ['jump', 'jump'],
         ];
         for (const [utterance, label] of cases) {
             const hit = FastPath.match(utterance);
@@ -170,16 +176,21 @@ describe('baseline: IntentFastPath', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('baseline: MotionClipMap', () => {
-    test('26 entries and 21 aliases resolve today', () => {
+    test('31 entries and 31 aliases resolve today', () => {
         // +raise_hand in B4; +lay/lay_idle and eight laying phrasings when the
         // laying POSTURE landed.
-        expect(Object.keys(Clips.ENTRIES)).toHaveLength(26);
-        expect(Object.keys(Clips.ALIASES)).toHaveLength(21);
+        expect(Object.keys(Clips.ENTRIES)).toHaveLength(31); // MO9: goodbye, look_around, blush, sleepy, jump
+        expect(Object.keys(Clips.ALIASES)).toHaveLength(31);
     });
 
-    test('21 names are advertised to the model — every *_idle is withheld', () => {
+    test('25 names are advertised to the model — every *_idle and every unperformable name is withheld', () => {
         const names = Clips.availableNames();
-        expect(names).toHaveLength(21);
+        expect(names).toHaveLength(25);
+        // MO7. backflip's only clip is quarantined (it floats her out of frame) and nothing stands
+        // in for it, so the model is not offered a gesture her body cannot do.
+        expect(names).not.toContain('backflip');
+        expect(names).toContain('bow'); // procedural stand-in
+        expect(names).toContain('clap'); // grounded fallback clip
         expect(names).toContain('dance');
         expect(names).toContain('sit');
         expect(names).toContain('lay'); // the posture IS offered

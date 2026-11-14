@@ -10,7 +10,7 @@
         "avatars": 17,
         "avatarsMissing": 0,
         "poses": 26,
-        "clips": 145,
+        "clips": 152,
         "clipsMissing": 0,
         "categories": 9,
         "experimentalClips": 19,
@@ -18,7 +18,7 @@
         "intents": 7,
         "fails": 0,
         "warns": 8,
-        "matrixCells": 2907
+        "matrixCells": 3026
     },
     "categories": [
         {
@@ -73,7 +73,7 @@
             "id": "vrma",
             "label": "VRM Animations",
             "experimental": false,
-            "count": 6
+            "count": 13
         }
     ],
     "avatars": [
@@ -1721,6 +1721,60 @@
             "label": "Angry"
         },
         {
+            "id": "vrma_Blush.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Blush.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Blush"
+        },
+        {
+            "id": "vrma_Clapping.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Clapping.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Clapping"
+        },
+        {
+            "id": "vrma_Goodbye.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Goodbye.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Goodbye"
+        },
+        {
+            "id": "vrma_idle_loop.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/idle_loop.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "idle_loop"
+        },
+        {
+            "id": "vrma_Jump.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Jump.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Jump"
+        },
+        {
+            "id": "vrma_LookAround.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/LookAround.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "LookAround"
+        },
+        {
             "id": "vrma_Relax.vrma",
             "kind": "vrma",
             "category": "vrma",
@@ -1737,6 +1791,15 @@
             "exists": true,
             "experimental": false,
             "label": "Sad"
+        },
+        {
+            "id": "vrma_Sleepy.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Sleepy.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Sleepy"
         },
         {
             "id": "vrma_Surprised.vrma",

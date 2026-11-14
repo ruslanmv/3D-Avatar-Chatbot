@@ -131,8 +131,8 @@ const MotionIntegration = (() => {
     const _follow = { active: false, dist: 1.5, sinceRefresh: 0 };
     const _walk = { active: false, goal: null, resolve: null, deadline: 0, manual: false, speed: 0.9 };
     const _contact = { active: false, side: 'right', radius: 0.14, resolve: null, deadline: 0 };
-    const _reach = { active: false, side: 'right', high: false };
-    const _headFx = { active: false, axis: 'x', t: 0, dur: 1.1, amp: 0.28 };
+    const _reach = { active: false, side: 'right', high: false, until: 0 };
+    const _headFx = { active: false, kind: 'nod', t: 0, dur: 1.0, held: Object.create(null) };
     const _turn = { active: false, remaining: 0, speed: 2.6, resolve: null, deadline: 0 };
     const _expr = Object.create(null); // name → { w, until }
 
@@ -384,20 +384,105 @@ const MotionIntegration = (() => {
     }
 
     /** Procedural head nod / shake when no clip exists (never "do nothing"). */
+    /**
+     * MO7. Procedural head and body gestures, written to the RAW rig in world space.
+     *
+     * These used to add to the normalized head's rotation.x / .y. That never reached the
+     * screen: NEXUS_MOTION.update runs after vrm.update() has copied normalized onto raw for the
+     * frame, and while a BVH clip plays the copy is off altogether — the mixer poses the raw rig.
+     * In a browser "nod" moved her head 1.5–2.2° (the idle's own sway) while the executor told the
+     * model the nod had started. There was no "bow" at all once #152 quarantined bowing.vrma
+     * (it folds her body wrong), so "bow" did nothing.
+     *
+     * Now each gesture is a rotation about a WORLD axis taken from her own hips (pitch = her
+     * left-right axis, yaw = world up), shared out over a chain of raw bones from the spine up and
+     * applied after the mixer, so it lands on the pose the frame is about to draw. A world axis
+     * makes it rig-agnostic: VRM 0.x raw bones carry arbitrary local axes, so a local .x is a
+     * nod on one model and a head-tilt on another.
+     */
+    const FX_CHAINS = {
+        nod: [
+            ['neck', 0.35],
+            ['head', 0.65],
+        ],
+        headshake: [
+            ['neck', 0.35],
+            ['head', 0.65],
+        ],
+        bow: [
+            ['spine', 0.3],
+            ['chest', 0.28],
+            ['upperChest', 0.14],
+            ['neck', 0.1],
+            ['head', 0.18],
+        ],
+    };
+
     function _playHeadFx(kind) {
+        _releaseHeadFx();
+        _headFx.kind = FX_CHAINS[kind] ? kind : 'nod';
         _headFx.active = true;
         _headFx.t = 0;
-        _headFx.axis = kind === 'headshake' ? 'y' : 'x';
-        _headFx.dur = kind === 'headshake' ? 1.2 : 1.0;
-        _headFx.amp = kind === 'headshake' ? 0.32 : 0.26;
+        _headFx.dur = kind === 'headshake' ? 1.2 : kind === 'bow' ? 2.0 : 1.1;
     }
 
-    function _headBone() {
+    /** Angle (radians) of the gesture at progress p ∈ [0,1]; positive pitch tips her forward. */
+    function _fxAngle(kind, p) {
+        const smooth = (x) => x * x * (3 - 2 * x);
+        if (kind === 'headshake') return Math.sin(p * Math.PI * 4) * 0.38 * Math.sin(p * Math.PI); // ±22°
+        if (kind === 'bow') {
+            // Down over 0.6 s, hold, back up — about 38° at the waist-to-head chain.
+            const k = p < 0.3 ? smooth(p / 0.3) : p < 0.6 ? 1 : smooth(1 - (p - 0.6) / 0.4);
+            return 0.66 * k;
+        }
+        // Two dips down and back, never above rest: a nod, not a head-bob.
+        return 0.3 * 0.5 * (1 - Math.cos(p * Math.PI * 4));
+    }
+
+    /** World pitch and yaw axes from her hips; null when the rig cannot say which way she faces. */
+    function _fxAxes(THREE) {
         const h = _vrm && _vrm.humanoid;
-        if (!h) return null;
-        if (typeof h.getNormalizedBoneNode === 'function') return h.getNormalizedBoneNode('head');
-        if (typeof h.getBoneNode === 'function') return h.getBoneNode('head');
-        return null;
+        if (!h || typeof h.getRawBoneNode !== 'function') return null;
+        const l = h.getRawBoneNode('leftUpperLeg');
+        const r = h.getRawBoneNode('rightUpperLeg');
+        if (!l || !r) return null;
+        const right = r.getWorldPosition(new THREE.Vector3()).sub(l.getWorldPosition(new THREE.Vector3()));
+        right.y = 0;
+        if (right.lengthSq() < 1e-8) return null;
+        right.normalize();
+        // Rotating world-up about −right carries it toward the way she faces: a positive angle
+        // about this axis tips her forward (forward = up × right).
+        return { pitch: right.negate(), yaw: new THREE.Vector3(0, 1, 0) };
+    }
+
+    /**
+     * Turn one raw bone by `angle` about a world axis, on top of whatever posed it this frame.
+     * If nothing re-posed the bone since our last write (no clip, no copy), start again from the
+     * pose we found rather than from our own output — an additive write onto an undriven bone
+     * otherwise accumulates frame after frame and wrenches her head round.
+     */
+    function _turnBoneWorld(THREE, name, bone, axis, angle) {
+        let rec = _headFx.held[name];
+        const q = bone.quaternion;
+        const base = rec && rec.bone === bone && rec.written.equals(q) ? rec.base : q.clone();
+        const pw = bone.parent ? bone.parent.getWorldQuaternion(new THREE.Quaternion()) : new THREE.Quaternion();
+        const turn = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+        const out = pw.clone().invert().multiply(turn).multiply(pw).multiply(base);
+        q.copy(out);
+        bone.updateMatrixWorld(true);
+        _headFx.held[name] = { bone, base, written: out.clone() };
+    }
+
+    /** Put back what we turned, unless something else has posed the bone since. */
+    function _releaseHeadFx() {
+        for (const name of Object.keys(_headFx.held)) {
+            const rec = _headFx.held[name];
+            if (rec && rec.bone && rec.written.equals(rec.bone.quaternion)) {
+                rec.bone.quaternion.copy(rec.base);
+                rec.bone.updateMatrixWorld(true);
+            }
+        }
+        _headFx.held = Object.create(null);
     }
 
     /**
@@ -562,11 +647,16 @@ const MotionIntegration = (() => {
                 } else if (!res.loop && !res.sticky) {
                     _scheduleIdle((res.duration || 1.2) + 0.2);
                 }
-            } else if (res.procedural === 'nod' || res.procedural === 'headshake') {
+            } else if (res.procedural === 'nod' || res.procedural === 'headshake' || res.procedural === 'bow') {
                 _playHeadFx(res.procedural);
             } else if (res.procedural) {
                 _reach.active = true; // arm raise handled purely by IK ramp
                 _reach.high = res.procedural === 'reach_high';
+                // MO7. A one-shot reach ends. Nothing cleared _reach after a procedural point or
+                // high five, so once the IK reached the screen her arm would have stayed out for
+                // good. "offer your hand" is the held one (sticky in the clip map): it waits for
+                // a stop or for the contact handshake to take over.
+                _reach.until = key === 'offer_hand' ? 0 : _now() + (_reach.high ? 2.4 : 2.8);
             } else if (res.reason) {
                 // Surface it. The reported symptom — "I say dance, the toast
                 // appears, nothing moves" — was this branch running silently:
@@ -708,6 +798,11 @@ const MotionIntegration = (() => {
 
         // Keep the IK target glued to the user's real hand (or a natural
         // forward reach point when hands aren't tracked / on desktop).
+        if (_reach.active && _reach.until && !_contact.active && _now() > _reach.until) {
+            _reach.active = false;
+            _reach.until = 0;
+            ik.clearTargets();
+        }
         if (_reach.active || _contact.active) {
             const side = _contact.active ? _contact.side : _reach.side;
             let target = getUserHand(side === 'right' ? 'left' : 'right') || getUserHand(side);
@@ -754,8 +849,10 @@ const MotionIntegration = (() => {
 
     function _updateHeadFx(dt) {
         if (!_headFx.active) return;
-        const bone = _headBone();
-        if (!bone) {
+        const THREE = _T();
+        const h = _vrm && _vrm.humanoid;
+        const axes = THREE ? _fxAxes(THREE) : null;
+        if (!axes) {
             _headFx.active = false;
             return;
         }
@@ -763,11 +860,17 @@ const MotionIntegration = (() => {
         const p = _headFx.t / _headFx.dur;
         if (p >= 1) {
             _headFx.active = false;
+            _releaseHeadFx();
             return;
         }
-        const wave = Math.sin(p * Math.PI * (_headFx.axis === 'y' ? 4 : 3)) * _headFx.amp * Math.sin(p * Math.PI);
-        if (_headFx.axis === 'y') bone.rotation.y += wave;
-        else bone.rotation.x += wave;
+        const kind = _headFx.kind;
+        const axis = kind === 'headshake' ? axes.yaw : axes.pitch;
+        const angle = _fxAngle(kind, p);
+        // Root to tip, so each bone turns about the pose its parent was just given.
+        for (const [name, share] of FX_CHAINS[kind]) {
+            const bone = h.getRawBoneNode(name);
+            if (bone) _turnBoneWorld(THREE, name, bone, axis, angle * share);
+        }
     }
 
     function _updateLook(dt) {
@@ -920,6 +1023,7 @@ const MotionIntegration = (() => {
             _reach.side = cmd.side === 'left' ? 'left' : 'right';
             _reach.high = cmd.name === 'high_five';
             _reach.active = true;
+            _reach.until = 0; // the contact flow owns the release (touch, timeout or stop)
             const user = getUserPosition();
             if (user) {
                 setLookAtTarget(user);

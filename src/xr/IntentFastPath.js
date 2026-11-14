@@ -178,6 +178,28 @@ const IntentFastPath = (() => {
                     { type: 'expression', name: 'happy', weight: 0.7 },
                 ]),
         },
+        // MO9. Gestures the tk256 VRMA set makes possible. "bye" is the commonest way a chat
+        // ends; now she waves goodbye instead of standing still. Plain "ciao" is left out — it is
+        // hello as often as goodbye.
+        {
+            label: 'goodbye',
+            re: /\b(bye|bye bye|goodbye|good bye|see you|see ya|arrivederci|adios|au revoir|tsch(u|ü)ss|auf wiedersehen)\b/,
+            plan: () =>
+                _plan([
+                    { type: 'gesture', name: 'goodbye' },
+                    { type: 'expression', name: 'happy', weight: 0.5 },
+                ]),
+        },
+        {
+            label: 'jump',
+            re: /\b(jump|hop|salta|saute)\b/,
+            plan: () => _plan([{ type: 'gesture', name: 'jump' }]),
+        },
+        {
+            label: 'look_around',
+            re: /\b(look around|guardati (intorno|attorno)|mira alrededor|regarde autour|schau dich um)\b/,
+            plan: () => _plan([{ type: 'gesture', name: 'look_around' }]),
+        },
         {
             label: 'bow',
             re: /\b(bow|take a bow|reverencia|inclinati|inchino|salut|verbeug dich|reverencia)\b/,

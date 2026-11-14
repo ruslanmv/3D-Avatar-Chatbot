@@ -250,8 +250,16 @@
     function getAnimationHipsRestY(gltf, vrmaData) {
         try {
             var json = C.safeGet(gltf, ['parser', 'json']);
-            var hipsIdx = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones', 'hips', 'node']);
-            if (json && json.nodes && hipsIdx != null && json.nodes[hipsIdx]) {
+            // MO8. Not C.safeGet for the index: it returns `value || null`, and the hips are glTF
+            // node 0 in every tk256 clip — so the rest height read as 0, the scale fell back to 1,
+            // and the file's absolute hips height (~0.87 m, authored on a 0.90 m rig) was written
+            // onto every avatar verbatim. On VRM_Viewer_Sample (hips 0.69) Clapping and the idle
+            // waiting-standard held her 0.2 m off the floor; on Vita (0.98) Jump and Sleepy sank
+            // her into it. That, not the skeleton, is why the vrma README marked six clips
+            // "incompatible".
+            var hb = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones']);
+            var hipsIdx = hb && hb.hips ? hb.hips.node : null;
+            if (json && json.nodes && typeof hipsIdx === 'number' && json.nodes[hipsIdx]) {
                 var t = json.nodes[hipsIdx].translation;
                 if (t && isFinite(t[1])) return Math.abs(t[1]);
             }
@@ -286,7 +294,18 @@
     function normalizeHipsTrack(values, gltf, vrmaData, normNode) {
         var out = new Float32Array(values.length);
         var animRestY = getAnimationHipsRestY(gltf, vrmaData);
-        var targetRestY = normNode && normNode.position ? Math.abs(normNode.position.y) : 0;
+        // MO8. Her REST hips height, recorded when the avatar registered — not where the last clip
+        // left the normalized hips. Reading the live value compounded: after one clip held her at
+        // 0.88 m, the next clip was scaled to 0.88 m too (the BVH loader got the same fix in MO6).
+        var targetRestY = 0;
+        try {
+            var rawHips = S.cachedBoneMap && S.cachedBoneMap.hips;
+            var rest = rawHips && rawHips.userData ? rawHips.userData.nexusRestHips : null;
+            if (rest && isFinite(rest.y)) targetRestY = Math.abs(rest.y);
+        } catch (_) {
+            /* fall back to the live node below */
+        }
+        if (!(targetRestY > 1e-6)) targetRestY = normNode && normNode.position ? Math.abs(normNode.position.y) : 0;
         var scale = animRestY > 1e-6 && targetRestY > 1e-6 ? targetRestY / animRestY : 1;
 
         // Some clips encode hips translation absolutely (official VRoid), others

@@ -66,3 +66,21 @@ JSON alone.
   avatar**, not the per-job rest: a sinking VRMA displaces the next job's rest.
   `hips-floating` (> 1.6× standing) is a fail — Mixamo root tracks lift her
   2.4–3.6 m.
+
+## Gestures the model and chat can trigger (MO7–MO9)
+
+- `MotionClipMap.availableNames()` offers only names her body can perform (a
+  playable candidate or a procedural stand-in). backflip is withheld: its only
+  clip floats her.
+- Quarantined Mixamo gestures fall through to grounded clips: clap →
+  `vrma/Clapping.vrma` then `emotion/approval2.bvh`, victory →
+  `emotion/excitement2.bvh`, shrug → `emotion/confusion.bvh`, sing →
+  `emotion/joy.bvh`, jumping_jacks → `exercise/exercise_jumping_jacks.bvh`; bow,
+  nod, headshake are procedural on raw bones; point / high five / raise hand /
+  offer hand / handshake are IK on raw bones.
+- tk256 VRMA re-enabled (MO8 fixed their hips scaling): goodbye ("bye"), jump,
+  look_around, blush, sleepy. Idle pool prefers ChatVRM `idle_loop.vrma`
+  (weight 3).
+- Before adding a VRMA: measure it on more than one avatar height —
+  AvatarSample_A's hips (0.89 m) match the authoring rig, so a scaling bug is
+  invisible there.

@@ -139,7 +139,12 @@
         // gate would false-warn every healthy clip. Opt in with blackBackground.
         if (input && input.frame && input.frame.verdict === 'near-black frame' && !(input && input.blackBackground))
             flags.push('near-black');
-        if (legsInverted(rest, last)) flags.push('legs-inverted');
+        // A floor exercise (crunch, sit-up, plank, push-up) is lying on the floor with the knees
+        // up: low hips and thighs pointing upward are the clip working, not a ruined retarget.
+        // exercise_crunch.bvh failed on 15 of 17 avatars for exactly that, on frames that show a
+        // correct crunch.
+        const floor = !!(input && input.floor);
+        if (!floor && legsInverted(rest, last)) flags.push('legs-inverted');
         if (expectedMotion && looksLikeTPose(rest, last) && motion < 0.05) flags.push('t-pose');
         if (expectedMotion && motion < 0.012 && played) flags.push('no-motion');
         if (input && input.experimental) flags.push('experimental');
@@ -157,7 +162,7 @@
             if (kind !== 'pose' && (category === 'laying' || category === 'lay' || category === 'lying')) {
                 if (last.hips.y > rest.hips.y * 0.55) flags.push('lay-not-lowered');
             }
-            if (!/lay|lying|sit|kneel|ground/.test(category) && last.hips.y < standY * 0.25)
+            if (!floor && !/lay|lying|sit|kneel|ground/.test(category) && last.hips.y < standY * 0.25)
                 flags.push('hips-underground');
             // The opposite failure: Mixamo-origin VRMA (waving, backflip, the hip-hop/samba dances)
             // carry an absolute root track that lifts her 2.3–3.5 m — out of frame, gone. Nothing

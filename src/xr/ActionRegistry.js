@@ -217,6 +217,52 @@ const ActionRegistry = (() => {
                 it: ['applaudi', 'un applauso', 'batti le mani'],
             },
         },
+        // MO9. The tk256 VRMA gestures, re-enabled once their hips were scaled to the avatar.
+        {
+            id: 'goodbye',
+            icon: '🫡',
+            phrases: {
+                en: ['bye', 'goodbye', 'see you'],
+                es: ['adiós', 'hasta luego', 'nos vemos'],
+                it: ['arrivederci', 'a presto', 'ci vediamo'],
+            },
+        },
+        {
+            id: 'jump',
+            icon: '🦘',
+            phrases: {
+                en: ['jump', 'hop', 'jump up'],
+                es: ['salta', 'da un salto', 'brinca'],
+                it: ['salta', 'fai un salto', 'saltella'],
+            },
+        },
+        {
+            id: 'look_around',
+            icon: '🧐',
+            phrases: {
+                en: ['look around', 'have a look around', 'look about'],
+                es: ['mira alrededor', 'echa un vistazo', 'mira a tu alrededor'],
+                it: ['guardati intorno', "dai un'occhiata", 'guardati attorno'],
+            },
+        },
+        {
+            id: 'blush',
+            icon: '😊',
+            phrases: {
+                en: ['blush', 'be shy', 'you are embarrassed'],
+                es: ['sonrójate', 'ponte tímida', 'avergüénzate'],
+                it: ['arrossisci', 'fai la timida', 'imbarazzati'],
+            },
+        },
+        {
+            id: 'sleepy',
+            icon: '😴',
+            phrases: {
+                en: ['you look sleepy', 'are you tired', 'yawn'],
+                es: ['tienes sueño', 'estás cansada', 'bosteza'],
+                it: ['hai sonno', 'sei stanca', 'sbadiglia'],
+            },
+        },
         // ── posture ──
         {
             id: 'sit',

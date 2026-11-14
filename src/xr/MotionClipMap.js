@@ -118,7 +118,15 @@ const MotionClipMap = (() => {
                 VEND + 'idle/neutral3.bvh',
                 VEND + 'idle/neutral4.bvh',
                 VEND + 'vrma/waiting-standard.vrma',
+                // MO9. ChatVRM's breathing idle (MIT, audited in PR #153): a calm, centred loop
+                // that reads as "listening" rather than a mocap performer shifting her weight.
+                // Authored in centimetres (hips rest 90.57); the loader scales it (MO8).
+                VEND + 'vrma/idle_loop.vrma',
             ],
+            // MO9. Preferred, not exclusive: three tickets in the shuffle bag, so it is 3 of every
+            // 10 idles — the single most likely one — and the BVH idles keep their variety. The
+            // weight lives here, not as repeated candidates, so the pool stays a list of files.
+            weights: { [VEND + 'vrma/idle_loop.vrma']: 3 },
             loop: true,
             sticky: true,
             random: true,
@@ -132,13 +140,48 @@ const MotionClipMap = (() => {
 
         wave: { candidates: [ACT + 'waving.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
         greeting: { candidates: [ACT + 'standingGreeting.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
-        bow: { candidates: [ACT + 'bowing.vrma'], loop: false },
-        shrug: { candidates: [ACT + 'shrugging.vrma'], loop: false },
-        clap: { candidates: [ACT + 'standingClap.vrma'], loop: false },
-        victory: { candidates: [ACT + 'victory.vrma'], loop: false },
-        sing: { candidates: [ACT + 'singing.vrma'], loop: true, sticky: true },
+        // MO7. #152 quarantined the Mixamo action pack (it floats her 2.3–3.7 m, or folds her
+        // body), which was right — but for these seven it was the ONLY candidate, so "bow",
+        // "clap" and the rest resolved to an empty list and she did nothing while the chat said
+        // she had. Each now falls through to a shipped clip measured to keep her on her feet
+        // (hips within ±0.13 m of standing on AvatarSample_A, frames checked by eye), chosen for
+        // what it looks like rather than what it is called:
+        //
+        //   clap          emotion/approval2.bvh        hands together at the chest
+        //   jumping_jacks exercise_jumping_jacks.bvh   the real exercise, arms to shoulder height
+        //   victory       emotion/excitement2.bvh      both arms up over her head
+        //   shrug         emotion/confusion.bvh        hand to the face — the "I don't know" read
+        //   sing          emotion/joy.bvh              a gentle looping sway while she sings
+        //   bow           procedural (MotionIntegration) — nothing in the library is a bow
+        //
+        // All five come from manifest categories library-only mode trusts. vrma/Clapping.vrma
+        // played on AvatarSample_A but its own README lists it as incompatible with other rigs, so
+        // it is not used.
+        //
+        // backflip keeps no stand-in: a jump is not a backflip, and offering one would be the
+        // same lie in a different shape. availableNames() leaves it out of the model's
+        // vocabulary while its only clip is quarantined.
+        bow: { candidates: [ACT + 'bowing.vrma'], loop: false, procedural: 'bow' },
+        shrug: { candidates: [ACT + 'shrugging.vrma', VEND + 'emotion/confusion.bvh'], loop: false },
+        clap: {
+            candidates: [ACT + 'standingClap.vrma', VEND + 'vrma/Clapping.vrma', VEND + 'emotion/approval2.bvh'],
+            loop: false,
+        },
+        victory: { candidates: [ACT + 'victory.vrma', VEND + 'emotion/excitement2.bvh'], loop: false },
+        sing: { candidates: [ACT + 'singing.vrma', VEND + 'emotion/joy.bvh'], loop: true, sticky: true },
         backflip: { candidates: [ACT + 'backflip.vrma'], loop: false },
-        jumping_jacks: { candidates: [ACT + 'jumpingJacks.vrma'], loop: false },
+        // MO9. The tk256 six, re-enabled once MO8 scaled their hips to the avatar (they were
+        // parked as "skeleton-incompatible"; it was a lookup bug). Native VRMA, MIT, measured
+        // grounded on AvatarSample_A, VRM_Viewer_Sample (0.69 m), Vita (0.98 m) and others.
+        goodbye: { candidates: [VEND + 'vrma/Goodbye.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
+        look_around: { candidates: [VEND + 'vrma/LookAround.vrma'], loop: false },
+        blush: { candidates: [VEND + 'vrma/Blush.vrma'], loop: false },
+        sleepy: { candidates: [VEND + 'vrma/Sleepy.vrma'], loop: false },
+        jump: { candidates: [VEND + 'vrma/Jump.vrma', VEND + 'action/action_jump.bvh'], loop: false },
+        jumping_jacks: {
+            candidates: [ACT + 'jumpingJacks.vrma', VEND + 'exercise/exercise_jumping_jacks.bvh'],
+            loop: false,
+        },
 
         // Posture — sit_down/stand_up come from the generated pack; the
         // shipped sit_idle/standup assets are the always-working fallback.
@@ -265,6 +308,16 @@ const MotionClipMap = (() => {
         no: 'headshake',
         yes: 'nod',
         celebrate: 'victory',
+        bye: 'goodbye',
+        farewell: 'goodbye',
+        see_you: 'goodbye',
+        look: 'look_around',
+        curious: 'look_around',
+        shy: 'blush',
+        embarrassed: 'blush',
+        tired: 'sleepy',
+        yawn: 'sleepy',
+        hop: 'jump',
     };
 
     /** Paths that failed to load once are skipped next time (missing pack). */
@@ -624,11 +677,15 @@ const MotionClipMap = (() => {
 
     /** Shuffle bags per name, so repeats do not come back-to-back. @private */
     const _bags = Object.create(null);
-    function _drawFrom(key, paths) {
+    function _drawFrom(key, paths, weights) {
         if (paths.length === 1) return paths.slice();
         let bag = _bags[key];
         if (!bag || !bag.length) {
-            bag = paths.slice();
+            bag = [];
+            for (const p of paths) {
+                const n = weights && weights[p] > 1 ? Math.floor(weights[p]) : 1;
+                for (let k = 0; k < n; k++) bag.push(p);
+            }
             for (let i = bag.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 const t = bag[i];
@@ -714,7 +771,7 @@ const MotionClipMap = (() => {
                     direct.candidates.concat(extra.filter((p) => direct.candidates.indexOf(p) === -1))
                 );
                 if (pool.length) {
-                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool) });
+                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool, direct.weights) });
                 }
                 return Object.assign({}, direct, { candidates: [] });
             }
@@ -1025,7 +1082,25 @@ const MotionClipMap = (() => {
         // does the rest. Matching the `_idle` suffix rather than naming each
         // one keeps a future posture from leaking into the vocabulary the way
         // `lay_idle` just did.
-        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && !/_idle$/.test(n));
+        //
+        // MO7. And only names her body can actually perform. A name whose every candidate is
+        // quarantined or filtered out, with no procedural stand-in, resolves to nothing — offering
+        // it taught the model to promise a backflip the avatar then never did.
+        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && !/_idle$/.test(n) && _performable(n));
+    }
+
+    /** Can this entry move her at all: a playable candidate, the library behind it, or a procedural? */
+    function _performable(name) {
+        const e = ENTRIES[name];
+        if (!e) return false;
+        if (e.procedural) return true;
+        // Before the manifest has loaded, library-only mode trusts nothing yet, and every vendor
+        // clip would read as unplayable for a moment. Judge by the quarantine alone until then —
+        // that is the filter which empties names for good.
+        if (!_manifest()) return e.candidates.some((c) => !(_quarantineOn && QUARANTINE[c]));
+        if (_restrict(e.candidates).length) return true;
+        if (e.curated) return false;
+        return _restrict(_idx()[name] || []).length > 0;
     }
 
     return {
