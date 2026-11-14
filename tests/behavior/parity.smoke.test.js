@@ -54,6 +54,7 @@ const SKIP_DIRS = new Set([
     'tests',
     'docs',
     'scripts',
+    'audits', // measurement pipelines (audits/motion reads the KB), never loaded by the app
     'config',
     '.github',
 ]);
