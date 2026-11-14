@@ -40,6 +40,17 @@
 (function (global) {
     'use strict';
 
+    function tx(key, fallback, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
     var ROOT_ID = 'nexus-try-on-view';
     var STYLE_ID = 'nexus-try-on-style';
     var REVEAL_MS = 900;
@@ -275,13 +286,19 @@
                 id: ROOT_ID,
                 role: 'dialog',
                 'aria-modal': 'true',
-                'aria-label': 'Try-On',
+                'aria-label': tx('view.title', 'Try-On'),
             });
             this.host = host || null;
             var parent = host || this.doc.body;
             if (!host) this.root.classList.add('is-floating');
             parent.appendChild(this.root);
             this.root.addEventListener('keydown', this._onKey);
+            var win = this.doc.defaultView || global;
+            var view = this;
+            this._onLanguage = function () {
+                if (view.root) view.render();
+            };
+            if (win && win.addEventListener) win.addEventListener('nexus:language-changed', this._onLanguage);
             this.render();
             this._loadPacks();
             var first = this.root.querySelector('.nexus-try-on-card:not([disabled]), button:not([disabled]), input');
@@ -290,6 +307,10 @@
         }
 
         unmount() {
+            var win = this.doc && (this.doc.defaultView || global);
+            if (win && win.removeEventListener && this._onLanguage)
+                win.removeEventListener('nexus:language-changed', this._onLanguage);
+            this._onLanguage = null;
             if (this._abort) this._abort.abort();
             if (this._reactionTimer) this.timers.clearTimeout(this._reactionTimer);
             if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
@@ -357,7 +378,9 @@
                         class: 'nexus-try-on-primary',
                         'data-key': 'keep',
                         disabled: !state.look || state.busy,
-                        text: state.look ? '♥ KEEP THIS LOOK' : 'KEEP THIS LOOK',
+                        text: state.look
+                            ? tx('view.keep', '♥ KEEP THIS LOOK')
+                            : tx('view.keepPlain', 'KEEP THIS LOOK'),
                         onclick: this.keep.bind(this),
                     })
                 );
@@ -367,7 +390,7 @@
                     type: 'button',
                     class: 'nexus-bd-together-cancel',
                     'data-key': state.began ? 'end' : 'back',
-                    text: state.began ? 'End haul' : 'Back',
+                    text: state.began ? tx('view.end', 'End haul') : tx('view.back', 'Back'),
                     onclick: function () {
                         this.close(state.began ? 'ended' : 'back');
                     }.bind(this),
@@ -404,14 +427,14 @@
             var self = this;
             return h(doc, 'div', { class: 'nexus-try-on-head' }, [
                 h(doc, 'span', { 'aria-hidden': 'true', style: 'width:2.6rem' }),
-                h(doc, 'p', { class: 'nexus-bd-together-head', text: 'TOGETHER · TRY-ON' }),
+                h(doc, 'p', { class: 'nexus-bd-together-head', text: tx('view.head', 'TOGETHER · TRY-ON') }),
                 state.began
                     ? h(doc, 'button', {
                           type: 'button',
                           class: 'nexus-try-on-hide',
                           'data-key': 'collapse',
                           'aria-expanded': this.collapsed ? 'false' : 'true',
-                          text: this.collapsed ? 'More ▴' : 'Hide ▾',
+                          text: this.collapsed ? tx('view.more', 'More ▴') : tx('view.hide', 'Hide ▾'),
                           onclick: function () {
                               self.collapsed = !self.collapsed;
                               self._keepOpen = !self.collapsed;
@@ -445,25 +468,27 @@
             };
             return [
                 h(doc, 'div', { class: 'nexus-try-on-remote' }, [
-                    button('previous', '‹', 'Previous look', function () {
+                    button('previous', '‹', tx('view.previous', 'Previous look'), function () {
                         self._step(-1);
                     }),
-                    button('favorite', state.favorite ? '♥' : '♡', 'Save', this.favorite.bind(this), {
+                    button('favorite', state.favorite ? '♥' : '♡', tx('view.save', 'Save'), this.favorite.bind(this), {
                         'aria-pressed': state.favorite ? 'true' : 'false',
                         disabled: !state.look,
                     }),
                     button(
                         'compare',
                         '◐',
-                        state.comparing ? 'Back to the current look' : 'Compare',
+                        state.comparing
+                            ? tx('view.compareBack', 'Back to the current look')
+                            : tx('view.compare', 'Compare'),
                         function () {
                             if (state.comparing) return self.compare(null);
                             return self.compare(state.canCompare.previous ? 'previous' : 'original');
                         },
                         { disabled: !state.comparing && !state.canCompare.previous && !state.canCompare.original }
                     ),
-                    this.turner ? button('turn', '↻', 'Turn', this.turn.bind(this)) : null,
-                    button('next', '›', 'Next look', function () {
+                    this.turner ? button('turn', '↻', tx('view.turn', 'Turn'), this.turn.bind(this)) : null,
+                    button('next', '›', tx('view.next', 'Next look'), function () {
                         self._step(1);
                     }),
                 ]),
@@ -476,7 +501,9 @@
             if (this.creating && this.progress && this.progress.stage) return this.progress.stage.line;
             if (this.reaction) return this.reaction.line;
             if (state.comparing)
-                return 'Showing ' + (state.comparing === 'original' ? 'the original' : 'the previous look');
+                return state.comparing === 'original'
+                    ? tx('view.showingOriginal', 'Showing the original')
+                    : tx('view.showingPrevious', 'Showing the previous look');
             if (state.look) return state.look.name;
             return '';
         }
@@ -582,27 +609,37 @@
             var revealing = this._revealNext;
             this._revealNext = false;
             if (!state.began && !state.going) {
-                children.push(h(doc, 'p', { class: 'nexus-try-on-current', text: 'What should she try?' }));
+                children.push(
+                    h(doc, 'p', { class: 'nexus-try-on-current', text: tx('view.whatTry', 'What should she try?') })
+                );
             } else {
                 var showing = state.going || state.worn || {};
                 var name = state.comparing
                     ? state.comparing === 'original'
-                        ? 'Original'
-                        : (showing && showing.name) || 'Previous look'
-                    : (state.going || state.look || {}).name || 'Original';
+                        ? tx('haul.original', 'Original')
+                        : (showing && showing.name) || tx('view.previous', 'Previous look')
+                    : (state.going || state.look || {}).name || tx('haul.original', 'Original');
                 children.push(h(doc, 'p', { class: 'nexus-try-on-current', text: name }));
                 var line;
-                if (state.busy) line = 'Putting it on…';
+                if (state.busy) line = tx('view.puttingOn', 'Putting it on…');
                 else if (state.comparing)
-                    line = state.comparing === 'original' ? 'Original ↔ current' : 'Previous ↔ current';
-                else if (state.playing) line = 'Show mode';
+                    line =
+                        state.comparing === 'original'
+                            ? tx('view.compareOriginal', 'Original ↔ current')
+                            : tx('view.comparePrevious', 'Previous ↔ current');
+                else if (state.playing) line = tx('view.showMode', 'Show mode');
                 else if (state.look && state.position !== -1)
-                    line = 'Look ' + (state.position + 1) + ' of ' + state.total;
-                else if (!state.look) line = 'How she started';
+                    line = tx('view.lookCount', 'Look {n} of {total}', {
+                        n: state.position + 1,
+                        total: state.total,
+                    });
+                else if (!state.look) line = tx('view.howStarted', 'How she started');
                 if (line) children.push(h(doc, 'p', { class: 'nexus-try-on-counter', text: line }));
                 var look = state.look;
                 if (look && look.fitPassed === false && !state.comparing) {
-                    children.push(h(doc, 'p', { class: 'nexus-try-on-fit is-bad', text: 'Fit needs work' }));
+                    children.push(
+                        h(doc, 'p', { class: 'nexus-try-on-fit is-bad', text: tx('view.fitNeeds', 'Fit needs work') })
+                    );
                 }
             }
             var stage = h(doc, 'div', { class: 'nexus-try-on-stage' + (revealing ? ' is-revealing' : '') }, children);
@@ -755,7 +792,8 @@
         _strip(state) {
             var doc = this.doc;
             var self = this;
-            if (this.loading) return h(doc, 'p', { class: 'nexus-try-on-empty', text: 'Opening her wardrobe…' });
+            if (this.loading)
+                return h(doc, 'p', { class: 'nexus-try-on-empty', text: tx('view.opening', 'Opening her wardrobe…') });
             var headKey = state.look ? this._key(state.look) : null;
             var goingKey = state.going && !state.going.original ? this._key(state.going) : null;
             var cards = state.looks.map(function (look) {
@@ -803,7 +841,7 @@
             var strip = h(doc, 'div', { class: 'nexus-try-on-strip', role: 'group', 'aria-label': 'Her looks' }, cards);
             if (!state.looks.length && !this.creating) {
                 return h(doc, 'div', {}, [
-                    h(doc, 'p', { class: 'nexus-try-on-empty', text: 'No looks for her yet.' }),
+                    h(doc, 'p', { class: 'nexus-try-on-empty', text: tx('view.noLooks', 'No looks for her yet.') }),
                     strip,
                 ]);
             }
@@ -877,7 +915,7 @@
                         class: 'nexus-try-on-tab' + (category.private ? ' is-private' : ''),
                         'aria-selected': self.category === category.id ? 'true' : 'false',
                         'data-key': 'tab:' + category.id,
-                        text: category.label,
+                        text: tx('group.' + category.id, category.label),
                         onclick: function () {
                             self.category = category.id;
                             self.render();
@@ -999,7 +1037,12 @@
                     // PT1. Private outfits wait for her avatar's declaration; the tattoos Forge
                     // rates general do not, so private mode still has them to offer.
                     return h(doc, 'div', { class: 'nexus-try-on-sections' }, [
-                        h(doc, 'p', { class: 'nexus-try-on-note', text: this.privateState.why || '' }),
+                        h(doc, 'p', {
+                            class: 'nexus-try-on-note',
+                            text: this.privateState.whyKey
+                                ? tx(this.privateState.whyKey, this.privateState.why || '', this.privateState.whyVars)
+                                : this.privateState.why || '',
+                        }),
                         this._tattoos(state, chip),
                     ]);
                 }
@@ -1013,7 +1056,7 @@
                         chips.push(
                             chip(
                                 'outfit:' + entry.id,
-                                entry.title,
+                                tx('outfit.' + entry.id, entry.title),
                                 function () {
                                     self.wearOutfit(entry);
                                 },
@@ -1027,7 +1070,7 @@
                             chips.push(
                                 chip(
                                     'pick:' + pick.label,
-                                    pick.label,
+                                    tx('suggest.' + pick.label, pick.label),
                                     function () {
                                         self.create({
                                             prompt: pick.prompt,
@@ -1044,7 +1087,7 @@
                     );
                 }
                 chips.push(
-                    chip('surprise', 'Surprise me', function () {
+                    chip('surprise', tx('view.surprise', 'Surprise me'), function () {
                         self.surprise();
                     })
                 );
@@ -1055,7 +1098,7 @@
                     h(doc, 'p', {
                         class: 'nexus-try-on-section',
                         'data-key': 'section:outfits',
-                        text: 'Private outfits',
+                        text: tx('view.privateOutfits', 'Private outfits'),
                     }),
                     h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, chips),
                     this._tattoos(state, chip),
@@ -1068,13 +1111,17 @@
                     seen[slot] = true;
                     var word = { top: 'top', bottom: 'bottoms', dress: 'dress' }[slot];
                     chips.push(
-                        chip('change:' + slot, 'Change ' + word, function () {
-                            self.say('change the ' + word);
-                        })
+                        chip(
+                            'change:' + slot,
+                            tx('view.change', 'Change {part}', { part: tx('slot.' + slot, word) }),
+                            function () {
+                                self.say('change the ' + word);
+                            }
+                        )
                     );
                 });
                 chips.push(
-                    chip('change:colour', 'Change colour', function () {
+                    chip('change:colour', tx('view.changeColour', 'Change colour'), function () {
                         self.say('change colour');
                     })
                 );
@@ -1087,7 +1134,7 @@
                     })
                     .forEach(function (entry) {
                         chips.push(
-                            chip('outfit:' + entry.id, entry.title, function () {
+                            chip('outfit:' + entry.id, tx('outfit.' + entry.id, entry.title), function () {
                                 self.wearOutfit(entry);
                             })
                         );
@@ -1095,14 +1142,14 @@
             } else if (canCreate) {
                 this.Intent.suggestions(this.category).forEach(function (pick) {
                     chips.push(
-                        chip('pick:' + pick.label, pick.label, function () {
+                        chip('pick:' + pick.label, tx('suggest.' + pick.label, pick.label), function () {
                             self.create({ prompt: pick.prompt, mode: 'fresh', baseLookId: null, label: pick.label });
                         })
                     );
                 });
             }
             chips.push(
-                chip('surprise', 'Surprise me', function () {
+                chip('surprise', tx('view.surprise', 'Surprise me'), function () {
                     self.surprise();
                 })
             );

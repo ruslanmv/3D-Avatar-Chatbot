@@ -29,6 +29,24 @@
 (function (global) {
     'use strict';
 
+    function tx(key, fallback, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
+    function stateLabel(state) {
+        if (state === 'Wearing now') return tx('under.wearing', state);
+        if (state && state.indexOf('Stylist') === 0) return tx('under.pick', state);
+        if (state === 'Ready') return tx('under.ready', state);
+        return state || '';
+    }
+
     var STYLE_ID = 'nexus-try-on-underneath-style';
     var CSS = [
         '.nexus-under-overlay{position:fixed;inset:0;z-index:2400;display:flex;align-items:flex-end;',
@@ -308,15 +326,20 @@
             parts.push(grab);
             var head = el(doc, 'div', 'nexus-under-head');
             var heading = el(doc, 'div');
-            var kicker = el(doc, 'p', 'nexus-under-kicker', 'WHAT’S UNDERNEATH');
+            var kicker = el(doc, 'p', 'nexus-under-kicker', tx('under.kicker', 'WHAT\u2019S UNDERNEATH'));
             kicker.id = 'nexus-under-kicker';
             heading.appendChild(kicker);
             heading.appendChild(
-                el(doc, 'p', 'nexus-under-title', (look ? look.name : 'Her look') + ' · ' + piecesLine(look))
+                el(
+                    doc,
+                    'p',
+                    'nexus-under-title',
+                    (look ? look.name : tx('under.herLook', 'Her look')) + ' · ' + piecesLine(look)
+                )
             );
             var x = el(doc, 'button', 'nexus-under-x', '×');
             x.type = 'button';
-            x.setAttribute('aria-label', 'Close');
+            x.setAttribute('aria-label', tx('under.close', 'Close'));
             x.disabled = working;
             x.addEventListener('click', function () {
                 self.hide();
@@ -336,15 +359,21 @@
                     button.dataset.color = c.value;
                     var picked = (self.selected || current) === c.value;
                     button.setAttribute('aria-pressed', String(picked));
-                    button.setAttribute('aria-label', c.label + ' underneath' + (c.state ? ', ' + c.state : ''));
+                    var colorName = tx('color.' + c.value, c.label);
+                    var stateName = stateLabel(c.state);
+                    button.setAttribute(
+                        'aria-label',
+                        tx('under.aria', '{label} underneath', { label: colorName }) +
+                            (stateName ? ', ' + stateName : '')
+                    );
                     button.disabled = working;
                     var fabric = el(doc, 'span', 'nexus-under-fabric');
                     fabric.style.setProperty('--fabric', c.hex);
                     fabric.setAttribute('aria-hidden', 'true');
                     var text = el(doc, 'span');
-                    text.appendChild(el(doc, 'span', 'nexus-under-name', c.label));
+                    text.appendChild(el(doc, 'span', 'nexus-under-name', tx('color.' + c.value, c.label)));
                     text.appendChild(el(doc, 'span', 'nexus-under-pieces', piecesLine(look)));
-                    if (c.state) text.appendChild(el(doc, 'span', 'nexus-under-state', c.state));
+                    if (c.state) text.appendChild(el(doc, 'span', 'nexus-under-state', stateLabel(c.state)));
                     button.appendChild(fabric);
                     button.appendChild(text);
                     button.addEventListener('click', function () {
@@ -357,13 +386,13 @@
             parts.push(grid);
 
             var more = el(doc, 'div', 'nexus-under-more');
-            more.appendChild(el(doc, 'span', 'nexus-under-pieces', 'More colours:'));
+            more.appendChild(el(doc, 'span', 'nexus-under-pieces', tx('under.more', 'More colours:')));
             cards
                 .filter(function (c) {
                     return FEATURED.indexOf(c.value) === -1;
                 })
                 .forEach(function (c) {
-                    var chip = el(doc, 'button', 'nexus-under-chip', c.label);
+                    var chip = el(doc, 'button', 'nexus-under-chip', tx('color.' + c.value, c.label));
                     chip.type = 'button';
                     chip.setAttribute('aria-pressed', String((self.selected || current) === c.value));
                     chip.disabled = working;
@@ -396,27 +425,32 @@
                 if (this.previous) {
                     var other = (this.previous.underneath && this.previous.underneath.color) || 'beige';
                     actions.appendChild(
-                        this._button(this.comparing ? 'Back to ' + current : 'Compare with ' + other, function () {
-                            self.compare();
-                        })
+                        this._button(
+                            this.comparing
+                                ? tx('under.back', 'Back to {color}', { color: tx('color.' + current, current) })
+                                : tx('under.compare', 'Compare with {color}', { color: tx('color.' + other, other) }),
+                            function () {
+                                self.compare();
+                            }
+                        )
                     );
                 }
                 actions.appendChild(
-                    this._button('Save look', function () {
+                    this._button(tx('under.save', 'Save look'), function () {
                         if (self.view && typeof self.view.favorite === 'function') self.view.favorite();
-                        self.message = 'Saved to her looks.';
+                        self.message = tx('under.saved', 'Saved to her looks.');
                         self.render();
                     })
                 );
             } else {
                 var apply = this._button(
                     working
-                        ? 'Making it ' + target + '…'
+                        ? tx('under.making', 'Making it {color}…', { color: tx('color.' + target, target) })
                         : !target
-                          ? 'Choose a colour'
+                          ? tx('under.choose', 'Choose a colour')
                           : target === current
-                            ? cap(current) + ' is on'
-                            : 'Try it in ' + target,
+                            ? tx('under.on', '{color} is on', { color: tx('color.' + current, cap(current)) })
+                            : tx('under.try', 'Try it in {color}', { color: tx('color.' + target, target) }),
                     function () {
                         self.choose(target);
                     },

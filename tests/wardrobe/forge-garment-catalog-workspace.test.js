@@ -107,7 +107,7 @@ describe('real garment catalog within Try-On', () => {
         expect(view.create).not.toHaveBeenCalled();
         const colors = document.querySelectorAll('.nexus-catalog-swatch');
         expect(colors.length).toBeGreaterThan(0);
-        const red = Array.from(colors).find((el) => el.getAttribute('aria-label') === 'red');
+        const red = Array.from(colors).find((el) => el.style.backgroundColor === 'red');
         red.click();
         await document.querySelector('.nexus-catalog-primary').click();
         await new Promise((resolve) => setTimeout(resolve, 0));

@@ -96,10 +96,32 @@
             var presenting = Boolean(
                 viewer && viewer.renderer && viewer.renderer.xr && viewer.renderer.xr.isPresenting
             );
+            // LT6. A look is the same person in other clothes, so her turn survives the
+            // swap. The avatar picker does not come through here and still faces the camera.
+            var swap = { keepFacing: true };
             if (viewer && typeof viewer.loadAvatar === 'function' && !presenting) {
-                return viewer.loadAvatar(url, name, index);
+                return viewer.loadAvatar(url, name, index, swap);
             }
-            return manager.setAvatarByUrl(url, name, index);
+            return manager.setAvatarByUrl(url, name, index, swap);
+        }
+
+        /**
+         * LT6. Warm a look's file before it is worn. The session asks for the next and
+         * previous looks; a manager without preload (tests, an older viewer) is a no-op.
+         */
+        prime(look) {
+            var manager = this.avatarManager;
+            if (!manager || typeof manager.preload !== 'function' || !look) return;
+            var raw = look.vrmUrl || look.vrm_url;
+            if (!raw || look.original) return;
+            var url = this.forge && typeof this.forge.resolveUrl === 'function' ? this.forge.resolveUrl(raw) : raw;
+            if (!url) return;
+            try {
+                var pending = manager.preload(url);
+                if (pending && typeof pending.catch === 'function') pending.catch(function () {});
+            } catch (error) {
+                console.warn('[Wardrobe] could not preload the next look', error);
+            }
         }
 
         /**

@@ -443,9 +443,13 @@ describe('a look is loaded the way every avatar is (LT5)', () => {
         viewer.loadAvatar = jest.fn(async (url, name, index) => viewer.avatarManager.setAvatarByUrl(url, name, index));
         const wardrobe = new WardrobeController({ forge: { resolveUrl: (u) => u }, viewer });
         await wardrobe.applyLook(look);
-        expect(viewer.loadAvatar).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1);
+        expect(viewer.loadAvatar).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1, {
+            keepFacing: true,
+        });
         await wardrobe.restore();
-        expect(viewer.loadAvatar).toHaveBeenLastCalledWith('/vendor/avatars/fem_vroid.vrm', 'VRoid Female', 0);
+        expect(viewer.loadAvatar).toHaveBeenLastCalledWith('/vendor/avatars/fem_vroid.vrm', 'VRoid Female', 0, {
+            keepFacing: true,
+        });
         expect(viewer.camera.position.z).toBe(4.391); // and still holds the camera
     });
 
@@ -456,7 +460,7 @@ describe('a look is loaded the way every avatar is (LT5)', () => {
         const load = jest.spyOn(viewer.avatarManager, 'setAvatarByUrl');
         await new WardrobeController({ forge: { resolveUrl: (u) => u }, viewer }).applyLook(look);
         expect(viewer.loadAvatar).not.toHaveBeenCalled();
-        expect(load).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1);
+        expect(load).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1, { keepFacing: true });
     });
 });
 

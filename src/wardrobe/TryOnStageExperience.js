@@ -8,6 +8,18 @@
 (function (global) {
     'use strict';
 
+    /** Haul copy. English is the fallback so a page without the locale pack still reads. */
+    function tx(key, fallback, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
     var STYLE_ID = 'nexus-try-on-stage-style';
     // Zoom: how far in (a share of the distance) and how much higher it aims (per metre away).
     var ZOOM_SHARE = 0.55;
@@ -317,13 +329,13 @@
                 (doc.head || doc.documentElement).appendChild(style);
             }
             this.root = el(doc, 'aside', 'nexus-try-on-look-rail');
-            this.root.setAttribute('aria-label', 'Available outfits');
+            this.root.setAttribute('aria-label', tx('stage.rail', 'Available outfits'));
             preview.appendChild(this.root);
             preview.classList.add('nexus-try-on-stage-active');
             if (doc.documentElement) doc.documentElement.classList.add('nexus-try-on-stage-on');
-            this.badge = el(doc, 'div', 'nexus-stage-label', 'AI · LIVE TRY-ON');
+            this.badge = el(doc, 'div', 'nexus-stage-label', tx('stage.badge', 'AI · LIVE TRY-ON'));
             this.info = el(doc, 'section', 'nexus-stage-info');
-            this.info.setAttribute('aria-label', 'Current look and try-on controls');
+            this.info.setAttribute('aria-label', tx('stage.info', 'Current look and try-on controls'));
             preview.appendChild(this.badge);
             preview.appendChild(this.info);
             this.view.stageExperience = this;
@@ -375,17 +387,27 @@
 
         render(state) {
             if (!this.root || !state) return;
+            if (this.badge) this.badge.textContent = tx('stage.badge', 'AI · LIVE TRY-ON');
+            if (this.root) this.root.setAttribute('aria-label', tx('stage.rail', 'Available outfits'));
+            if (this.info) this.info.setAttribute('aria-label', tx('stage.info', 'Current look and try-on controls'));
             var doc = this.doc;
             var self = this;
             var activeFocus = doc.activeElement;
             var focusedLookKey = activeFocus && activeFocus.getAttribute('data-look-key');
             var tools = el(doc, 'div', 'nexus-look-rail-tools');
-            var title = el(doc, 'button', 'nexus-look-rail-title', 'Looks (' + (state.total || 0) + ')');
+            var total = state.total || 0;
+            var title = el(doc, 'button', 'nexus-look-rail-title', tx('stage.looks', 'Looks ({n})', { n: total }));
             title.type = 'button';
             title.setAttribute('aria-expanded', String(this.railOpen));
             title.setAttribute(
                 'aria-label',
-                (this.railOpen ? 'Hide' : 'Show') + ' the looks (' + (state.total || 0) + ')'
+                tx(
+                    this.railOpen ? 'stage.hideLooks' : 'stage.showLooks',
+                    (this.railOpen ? 'Hide' : 'Show') + ' the looks ({n})',
+                    {
+                        n: total,
+                    }
+                )
             );
             title.addEventListener('click', function () {
                 self.toggleRail();
@@ -393,7 +415,12 @@
             tools.appendChild(title);
             this.railTitle = title;
             this.root.classList.toggle('is-folded', !this.railOpen);
-            var editor = el(doc, 'button', 'nexus-look-rail-edit', this.expanded ? 'Close ×' : '＋ More');
+            var editor = el(
+                doc,
+                'button',
+                'nexus-look-rail-edit',
+                this.expanded ? tx('stage.close', 'Close ×') : tx('stage.more', '＋ More')
+            );
             editor.type = 'button';
             editor.setAttribute('aria-expanded', String(this.expanded));
             editor.addEventListener('click', function () {
@@ -403,19 +430,24 @@
 
             var list = el(doc, 'div', 'nexus-look-rail-list');
             list.setAttribute('role', 'group');
-            list.setAttribute('aria-label', 'Choose the avatar clothing');
+            list.setAttribute('aria-label', tx('stage.chooseClothing', 'Choose the avatar clothing'));
             var looks = state.looks || [];
             looks.forEach(function (look, index) {
                 var item = el(doc, 'button', 'nexus-look-rail-item');
                 item.type = 'button';
                 item.disabled = Boolean(state.busy);
-                item.setAttribute('aria-label', 'Try ' + (look.name || 'Look ' + (index + 1)));
+                item.setAttribute(
+                    'aria-label',
+                    tx('stage.try', 'Try {name}', {
+                        name: look.name || tx('stage.lookN', 'Look {n}', { n: index + 1 }),
+                    })
+                );
                 item.setAttribute(
                     'aria-pressed',
                     String(Boolean(state.look && self.view._key(look) === self.view._key(state.look)))
                 );
                 item.setAttribute('data-look-key', self.view._key(look));
-                item.title = look.name || 'Look ' + (index + 1);
+                item.title = look.name || tx('stage.lookN', 'Look {n}', { n: index + 1 });
                 if (look.previewUrl) {
                     var image = el(doc, 'img', 'nexus-look-rail-image');
                     image.src = look.previewUrl;
@@ -425,13 +457,21 @@
                 } else {
                     item.appendChild(el(doc, 'span', 'nexus-look-rail-no-image', '👗'));
                 }
-                item.appendChild(el(doc, 'span', 'nexus-look-rail-caption', shortName(look) || 'Look ' + (index + 1)));
+                item.appendChild(
+                    el(
+                        doc,
+                        'span',
+                        'nexus-look-rail-caption',
+                        shortName(look) || tx('stage.lookN', 'Look {n}', { n: index + 1 })
+                    )
+                );
                 item.addEventListener('click', function () {
                     self.view.wear(look);
                 });
                 list.appendChild(item);
             });
-            if (!looks.length) list.appendChild(el(doc, 'p', 'nexus-look-rail-empty', 'No outfits yet'));
+            if (!looks.length)
+                list.appendChild(el(doc, 'p', 'nexus-look-rail-empty', tx('stage.noOutfits', 'No outfits yet')));
             var scrollTop = this.list ? this.list.scrollTop : 0;
             this.root.replaceChildren(tools, list);
             list.scrollTop = scrollTop;
@@ -473,18 +513,20 @@
                     if (!reaction) reaction = change;
                 }
                 var desc = look.prompt || (look.provenance && look.provenance.prompt) || '';
+                var wornName = shortName(look) || tx('stage.thisLook', 'this look');
+                var pieces = desc
+                    ? String(desc)
+                          .split(/\s*[+&]\s*/)
+                          .filter(Boolean)
+                          .join(', ')
+                    : '';
+                // The prompt stays in the language Forge was given. Only the sentence around it moves.
                 line =
                     reaction ||
-                    'Now wearing ' +
-                        (shortName(look) || 'this look') +
-                        (desc
-                            ? ': ' +
-                              String(desc)
-                                  .split(/\s*[+&]\s*/)
-                                  .filter(Boolean)
-                                  .join(', ') +
-                              '.'
-                            : '.');
+                    tx('stage.wearing', 'Now wearing {name}{detail}', {
+                        name: wornName,
+                        detail: pieces ? ': ' + pieces + '.' : '.',
+                    });
             } else if (reaction && look && !look.original) {
                 line = reaction; // her reaction arrived after the look (the model answers later)
             }
@@ -562,18 +604,28 @@
             var known = colors.filter(function (c) {
                 return c.value === value;
             })[0];
-            var label = known ? known.label : value.charAt(0).toUpperCase() + value.slice(1);
+            var label = known ? tx('color.' + value, known.label) : value.charAt(0).toUpperCase() + value.slice(1);
             var chip = el(doc, 'button', 'nexus-stage-under');
             chip.type = 'button';
             chip.disabled = Boolean(state.busy);
             chip.setAttribute('aria-haspopup', 'dialog');
-            chip.setAttribute('aria-label', 'Underneath: ' + label + '. Change the colour');
+            chip.setAttribute(
+                'aria-label',
+                tx('stage.underAria', 'Underneath: {color}. Change the colour', { color: label })
+            );
             var dot = el(doc, 'i', 'nexus-stage-under-dot');
             dot.setAttribute('aria-hidden', 'true');
             if (known) dot.style.backgroundColor = known.hex;
             chip.appendChild(dot);
-            chip.appendChild(el(doc, 'span', 'nexus-stage-under-label', 'Underneath · ' + label));
-            chip.appendChild(el(doc, 'span', 'nexus-stage-under-change', 'Change'));
+            chip.appendChild(
+                el(
+                    doc,
+                    'span',
+                    'nexus-stage-under-label',
+                    tx('stage.underLabel', 'Underneath · {color}', { color: label })
+                )
+            );
+            chip.appendChild(el(doc, 'span', 'nexus-stage-under-change', tx('stage.underChange', 'Change')));
             chip.addEventListener('click', function () {
                 view.onUnderneath({ suggested: null, look: look });
             });
@@ -591,7 +643,12 @@
                     doc,
                     'p',
                     'nexus-stage-count',
-                    look ? 'CURRENT LOOK · LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'
+                    look
+                        ? tx('stage.current', 'CURRENT LOOK · LOOK {n} / {total}', {
+                              n: state.position + 1,
+                              total: state.total,
+                          })
+                        : tx('stage.studio', 'YOUR STYLE STUDIO')
                 )
             );
             pieces.push(
@@ -599,7 +656,9 @@
                     doc,
                     'h3',
                     'nexus-stage-look-name',
-                    look ? shortName(look) || 'Current look' : 'Choose your first look'
+                    look
+                        ? shortName(look) || tx('stage.currentLook', 'Current look')
+                        : tx('stage.chooseFirst', 'Choose your first look')
                 )
             );
             var desc = look && (look.prompt || (look.provenance && look.provenance.prompt));
@@ -608,7 +667,9 @@
                     doc,
                     'p',
                     'nexus-stage-look-desc',
-                    desc ? String(desc).slice(0, 120) : 'Explore your wardrobe and try a new outfit.'
+                    desc
+                        ? String(desc).slice(0, 120)
+                        : tx('stage.explore', 'Explore your wardrobe and try a new outfit.')
                 )
             );
             var tags = lookTags(look);
@@ -643,8 +704,8 @@
                 var turned = Boolean(self.view.turned);
                 action(
                     turned ? '↺' : '⟳',
-                    turned ? 'Front' : 'Show back',
-                    turned ? 'Front' : 'Turn',
+                    turned ? tx('stage.front', 'Front') : tx('stage.showBack', 'Show back'),
+                    turned ? tx('stage.front', 'Front') : tx('stage.turn', 'Turn'),
                     'turn',
                     function () {
                         self.view.turn();
@@ -659,8 +720,8 @@
             var zoomed = Boolean(this._zoomedFrom);
             action(
                 zoomed ? '⤢' : '⌕',
-                zoomed ? 'Full body' : 'Zoom',
-                zoomed ? 'Full' : 'Zoom',
+                zoomed ? tx('stage.fullBody', 'Full body') : tx('stage.zoom', 'Zoom'),
+                zoomed ? tx('stage.full', 'Full') : tx('stage.zoom', 'Zoom'),
                 'zoom',
                 function () {
                     self.zoom();
@@ -672,8 +733,8 @@
             );
             action(
                 state.favorite ? '♥' : '♡',
-                state.favorite ? 'Saved' : 'Save look',
-                state.favorite ? 'Saved' : 'Save',
+                state.favorite ? tx('stage.saved', 'Saved') : tx('stage.saveLook', 'Save look'),
+                state.favorite ? tx('stage.saved', 'Saved') : tx('stage.save', 'Save'),
                 'save',
                 function () {
                     self.view.favorite();
@@ -684,8 +745,8 @@
             );
             action(
                 '→',
-                'Next look',
-                'Next',
+                tx('stage.nextLook', 'Next look'),
+                tx('stage.next', 'Next'),
                 'next',
                 function () {
                     self.view._step(1);

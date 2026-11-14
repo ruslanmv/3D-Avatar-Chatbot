@@ -109,6 +109,7 @@
             this.favorites = this.favorites.filter(function (key) {
                 return known.has(key);
             });
+            this._primeAround(this.worn || this.looks[0]);
             this._changed();
         }
 
@@ -232,6 +233,33 @@
             return this.phase === 'live' && this.began && Boolean(this._compareTarget(which));
         }
 
+        /**
+         * LT6. The next and previous files start loading while she is still wearing this
+         * one, so the following tap does not wait on the network. Original has no file.
+         */
+        _primeAround(look) {
+            var controller = this.controller;
+            if (!controller || typeof controller.prime !== 'function') return;
+            var list = this.looks || [];
+            var at = -1;
+            for (var i = 0; i < list.length; i += 1) {
+                if (keyOf(list[i]) === keyOf(look)) at = i;
+            }
+            var neighbors = [];
+            if (at === -1) {
+                if (list[0]) neighbors.push(list[0]);
+                if (list[1]) neighbors.push(list[1]);
+            } else {
+                if (list[at - 1]) neighbors.push(list[at - 1]);
+                if (list[at + 1]) neighbors.push(list[at + 1]);
+            }
+            neighbors.forEach(function (item) {
+                try {
+                    controller.prime(item);
+                } catch (_) {}
+            });
+        }
+
         _begin() {
             if (this.began) return;
             var controller = this.controller;
@@ -292,6 +320,7 @@
                             if (this.target === want) {
                                 this.landed += 1;
                                 this.lastLanding = { look: want, cause: cause };
+                                this._primeAround(want);
                             }
                         }
                         if (this.target === want) {

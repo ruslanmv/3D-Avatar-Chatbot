@@ -43,6 +43,17 @@
 const TryOnHaulActivity = (() => {
     'use strict';
 
+    function tx(key, fallback, vars) {
+        var api = typeof globalThis !== 'undefined' && globalThis.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
     const ID = 'try-on-haul';
     const UI = Object.freeze({ title: 'Try-On', icon: '👗', order: 45 });
     const NOT_READY = 'The wardrobe is still getting ready. Try again in a moment.';
@@ -645,14 +656,21 @@ const TryOnHaulActivity = (() => {
                 if (look) {
                     const at = state.looks.findIndex((item) => keyOf(item) === keyOf(look));
                     return {
-                        label: UI.title,
+                        label: tx('haul.title', UI.title),
                         detail:
                             at === -1
-                                ? look.name || 'Look'
-                                : `Look ${at + 1} of ${state.total} · ${look.name || 'Look'}`,
+                                ? look.name || tx('haul.look', 'Look')
+                                : tx('haul.lookOf', 'Look {n} of {total} · {name}', {
+                                      n: at + 1,
+                                      total: state.total,
+                                      name: look.name || tx('haul.look', 'Look'),
+                                  }),
                     };
                 }
-                return { label: UI.title, detail: state.began ? 'Original' : 'Browsing looks' };
+                return {
+                    label: tx('haul.title', UI.title),
+                    detail: state.began ? tx('haul.original', 'Original') : tx('haul.browsing', 'Browsing looks'),
+                };
             },
         };
         // W16. Know her wardrobe before the first message, not after it: the prompt is built

@@ -66,7 +66,7 @@ creating looks (WF1)** — see the Forge bullet below.
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The thirty `<script>` tags live at the end of `index.html`'s `<body>`, and
+- **The thirty-two `<script>` tags live at the end of `index.html`'s `<body>`, and
   moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
@@ -89,6 +89,22 @@ creating looks (WF1)** — see the Forge bullet below.
   the look's own recipe with only that part rewritten. Turn rotates
   `avatarManager.currentRoot` relative to its load-time yaw and writes that yaw
   back on finish.
+- **A look change never clears the stage (LT6).** `AvatarManager.setAvatarByUrl`
+  used to call `_removeCurrentAvatar` before `loader.load` resolved, so she
+  vanished for the whole download. She now stays until the next VRM is parsed.
+  The new root is added first, her humanoid pose is copied onto it, a wardrobe
+  swap (`keepFacing`) keeps her yaw, and the two crossfade for 180 ms. The
+  avatar picker does not pass `keepFacing`, so a different character still faces
+  the camera. `TryOnSession` asks `WardrobeController.prime` for the next and
+  previous looks; `preload` holds at most three parsed files and drops one that
+  nobody wears. A failed or superseded load leaves the body that is on stage.
+- **The haul speaks every language AppLanguage already does (LT7).**
+  `TryOnLocale` plus `TryOnLocalePacks` (loaded immediately before
+  `TryOnReasons`, so they do not move a frozen boot line). en-GB shares the
+  English pack. `tx(key, englishFallback)` keeps a test that never loads the
+  pack on the English sentence it was written against. Forge prompts stay
+  English: a translated chip still sends the outfit's original `prompt`. Look
+  product names stay as authored.
 - **The Forge is the Hugging Face Space unless someone says otherwise (WF1).**
   `WardrobeConfig.resolveForge` decides, in this order: the page's own
   `NEXUS_WARDROBE_CONFIG` (`forge.baseUrl`, `apiUrl`, or `forge.enabled: false`
