@@ -81,6 +81,9 @@ function harness(extra) {
                 sends.push(text);
             },
             dom: false,
+            // Existing unit tests exercise exact submission semantics; separate
+            // DOM tests below cover the 350 ms production transcript preview.
+            transcriptPreviewMs: 0,
         },
         extra || {}
     );
@@ -93,44 +96,44 @@ function harness(extra) {
 }
 
 describe('WU hold gesture', () => {
-    test('a release before 3000 ms does not activate, and the click still taps', () => {
-        const tracker = VA.createHoldTracker({ holdMs: 3000 });
+    test('a release before 2000 ms does not activate, and the click still taps', () => {
+        const tracker = VA.createHoldTracker({ holdMs: 2000 });
         const actions = [];
         const down = tracker.pointerdown({ pointerId: 1, button: 0, clientX: 0, clientY: 0 }, 1000);
         actions.push(down.action);
-        actions.push(tracker.tick(3999).action);
-        actions.push(tracker.pointerup({ pointerId: 1 }, 3999).action);
+        actions.push(tracker.tick(2999).action);
+        actions.push(tracker.pointerup({ pointerId: 1 }, 2999).action);
         expect(actions).toEqual(['press', 'ignore', 'release']);
         expect(tracker.click().suppress).toBe(false);
     });
 
-    test('holding to 3000 ms arms, release activates, and the following click is swallowed once', () => {
-        const tracker = VA.createHoldTracker({ holdMs: 3000 });
+    test('holding to 2000 ms arms, release activates, and the following click is swallowed once', () => {
+        const tracker = VA.createHoldTracker({ holdMs: 2000 });
         tracker.pointerdown({ pointerId: 1, button: 0, clientX: 2, clientY: 2 }, 0);
-        expect(tracker.tick(2999).action).toBe('ignore');
-        expect(tracker.tick(3000).action).toBe('arm');
-        expect(tracker.pointerup({ pointerId: 1 }, 3000).action).toBe('activate');
+        expect(tracker.tick(1999).action).toBe('ignore');
+        expect(tracker.tick(2000).action).toBe('arm');
+        expect(tracker.pointerup({ pointerId: 1 }, 2000).action).toBe('activate');
         expect(tracker.click().suppress).toBe(true);
         expect(tracker.click().suppress).toBe(false);
     });
 
     test('pointer cancellation does not activate', () => {
-        const tracker = VA.createHoldTracker({ holdMs: 3000 });
+        const tracker = VA.createHoldTracker({ holdMs: 2000 });
         tracker.pointerdown({ pointerId: 4, button: 0, clientX: 0, clientY: 0 }, 0);
         expect(tracker.pointercancel({ pointerId: 4 }).action).toBe('cancel');
-        expect(tracker.tick(3000).action).toBe('ignore');
+        expect(tracker.tick(2000).action).toBe('ignore');
         expect(tracker.click().suppress).toBe(true);
     });
 
     test('a drag past the slop cancels before the threshold', () => {
-        const tracker = VA.createHoldTracker({ holdMs: 3000, slopPx: 16 });
+        const tracker = VA.createHoldTracker({ holdMs: 2000, slopPx: 16 });
         tracker.pointerdown({ pointerId: 1, button: 0, clientX: 0, clientY: 0 }, 0);
         expect(tracker.pointermove({ pointerId: 1, clientX: 40, clientY: 0 }).action).toBe('drag-cancel');
-        expect(tracker.tick(3000).action).toBe('ignore');
+        expect(tracker.tick(2000).action).toBe('ignore');
     });
 
     test('page exit and disabling the control cancel a press in progress', () => {
-        const tracker = VA.createHoldTracker({ holdMs: 3000 });
+        const tracker = VA.createHoldTracker({ holdMs: 2000 });
         tracker.pointerdown({ pointerId: 1, button: 0, clientX: 0, clientY: 0 }, 0);
         expect(tracker.pagehide().action).toBe('cancel');
         expect(tracker.keydown({ key: ' ', repeat: true }, 0).action).toBe('ignore');
@@ -141,6 +144,16 @@ describe('WU hold gesture', () => {
 });
 
 describe('WU listen button', () => {
+    test('hold progress and hands-free visuals use the 2-second purple treatment', () => {
+        const css = fs.readFileSync(path.join(__dirname, '../../styles/main.css'), 'utf8');
+        expect(css).toContain('animation: holdDraw 2s linear forwards');
+        expect(css).toContain('.voice-btn-compact.handsfree-session');
+        expect(css).toContain('outline: 2px solid var(--accent-purple)');
+        expect(css).toContain('rgba(179, 136, 255, 0.28)');
+        expect(VA.DEFAULTS.holdMs).toBe(2000);
+        expect(VA.DEFAULTS.transcriptPreviewMs).toBe(350);
+    });
+
     beforeEach(() => {
         jest.useFakeTimers();
     });
@@ -188,11 +201,11 @@ describe('WU listen button', () => {
         expect(acts).toEqual([]);
     });
 
-    test('a three-second hold activates and does not also tap', () => {
+    test('a two-second hold activates and does not also tap', () => {
         const { btn, taps, acts } = button();
         btn.dispatchEvent(pointer('pointerdown', 1));
         expect(btn.classList.contains('hold-arming')).toBe(true);
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         expect(btn.classList.contains('hold-armed')).toBe(true);
         btn.dispatchEvent(pointer('pointerup', 1));
         btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -204,7 +217,7 @@ describe('WU listen button', () => {
         const { btn, taps, acts } = button();
         btn.dispatchEvent(pointer('pointerdown', 1));
         btn.dispatchEvent(pointer('pointercancel', 1));
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(acts).toEqual([]);
         expect(taps).toEqual([]);
@@ -225,6 +238,85 @@ describe('WU utterance completion', () => {
     });
     afterEach(() => {
         jest.useRealTimers();
+        document.body.innerHTML = '';
+    });
+
+    test('tapping a one-shot recording again cancels the mic and cannot send a late transcript', () => {
+        const { va, sends, recs } = harness({});
+        expect(va.micTap()).toBe(true);
+        const lateResult = recs[0].onresult;
+        expect(va.owner()).toBe('manual');
+        expect(va.micTap()).toBe(true);
+        expect(va.owner()).toBe(null);
+        expect(va.state()).toBe('OFF');
+        expect(recs[0].aborted || recs[0].stopped).toBe(true);
+        lateResult(finalEvent('this must not send'));
+        jest.advanceTimersByTime(5000);
+        expect(sends).toEqual([]);
+        expect(recs).toHaveLength(1);
+    });
+
+    test('finalized speech is visible before auto-send clears the input', () => {
+        document.body.innerHTML = '<input id="speech-text">';
+        const input = document.getElementById('speech-text');
+        const { va, sends, recs } = harness({ dom: true, transcriptPreviewMs: 350 });
+        va.micTap();
+        recs[0].onresult(finalEvent('hello nexus.', 1));
+        expect(input.value).toBe('hello nexus.');
+        jest.advanceTimersByTime(1200);
+        expect(va.state()).toBe('TRANSCRIBING');
+        expect(sends).toEqual([]);
+        jest.advanceTimersByTime(349);
+        expect(sends).toEqual([]);
+        expect(input.value).toBe('hello nexus.');
+        jest.advanceTimersByTime(1);
+        expect(sends).toEqual(['hello nexus.']);
+        expect(input.value).toBe('');
+        document.body.innerHTML = '';
+    });
+
+    test('Stop during transcript preview cancels the delayed send and clears only the voice draft', () => {
+        document.body.innerHTML = '<input id="speech-text">';
+        const input = document.getElementById('speech-text');
+        const { va, sends, recs } = harness({ dom: true, transcriptPreviewMs: 350 });
+        va.micTap();
+        recs[0].onresult(finalEvent('please cancel.', 1));
+        jest.advanceTimersByTime(1200);
+        expect(input.value).toBe('please cancel.');
+        expect(va.micTap()).toBe(true);
+        jest.advanceTimersByTime(1000);
+        expect(sends).toEqual([]);
+        expect(va.state()).toBe('OFF');
+        expect(input.value).toBe('');
+        document.body.innerHTML = '';
+    });
+
+    test('editing the preview prevents an obsolete automatic submission', () => {
+        document.body.innerHTML = '<input id="speech-text">';
+        const input = document.getElementById('speech-text');
+        const { va, sends, recs } = harness({ dom: true, transcriptPreviewMs: 350 });
+        va.micTap();
+        recs[0].onresult(finalEvent('original.', 1));
+        jest.advanceTimersByTime(1200);
+        input.value = 'my edited version';
+        jest.advanceTimersByTime(350);
+        expect(sends).toEqual([]);
+        expect(input.value).toBe('my edited version');
+        expect(va.owner()).toBe(null);
+        document.body.innerHTML = '';
+    });
+
+    test('a one-shot recording exposes an accessible Stop action', () => {
+        document.body.innerHTML = '<button id="listen-btn"></button>';
+        const { va } = harness({ dom: true });
+        va.micTap();
+        const btn = document.getElementById('listen-btn');
+        expect(btn.classList.contains('one-shot-recording')).toBe(true);
+        expect(btn.classList.contains('is-stop')).toBe(true);
+        expect(btn.getAttribute('aria-label')).toContain('Stop recording');
+        va.micTap();
+        expect(btn.classList.contains('is-stop')).toBe(false);
+        document.body.innerHTML = '';
     });
 
     test('silence does not send', () => {
@@ -578,7 +670,7 @@ describe('WU alexa modes', () => {
         return a;
     }
 
-    test('a three-second hold starts hands-free and does not change wake word', () => {
+    test('a two-second hold starts hands-free and does not change wake word', () => {
         const { va, storage, recs } = harness({});
         const btn = document.createElement('button');
         document.body.appendChild(btn);
@@ -599,17 +691,35 @@ describe('WU alexa modes', () => {
             btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         };
         down();
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         up();
         expect(va.wakeEnabled()).toBe(false);
         expect(storage.getItem('nexus_wake_enabled')).not.toBe('on');
         expect(va.mode()).toBe('manual');
         expect(recs).toHaveLength(1);
         down();
-        jest.advanceTimersByTime(3000);
+        jest.advanceTimersByTime(2000);
         up();
         expect(va.mode()).toBe('idle');
         expect(va.wakeEnabled()).toBe(false);
+    });
+
+    test('holding 2 seconds upgrades an active one-shot without opening another recognizer', () => {
+        const { va, sends, recs } = harness({});
+        va.micTap();
+        expect(recs).toHaveLength(1);
+        expect(va.holdForHandsFree()).toBe(true);
+        expect(va.mode()).toBe('manual');
+        expect(recs).toHaveLength(1);
+        recs[0].onresult(finalEvent('first.', 1));
+        jest.advanceTimersByTime(1200);
+        expect(sends).toEqual(['first.']);
+        va.noteSpeaking(true);
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(800);
+        expect(recs).toHaveLength(2);
+        va.micTap();
+        expect(va.mode()).toBe('idle');
     });
 
     test('a tap records one request and does not listen again after the reply', () => {
