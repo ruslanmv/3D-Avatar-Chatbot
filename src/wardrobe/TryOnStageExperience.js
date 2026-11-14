@@ -61,6 +61,14 @@
         '.nexus-stage-action.is-primary{display:inline-flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:6px}',
         '.nexus-stage-action.is-primary .nexus-stage-icon{margin:0}',
         '.nexus-stage-action .nexus-stage-short{display:none}',
+        // LT8. The desktop panel beside the conversation leaves the stage about 230px, and four
+        // nowrap long labels spilled into each other there - in Italian "Mostra la schiena" ran
+        // under "Salva look" and that under "Look successivo". The phone bar already had short
+        // labels; the stage's own width (not the window's) now picks them, and a label that is
+        // still too long is clipped inside its button instead of painting over the next one.
+        '.nexus-try-on-stage-active .nexus-stage-info{container-type:inline-size}',
+        '.nexus-stage-action{overflow:hidden;text-overflow:ellipsis}',
+        '@container (max-width:440px){.nexus-stage-action .nexus-stage-long{display:none}.nexus-stage-action .nexus-stage-short{display:inline}}',
         // LT4. Phones: one thumb bar of four, icon over label, Next widest; the summary sits on
         // the conversation sheet's top edge (TryOnLiveLayout publishes the sheet's height as
         // --nexus-try-on-sheet), never under it: the sheet is a later stacking context and hid
