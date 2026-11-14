@@ -289,3 +289,7 @@ vrm-factory/**/*.pyc
 # Python bytecode caches anywhere (e.g. tests/e2e when running the E2E test)
 __pycache__/
 *.pyc
+
+# Local VRMA download/test scratch (BOOTH terms forbid redistributing extractables)
+develop/verification/scratch-candidates/
+

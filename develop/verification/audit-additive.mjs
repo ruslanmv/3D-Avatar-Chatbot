@@ -22,6 +22,18 @@ const require = createRequire(path.join(ROOT, 'package.json'));
 const STRICT = process.argv.includes('--strict');
 const AVATAR = '/vendor/avatars/AvatarSample_A.vrm';
 
+/** Optional: --dir <path> (repeatable). Default = develop/addons/stable. */
+function scanRoots() {
+    const roots = [];
+    const argv = process.argv.slice(2);
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === '--dir' && argv[i + 1]) {
+            roots.push(path.resolve(argv[++i]));
+        }
+    }
+    return roots.length ? roots : [STABLE];
+}
+
 function loadScorer() {
     const src = fs.readFileSync(path.join(ROOT, 'tools/qa/AnimationPlaybackScorer.js'), 'utf8');
     const sandbox = { module: { exports: {} }, exports: {}, console, Math };
@@ -33,7 +45,7 @@ function loadScorer() {
     return api;
 }
 
-function listClips() {
+function listClips(roots) {
     const out = [];
     const walk = (dir) => {
         if (!fs.existsSync(dir)) return;
@@ -44,7 +56,7 @@ function listClips() {
             else if (/\.(vrma|bvh)$/i.test(name)) out.push(p);
         }
     };
-    walk(STABLE);
+    for (const root of roots) walk(root);
     return out.sort();
 }
 
@@ -85,9 +97,10 @@ async function sampleBones(page, Scorer) {
 
 async function main() {
     const Scorer = loadScorer();
-    const clips = listClips();
+    const roots = scanRoots();
+    const clips = listClips(roots);
     if (!clips.length) {
-        console.log('additive-audit: no .vrma/.bvh under develop/addons/stable/');
+        console.log('additive-audit: no .vrma/.bvh under', roots.map((r) => path.relative(ROOT, r)).join(', '));
         process.exit(0);
     }
 
