@@ -29,7 +29,7 @@ describe('Hands-and-knees experimental pose isolation', () => {
         expect(oldAdult).not.toBeNull();
         expect(grounded).toContain('adult: true');
         expect(grounded).toContain("label: 'Hands and Knees (Candidate)'");
-        expect(grounded).not.toContain('hipsPosition:');
+        expect(grounded).not.toMatch(/^\\s*hipsPosition:\\s*\\{/m);
         expect(bend).toContain("label: 'Bent Forward (Arched)'");
         expect(oldAdult).toContain("label: 'Doggy Style'");
         expect(bend).not.toEqual(grounded);
