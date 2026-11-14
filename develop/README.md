@@ -2,9 +2,9 @@
 
 Staging area for animation clips **before** they reach the app. It holds no
 binaries today: everything that passed review was promoted to
-`vendor/animations/vrma/` (credits:
-`vendor/animations/vrma/THIRD_PARTY_LICENSES.md`), and clips nobody used were
-removed on 2026-11-14.
+`vendor/animations/vrma/` (credits: the `credits` block in
+`vendor/animations/manifest.json`), and clips nobody used were removed on
+2026-11-14.
 
 | Path                             | Contents                                                       |
 | -------------------------------- | -------------------------------------------------------------- |

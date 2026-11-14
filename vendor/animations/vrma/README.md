@@ -1,7 +1,7 @@
 # VRMA Animation Files
 
 All clips here are native VRM Animation (`.vrma`) files. Licences and upstream
-copyright notices: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+copyright notices: the `credits` block in `vendor/animations/manifest.json`.
 
 ## Active (in `vendor/animations/manifest.json`, category `vrma`)
 
@@ -63,5 +63,5 @@ Clips that failed review are tagged in `develop/NEEDS_FIX.md`.
    sideways tilt and a leg flip. Measure it on more than one avatar height — a clip that is fine on
    AvatarSample_A can float or sink elsewhere. `node tools/qa/animation-audit.mjs
    --play --avatar <name>` covers the shipped matrix.
-3. Record its upstream and licence in `THIRD_PARTY_LICENSES.md`, then add it to
+3. Record its upstream and licence in the manifest's `credits` block, then add it to
    the `vrma` category in `vendor/animations/manifest.json`.

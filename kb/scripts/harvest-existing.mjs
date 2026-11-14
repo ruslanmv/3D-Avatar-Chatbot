@@ -84,7 +84,7 @@ const PROVENANCE = {
 
 /**
  * vendor/animations/vrma/ holds more than the tk256 pack since MO9/MO10. Per-file
- * provenance, mirroring vendor/animations/vrma/THIRD_PARTY_LICENSES.md — every clip there
+ * provenance, mirroring the `credits` block of vendor/animations/manifest.json — every clip there
  * was labelled "tk256 · Open source" before, which was wrong for eighteen of them.
  */
 const VRMA_FILE_PROVENANCE = {
