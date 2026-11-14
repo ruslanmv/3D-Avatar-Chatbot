@@ -2233,6 +2233,11 @@ function setupEventListeners() {
                     );
                 },
                 stopSpeech: () => {
+                    // A stopped voice session must also stop Piper/SonicAgent and any
+                    // fallback provider, not only the browser's speechSynthesis.
+                    try {
+                        window.TTSProvider?.stop?.();
+                    } catch (_) {}
                     try {
                         window.speechSynthesis?.cancel?.();
                     } catch (_) {}
