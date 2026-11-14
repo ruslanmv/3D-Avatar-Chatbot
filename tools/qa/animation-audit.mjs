@@ -465,6 +465,40 @@ async function ensureAvatar(page, avatarPath) {
     await page.waitForTimeout(800);
 }
 
+/**
+ * Stop any previous clip/pose and plant a lecturerNeutral baseline so each
+ * job's "rest" sample is order-independent (Codex P2: consecutive sit/lay
+ * jobs were judged against already-seated hips).
+ */
+async function resetToNeutral(page) {
+    await page.evaluate(async () => {
+        const loader = window.NEXUS_CLIP_LOADER;
+        try {
+            if (loader && typeof loader.stopClip === 'function') await loader.stopClip({ fadeOut: 0 });
+        } catch (_) {
+            /* ignore */
+        }
+        const vr = window.vrPoseSystem || window.NEXUS_VIEWER?.vrPoseSystem;
+        if (vr && typeof vr.applyPreset === 'function') {
+            try {
+                vr.setEnabled?.(true);
+            } catch (_) {
+                /* ignore */
+            }
+            // lecturerNeutral is the Pose Navigator default standing baseline.
+            vr.applyPreset('lecturerNeutral', 0);
+            for (let i = 0; i < 8; i++) {
+                try {
+                    vr.update?.(1 / 60);
+                } catch (_) {
+                    /* ignore */
+                }
+            }
+        }
+    });
+    await tickAndSample(page, 0.12);
+}
+
 async function playJob(page, job) {
     const result = {
         played: false,
@@ -474,6 +508,7 @@ async function playJob(page, job) {
         frame: null,
     };
     try {
+        await resetToNeutral(page);
         result.rest = await tickAndSample(page, 0.1);
         if (job.kind === 'pose') {
             const ok = await page.evaluate((poseId) => {

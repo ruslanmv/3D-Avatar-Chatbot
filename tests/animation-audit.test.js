@@ -65,14 +65,24 @@ describe('AnimationPlaybackScorer', () => {
     });
 
     test('fail on inverted legs (Mixamo-origin pattern)', () => {
-        const sample = {
+        // Upper-leg joints stay near the pelvis; the defect is the hip→knee direction.
+        const restLegs = {
             ...rest,
-            leftUpperLeg: { x: -0.4, y: 1.0, z: 0 },
-            rightUpperLeg: { x: 0.4, y: 1.0, z: 0 },
+            leftUpperLeg: { x: -0.1, y: 0.9, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            leftLowerLeg: { x: -0.1, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightUpperLeg: { x: 0.1, y: 0.9, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightLowerLeg: { x: 0.1, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+        };
+        const sample = {
+            ...restLegs,
+            leftUpperLeg: { x: -0.1, y: 0.9, z: 0, qx: 1, qy: 0, qz: 0, qw: 0 },
+            leftLowerLeg: { x: -0.1, y: 1.35, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightUpperLeg: { x: 0.1, y: 0.9, z: 0, qx: 1, qy: 0, qz: 0, qw: 0 },
+            rightLowerLeg: { x: 0.1, y: 1.35, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
         };
         const r = Scorer.score({
             played: true,
-            rest,
+            rest: restLegs,
             samples: [sample],
             frame: { mean: 40, sd: 20, verdict: 'ok' },
         });

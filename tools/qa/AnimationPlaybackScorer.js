@@ -77,19 +77,30 @@
     }
 
     /**
-     * Legs look inverted when both upper legs point nearly opposite the rest
-     * direction in Y (Mixamo-origin VRMA on VRM 0.x — see addons/vrma-dance/README).
+     * Legs look inverted when both thighs point the wrong way along Y
+     * (Mixamo-origin VRMA on VRM 0.x — see addons/vrma-dance/README).
+     *
+     * Upper-leg *joints* stay near the pelvis even when the bone is flipped
+     * ~180°; the tell is the hip→knee (upperLeg→lowerLeg) direction, which
+     * goes from "knee below thigh" at rest to "knee above thigh" when inverted.
      */
     function legsInverted(rest, sample) {
         if (!rest || !sample) return false;
-        const check = (name) => {
-            const r = rest[name];
-            const s = sample[name];
-            if (!r || !s) return false;
-            // Rest upper legs sit below hips; inverted retarget flips them above.
-            return s.y - r.y > 0.35 && Math.abs(s.x - r.x) > 0.15;
+        const thighFlipped = (side) => {
+            const ru = rest[side + 'UpperLeg'];
+            const rl = rest[side + 'LowerLeg'];
+            const su = sample[side + 'UpperLeg'];
+            const sl = sample[side + 'LowerLeg'];
+            if (!ru || !rl || !su || !sl) return false;
+            const restDy = rl.y - ru.y;
+            const dy = sl.y - su.y;
+            // Rest thigh points down; inverted retarget points it up.
+            if (restDy < -0.04 && dy > 0.04) return true;
+            // Same defect as a large upper-leg quaternion flip (~180°).
+            const q = quatDelta(ru, su);
+            return q > 0.85 && dy > 0;
         };
-        return check('leftUpperLeg') && check('rightUpperLeg');
+        return thighFlipped('left') && thighFlipped('right');
     }
 
     /** Arms stuck in a classic T-pose: nearly horizontal, little change from rest T. */
