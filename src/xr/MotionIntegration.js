@@ -497,7 +497,42 @@ const MotionIntegration = (() => {
     const AMBIENT_ACTIVITIES = ['idle', 'sit_idle', 'talking'];
 
     /** Return to a context-appropriate idle after one-shot gestures. */
+    /**
+     * MO12. Pose Studio holds the body. It stops the playing clip and pauses the procedural
+     * animator (_enterPoseMode), but this stack still had an idle queued after any chat gesture —
+     * and its settle-back blend can run every frame. Measured by the motion audit: pick
+     * "sitting" after saying "bye" and she sat for ~1.6 s, then neutral2.bvh stood her back up.
+     * While held, no idle is scheduled, a pending one is cancelled, and the settle is dropped;
+     * releasing goes back to the ambient idle. An explicit gesture from chat still plays.
+     */
+    let _heldByPoseStudio = false;
+    function holdForPoseStudio(on) {
+        _heldByPoseStudio = !!on;
+        if (_heldByPoseStudio) {
+            if (_idleTimer) clearTimeout(_idleTimer);
+            _idleTimer = null;
+            const pr = _poseRestore();
+            if (pr && pr.clear) pr.clear();
+            // And she stays where she is: a follow left running drives the walk cycle over the
+            // preset (measured: every sitting and lying preset stood back up while following).
+            // Posing her is a deliberate stop, the same one "stop following" makes.
+            if (_follow.active || _walk.active) {
+                _follow.active = false;
+                state.following = false;
+                try {
+                    if (_loco() && _loco().forceStop) _loco().forceStop();
+                } catch (_e) {
+                    /* the stop below still ends the walk */
+                }
+                _stopWalk(false);
+            }
+        } else if (state.booted) {
+            _scheduleIdle(0.3);
+        }
+    }
+
     function _scheduleIdle(afterS) {
+        if (_heldByPoseStudio) return;
         if (_idleTimer) clearTimeout(_idleTimer);
         _idleTimer = setTimeout(
             () => {
@@ -628,6 +663,12 @@ const MotionIntegration = (() => {
         const asked = { action: key, status: 'requested', clip: null, reason: null, at: _now() };
         state.execution = asked;
         clips.play(key).then((res) => {
+            // MO13. A newer request or a stop overtook this one while its clip loaded: nothing to
+            // report, nothing to schedule — whatever replaced it owns the body now.
+            if (res && res.reason === 'superseded') {
+                if (state.execution === asked) asked.status = 'superseded';
+                return;
+            }
             // A later request superseded this one: its answer must not overwrite the newer record.
             if (state.execution === asked) {
                 if (res && res.ok) {
@@ -1344,7 +1385,7 @@ const MotionIntegration = (() => {
         if (!_enabled() || !state.booted) return;
         const d = Math.min(0.1, dt || 0.016);
         const pr = _poseRestore();
-        if (pr && pr.isBlending && pr.isBlending()) {
+        if (!_heldByPoseStudio && pr && pr.isBlending && pr.isBlending()) {
             if (!pr.update(d)) {
                 // Settle finished — hand the body back to the ambient system.
                 try {
@@ -1570,6 +1611,7 @@ const MotionIntegration = (() => {
         execute,
         playAnimation,
         getTelemetry,
+        holdForPoseStudio,
         setDebug,
         debugMotion,
         _faceTarget,

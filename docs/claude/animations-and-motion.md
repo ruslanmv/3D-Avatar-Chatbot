@@ -95,3 +95,11 @@ JSON alone.
 - The loader converts tracks out of a clip's rest frame and ignores a hips rest
   at or below the floor (Mixamo FBX2glTF) in favour of the track's median.
 - Failed clips are tagged, not shipped: `develop/NEEDS_FIX.md`.
+
+## Motion audit (MO11)
+
+`npm run audit:motion` (or `/motion-audit`) checks the live site end to end —
+static tables, UI, every offered gesture, chat phrases, every pose — on three
+avatar heights, and writes `report.md`, `index.html` (all frames) and
+`conversation.md` (design brief for chat and VR) to `audits/motion/runs/`. See
+`audits/motion/AGENT.md`.

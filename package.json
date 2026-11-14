@@ -16,6 +16,7 @@
     "lint:check": "ESLINT_USE_FLAT_CONFIG=false eslint js/**/*.js",
     "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
+    "audit:motion": "node audits/motion/run.mjs",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
     "wardrobe:import": "node scripts/import-wardrobe-pack.mjs",
     "wardrobe:check": "node scripts/import-wardrobe-pack.mjs --check",

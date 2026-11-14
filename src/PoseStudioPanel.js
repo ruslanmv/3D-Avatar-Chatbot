@@ -1699,6 +1699,12 @@
             window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(true);
         } catch (_) {}
 
+        // MO12. And the chat motion stack: without this its queued idle stood her back up
+        // ~1.6 s after a preset was picked, whenever she had just made a gesture.
+        try {
+            window.NEXUS_MOTION?.holdForPoseStudio?.(true);
+        } catch (_) {}
+
         // VRPoseSystem writes to normalized bones (via PoseRigMap).
         // Enable autoUpdateHumanBones so vrm.update() syncs normalized → raw
         // each frame, making the pose visible on the rendered skeleton.
@@ -1717,6 +1723,9 @@
     PoseStudioPanel.prototype._exitPoseMode = function () {
         try {
             window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(false);
+        } catch (_) {}
+        try {
+            window.NEXUS_MOTION?.holdForPoseStudio?.(false);
         } catch (_) {}
 
         // Restore autoUpdateHumanBones=false so ProceduralAnimator's raw bone
