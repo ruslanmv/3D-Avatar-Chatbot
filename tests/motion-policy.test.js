@@ -225,40 +225,41 @@ describe('MotionPolicy.allowedTypes', () => {
 });
 
 describe('MotionPolicy settings resolution', () => {
-    test('B3: the feature is off by default — this is the experimental opt-in', () => {
-        // Changed in B3, deliberately and in that same commit. Until then the
-        // defaults were enabled:true / movement:'all', which is what made B2
-        // provably behaviour-neutral. Reverting B3 restores those.
-        expect(Policy.DEFAULTS.enabled).toBe(false);
-        expect(Policy.DEFAULTS.movement).toBe('off');
+    test('MO1: a fresh install has a body — the stack is on and she may walk', () => {
+        // B3 made the stack opt-in; MO1 reverses it. Off by default meant "sit down" was
+        // answered "Mi siedo qui vicino" while she stood still, for everyone who never opened
+        // Settings → EXPERIMENTAL. These are the B2 defaults again.
+        expect(Policy.DEFAULTS.enabled).toBe(true);
+        expect(Policy.DEFAULTS.movement).toBe('all');
     });
 
-    test('a fresh install runs no motion at all', () => {
+    test('a fresh install moves: gestures, posture and following all pass', () => {
         Policy._setOverride(null);
         localStorage.removeItem(Policy.KEY_ENABLED);
         localStorage.removeItem(Policy.KEY_MOVEMENT);
 
-        expect(Policy.isEnabled()).toBe(false);
-        // Nothing is advertised, so a disabled user spends ZERO prompt tokens
-        // on the motion contract — the main argument for shipping it off.
-        expect(Policy.allowedTypes(Parser.ALLOWED_TYPES, IN_VR)).toEqual([]);
-        // ...and no plan survives, except a stop.
-        expect(Policy.filterPlan(plan('gesture', 'look_at'), IN_VR).plan).toBeNull();
-        expect(Policy.filterPlan(plan('stop'), IN_VR).plan.commands).toHaveLength(1);
+        expect(Policy.isEnabled()).toBe(true);
+        expect(Policy.allows('gesture', DESKTOP)).toBe(true);
+        expect(Policy.allows('sit', DESKTOP)).toBe(true);
+        expect(Policy.allows('follow', DESKTOP)).toBe(true);
+        expect(Policy.filterPlan(plan('gesture', 'look_at'), DESKTOP).plan.commands).toHaveLength(2);
     });
 
-    test('opting in enables Tier A but still not movement', () => {
+    test('a person who switched it off keeps it off, and a stop still passes', () => {
         Policy._setOverride(null);
-        localStorage.setItem(Policy.KEY_ENABLED, 'true');
-        localStorage.removeItem(Policy.KEY_MOVEMENT); // movement untouched → off
+        localStorage.setItem(Policy.KEY_ENABLED, 'false');
 
-        expect(Policy.isEnabled()).toBe(true);
-        expect(Policy.movementMode()).toBe('off');
+        expect(Policy.isEnabled()).toBe(false);
+        expect(Policy.allowedTypes(Parser.ALLOWED_TYPES, IN_VR)).toEqual([]);
+        expect(Policy.filterPlan(plan('gesture', 'look_at'), IN_VR).plan).toBeNull();
+        expect(Policy.filterPlan(plan('stop'), IN_VR).plan.commands).toHaveLength(1);
+
+        localStorage.setItem(Policy.KEY_ENABLED, 'true');
+        localStorage.setItem(Policy.KEY_MOVEMENT, 'off'); // movement chosen off → still off
         expect(Policy.allows('gesture', DESKTOP)).toBe(true);
         expect(Policy.allows('follow', DESKTOP)).toBe(false);
-        expect(Policy.allows('follow', IN_VR)).toBe(false);
-
         localStorage.removeItem(Policy.KEY_ENABLED);
+        localStorage.removeItem(Policy.KEY_MOVEMENT);
     });
 
     test('an unrecognised movement value falls back to the default', () => {

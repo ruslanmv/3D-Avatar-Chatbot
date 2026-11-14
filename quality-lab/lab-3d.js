@@ -202,6 +202,60 @@
         );
     }
 
+    function drawAnimations(doc) {
+        const s = doc.summary || {};
+        const box = $('#w-anim-stats');
+        if (!box) return;
+        box.replaceChildren(
+            stat('avatars', s.avatars),
+            stat('poses', s.poses),
+            stat('clips', s.clips),
+            stat('categories', s.categories),
+            stat('intents ok', (s.intentsOk || 0) + '/' + (s.intents || 0), s.intentsOk === s.intents ? 'good' : 'bad'),
+            stat('experimental', s.experimentalClips || 0, s.experimentalClips ? 'warn' : 'good'),
+            stat('failures', s.fails, s.fails ? 'bad' : 'good'),
+            stat('warnings', s.warns, s.warns ? 'warn' : 'good'),
+            stat('matrix cells', (s.matrixCells || 0).toLocaleString('en'))
+        );
+
+        const intents = doc.intentCoverage || [];
+        $('#w-anim-intents tbody').replaceChildren(
+            ...intents.map((i) =>
+                el('tr', {}, [
+                    el('td', { text: i.utterance }),
+                    el('td', {}, el('code', { text: i.intent })),
+                    el('td', { text: i.fastPath || '—' }),
+                    el('td', { class: 'num', text: String(i.existing) + '/' + String(i.candidates) }),
+                    el('td', { class: i.ok ? 'good' : 'bad', text: i.ok ? 'yes' : 'no' }),
+                    el('td', { text: i.why || '' }),
+                ])
+            )
+        );
+
+        $('#w-anim-cats').replaceChildren(
+            ...(doc.categories || []).map((c) =>
+                el('li', {
+                    text: (c.label || c.id) + ' — ' + c.count + ' file(s)' + (c.experimental ? ' (experimental)' : ''),
+                })
+            )
+        );
+
+        const issues = doc.issues || [];
+        $('#w-anim-issues').replaceChildren(
+            ...(issues.length
+                ? issues.map((i) =>
+                      el('li', {}, [
+                          el('span', {
+                              class: 'chip ' + (i.severity === 'fail' ? 'flag' : 'warnchip'),
+                              text: i.severity,
+                          }),
+                          ' ' + i.text,
+                      ])
+                  )
+                : [el('li', { class: 'muted', text: 'No inventory issues.' })])
+        );
+    }
+
     fetch('data/3d/worlds-audit.json', { cache: 'no-store' })
         .then((r) => r.json())
         .then((data) => {
@@ -218,4 +272,18 @@
                 el('p', { class: 'score bad', text: 'Could not load the world audit: ' + e.message })
             )
         );
+
+    fetch('data/3d/animations-audit.json', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then(drawAnimations)
+        .catch((e) => {
+            const box = $('#w-anim-stats');
+            if (box)
+                box.replaceChildren(
+                    el('p', {
+                        class: 'score bad',
+                        text: 'Could not load the animations audit: ' + e.message,
+                    })
+                );
+        });
 })();

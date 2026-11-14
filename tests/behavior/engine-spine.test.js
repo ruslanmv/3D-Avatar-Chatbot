@@ -168,8 +168,8 @@ describe('AnimationRegistry against the real KB', () => {
 
     test('reports counts by kind — what boot logs, and B3 is accepted on', () => {
         const counts = registry.countsByKind();
-        expect(counts).toEqual({ bvh: 107, procedural: 15, vrma: 44 });
-        expect(registry.summary()).toMatch(/107 bvh, 15 procedural, 44 vrma/);
+        expect(counts).toEqual({ bvh: 107, procedural: 15, vrma: 56 }); // MO9 idle_loop + MO10 eleven gestures
+        expect(registry.summary()).toMatch(/107 bvh, 15 procedural, 56 vrma/);
     });
 
     test('indexes by id, intent and tag', () => {

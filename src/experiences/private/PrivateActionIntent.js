@@ -44,18 +44,129 @@
         return `(?<![\\p{L}\\p{N}])(?:${alternatives})(?![\\p{L}\\p{N}])`;
     }
 
+    /**
+     * PX15. Garments people name, in English, Italian and Spanish (the three this app is used in
+     * most), each to one English canonical name — the vocabulary her saved looks and Forge's
+     * dictionary are written in. So "il reggiseno nero", "el sujetador negro" and "the black bra"
+     * are one request, and the decision engine can find a look called "Black Lace Bra" for any of
+     * them. `cat` decides what kind of outfit it is: `lingerie` makes the request a private one,
+     * so only the existing gate (private mode on, the avatar declared adult by Forge's operator)
+     * can make it wearable.
+     *
+     * Written as plain alternatives, longest first inside each entry, and matched as whole words.
+     * Adding a word is a one-line change here; nothing else needs to know.
+     */
+    const GARMENTS = [
+        // lingerie and underwear
+        [
+            'lingerie set',
+            'lingerie',
+            'lingerie set|lingerie|underwear set|completo intimo|completino intimo|biancheria intima|intimo|conjunto de lencería|lencería|ropa interior',
+        ],
+        ['bra', 'lingerie', 'push-up bra|bralette|brassiere|bra|reggiseno|reggiseni|sujetador|sostén|brasier'],
+        [
+            'panties',
+            'lingerie',
+            'g-string|thong|knickers|panties|briefs|mutandine|mutande|slip|tanga|perizoma|bragas|braguitas|culotte|culotes',
+        ],
+        ['corset', 'lingerie', 'corset|bustier|basque|corsetto|bustino|corsé|corpiño'],
+        ['bodysuit', 'lingerie', 'lace bodysuit|bodysuit|teddy|body di pizzo|body de encaje|body'],
+        ['babydoll', 'lingerie', 'baby doll|baby-doll|babydoll'],
+        ['garter belt', 'lingerie', 'suspender belt|garter belt|garters|reggicalze|liguero|ligas'],
+        ['negligee', 'lingerie', 'negligee|négligé|chemise|sottoveste|combinación|picardías|salto de cama'],
+        // hosiery
+        ['fishnets', 'hosiery', 'fishnet stockings|fishnets|calze a rete|medias de red|medias de rejilla'],
+        [
+            'stockings',
+            'hosiery',
+            'thigh-highs|hold-ups|stockings|calze autoreggenti|autoreggenti|calze|medias de liga|medias',
+        ],
+        ['tights', 'hosiery', 'pantyhose|tights|collant|collants|pantis|panties de nylon'],
+        // night and swim
+        ['nightdress', 'night', 'nightdress|nightgown|camicia da notte|camisón'],
+        ['robe', 'night', 'dressing gown|bathrobe|robe|kimono|vestaglia|accappatoio|bata|albornoz'],
+        ['pyjamas', 'night', 'pyjamas|pajamas|pigiama|pijama'],
+        ['bikini', 'swim', 'bikini'],
+        [
+            'swimsuit',
+            'swim',
+            'one-piece swimsuit|swimsuit|bathing suit|costume da bagno|costume intero|bañador|traje de baño',
+        ],
+        // dresses
+        ['slip dress', 'dress', 'slip dress|abito sottoveste|vestito sottoveste|vestido lencero'],
+        [
+            'evening gown',
+            'dress',
+            'evening gown|ball gown|gown|abito da sera|vestito da sera|vestido de noche|vestido de gala',
+        ],
+        [
+            'cocktail dress',
+            'dress',
+            'cocktail dress|little black dress|abito da cocktail|tubino nero|tubino|vestido de cóctel',
+        ],
+        [
+            'bodycon dress',
+            'dress',
+            'bodycon dress|bodycon|abito aderente|vestito aderente|vestido ajustado|vestido ceñido',
+        ],
+        ['mini dress', 'dress', 'mini dress|minidress|minivestito|vestitino|vestido corto|minivestido'],
+        ['sundress', 'dress', 'sundress|abito estivo|vestito estivo|prendisole|vestido de verano'],
+        ['dress', 'dress', 'dress|vestito|abito|vestido'],
+        // tops
+        ['crop top', 'top', 'crop top|top corto|top cropped|top'],
+        ['tank top', 'top', 'tank top|camisole|cami|canotta|canottiera|camiseta de tirantes|camisola'],
+        ['blouse', 'top', 'sheer blouse|blouse|camicetta|blusa'],
+        ['shirt', 'top', 'shirt|camicia|camisa'],
+        ['tee', 'top', 't-shirt|tshirt|tee|maglietta|camiseta'],
+        ['sweater', 'top', 'sweater|jumper|cardigan|maglione|golfino|jersey|suéter|chaqueta de punto'],
+        ['hoodie', 'top', 'hoodie|sweatshirt|felpa|sudadera'],
+        // bottoms
+        ['miniskirt', 'bottom', 'miniskirt|mini skirt|minigonna|minifalda'],
+        ['pencil skirt', 'bottom', 'pencil skirt|gonna a tubino|falda lápiz|falda de tubo'],
+        ['skirt', 'bottom', 'skirt|gonna|gonnellina|falda'],
+        ['jeans', 'bottom', 'jeans|denim|vaqueros|tejanos'],
+        ['shorts', 'bottom', 'hot pants|shorts|pantaloncini|calzoncini|pantalones cortos|short'],
+        ['leggings', 'bottom', 'leggings|leggins|mallas'],
+        ['trousers', 'bottom', 'trousers|pants|pantaloni|pantalones'],
+        // shoes and outerwear
+        [
+            'heels',
+            'shoes',
+            'high heels|stilettos|heels|pumps|tacchi a spillo|tacchi|décolleté|tacones|zapatos de tacón',
+        ],
+        ['boots', 'shoes', 'thigh-high boots|ankle boots|boots|stivali|stivaletti|botas|botines'],
+        ['jacket', 'outer', 'leather jacket|jacket|blazer|giacca|giubbotto|chaqueta|americana'],
+        ['coat', 'outer', 'trench coat|coat|cappotto|abrigo|gabardina'],
+    ].map(([name, cat, alt]) => ({ name, cat, re: new RegExp(word(alt), 'iu'), words: alt.split('|') }));
+
+    /** The garments named in a message, in the order of the table (more specific first). */
+    function garmentsIn(text) {
+        const found = [];
+        for (const g of GARMENTS) if (g.re.test(text)) found.push(g);
+        return found;
+    }
+
     const MEDIA_NOUN =
         'music|songs?|tracks?|tunes?|album|playlist|soundtrack|musica|canzon[ei]|brano|brani|pezzo|música|canción|canciones|tema|musique|chansons?|morceau|musik|lied(?:er)?|canção|canções|faixa';
     const MEDIA = new RegExp(word(MEDIA_NOUN), 'iu');
     const MEDIA_CJK = /音楽|曲|歌|음악|노래|音乐|歌曲/u;
 
     const CLOTHING_NOUN =
-        'outfits?|clothes|clothing|dress(?:es)?|sundress|minidress|nightgown|gown|skirt|shirt|blouse|jeans|trousers|lingerie|bikini|swimsuit|pyjamas|pajamas|nightdress|look|vestit[oi]|abit[oi]|gonna|maglia|camicia|completo|intimo|costume|pigiama|vestidos?|ropa|falda|camisa|conjunto|lencería|robe|tenue|jupe|chemise|vêtements|kleid(?:er)?|rock|hemd|kleidung|roupas?|saia|blusa';
-    const CLOTHING = new RegExp(word(CLOTHING_NOUN), 'iu');
+        'outfits?|clothes|clothing|underwear|bra|panties|stockings|heels|mutand(?:e|ine)|reggiseno|reggiseni|calze|collant|tacchi|biancheria|dress(?:es)?|sundress|minidress|nightgown|gown|skirt|shirt|blouse|jeans|trousers|lingerie|bikini|swimsuit|pyjamas|pajamas|nightdress|look|vestit[oi]|abit[oi]|gonna|maglia|camicia|completo|intimo|costume|pigiama|vestidos?|ropa|falda|camisa|conjunto|lencería|robe|tenue|jupe|chemise|vêtements|kleid(?:er)?|rock|hemd|kleidung|roupas?|saia|blusa';
+    const CLOTHING = {
+        // PX15. The garment table counts as clothing too, in all three of its languages.
+        test: (text) => new RegExp(word(CLOTHING_NOUN), 'iu').test(text) || garmentsIn(text).length > 0,
+    };
     const CLOTHING_CJK = /服|ドレス|옷|드레스|衣服|裙子/u;
 
     /** Style words, in the app's languages, to one canonical tag the decision engine reads. */
     const STYLES = [
+        // PX14. First: "solo mutande e reggiseno" names underwear, and underwear is a kind of
+        // outfit here (private-rated, so only where the existing gate opens it), not "sexy".
+        [
+            'lingerie',
+            'lingerie|intimo|biancheria(?: intima)?|mutand(?:e|ine)|reggiseno|reggiseni|tanga|perizoma|underwear|bra|panties|knickers|ropa interior|lencería|bragas|sujetador|sous-vêtements|soutien-gorge|culotte|unterwäsche|dessous|bh|slip|calcinha|sutiã|roupa íntima|下着|ランジェリー|속옷|란제리|内衣|文胸',
+        ],
         [
             'elegant',
             'elegant|classy|chic|fancy|elegante|eleganti|raffinat[oa]|chic|élégant[e]?|elegante|schick|edel|エレガント|上品|우아한|优雅',
@@ -195,7 +306,20 @@
 
     /** Verbs that are only about clothes. */
     const WEAR_SURE =
-        'wear|change into|try on|dress (?:up )?in|slip into|get into|get dressed in|mettiti|mettersi|indossa|indossare|vestiti|cambiati|provati|infilati|ponte|vístete|vistete|pruébate|pruebate|enfile|porte|habille-toi|mets-toi|veste|vista|usa';
+        'wear|change into|try on|dress (?:up )?in|slip into|get into|get dressed in|mettiti|mettersi|indos+a+(?:re)?|indossi|vestiti|cambiati|provati|infilati|ponte|vístete|vistete|pruébate|pruebate|enfile|porte|habille-toi|mets-toi|veste|vista|usa';
+    /**
+     * PX14. "Togliti il vestito", "spogliati": in this app that is a change into underwear, made by
+     * the same wardrobe as any other outfit and behind the same private-outfit gate — never a
+     * removal the avatar cannot show. Without this the request reached the model as talk and she
+     * described undressing while the avatar stayed exactly as she was.
+     */
+    const UNDRESS = new RegExp(
+        `^(?:${word(
+            'togliti|toglierti|levati|spogliati|svestiti|take off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
+        )})`,
+        'iu'
+    );
+
     const CHANGE_OUTFIT = new RegExp(
         word(
             "change (?:your )?(?:outfit|clothes|dress|look)|get changed|cambia(?:ti)?(?: (?:il |d[’'])?(?:vestito|abito|outfit|look))|cambiati|cámbiate(?: de ropa)?|cambiate(?: de ropa)?|cambia de (?:ropa|vestido)|change-toi|change de tenue|zieh dich um|troca de roupa|muda de roupa"
@@ -278,10 +402,19 @@
     function wardrobeFrom(text) {
         const styles = stylesIn(text);
         const colours = coloursIn(text);
+        // A plain "dress" / "vestito" / "vestido" is how people say "an outfit" ("cambia vestito",
+        // "un vestito elegante"): it names no garment, and treating it as one picked any look with
+        // "dress" in its tags over the one that matched the style that was asked for.
+        const garments = garmentsIn(text).filter((g) => g.name !== 'dress');
         const params = {};
+        if (garments.length) {
+            params.garment = garments[0].name;
+            // Underwear named outright is a private outfit, whatever other style word is there.
+            if (garments.some((g) => g.cat === 'lingerie') && !styles.includes('lingerie')) styles.unshift('lingerie');
+        }
         if (styles.length) params.style = styles[0];
         if (colours.length) params.colour = colours[0];
-        if (!styles.length && !colours.length) {
+        if (!styles.length && !colours.length && !garments.length) {
             // "Wear the lace set" names something; "wear something" leaves it to her.
             const named = text
                 .replace(WEAR_LEAD, '')
@@ -347,6 +480,9 @@
         const aboutClothes = CLOTHING.test(body) || CLOTHING_CJK.test(body);
         if (UNDO_OUTFIT.test(body) || UNDO_OUTFIT_CJK.test(body)) {
             if (!BARE_UNDO.test(body) || c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
+        }
+        if (UNDRESS.test(body) || /脱いで|벗어|脱掉/u.test(body)) {
+            return action('wardrobe.wear', { style: 'lingerie', words: bare.slice(0, 120) }, 'wardrobe');
         }
         if (CHANGE_OUTFIT.test(body) || CHANGE_OUTFIT_CJK.test(body)) {
             const wanted = wardrobeFrom(bare);
@@ -445,7 +581,7 @@
         return null;
     }
 
-    const api = { parse, topic, affirms, queryFrom, stylesIn, coloursIn, STYLES, COLOURS };
+    const api = { parse, topic, affirms, queryFrom, stylesIn, coloursIn, garmentsIn, GARMENTS, STYLES, COLOURS };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTION_INTENT = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

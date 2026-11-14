@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "generator": "develop/verification/audit-additive.mjs",
+  "avatar": "AvatarSample_A.vrm",
+  "scope": "develop/addons/stable/**/*.{vrma,bvh}",
+  "summary": {
+    "jobs": 8,
+    "ok": 8,
+    "warn": 0,
+    "fail": 0
+  },
+  "rows": [
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "idle_loop.vrma",
+      "path": "develop/addons/stable/vrma-mit/idle_loop.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.062,
+      "hipsY": 0.894,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "test.vrma",
+      "path": "develop/addons/stable/vrma-mit/test.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.225,
+      "hipsY": 0.896,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "Blush.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Blush.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.119,
+      "hipsY": 0.865,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "Clapping.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Clapping.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.072,
+      "hipsY": 0.904,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "Goodbye.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Goodbye.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.109,
+      "hipsY": 0.893,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "Jump.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Jump.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.09,
+      "hipsY": 0.969,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "LookAround.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/LookAround.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.12,
+      "hipsY": 0.882,
+      "error": ""
+    },
+    {
+      "avatar": "AvatarSample_A",
+      "kind": "vrma",
+      "category": "develop-stable",
+      "id": "Sleepy.vrma",
+      "path": "develop/addons/stable/vrma-tk256-candidates/Sleepy.vrma",
+      "played": true,
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.161,
+      "hipsY": 0.867,
+      "error": ""
+    }
+  ]
+}

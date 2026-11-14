@@ -72,6 +72,13 @@ export function buildHub() {
     const latest = index.runs[0] ? read(index.runs[0].file) : null;
     const worlds = read('3d/worlds-audit.json');
     const atlas = read('atlas/atlas-audit.json');
+    // AX16. Animations sit beside worlds in the 3D folder; a missing file is a regenerate, not a crash.
+    let animations = null;
+    try {
+        animations = read('3d/animations-audit.json');
+    } catch (_) {
+        animations = null;
+    }
     const actions = [];
     const add = (a) => actions.push(a);
 
@@ -202,11 +209,74 @@ export function buildHub() {
             files: ['quality-lab/data/atlas/atlas.json', 'assets/vr-worlds/worlds.json'],
         });
 
+    // AX16. Animation inventory + motion UX. Spoken sit/dance/follow must move the body.
+    if (!animations) {
+        add({
+            id: '3d-anim-audit-missing',
+            area: '3d',
+            priority: 1,
+            title: 'Generate the animations audit',
+            why: 'quality-lab/data/3d/animations-audit.json is missing; Pose Studio / VRMA / BVH are unaudited.',
+            command: 'node tools/qa/animation-audit.mjs',
+            files: ['tools/qa/animation-audit.mjs', 'quality-lab/data/3d/animations-audit.json'],
+        });
+    } else {
+        for (const i of animations.issues.filter((x) => x.severity === 'fail'))
+            add({
+                id: `3d-anim-fail-${i.text.slice(0, 40).replace(/\W+/g, '-')}`,
+                area: '3d',
+                priority: 1,
+                title: 'Fix animation inventory failure',
+                why: i.text,
+                command: 'node tools/qa/animation-audit.mjs',
+                files: ['vendor/avatars/', 'vendor/animations/', 'addons/vrma-dance/', 'src/xr/MotionClipMap.js'],
+            });
+        const badIntents = (animations.intentCoverage || []).filter((x) => !x.ok);
+        for (const intent of badIntents)
+            add({
+                id: `3d-anim-intent-${intent.intent}`,
+                area: '3d',
+                priority: 1,
+                title: `Motion gap for "${intent.utterance}" (fix in #150 / PR #152, not this audit)`,
+                why: `${intent.why} Fast path=${intent.fastPath || 'none'}; ${intent.existing}/${intent.candidates} candidates on disk. Audit measures only — product wiring is MO1–MO6.`,
+                command:
+                    'node tools/qa/animation-audit.mjs && node tools/qa/animation-audit.mjs --play --category ' +
+                    (intent.intent === 'dance' ? 'dance-vrma' : intent.intent === 'sit' ? 'sitting' : ''),
+                files: ['docs/claude/animations-and-motion.md', 'audits/vrm_animations/AGENT.md'],
+                note: 'Do not patch IntentFastPath / MotionClipMap on the audit branch; land product fixes on PR #152.',
+            });
+        if ((animations.summary.experimentalClips || 0) > 0)
+            add({
+                id: '3d-anim-experimental',
+                area: '3d',
+                priority: 3,
+                title: `Review ${animations.summary.experimentalClips} experimental animation clips`,
+                why: 'Manifest dance BVH is marked experimental; Mixamo-origin add-on VRMA invert legs on VRM and must not reach MotionClipMap until retargeted (addons/vrma-dance/README.md).',
+                command: 'node tools/qa/animation-audit.mjs --play --category dance-mixamo --shots all',
+                files: ['addons/vrma-dance/README.md', 'vendor/animations/manifest.json', 'src/VRMAAnimationLoader.js'],
+            });
+        add({
+            id: '3d-anim-playback',
+            area: '3d',
+            priority: 2,
+            title: 'Run per-avatar animation playback CSV + frame shots',
+            why: `Inventory covers ${animations.summary.avatars} avatars × ${animations.summary.clips} clips (${animations.summary.matrixCells} cells). Playback proves sit/dance/pose are not broken on each character.`,
+            command: 'npm start & node audits/vrm_animations/run.mjs',
+            files: [
+                'audits/vrm_animations/',
+                'tools/qa/animation-audit.mjs',
+                'tools/qa/AnimationPlaybackScorer.js',
+                'docs/claude/animations-and-motion.md',
+            ],
+            note: 'Audit only — product motion fixes are issue #150 / PR #152 (MO1–MO6), not this inventory.',
+        });
+    }
+
     actions.sort((a, b) => a.priority - b.priority);
     return {
         schema: 1,
         generator: 'tools/qa/hub.mjs',
-        readFirst: ['quality-lab/README.md', 'CLAUDE.md'],
+        readFirst: ['quality-lab/README.md', 'CLAUDE.md', 'docs/claude/animations-and-motion.md'],
         areas: {
             ai: latest
                 ? {
@@ -221,6 +291,16 @@ export function buildHub() {
                 offered: worlds.summary.offered,
                 fails: worlds.summary.fails,
                 warns: worlds.summary.warns,
+                animations: animations
+                    ? {
+                          avatars: animations.summary.avatars,
+                          clips: animations.summary.clips,
+                          poses: animations.summary.poses,
+                          intentsOk: animations.summary.intentsOk,
+                          fails: animations.summary.fails,
+                          warns: animations.summary.warns,
+                      }
+                    : null,
             },
             atlas: {
                 zones: atlas.summary.zones,
@@ -281,6 +361,20 @@ export function whereWeAre() {
         ],
         ['3D failures / warnings', `${w.fails} / ${w.warns}`, '3D audit'],
     ];
+    try {
+        const anim = read('3d/animations-audit.json').summary;
+        rows.push([
+            'Avatars / clips / poses (animation audit)',
+            `${anim.avatars} / ${anim.clips} / ${anim.poses} · intents ${anim.intentsOk}/${anim.intents} · ${anim.fails} fail / ${anim.warns} warn`,
+            'animations audit',
+        ]);
+    } catch (_) {
+        rows.push([
+            'Avatars / clips / poses (animation audit)',
+            'missing — run node tools/qa/animation-audit.mjs',
+            '—',
+        ]);
+    }
     return [
         START,
         '',

@@ -1086,6 +1086,55 @@
      * something, at most once per reply, bounded by a timeout. The rewrite is kept only when it is
      * non-empty and has fewer problems than the draft; otherwise the draft stands. Never throws.
      */
+    /**
+     * PX14. A sentence in which she says she changed clothes — took something off, put something
+     * on, is now wearing something — in the app's languages. First person only: "you look good in
+     * that" is not a claim.
+     */
+    const OUTFIT_CLAIM = new RegExp(
+        [
+            // it
+            '\\b(?:ora |adesso )?indosso\\b',
+            '\\bho (?:solo |addosso |indosso )',
+            '\\bmi (?:sono )?(?:tolt[ao]|cambiat[ao]|spogliat[ao]|svestit[ao]|mess[ao])\\b',
+            '\\bmi (?:tolgo|spoglio|svesto)\\b',
+            '\\btolgo (?:il|la|i|le|lo)\\b',
+            '\\bsono (?:in|rimasta in) (?:mutande|intimo|lingerie|reggiseno)',
+            // en
+            "\\bi(?:'m| am) (?:now )?(?:wearing|in (?:just |only |my )?(?:underwear|lingerie|bra|panties))",
+            "\\bi(?:'ve| have)? (?:just )?(?:taken off|took off|changed into|put on|slipped into|slipped out of)",
+            '\\bi take off\\b',
+            // es / fr / de / pt
+            '\\b(?:ahora )?llevo (?:puesto|solo)\\b',
+            '\\bme (?:he )?(?:quit(?:o|ado)|cambiado)\\b',
+            '\\bje porte (?:maintenant|seulement)\\b',
+            "\\bj['’](?:ai enlevé|enlève)\\b",
+            '\\bich trage (?:jetzt|nur)\\b',
+            '\\bich (?:ziehe|habe) .{0,20}(?:aus|ausgezogen)\\b',
+            '\\bestou (?:usando|só de)\\b',
+            '\\b(?:tirei|tiro) (?:a|o|minha|meu)\\b',
+        ].join('|'),
+        'iu'
+    );
+
+    /** PX14. Her reply with any untrue outfit claim taken out and the truth said once instead. */
+    function outfitTruthful(text, truth, language) {
+        const value = String(text || '');
+        if (!truth || ['changed', 'pending'].includes(truth.state) || !OUTFIT_CLAIM.test(value)) return value;
+        const parts = value.match(/[^.!?…。！？]+(?:[.!?…。！？]+["”»’)]*|$)/g) || [value];
+        const kept = parts.map((p) => p.trim()).filter((p) => p && !OUTFIT_CLAIM.test(p));
+        const locale = localeModel();
+        const key =
+            truth.state === 'offer'
+                ? 'outfit.say.offer'
+                : truth.state === 'failed'
+                  ? 'outfit.say.failed'
+                  : 'outfit.say.none';
+        const line = locale && typeof locale.t === 'function' ? locale.t(key, null, language) : '';
+        if (line && line !== key) kept.push(line);
+        return kept.join(' ').trim() || value;
+    }
+
     async function privateRevise(text, options) {
         const o = options || {};
         const draft = String(text || '');
@@ -1117,7 +1166,13 @@
                 const fresh = clean(raw);
                 return fresh && !privateReplyProblems(fresh).length ? fresh : draft;
             }
-            const shaped = shape(draft);
+            // PX14. Her words follow the wardrobe: "ora indosso solo mutande e reggiseno" while the
+            // avatar wore what she had on was the reported failure. No model call — the sentence
+            // that claims is taken out and the truth is said in the app's language.
+            const actions = actionBridge();
+            const truth = actions && typeof actions.outfitTruth === 'function' ? actions.outfitTruth() : null;
+            const language = (w && w.AppLanguage && w.AppLanguage.code) || undefined;
+            const shaped = outfitTruthful(shape(draft), truth, language);
             const problems = privateReplyProblems(shaped);
             if (!problems.length) return shaped;
             if (!llm || typeof llm.sendMessage !== 'function') return shaped;
@@ -2525,7 +2580,15 @@
             const api = idleModel();
             if (!api) return false;
             const owed = this._pendingQuestion || this._hasLiveOffer();
-            const pool = owed ? api.RELEASING : api.NOTICING;
+            // PX14. In the app's language; a language without lines stays quiet, never English.
+            const pool =
+                typeof api.pools === 'function'
+                    ? api.pools(owed ? 'releasing' : 'noticing', this._currentLanguage())
+                    : this._currentLanguage().startsWith('en-')
+                      ? owed
+                          ? api.RELEASING
+                          : api.NOTICING
+                      : [];
             const novelty = noveltyModel();
             for (const candidate of pool) {
                 const line = api.usable(candidate);
@@ -3408,6 +3471,8 @@
         privatePersona,
         privateReplyProblems,
         privateRevise,
+        outfitTruthful,
+        OUTFIT_CLAIM,
         shapePrivateReply,
         pickPrivateTrack,
     };

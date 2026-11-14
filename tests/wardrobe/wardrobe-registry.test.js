@@ -117,13 +117,17 @@ describe('the shipped wardrobe', () => {
         const controller = new Controller({ forge: { resolveUrl: (url) => url }, viewer, verifyLook });
 
         await controller.applyLook({ name: 'Crop top', vrmUrl: '/v/look.vrm', sha256: 'a'.repeat(64) });
-        expect(manager.setAvatarByUrl).toHaveBeenLastCalledWith('blob:x#look.vrm', 'Crop top', -1);
+        expect(manager.setAvatarByUrl).toHaveBeenLastCalledWith('blob:x#look.vrm', 'Crop top', -1, {
+            keepFacing: true,
+        });
         await controller.restore();
         expect(revoke).toHaveBeenCalledTimes(1);
 
         // No hash: the old path, unchanged.
         await controller.applyLook({ name: 'Forge look', vrmUrl: 'https://f/look.vrm' });
-        expect(manager.setAvatarByUrl).toHaveBeenLastCalledWith('https://f/look.vrm', 'Forge look', -1);
+        expect(manager.setAvatarByUrl).toHaveBeenLastCalledWith('https://f/look.vrm', 'Forge look', -1, {
+            keepFacing: true,
+        });
 
         verifyLook.mockRejectedValueOnce(Object.assign(new Error('mismatch'), { reason: 'look_failed_verification' }));
         const calls = manager.setAvatarByUrl.mock.calls.length;

@@ -194,9 +194,15 @@ export function vrmaStats(path) {
                     angularSamples++;
                 }
             } else {
+                // MO9. A clip authored in centimetres (ChatVRM's idle_loop: hips rest 90.57)
+                // read 1 cm of sway as 1 m of travel and was described as "travelling across
+                // the floor". No humanoid stands with its hips 10 m up, so that is the tell.
+                const hipsNode = [...nodeToBone].find(([, b]) => b === 'hips')?.[0];
+                const restY = Math.abs(gltf.nodes?.[hipsNode]?.translation?.[1] || 0);
+                const unit = restY > 10 ? 0.01 : 1;
                 const [x0, , z0] = values[0];
                 for (const v of values) {
-                    rootMotion = Math.max(rootMotion, Math.hypot(v[0] - x0, v[2] - z0));
+                    rootMotion = Math.max(rootMotion, Math.hypot(v[0] - x0, v[2] - z0) * unit);
                 }
                 rootMotion /= NOMINAL_BODY_HEIGHT_M;
             }

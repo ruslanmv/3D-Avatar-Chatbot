@@ -1,0 +1,206 @@
+{
+  "schema": 1,
+  "purpose": "Animation clips that failed review and are kept for future work. None of these is reachable in the app: MotionClipMap.QUARANTINE filters every one.",
+  "items": [
+    {
+      "file": "addons/vrma-actions/backflip.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/bowing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/happyIdle.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/jumpingJacks.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/sadIdle.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/shrugging.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/singing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/standingClap.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/standingGreeting.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/talking.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/victory.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-actions/waving.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/dancingTwerk.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/hipHopDancing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/rumbaDancing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/sambaDancing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/sillyDancing.vrma",
+      "tag": "needs-fix:legs-inverted",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips now hold standing height on AvatarSample_A / VRM_Viewer_Sample / Vita after MO10 (median fallback for the FBX2glTF -0.272 hips rest), but frames show the lower body flipped: legs rendered above the head.",
+      "nextStep": "Retarget the Mixamo lower-body chain (upper/lower leg rest orientation) or re-export through VRM Animation tooling; re-audit on three avatar heights and by eye."
+    },
+    {
+      "file": "addons/vrma-dance/dance_1.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_2.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_backup.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_dab.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_headdrop.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_ontop.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/dance_pushback.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "addons/vrma-dance/breakdanceUprock.vrma",
+      "tag": "needs-fix:sinks",
+      "status": "quarantined",
+      "measured": "2026-11-14",
+      "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
+      "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    }
+  ]
+}

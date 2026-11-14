@@ -3067,16 +3067,22 @@ function openSettings() {
     const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
     if (shadowRadio) shadowRadio.checked = true;
 
-    // Living NPC (experimental) — both controls default to off/off when the
-    // user has never opted in.
+    // Living NPC — MO1. The controls show what the policy will actually do, defaults included. They
+    // used to read only a stored 'true', so with nothing stored the box looked off, and saving
+    // Settings for any other reason wrote 'false' and switched her body off again.
     const npcEnabledEl = document.getElementById('npc-enabled');
     const npcMovementEl = document.getElementById('npc-movement');
+    const npcPolicy = window.NEXUS_MOTION_POLICY;
     if (npcEnabledEl) {
-        npcEnabledEl.checked = localStorage.getItem('npc_enabled') === 'true';
+        const savedEnabled = localStorage.getItem('npc_enabled');
+        npcEnabledEl.checked =
+            savedEnabled === 'true' ||
+            (savedEnabled !== 'false' && !!(npcPolicy && npcPolicy.DEFAULTS && npcPolicy.DEFAULTS.enabled));
     }
     if (npcMovementEl) {
         const savedMovement = localStorage.getItem('npc_movement');
-        npcMovementEl.value = ['off', 'vr', 'all'].includes(savedMovement) ? savedMovement : 'off';
+        const movementDefault = (npcPolicy && npcPolicy.DEFAULTS && npcPolicy.DEFAULTS.movement) || 'off';
+        npcMovementEl.value = ['off', 'vr', 'all'].includes(savedMovement) ? savedMovement : movementDefault;
         npcMovementEl.disabled = !(npcEnabledEl && npcEnabledEl.checked);
     }
     const npcLibraryAnimsEl = document.getElementById('npc-library-anims');
@@ -4171,6 +4177,15 @@ async function _handleStreamingResponse(text) {
             return;
         }
 
+        // PX13. A usage limit is not fixed by asking again without streaming: the second request
+        // runs the gateway's provider chain again and spends more of the same exhausted daily
+        // allowance. Say so once and stop.
+        if (window.NEXUS_CHAT_ERROR_TEXT?.kind?.(error) === 'limit') {
+            setStatus('idle', 'READY');
+            _addErrorWithRetry(text, error);
+            return;
+        }
+
         // Fallback to non-streaming
         await _handleNonStreamingResponse(text);
     }
@@ -4416,7 +4431,20 @@ function _addErrorWithRetry(originalText, error) {
     const installed = surface && typeof surface.current === 'function' ? surface.current() : null;
     const drawnElsewhere = Boolean(installed) && installed.id !== 'default';
     if (drawnElsewhere) {
-        _surface().renderError('Sorry — I lost my train of thought for a second. Say that again?');
+        // PX13. In the app's language (this line was English inside an Italian evening), and,
+        // when the free service is out of quota, the truth — not an invitation to repeat
+        // yourself into a limit, which only spends more of it.
+        const limit = window.NEXUS_CHAT_ERROR_TEXT?.kind?.(error) === 'limit';
+        const words = window.NEXUS_PRIVATE_LOCALE;
+        const key = limit ? 'error.limit' : 'error.lost';
+        const said = words && typeof words.t === 'function' ? words.t(key) : '';
+        _surface().renderError(
+            said && said !== key
+                ? said
+                : limit
+                  ? 'The AI service has reached its free limit for now — let’s try again a little later.'
+                  : 'Sorry — I lost my train of thought for a second. Say that again?'
+        );
         return;
     }
 
@@ -6784,6 +6812,19 @@ window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
 function __nexusWireOllaBridgePairButton() {
     const btn = document.getElementById('ollabridge-pair-btn');
     if (!btn) return;
+
+    // PX12. A code copied from the OllaBridge page often arrives with a space or a line break
+    // around it. The box held 9 characters, so "  ODHL-0189" was cut to "  ODHL-01" before
+    // anyone pressed Pair, and a valid code failed as "Invalid pairing code". The box now holds
+    // more, and what is pasted or typed is tidied as it arrives: spaces out, letters upper case.
+    const box = document.getElementById('ollabridge-pair-code');
+    if (box && !box.__nexusTidy) {
+        box.__nexusTidy = true;
+        box.addEventListener('input', () => {
+            const tidy = box.value.replace(/\s+/g, '').toUpperCase();
+            if (tidy !== box.value) box.value = tidy;
+        });
+    }
 
     btn.addEventListener('click', async () => {
         const codeInput = document.getElementById('ollabridge-pair-code');

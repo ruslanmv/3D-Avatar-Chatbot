@@ -233,6 +233,16 @@
      * @param {Object} boneMap - Resolved target bones
      * @returns {number}
      */
+    /**
+     * MO6. The target hips' REST position — never where the current pose happens to hold them
+     * (see ClipAnimationLoader._recordRestHips). Falls back to the live position.
+     * @private
+     */
+    function restHips(bone) {
+        if (bone && bone.userData && bone.userData.nexusRestHips) return bone.userData.nexusRestHips;
+        return bone && bone.position ? bone.position : null;
+    }
+
     function computeHipsScale(sourceSkeleton, boneMap) {
         var srcY = 0;
         var bones = (sourceSkeleton && sourceSkeleton.bones) || [];
@@ -244,8 +254,8 @@
             }
         }
         if (!srcY && bones.length && bones[0] && bones[0].position) srcY = Math.abs(bones[0].position.y);
-        var tgt = boneMap.hips;
-        var tgtY = tgt && tgt.position ? Math.abs(tgt.position.y) : 0;
+        var tgt = restHips(boneMap.hips);
+        var tgtY = tgt ? Math.abs(tgt.y) : 0;
         if (!srcY || !tgtY) return 1;
         return tgtY / srcY;
     }
@@ -283,9 +293,10 @@
         // Pinned to the hips' REST x/z rather than to zero — zero is only the
         // same thing when the rest pose happens to sit on the origin, and
         // otherwise it displaces her for the length of the clip.
-        var restX = targetHips && targetHips.position ? targetHips.position.x : 0;
-        var restY = targetHips && targetHips.position ? targetHips.position.y : 0;
-        var restZ = targetHips && targetHips.position ? targetHips.position.z : 0;
+        var rest = restHips(targetHips);
+        var restX = rest ? rest.x : 0;
+        var restY = rest ? rest.y : 0;
+        var restZ = rest ? rest.z : 0;
 
         // A STANDING clip is re-centred on the avatar's own rest height.
         //

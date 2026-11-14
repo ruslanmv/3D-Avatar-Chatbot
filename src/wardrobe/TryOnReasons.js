@@ -98,6 +98,17 @@
         generic: "That look couldn't be made. Your avatar is unchanged.",
     });
 
+    /**
+     * The English constants above stay the source the tests pin. A loaded locale
+     * pack replaces them at the moment a person reads the sentence.
+     */
+    function speak(key, english, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (!api || typeof api.t !== 'function') return english;
+        var value = api.t(key, vars);
+        return value || english;
+    }
+
     function stepIndex(state) {
         for (var i = 0; i < STEPS.length; i += 1) if (STEPS[i].state === state) return i;
         return -1;
@@ -115,9 +126,14 @@
         var at = stepIndex(state);
         var steps = STEPS.map(function (step, i) {
             var status = state === 'completed' || (at !== -1 && i < at) ? 'done' : i === at ? 'active' : 'pending';
-            return { state: step.state, label: step.label, status: status };
+            return { state: step.state, label: speak('reason.step.' + step.state, step.label), status: status };
         });
-        var current = at !== -1 ? STEPS[at].label : state === 'completed' ? 'Ready' : String(state || '');
+        var current =
+            at !== -1
+                ? speak('reason.step.' + STEPS[at].state, STEPS[at].label)
+                : state === 'completed'
+                  ? speak('reason.ready', 'Ready')
+                  : String(state || '');
         return { steps: steps, current: current, index: at, total: STEPS.length, stage: stage(state) };
     }
 
@@ -135,7 +151,13 @@
             }
         }
         var found = STAGES[index];
-        return { id: found.id, label: found.label, line: found.line, index: index, total: STAGES.length };
+        return {
+            id: found.id,
+            label: speak('reason.stage.' + found.id + '.label', found.label),
+            line: speak('reason.stage.' + found.id + '.line', found.line),
+            index: index,
+            total: STAGES.length,
+        };
     }
 
     /**
@@ -145,17 +167,18 @@
      * (`{status, reason, message}`) or a plain Error — whatever reached the caller.
      */
     function explain(problem) {
-        if (!problem) return TRANSPORT.generic;
+        if (!problem) return speak('reason.transport.generic', TRANSPORT.generic);
         var reason = problem.reason || (problem.detail && problem.detail.reason) || null;
-        if (reason && REASONS[reason]) return REASONS[reason];
+        if (reason && REASONS[reason]) return speak('reason.why.' + reason, REASONS[reason]);
         var status = Number(problem.status) || 0;
-        if (status === 429) return TRANSPORT.busy;
-        if (status === 401 || status === 403) return TRANSPORT.auth;
+        if (status === 429) return speak('reason.transport.busy', TRANSPORT.busy);
+        if (status === 401 || status === 403) return speak('reason.transport.auth', TRANSPORT.auth);
         var message = String(problem.error || problem.message || '');
-        if (/timed out/i.test(message)) return TRANSPORT.timeout;
+        if (/timed out/i.test(message)) return speak('reason.transport.timeout', TRANSPORT.timeout);
         // fetch() rejects with a TypeError when there is no connection at all.
-        if (problem.name === 'TypeError' || /failed to fetch|network/i.test(message)) return TRANSPORT.offline;
-        return message || TRANSPORT.generic;
+        if (problem.name === 'TypeError' || /failed to fetch|network/i.test(message))
+            return speak('reason.transport.offline', TRANSPORT.offline);
+        return message || speak('reason.transport.generic', TRANSPORT.generic);
     }
 
     var api = {

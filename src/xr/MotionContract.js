@@ -98,10 +98,14 @@ const MotionContract = (() => {
      * @param {string[]} [allowedTypes] - command types the policy currently
      *   permits. Omit (or pass null) to advertise the full vocabulary, which
      *   is the pre-policy behaviour and the default.
+     * @param {string[]} [guide] - "name = when to use" lines (MotionClipMap.gestureGuide)
      * @returns {string}
      */
-    function systemPromptSuffix(snapshot, clips, allowedTypes) {
-        const clipList = (clips || []).slice(0, 40).join(', ') || 'wave, bow, dance';
+    function systemPromptSuffix(snapshot, clips, allowedTypes, guide) {
+        const clipList = (clips || []).slice(0, 48).join(', ') || 'wave, bow, dance';
+        // MO10. What each gesture is for, so the model picks by meaning, not by name alone.
+        const guideLines =
+            Array.isArray(guide) && guide.length ? ['when to use them: ' + guide.slice(0, 48).join('; ') + '.'] : [];
 
         const gated = Array.isArray(allowedTypes);
         const typeLines = gated ? _typeLines(allowedTypes) : FULL_TYPE_LINES;
@@ -145,9 +149,9 @@ const MotionContract = (() => {
                     'radius_m, timeout_s, degrees (turn, -180..180).',
                     'expression names: neutral, happy, angry, sad, relaxed, surprised.',
                     'gesture names (only these exist): ' + clipList + '.',
-                    'Rules:',
-                    '- Max 6 commands. Use only listed gesture names.',
                 ],
+                guideLines,
+                ['Rules:', '- Max 6 commands. Use only listed gesture names.'],
                 movementRules,
                 [
                     '- Plain conversation: still include a small ambient plan',
