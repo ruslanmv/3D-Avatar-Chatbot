@@ -475,6 +475,15 @@ function setStatus(mode, text) {
     const statusText = $('status-text');
     if (statusText) statusText.textContent = text || '';
 
+    // A connected/READY state needs no permanent header label or reserved space.
+    // Preserve the existing loading, listening, speaking and error indicators.
+    const brandStatus = $('brand-status');
+    if (brandStatus) {
+        const ready = mode === 'idle' && String(text || '').trim().toUpperCase() === 'READY';
+        brandStatus.hidden = ready;
+        brandStatus.style.display = ready ? 'none' : '';
+    }
+
     const sessionSubtitle = $('session-subtitle');
     if (sessionSubtitle) sessionSubtitle.textContent = text || '';
 
