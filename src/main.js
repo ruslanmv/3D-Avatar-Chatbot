@@ -3067,16 +3067,22 @@ function openSettings() {
     const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
     if (shadowRadio) shadowRadio.checked = true;
 
-    // Living NPC (experimental) — both controls default to off/off when the
-    // user has never opted in.
+    // Living NPC — MO1. The controls show what the policy will actually do, defaults included. They
+    // used to read only a stored 'true', so with nothing stored the box looked off, and saving
+    // Settings for any other reason wrote 'false' and switched her body off again.
     const npcEnabledEl = document.getElementById('npc-enabled');
     const npcMovementEl = document.getElementById('npc-movement');
+    const npcPolicy = window.NEXUS_MOTION_POLICY;
     if (npcEnabledEl) {
-        npcEnabledEl.checked = localStorage.getItem('npc_enabled') === 'true';
+        const savedEnabled = localStorage.getItem('npc_enabled');
+        npcEnabledEl.checked =
+            savedEnabled === 'true' ||
+            (savedEnabled !== 'false' && !!(npcPolicy && npcPolicy.DEFAULTS && npcPolicy.DEFAULTS.enabled));
     }
     if (npcMovementEl) {
         const savedMovement = localStorage.getItem('npc_movement');
-        npcMovementEl.value = ['off', 'vr', 'all'].includes(savedMovement) ? savedMovement : 'off';
+        const movementDefault = (npcPolicy && npcPolicy.DEFAULTS && npcPolicy.DEFAULTS.movement) || 'off';
+        npcMovementEl.value = ['off', 'vr', 'all'].includes(savedMovement) ? savedMovement : movementDefault;
         npcMovementEl.disabled = !(npcEnabledEl && npcEnabledEl.checked);
     }
     const npcLibraryAnimsEl = document.getElementById('npc-library-anims');

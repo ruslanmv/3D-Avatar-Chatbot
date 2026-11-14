@@ -117,7 +117,7 @@ const IntentFastPath = (() => {
         },
         {
             label: 'sit',
-            re: /\b(sit( down)?|have a seat|take a seat|sientate|siediti|assieds toi|setz dich|hinsetzen|senta( te)?|sente se)\b/,
+            re: /\b(sit( down)?|have a seat|take a seat|sientate|siediti|mettiti sedut[oa]|sedersi|assieds toi|setz dich|hinsetzen|senta( te)?|sente se)\b/,
             plan: () => _plan([{ type: 'sit', target: 'nearest_seat' }]),
         },
         {
@@ -171,7 +171,7 @@ const IntentFastPath = (() => {
         },
         {
             label: 'dance',
-            re: /\b(dance|baila|balla|danse|tanz(e)?|danca)\b/,
+            re: /\b(dance|baila|balla|balliamo|danse|tanz(e)?|danca)\b/,
             plan: () =>
                 _plan([
                     { type: 'gesture', name: 'dance' },
@@ -200,6 +200,85 @@ const IntentFastPath = (() => {
     ];
 
     /**
+     * MO3. Typos of the short commands people type in a hurry ("sirt down" was answered "Mi siedo
+     * qui vicino" while she stood still: no rule matched, so the body was never asked).
+     *
+     * Two layers, both only for an utterance of at most three words that matched no rule as typed,
+     * and only on its first word:
+     *   - TYPOS: explicit misspellings of four-letter verbs, where an edit-distance rule would also
+     *     turn real words into commands ("set"/"sat" -> sit, "step"/"top" -> stop).
+     *   - one edit (insert, delete, substitute or swap two neighbours) away from a longer verb in
+     *     FUZZY, for words of five letters or more, never a word in KEEP.
+     */
+    const TYPOS = {
+        sirt: 'sit',
+        sitt: 'sit',
+        siit: 'sit',
+        ist: 'sit',
+        sti: 'sit',
+        sitdown: 'sit down',
+        stpo: 'stop',
+        sotp: 'stop',
+        stopp: 'stop',
+        wvae: 'wave',
+        wavr: 'wave',
+    };
+    const FUZZY = ['dance', 'stand', 'follow', 'siediti', 'seguimi', 'alzati', 'fermati', 'balla'];
+    const KEEP = [
+        'lance',
+        'dunce',
+        'danes',
+        'stands',
+        'hollow',
+        'fellow',
+        'allow',
+        'ballo',
+        'palla',
+        'bella',
+        'stance',
+    ];
+
+    function _oneEdit(a, b) {
+        if (a === b) return false;
+        const la = a.length,
+            lb = b.length;
+        if (Math.abs(la - lb) > 1) return false;
+        if (la === lb) {
+            const diff = [];
+            for (let i = 0; i < la; i++) if (a[i] !== b[i]) diff.push(i);
+            if (diff.length === 1) return true;
+            return (
+                diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]
+            );
+        }
+        const [s1, s2] = la < lb ? [a, b] : [b, a];
+        let i = 0;
+        while (i < s1.length && s1[i] === s2[i]) i++;
+        return s1.slice(i) === s2.slice(i + 1);
+    }
+
+    function _corrected(t) {
+        const words = t.split(' ');
+        if (words.length > 3) return null;
+        const first = words[0];
+        let fixed = TYPOS[first] || null;
+        if (!fixed && first.length >= 5 && KEEP.indexOf(first) === -1) {
+            fixed = FUZZY.find((verb) => _oneEdit(first, verb)) || null;
+        }
+        return fixed ? [fixed].concat(words.slice(1)).join(' ') : null;
+    }
+
+    function _firstRule(t) {
+        for (let i = 0; i < RULES.length; i++) {
+            const rule = RULES[i];
+            if (!rule.re.test(t)) continue;
+            if (rule.not && rule.not.test(t)) continue; // known false positive
+            return rule;
+        }
+        return null;
+    }
+
+    /**
      * Match an utterance against the fast-path table.
      * @param {string} text - raw user utterance (voice or typed)
      * @returns {{label: string, plan: Object}|null}
@@ -215,16 +294,19 @@ const IntentFastPath = (() => {
         // guards, which catch short false positives the word count cannot.
         if (t.split(' ').length > MAX_WORDS) return null;
 
-        for (let i = 0; i < RULES.length; i++) {
-            const rule = RULES[i];
-            if (!rule.re.test(t)) continue;
-            if (rule.not && rule.not.test(t)) continue; // known false positive
-            return { label: rule.label, plan: rule.plan() };
+        let rule = _firstRule(t);
+        let corrected = null;
+        if (!rule) {
+            corrected = _corrected(t);
+            rule = corrected ? _firstRule(corrected) : null;
         }
-        return null;
+        if (!rule) return null;
+        const hit = { label: rule.label, plan: rule.plan() };
+        if (corrected) hit.corrected = corrected;
+        return hit;
     }
 
-    return { match, RULES, _normalize, MAX_WORDS };
+    return { match, RULES, _normalize, _corrected, MAX_WORDS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_INTENT_FASTPATH = IntentFastPath;

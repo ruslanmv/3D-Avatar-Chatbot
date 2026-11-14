@@ -29,14 +29,17 @@ const MotionClipMap = (() => {
     // start; the converted dance_* clips below cover the same ground correctly.
     // The files are still on disk — restore them here if the retarget ever
     // grows rest-pose conjugation for non-conformant sources.
+    // MO4. Only dances the runtime audit saw dance on the avatar: the four converted VRMA that keep
+    // her on her feet, then their BVH originals (all eleven pass) for avatars without a VRM rig.
+    // dance_dab / dance_1 / dance_2 .vrma were here and sink her into the floor — see QUARANTINE.
     const DANCE_CLIPS = [
         DANCE + 'dance_gangnam_style.vrma',
-        DANCE + 'dance_dab.vrma',
         DANCE + 'dance_northern_soul_spin.vrma',
         DANCE + 'dance_rumba.vrma',
-        DANCE + 'dance_1.vrma',
-        DANCE + 'dance_2.vrma',
         DANCE + 'dance_marachinostep.vrma',
+        VEND + 'dance/dance_1.bvh',
+        VEND + 'dance/dance_2.bvh',
+        VEND + 'dance/dance_dab.bvh',
     ];
 
     /**
@@ -435,7 +438,35 @@ const MotionClipMap = (() => {
     }
 
     /** In library mode, keep only paths from the proven set. @private */
+    /**
+     * MO4. Clips the runtime audit measured as broken on a VRM avatar
+     * (tools/qa/animation-runtime-audit.mjs → docs/audits/animation-runtime-audit.json). Every
+     * path that resolves a clip passes through _restrict, so a quarantined clip is unreachable
+     * from "dance", the library index, a fuzzy match or the model alike. The files stay on disk;
+     * re-run the audit after fixing one and take it off this list.
+     *
+     *   sink  — converted VRMA whose hips track drives her below the floor (hips −0.24…0.004 m;
+     *           "I say dance and she disappears into the ground"). The BVH originals pass.
+     *   float — Mixamo-origin VRMA whose root rides 2.3–3.0 m up, out of frame.
+     */
+    const QUARANTINE = {
+        'addons/vrma-dance/dance_1.vrma': 'sink',
+        'addons/vrma-dance/dance_2.vrma': 'sink',
+        'addons/vrma-dance/dance_backup.vrma': 'sink',
+        'addons/vrma-dance/dance_dab.vrma': 'sink',
+        'addons/vrma-dance/dance_headdrop.vrma': 'sink',
+        'addons/vrma-dance/dance_ontop.vrma': 'sink',
+        'addons/vrma-dance/dance_pushback.vrma': 'sink',
+        'addons/vrma-dance/breakdanceUprock.vrma': 'float',
+        'addons/vrma-dance/dancingTwerk.vrma': 'float',
+        'addons/vrma-dance/hipHopDancing.vrma': 'float',
+        'addons/vrma-dance/rumbaDancing.vrma': 'float',
+        'addons/vrma-dance/sambaDancing.vrma': 'float',
+        'addons/vrma-dance/sillyDancing.vrma': 'float',
+    };
+
     function _restrict(paths) {
+        paths = paths.filter((p) => !QUARANTINE[p]);
         // Format policy first, in EVERY mode. BVH is on by default; switching
         // it off leaves only VRMA — but only where a VRM humanoid exists for
         // those to retarget onto (see _formatPolicyApplies).
@@ -989,6 +1020,7 @@ const MotionClipMap = (() => {
         probeCandidates,
         _keysFor,
         ADDON_DANCE,
+        QUARANTINE,
         ADDON_ACTIONS,
         ENTRIES,
         ALIASES,

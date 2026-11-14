@@ -3,7 +3,7 @@
   "model": "bootstrap-lexical-v1",
   "dims": 3639,
   "count": 166,
-  "manifestSha256": "f37e85097f1efa0fa857bab13901c2748abad75941555241ac0152ca2d4505d1",
+  "manifestSha256": "3dbcc4205541f82fb87ee3a02503238b88ea88f441a9daaf1b2aea30183ef458",
   "tokenizer": "lowercase words, adjacent bigrams, 4-char shingles of tokens >= 6 chars",
   "fieldWeights": {
     "description": 1,

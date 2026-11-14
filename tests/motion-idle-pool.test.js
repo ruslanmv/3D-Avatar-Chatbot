@@ -108,7 +108,11 @@ describe('the pool holds ONLY standing idles', () => {
     });
 
     test('but dance still draws from the whole library — curation is per entry', () => {
-        expect(ClipMap.resolve('dance').candidates.length).toBeGreaterThan(15);
+        // MO4. Every dance that dances: 11 BVH + the 4 converted VRMA the runtime audit kept.
+        // The quarantined clips (sink into the floor / float out of frame) are never drawn.
+        const pool = ClipMap.resolve('dance').candidates;
+        expect(pool.length).toBeGreaterThanOrEqual(15);
+        expect(pool.filter((p) => ClipMap.QUARANTINE[p])).toEqual([]);
     });
 });
 

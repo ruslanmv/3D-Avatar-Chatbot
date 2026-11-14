@@ -73,12 +73,11 @@ describe('library mode restricts to the proven set', () => {
         expect(safe.candidates.every(fromTrustedDanceSet)).toBe(true);
         ClipMap._setLibraryOnly(false);
         const entry = ClipMap.resolve('dance_1');
-        // dance_1 ships in BOTH formats now: the original .bvh and a .vrma
-        // converted with the official bvh2vrma. Both must be reachable. Which
-        // one ranks first is an index detail (exact-name match vs addon
-        // ordering) that neither of these tests is about, so it is not pinned.
+        // dance_1 ships in BOTH formats: the original .bvh and a .vrma converted
+        // with bvh2vrma. MO4: the runtime audit measured the .vrma sinking her
+        // hips to −0.24 m, so it is quarantined and only the .bvh is reachable.
         expect(entry.candidates).toContain('vendor/animations/dance/dance_1.bvh');
-        expect(entry.candidates).toContain('addons/vrma-dance/dance_1.vrma');
+        expect(entry.candidates).not.toContain('addons/vrma-dance/dance_1.vrma');
     });
 
     test('pack-only gestures fall straight to their procedural fallback', () => {
