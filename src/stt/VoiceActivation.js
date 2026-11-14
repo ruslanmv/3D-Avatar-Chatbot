@@ -19,7 +19,7 @@
  *
  *   Tap, while idle: one request. The sentence is sent, she answers, and the
  *   microphone is not opened again. Tap while she is speaking stops playback.
- *   Hold for three seconds, while idle: a hands-free conversation. Each
+ *   Hold for two seconds, while idle: a hands-free conversation. Each
  *   finished sentence is sent, and after she has finished speaking the same
  *   session listens again, until a tap or another hold. The button itself
  *   becomes Stop for that session. There is no second Stop control.
@@ -57,7 +57,9 @@
     ]);
 
     const DEFAULTS = Object.freeze({
-        holdMs: 3000,
+        holdMs: 2000,
+        // Briefly show the final speech transcript before automatic submission.
+        transcriptPreviewMs: 350,
         // A pause shorter than this is not the end of a sentence. Sustained
         // quiet at endSilenceMs ends it. Estimates, not a measured room.
         endSilenceMs: 1200,
@@ -99,12 +101,12 @@
             wakeTitle: 'WAKE UP',
             wakeToggle: 'Wake word',
             wakeDisclosure:
-                'Wake word stays on this device: the name is recognized here, and audio is not sent away just to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS waits for the name again. A tap records one request. Hold the microphone for three seconds for a hands-free conversation, and tap that same button to end it. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
+                'Wake word stays on this device: the name is recognized here, and audio is not sent away just to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS waits for the name again. A tap records one request. Hold the microphone for two seconds for a hands-free conversation, and tap that same button to end it. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
             wakePhrase: 'Activation phrase',
             wakePhraseCustom: 'Custom phrase',
             wakeAutosend: 'Auto-send completed speech',
             wakeAutosendHelp:
-                'A finished sentence is sent on its own. A tap records one request. A three-second hold starts hands-free.',
+                'A finished sentence is sent on its own. A tap records one request. A two-second hold starts hands-free.',
             wakeContinuous: 'Continuous conversation',
             wakeContinuousHelp:
                 'After Nexus replies, a hands-free conversation listens for the next question. A quiet moment ends that sentence, not the conversation. Tap the microphone to end it. Wake word still waits for the name.',
@@ -128,8 +130,10 @@
             wakeRelease: 'Release to start hands-free',
             wakeHoldEnd: 'Keep holding to end hands-free…',
             wakeReleaseEnd: 'Release to end hands-free',
-            wakeHint: 'Tap to speak · Hold 3 seconds for hands-free',
+            wakeHint: 'Tap to speak · Hold 2 seconds for hands-free',
             handsFreeOn: 'Hands-free on · Tap to end',
+            stopCapture: 'Stop recording · Discard this request',
+            captureCancelled: 'Recording cancelled · Not sent',
             wakeOnConfirm: 'Wake word on. Say Nexus.',
             wakeOffConfirm: 'Wake word off.',
             conversationOn: 'Conversation on · Listening to you',
@@ -162,12 +166,12 @@
             wakeTitle: 'SVEGLIA',
             wakeToggle: 'Parola di attivazione',
             wakeDisclosure:
-                'La parola di attivazione resta sul dispositivo: il nome si riconosce qui e l’audio non viene inviato solo per accorgersene. Di’ “Nexus” e la richiesta che segue viene presa, risposta, e poi NEXUS aspetta di nuovo il nome. Un tocco registra una richiesta. Tieni premuto il microfono per tre secondi per una conversazione a mani libere, e tocca lo stesso pulsante per chiuderla. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
+                'La parola di attivazione resta sul dispositivo: il nome si riconosce qui e l’audio non viene inviato solo per accorgersene. Di’ “Nexus” e la richiesta che segue viene presa, risposta, e poi NEXUS aspetta di nuovo il nome. Un tocco registra una richiesta. Tieni premuto il microfono per due secondi per una conversazione a mani libere, e tocca lo stesso pulsante per chiuderla. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
             wakePhrase: 'Frase di attivazione',
             wakePhraseCustom: 'Frase personalizzata',
             wakeAutosend: 'Invia automaticamente il parlato concluso',
             wakeAutosendHelp:
-                'La frase finita viene inviata da sola. Un tocco registra una richiesta. Tre secondi avviano le mani libere.',
+                'La frase finita viene inviata da sola. Un tocco registra una richiesta. Due secondi avviano le mani libere.',
             wakeContinuous: 'Conversazione continua',
             wakeContinuousHelp:
                 'Dopo la risposta, una conversazione a mani libere ascolta la domanda successiva. Una pausa chiude la frase, non la conversazione. Tocca il microfono per chiuderla. La parola di attivazione aspetta ancora il nome.',
@@ -193,6 +197,8 @@
             wakeReleaseEnd: 'Rilascia per chiudere le mani libere',
             wakeHint: 'Tocca per parlare · Tieni premuto 3 secondi per le mani libere',
             handsFreeOn: 'Mani libere attive · Tocca per chiudere',
+            stopCapture: 'Ferma la registrazione · Non inviare',
+            captureCancelled: 'Registrazione annullata · Non inviata',
             wakeOnConfirm: 'Parola di attivazione attiva. Di’ Nexus.',
             wakeOffConfirm: 'Parola di attivazione disattivata.',
             conversationOn: 'Conversazione attiva · Ti ascolto',
@@ -511,6 +517,7 @@
         let idleWarned = false;
         let idleTimer = null;
         let sessionMode = null;
+        let voiceDraftText = '';
         let activeRec = null;
         let phraseRec = null;
         let sessionDone = false;
@@ -658,14 +665,24 @@
                         (state === 'RESPONDING' && activity !== 'speaking' && activity !== 'echo'));
                 const aiSpeaking = speaking || activity === 'speaking';
                 const standby = state === 'STANDBY' && settings.wakeEnabled && !userListening && !manualOpen;
+                const oneShotRecording =
+                    sessionMode === 'once' &&
+                    owner === 'manual' &&
+                    (state === 'LISTENING' || state === 'TRANSCRIBING');
                 btn.classList.toggle('active', userListening && !aiSpeaking);
                 btn.classList.toggle('nexus-thinking', thinking && !aiSpeaking);
                 btn.classList.toggle('nexus-speaking', aiSpeaking);
                 btn.classList.toggle('hands-free', manualOpen && !userListening && !aiSpeaking);
-                btn.classList.toggle('is-stop', !!manualOpen);
+                btn.classList.toggle('handsfree-session', !!manualOpen);
+                btn.classList.toggle('one-shot-recording', oneShotRecording);
+                btn.classList.toggle('is-stop', !!manualOpen || oneShotRecording);
                 btn.classList.toggle('processing', thinking && !aiSpeaking);
                 btn.classList.toggle('wake-standby', standby);
-                const hint = manualOpen ? label('handsFreeOn') : label('wakeHint');
+                const hint = manualOpen
+                    ? label('handsFreeOn')
+                    : oneShotRecording
+                      ? label('stopCapture')
+                      : label('wakeHint');
                 btn.setAttribute(
                     'aria-pressed',
                     userListening || aiSpeaking || manualOpen || standby ? 'true' : 'false'
@@ -1471,6 +1488,7 @@
         }
 
         function fillInput(text) {
+            voiceDraftText = String(text || '');
             try {
                 if (typeof deps.fillInput === 'function') {
                     deps.fillInput(text);
@@ -1486,6 +1504,7 @@
         }
 
         function showInterim(text) {
+            voiceDraftText = String(text || '');
             try {
                 if (typeof deps.showInterim === 'function') {
                     deps.showInterim(text);
@@ -1496,6 +1515,17 @@
                 input.value = text;
                 input.style.fontStyle = 'italic';
                 input.style.opacity = '0.7';
+            } catch (_) {}
+        }
+
+        function clearVoiceDraft() {
+            const draft = voiceDraftText;
+            voiceDraftText = '';
+            if (!draft) return;
+            try {
+                const input = global.document && global.document.getElementById('speech-text');
+                // A cancellation must not erase text the person typed after recognition.
+                if (input && input.value === draft) fillInput('');
             } catch (_) {}
         }
 
@@ -1670,7 +1700,33 @@
                     if (settings.wakeEnabled && !settings.paused && !hidden) armMonitor();
                     return;
                 }
-                submitText(clean, who);
+                // Paint finalized speech before auto-send clears the field.
+                // Stop, pagehide, and Companion takeover invalidate this timer.
+                fillInput(clean);
+                setState('TRANSCRIBING');
+                const sendToken = resumeToken;
+                const previewMs = Number.isFinite(deps.transcriptPreviewMs)
+                    ? Math.max(0, deps.transcriptPreviewMs)
+                    : DEFAULTS.transcriptPreviewMs;
+                function sendFinal() {
+                    if (gen !== sessionGen || sendToken !== resumeToken || owner !== who) return;
+                    if (hidden || settings.paused) return;
+                    const input = global.document && global.document.getElementById('speech-text');
+                    if (input && input.value !== clean) {
+                        // Keep a draft that was edited during preview instead of sending stale text.
+                        voiceDraftText = '';
+                        manualOpen = false;
+                        sessionMode = null;
+                        stopIdleClock();
+                        owner = null;
+                        setState('OFF');
+                        if (settings.wakeEnabled && !settings.paused && !hidden && !companionActive) armMonitor();
+                        return;
+                    }
+                    submitText(clean, who);
+                }
+                if (previewMs > 0) setTimeout(sendFinal, previewMs);
+                else sendFinal();
             }
 
             function silenceFor(text) {
@@ -1726,6 +1782,7 @@
                 }
                 if (read.anyFinal && read.finalText) {
                     finalText = read.finalText;
+                    fillInput(finalText);
                     if (who === 'manual') touchIdle();
                     clearTimeout(noSpeechTimer);
                     if (local) {
@@ -2164,6 +2221,7 @@
         }
 
         function endConversation() {
+            clearVoiceDraft();
             const keepWake = settings.wakeEnabled && !settings.paused && !hidden && !companionActive;
             // Clear the session before stopping speech, so her onend cannot
             // open another listen.
@@ -2177,6 +2235,18 @@
         }
 
         function captureOnce() {
+            if (
+                sessionMode === 'once' &&
+                owner === 'manual' &&
+                (state === 'LISTENING' || state === 'TRANSCRIBING')
+            ) {
+                // A second tap cancels the existing one-shot recognizer;
+                // calling captureUtterance again would only fail as busy.
+                clearVoiceDraft();
+                cancel('user-stop');
+                feedbackKey('captureCancelled');
+                return true;
+            }
             if (speaking || state === 'RESPONDING' || state === 'SENDING') {
                 stopSpeechPlayback();
                 const keepWake = settings.wakeEnabled && !settings.paused && !hidden && !companionActive;
@@ -2201,6 +2271,19 @@
 
         function holdForHandsFree() {
             if (manualOpen) return endConversation();
+            if (
+                sessionMode === 'once' &&
+                owner === 'manual' &&
+                (state === 'LISTENING' || state === 'TRANSCRIBING')
+            ) {
+                // Upgrade the existing capture without opening a second mic.
+                manualOpen = true;
+                sessionMode = 'manual';
+                armIdle();
+                paint();
+                feedbackKey('handsFreeOn');
+                return true;
+            }
             if (busy() && owner && owner !== 'wake') {
                 feedbackKey('wakeBusy');
                 return false;
