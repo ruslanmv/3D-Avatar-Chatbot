@@ -24,10 +24,11 @@ Holding the button for 2000 ms, while a hands-free session is not open, starts
 that session (`holdForHandsFree`). It listens again after each reply until a
 tap or another hold. Holding while a one-shot recording is open promotes that
 capture to hands-free without acquiring a second microphone. The same button
-shows a stop mark for the session. Wake word stays the Settings checkbox. The hold does not record and does not flip
-that checkbox. Release before 2000 ms is the tap.
+shows a stop mark for the session. Wake word stays the Settings checkbox. The
+hold does not record and does not flip that checkbox. Release before 2000 ms
+is the tap.
 `pointercancel`, a drag past 16 px, `pagehide` and a disabled control cancel
-and swallow the click. The outline uses `currentColor`. Idle green and
+and swallow the click. The progress ring is purple. Idle green and
 listening orange are unchanged. `wake-standby` is the visible “microphone is
 hot” mark while the name is being watched.
 
@@ -35,7 +36,7 @@ Endpoint defaults, not device-measured: a pause under 800 ms stays open.
 A sentence that ends with punctuation closes after about 1200 ms of quiet.
 A clause with no ending waits about 1800 ms, so a thinking pause is not
 treated as the end of the request. There is no semantic turn model in this
-browser build. In a tapped conversation, 7 s of silence ends that sentence
+browser build. In a hands-free conversation, 7 s of silence ends that sentence
 and listens again; it does not end the conversation. The whole session
 ends after 2 minutes without the person speaking (90 seconds is the other
 choice, or Never). A restart of a silent recognizer does not reset that
