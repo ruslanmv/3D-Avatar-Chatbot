@@ -160,6 +160,9 @@
         'src/experiences/private/PrivateMediaController.js',
         'src/experiences/private/OutfitDecisionEngine.js',
         'src/experiences/private/InSceneWardrobe.js',
+        // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.
+        'src/features/together/StoryWeaver.js',
+        'src/features/together/StoryDirector.js',
         'src/experiences/private/PrivateActionBridge.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for

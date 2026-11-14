@@ -1,0 +1,252 @@
+/**
+ * UN3. Una Notte: a different evening every time, from places that exist, and a narrative state
+ * that only the renderer can move to "arrived".
+ */
+const Weaver = require('../../src/features/together/StoryWeaver.js');
+const Director = require('../../src/features/together/StoryDirector.js');
+const Actions = require('../../src/experiences/private/PrivateActionBridge.js');
+const Reset = require('../../src/features/chat/ConversationReset.js');
+
+const PLACES = [
+    {
+        id: 'neon-discoteca',
+        world: 'neon-discoteca',
+        title: 'Neon discoteca',
+        rating: 'general',
+        category: 'Nightlife',
+    },
+    { id: 'neon-street', world: 'neon-street', title: 'Neon street', rating: 'general', category: 'Nightlife' },
+    {
+        id: 'private-cabaret',
+        world: 'private-cabaret',
+        title: 'Private cabaret',
+        rating: 'private',
+        category: 'Private',
+    },
+    { id: 'hotel-suite', world: 'hotel-suite', title: 'Hotel suite', rating: 'romantic', category: 'Romantic' },
+    { id: 'apartment', world: 'apartment', title: 'Apartment', rating: 'romantic', category: 'Romantic' },
+    { id: 'meadow-sunset', world: 'meadow-sunset', title: 'Meadow at sunset', rating: 'general', category: 'Nature' },
+];
+
+/** A seeded random source, so every run deals the same evenings. */
+function seeded(seed) {
+    let x = seed >>> 0;
+    return () => {
+        x = (x * 1664525 + 1013904223) >>> 0;
+        return x / 4294967296;
+    };
+}
+
+beforeEach(() => {
+    localStorage.clear();
+    Actions.end();
+});
+
+describe('UN3. StoryWeaver', () => {
+    test('opens and leads only where the catalogue can go, never the same place twice', () => {
+        for (let i = 0; i < 30; i += 1) {
+            const o = Weaver.weave({ places: PLACES, rng: seeded(i + 1) });
+            const ids = PLACES.map((p) => p.id);
+            expect(ids).toContain(o.openingVenue);
+            expect(ids).toContain(o.destination);
+            expect(o.destination).not.toBe(o.openingVenue);
+            expect(Weaver.isOpening(PLACES.find((p) => p.id === o.openingVenue))).toBe(true);
+            expect(Weaver.isDestination(PLACES.find((p) => p.id === o.destination))).toBe(true);
+            expect(Object.keys(Weaver.HOOKS)).toContain(o.narrativeHook);
+            expect(Object.keys(Weaver.MOODS)).toContain(o.characterMood);
+        }
+    });
+
+    test('the room she is already in is the opening, whatever the deal', () => {
+        const o = Weaver.weave({ places: PLACES, current: 'apartment', rng: seeded(7) });
+        expect(o.openingVenue).toBe('apartment');
+        expect(o.destination).not.toBe('apartment');
+    });
+
+    test('ten evenings in a row: ten different outlines, and what moves them differs too', () => {
+        const rng = seeded(42);
+        const seen = [];
+        for (let i = 0; i < 10; i += 1) {
+            const o = Weaver.weave({ places: PLACES, history: Weaver.history(), rng });
+            Weaver.remember(o.fingerprint);
+            seen.push(o);
+        }
+        const prints = new Set(seen.map((o) => JSON.stringify(o.fingerprint)));
+        expect(prints.size).toBe(10);
+        expect(new Set(seen.map((o) => o.narrativeHook)).size).toBeGreaterThanOrEqual(5);
+        expect(new Set(seen.map((o) => o.storyArc)).size).toBeGreaterThanOrEqual(4);
+        // Back to back, two evenings never share both their hook and their arc.
+        for (let i = 1; i < seen.length; i += 1)
+            expect(
+                seen[i].narrativeHook === seen[i - 1].narrativeHook && seen[i].storyArc === seen[i - 1].storyArc
+            ).toBe(false);
+        expect(Weaver.history()).toHaveLength(10);
+    });
+
+    test('with every combination worn out it still deals, the least similar one', () => {
+        const tiny = PLACES.filter((p) => ['neon-discoteca', 'hotel-suite'].includes(p.id));
+        const history = Array.from({ length: 10 }, () => Weaver.weave({ places: tiny, rng: seeded(3) }).fingerprint);
+        const o = Weaver.weave({ places: tiny, history, rng: seeded(99) });
+        expect(o.openingVenue).toBe('neon-discoteca');
+        expect(o.destination).toBe('hotel-suite');
+        expect(o.similarity).toBeLessThan(8);
+    });
+
+    test('no places at all is a quiet evening "here", not a crash', () => {
+        const o = Weaver.weave({ places: [], rng: seeded(5) });
+        expect(o.openingVenue).toBe('here');
+        expect(o.destination).toBeNull();
+    });
+
+    test('the memory holds catalogue ids only, at most ten, and forgets on request', () => {
+        localStorage.setItem(
+            Weaver.KEY,
+            JSON.stringify([
+                {
+                    narrativeHook: 'last-song',
+                    characterMood: 'shy',
+                    storyArc: 'reunion',
+                    outfitTheme: 'red-night',
+                    openingVenue: 'neon-discoteca',
+                    destination: 'apartment',
+                },
+                {
+                    narrativeHook: '<script>',
+                    characterMood: 'shy',
+                    storyArc: 'reunion',
+                    outfitTheme: 'red-night',
+                    openingVenue: 'x',
+                    destination: 'y',
+                },
+                {
+                    narrativeHook: 'last-song',
+                    characterMood: 'shy',
+                    storyArc: 'reunion',
+                    outfitTheme: 'red-night',
+                    openingVenue: 'She said: hello',
+                    destination: 'apartment',
+                },
+                'junk',
+            ])
+        );
+        expect(Weaver.history()).toHaveLength(1);
+        for (let i = 0; i < 14; i += 1) Weaver.remember(Weaver.weave({ places: PLACES, rng: seeded(i) }).fingerprint);
+        expect(Weaver.history()).toHaveLength(10);
+        const stored = JSON.parse(localStorage.getItem(Weaver.KEY));
+        stored.forEach((f) =>
+            expect(Object.keys(f).sort()).toEqual([
+                'characterMood',
+                'destination',
+                'narrativeHook',
+                'openingVenue',
+                'outfitTheme',
+                'storyArc',
+            ])
+        );
+        expect(Weaver.forget()).toBe(true);
+        expect(Weaver.history()).toEqual([]);
+    });
+
+    test('storage that refuses means an evening without memory, never an error', () => {
+        const broken = {
+            localStorage: {
+                getItem: () => {
+                    throw new Error('denied');
+                },
+                setItem: () => {
+                    throw new Error('denied');
+                },
+                removeItem: () => {
+                    throw new Error('denied');
+                },
+            },
+        };
+        expect(Weaver.history(broken)).toEqual([]);
+        expect(Weaver.remember({ narrativeHook: 'last-song' }, broken)).toBe(false);
+        expect(Weaver.forget(broken)).toBe(false);
+    });
+
+    test('Clear keeps the evenings memory; it has its own forget', () => {
+        expect(Reset.KEPT).toContain(Weaver.KEY);
+        expect(Reset.KEYS || []).not.toContain(Weaver.KEY);
+    });
+});
+
+describe('UN3. StoryDirector', () => {
+    const outline = () => Weaver.weave({ places: PLACES, current: 'neon-discoteca', rng: seeded(11) });
+
+    test('only the renderer’s confirmation of the trip in progress is an arrival', () => {
+        const d = Director.create(outline(), { places: PLACES, current: 'neon-discoteca' });
+        expect(d.phase).toBe('opening');
+        expect(d.arrived('hotel-suite')).toBe(false); // nothing is travelling
+        d.propose('hotel-suite');
+        expect(d.phase).toBe('travel-proposed');
+        expect(d.arrived('hotel-suite')).toBe(false); // proposed is not agreed
+        d.travelling('hotel-suite');
+        expect(d.arrived('apartment')).toBe(false); // another world is not this trip
+        expect(d.arrived('hotel-suite')).toBe(true);
+        expect(d.snapshot()).toMatchObject({ phase: 'arrived', shown: 'hotel-suite', arrivedAt: 'hotel-suite' });
+    });
+
+    test('a declined or failed trip leaves the evening where it was', () => {
+        const d = Director.create(outline(), { places: PLACES, current: 'neon-discoteca' });
+        d.propose('hotel-suite');
+        d.decline();
+        expect(d.snapshot()).toMatchObject({ phase: 'opening', proposed: null, shown: 'neon-discoteca' });
+        d.travelling('hotel-suite');
+        d.failed('timeout');
+        expect(d.snapshot()).toMatchObject({ phase: 'opening', shown: 'neon-discoteca', failed: 'timeout' });
+        expect(d.lines({ canTravel: true }).join('\n')).toMatch(/did not happen; you are still where you were/);
+    });
+
+    test('her lines: where she really is, tonight’s motive, an invitation only when a trip can run', () => {
+        const o = outline();
+        const d = Director.create(o, { places: PLACES, current: 'neon-discoteca', weaver: Weaver });
+        const closed = d.lines({ canTravel: false }).join('\n');
+        expect(closed).toMatch(/Where you really are: Neon discoteca/);
+        expect(closed).toContain(Weaver.HOOKS[o.narrativeHook]);
+        expect(closed).not.toMatch(/<go /);
+        const open = d.lines({ canTravel: true }).join('\n');
+        expect(open).toContain(`<go place="${o.destination}"/>`);
+        expect(open).toMatch(/never announce it, never number it/);
+        expect(open).toMatch(/Staying is always right/);
+        expect(open).not.toMatch(/\b(act|stage) [0-9]/i);
+        d.end();
+        expect(d.lines({ canTravel: true })).toEqual([]);
+    });
+});
+
+describe('UN3. the bridge deals one story per Private session and follows the renderer', () => {
+    const session = () => ({ _stopped: false, _care: false, adult: { level: 1, active: true } });
+
+    test('each session gets its own outline, remembered once, ended with the session', () => {
+        const s1 = session();
+        Actions.begin(s1, {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(1) } },
+        });
+        const first = Actions.snapshot().story;
+        expect(first).toMatchObject({ phase: 'opening', shown: 'neon-discoteca' });
+        expect(Actions.promptLines().join('\n')).toMatch(/TONIGHT — your own outline/);
+        Actions.end(s1);
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(2) } },
+        });
+        const second = Actions.snapshot().story;
+        expect(second.storyId).not.toBe(first.storyId);
+        expect(Weaver.history()).toHaveLength(2);
+    });
+
+    test('a world the renderer announces is where she is; nothing else moves her', () => {
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(3) } },
+        });
+        window.dispatchEvent(
+            new window.CustomEvent('nexus-world-shown', { detail: { id: 'apartment', base: 'apartment' } })
+        );
+        expect(Actions.snapshot().story.shown).toBe('apartment');
+        expect(Actions.snapshot().story.phase).toBe('opening');
+    });
+});

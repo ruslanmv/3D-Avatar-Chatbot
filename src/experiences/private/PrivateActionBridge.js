@@ -134,8 +134,11 @@
                 (Wardrobe ? new Wardrobe.InSceneWardrobe({ win, deps: (o.deps && o.deps.wardrobeDeps) || {} }) : null),
             motion: (o.deps && o.deps.motion) || null,
             unwatch: [],
+            // UN3. The evening's outline and narrative state (StoryWeaver / StoryDirector).
+            story: null,
         };
         const s = state;
+        startStory(s, o.deps && o.deps.story);
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -177,6 +180,7 @@
             }
         }
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
+        if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
         } catch (_) {
@@ -187,6 +191,82 @@
         }
         emit();
         return true;
+    }
+
+    // ------------------------------------------------------------------ UN3. the evening
+    /**
+     * The places this device can show for Private (the setup screen's rooms plus the nightlife
+     * openings), resolved for its tier. `VRWorlds.placesFor` is the only source: a place that is
+     * not in the catalogue for this device can never be named in her outline.
+     */
+    async function storyPlaces(win) {
+        const W = win && win.NEXUS_VR_WORLDS;
+        if (!W || typeof W.loadCatalogue !== 'function' || typeof W.placesFor !== 'function') return [];
+        const catalogue = await W.loadCatalogue();
+        const doc = win.document;
+        const mobile = !!(doc && doc.documentElement && doc.documentElement.classList.contains('is-mobile'));
+        return W.placesFor(catalogue.worlds, {
+            tier: W.tierFor({ xr: false, mobile }),
+            include: ['general', 'romantic', 'private'],
+            privateOpen: true,
+        });
+    }
+
+    /** The world the renderer shows right now, by catalogue id, or null. */
+    function shownWorld(win) {
+        try {
+            const runtime = win && win.NEXUS_VIEWER && win.NEXUS_VIEWER.vrWorlds;
+            return (runtime && runtime.activeId) || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Deal this session's outline (once), and follow the renderer. Nothing here moves anything:
+     * the outline is guidance for her prompt, and `nexus-world-shown` — the renderer's own
+     * announcement — is the only thing that says where she is.
+     */
+    function startStory(s, injected) {
+        const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
+        const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
+        if (!Weaver || !Director) return;
+        const deal = (places) => {
+            if (state !== s || s.story) return;
+            const current = (injected && injected.current) || shownWorld(s.win);
+            const outline = Weaver.weave({
+                places,
+                current,
+                history: Weaver.history(s.win),
+                rng: injected && injected.rng,
+            });
+            Weaver.remember(outline.fingerprint, s.win);
+            s.places = places;
+            s.story = Director.create(outline, { places, current, weaver: Weaver });
+            emit();
+        };
+        if (injected && Array.isArray(injected.places)) deal(injected.places);
+        else
+            storyPlaces(s.win)
+                .then(deal)
+                .catch(() => deal([]));
+        if (s.win && typeof s.win.addEventListener === 'function') {
+            const onShown = (event) => {
+                if (state !== s || !s.story) return;
+                const d = (event && event.detail) || {};
+                const id = d.base || d.id || null;
+                if (s.travel && (id === s.travel.world || d.id === s.travel.world)) arrive(s, id);
+                else s.story.shown(id);
+                emit();
+            };
+            s.win.addEventListener('nexus-world-shown', onShown);
+            s.unwatch.push(() => s.win.removeEventListener('nexus-world-shown', onShown));
+        }
+    }
+
+    /** Placeholder until UN4 wires travel; a confirmed world simply becomes where she is. */
+    function arrive(s, id) {
+        if (s.story) s.story.shown(id);
     }
 
     function active() {
@@ -799,6 +879,7 @@
                 : null,
             offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
+            story: s.story ? s.story.snapshot() : null,
         };
     }
 
@@ -1060,6 +1141,8 @@
                     ? 'They asked you to dance, and you are dancing now.'
                     : 'They asked you to dance and you cannot right now. Say so lightly.'
             );
+        // UN3. Tonight's outline, after what she can do and before what is happening now.
+        if (s.story) lines.push(...s.story.lines({ canTravel: Boolean(s.canTravel) }));
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;
