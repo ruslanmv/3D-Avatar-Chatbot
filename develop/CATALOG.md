@@ -1,5 +1,9 @@
 # Compatible animation sources (match what already works)
 
+> **#153 slimmed:** binary staging removed; product clips in `vendor/` via
+> [#155](https://github.com/ruslanmv/3D-Avatar-Chatbot/pull/155). This file is a
+> source catalog only.
+
 Local AX16 showed **native VRMA** and a few grounded sit/idle clips stay on her
 feet (~0.85–0.90 m hips). Raw ACCAD/CMU BVH floated and were removed.
 

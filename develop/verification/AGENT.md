@@ -1,39 +1,38 @@
-# Agent brief: develop/ additive animation audit
+# Agent brief: additive animation audit
 
-For Claude, Cursor, Grok, or any AI coder. **One job:** prove new clips in
-`develop/addons/stable/` before anyone copies them into product.
+For Claude, Cursor, Grok. **One job:** prove new `.vrma` / `.bvh` clips before
+product wiring. Product promotion of the #153 MIT set is in **PR #155**.
 
 ## Do
 
 ```bash
-npm start                                          # http://127.0.0.1:8080
-node develop/verification/audit-additive.mjs       # ONLY develop/ addons
+npm start
+node develop/verification/audit-additive.mjs
+# ad-hoc:
+node develop/verification/audit-additive.mjs --dir path/to/clips --strict
 ```
 
-Exit **0** only when every playable clip is **ok** (no fail). Warn is printed
-but does not fail the process unless `--strict`.
+Exit **0** when every playable clip is **ok** (no fail). `--strict` also fails
+on warn.
 
 ## Rules
 
-1. Audit **additive paths only** — `develop/addons/stable/` `.vrma` / `.bvh`. Do
-   not re-run the full vendor matrix unless asked. **Ignore `addons/pending/`**
-   (not playable yet).
-2. Never modify `src/` from this folder. Promote in a separate product PR.
-3. Fail/warn clips: delete or move out of `addons/stable/` (do not leave junk).
-4. Record provenance in each pack’s `PROVENANCE.md`.
-5. Prefer native **VRMA** (same class as shipped tk256 clips). Raw academic BVH
-   and Quaternius GLB stay in `pending/` until converted.
+1. Prefer `--dir` at the pack you are adding. Default scans
+   `vendor/animations/vrma/` (shipped MIT set).
+2. Never modify `src/` from an audit-only session — product PRs own wiring.
+3. Fail clips: do not promote. Prefer native **VRMA** over unscaled BVH/GLB.
+4. MIT redistributions need copyright + licence text (see
+   `vendor/animations/vrma/THIRD_PARTY_LICENSES.md` in #155).
+5. **Multi-avatar pass bar:** AvatarSample_A + one short (`VRM_Viewer_Sample`) +
+   one tall (`Vita`). Single-avatar audits miss hips-scale bugs.
 
 ## Pass bar
 
-| Verdict | Meaning                                   | Action                   |
-| ------- | ----------------------------------------- | ------------------------ |
-| ok      | Grounded, moves                           | Keep / promote candidate |
-| warn    | Soft issue (e.g. no-motion on a hold)     | Fix or drop              |
-| fail    | hips-floating, inverted legs, play-failed | **Remove from develop/** |
+| Verdict | Meaning                                   | Action       |
+| ------- | ----------------------------------------- | ------------ |
+| ok      | Grounded, moves                           | Keep/promote |
+| warn    | Soft issue                                | Fix or drop  |
+| fail    | hips-floating, inverted legs, play-failed | Do not ship  |
 
-Evidence → `develop/verification/runs/additive-<stamp>/`.
-
-## Catalog
-
-More compatible internet sources: `develop/CATALOG.md`.
+Evidence → `develop/verification/runs/additive-<stamp>/`. Catalog:
+`../CATALOG.md`.
