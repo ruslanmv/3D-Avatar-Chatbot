@@ -515,7 +515,11 @@
             var landing = state.lastLanding || {};
             var look = landing.look;
             if (!look || look.original || landing.cause === 'compare' || landing.cause === 'compare-end') return;
-            this.turned = false; // a new avatar file faces the camera again
+            // LT6. A swap keeps her yaw, so a back she was already showing is still her back.
+            // A file that arrived facing the camera reports false, which is what this used to assume.
+            this.turned = Boolean(
+                this.turner && typeof this.turner.showingBack === 'function' && this.turner.showingBack()
+            );
             this._revealNext = true; // the next stage drawn plays the reveal, once
             this._flash();
             // The reveal is for seeing her, and the full sheet covers most of her: it folds to

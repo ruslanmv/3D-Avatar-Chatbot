@@ -63,6 +63,11 @@ const TryOnHaulActivity = (() => {
     /**
      * Turn her round and back. Relative to the yaw the model loaded with (VRM 0.x files are
      * turned at load), so "back" is always exactly that yaw again — snapshot and restore.
+     *
+     * LT6. A wardrobe swap copies that yaw onto the new file, including a turn that is
+     * already under way. The front baseline stays the load-time yaw, so Show back still
+     * means her back. A file that arrives on some other yaw is a different character and
+     * becomes the new front.
      */
     function makeTurner(manager, g) {
         let root = null;
@@ -78,15 +83,32 @@ const TryOnHaulActivity = (() => {
                 return false;
             }
         };
+        // Two yaws name the same direction when they differ by a full turn. The copied
+        // facing is exact; the slack is only for 2π landing on 0.
+        const sameYaw = (a, b) => {
+            const tau = Math.PI * 2;
+            let d = (a - b) % tau;
+            if (d > Math.PI) d -= tau;
+            else if (d < -Math.PI) d += tau;
+            return Math.abs(d) < 1e-3;
+        };
         const current = () => {
             const now = manager && manager.currentRoot;
             if (now && now !== root) {
-                // A new file: whatever we turned is gone, and this one faces the camera.
                 if (frame !== null) cancel(frame);
                 frame = null;
+                const yaw = now.rotation && Number.isFinite(now.rotation.y) ? now.rotation.y : 0;
+                if (root && sameYaw(yaw, base + Math.PI)) {
+                    // Still showing the back she had on. Front does not move with the file.
+                    turned = true;
+                } else if (root && sameYaw(yaw, base)) {
+                    turned = false;
+                } else {
+                    // A different file, facing the camera on its own terms.
+                    base = yaw;
+                    turned = false;
+                }
                 root = now;
-                base = now.rotation ? now.rotation.y : 0;
-                turned = false;
             }
             return root && root.rotation ? root : null;
         };
@@ -115,9 +137,16 @@ const TryOnHaulActivity = (() => {
                 to(base + (turned ? Math.PI : 0));
                 return turned;
             },
+            /** True once the body on stage is the turned one, including after a swap that kept her yaw. */
+            showingBack() {
+                return Boolean(current() && turned);
+            },
             reset() {
                 if (frame !== null) cancel(frame);
                 frame = null;
+                // Adopt a root the swap already put on stage, then face her front again.
+                // A file that is not her turned yaw is left where it loaded.
+                current();
                 if (root && root.rotation && turned && manager && manager.currentRoot === root) root.rotation.y = base;
                 turned = false;
             },

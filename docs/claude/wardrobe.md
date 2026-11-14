@@ -94,8 +94,9 @@ creating looks (WF1)** — see the Forge bullet below.
   vanished for the whole download. She now stays until the next VRM is parsed.
   The new root is added first, her humanoid pose is copied onto it, a wardrobe
   swap (`keepFacing`) keeps her yaw, and the two crossfade for 180 ms. The
-  avatar picker does not pass `keepFacing`, so a different character still faces
-  the camera. `TryOnSession` asks `WardrobeController.prime` for the next and
+  turntable's front stays the yaw she loaded with, so Show back still means her
+  back after that copy. The avatar picker does not pass `keepFacing`, so a
+  different character still faces the camera and becomes the new front. `TryOnSession` asks `WardrobeController.prime` for the next and
   previous looks; `preload` holds at most three parsed files and drops one that
   nobody wears. A failed or superseded load leaves the body that is on stage.
 - **The haul speaks every language AppLanguage already does (LT7).**
