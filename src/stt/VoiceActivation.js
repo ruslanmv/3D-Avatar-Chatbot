@@ -678,11 +678,9 @@
                 btn.classList.toggle('is-stop', !!manualOpen || oneShotRecording);
                 btn.classList.toggle('processing', thinking && !aiSpeaking);
                 btn.classList.toggle('wake-standby', standby);
-                const hint = manualOpen
-                    ? label('handsFreeOn')
-                    : oneShotRecording
-                      ? label('stopCapture')
-                      : label('wakeHint');
+                let hint = label('wakeHint');
+                if (manualOpen) hint = label('handsFreeOn');
+                else if (oneShotRecording) hint = label('stopCapture');
                 btn.setAttribute(
                     'aria-pressed',
                     userListening || aiSpeaking || manualOpen || standby ? 'true' : 'false'
