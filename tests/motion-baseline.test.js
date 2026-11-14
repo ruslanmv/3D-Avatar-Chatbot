@@ -177,9 +177,14 @@ describe('baseline: MotionClipMap', () => {
         expect(Object.keys(Clips.ALIASES)).toHaveLength(21);
     });
 
-    test('21 names are advertised to the model — every *_idle is withheld', () => {
+    test('20 names are advertised to the model — every *_idle and every unperformable name is withheld', () => {
         const names = Clips.availableNames();
-        expect(names).toHaveLength(21);
+        expect(names).toHaveLength(20);
+        // MO7. backflip's only clip is quarantined (it floats her out of frame) and nothing stands
+        // in for it, so the model is not offered a gesture her body cannot do.
+        expect(names).not.toContain('backflip');
+        expect(names).toContain('bow'); // procedural stand-in
+        expect(names).toContain('clap'); // grounded fallback clip
         expect(names).toContain('dance');
         expect(names).toContain('sit');
         expect(names).toContain('lay'); // the posture IS offered

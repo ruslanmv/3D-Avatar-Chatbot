@@ -27,8 +27,8 @@ const HandContactIK = (() => {
 
     /** Per-side state. */
     const _sides = {
-        right: { target: null, weight: 0, bones: null },
-        left: { target: null, weight: 0, bones: null },
+        right: { target: null, weight: 0, bones: null, held: null },
+        left: { target: null, weight: 0, bones: null, held: null },
     };
 
     const _tmp = {};
@@ -55,13 +55,21 @@ const HandContactIK = (() => {
     function _bones(side) {
         if (!_vrm || !_vrm.humanoid) return null;
         const h = _vrm.humanoid;
+        // MO7. RAW bones first — they are what the renderer draws. This solved on the normalized
+        // rig, which three-vrm copies onto the raw rig inside vrm.update(). NEXUS_MOTION.update (and
+        // so this) runs AFTER that copy in the frame, and while a BVH clip plays the mixer writes
+        // the raw rig directly with the copy switched off — so every correction landed on bones
+        // nobody draws. Measured in a browser: "point", "high five", "offer your hand" moved her
+        // right arm 1.7–2.2° (idle sway) while the executor reported the gesture as started. The
+        // solve is pure world-space math, so it is rig-agnostic; on the raw rig it runs after the
+        // mixer has posed the frame, which is exactly what "blended on top of the clip" needs.
         const get = (name) => {
-            if (typeof h.getNormalizedBoneNode === 'function') {
-                const n = h.getNormalizedBoneNode(name);
-                if (n) return n;
-            }
             if (typeof h.getRawBoneNode === 'function') {
                 const n = h.getRawBoneNode(name);
+                if (n) return n;
+            }
+            if (typeof h.getNormalizedBoneNode === 'function') {
+                const n = h.getNormalizedBoneNode(name);
                 if (n) return n;
             }
             if (typeof h.getBoneNode === 'function') return h.getBoneNode(name);
@@ -172,13 +180,53 @@ const HandContactIK = (() => {
             }
             const step = RAMP_SPEED * (dt || 0.016);
             s.weight += Math.max(-step, Math.min(step, goal - s.weight));
-            if (s.weight < 0.01 || !s.target) continue;
 
+            // MO7. Give the arm back. On the raw rig nothing re-poses an arm when no clip is
+            // playing (the normalized→raw copy is off), so a released reach left her hand up at
+            // head height for good — measured: still at 1.5 m seconds after a high five. Keep the
+            // pose the arm had when the reach began; while nobody else has written the joints
+            // since our last solve, ease back to it as the weight ramps down. A clip that poses the
+            // arm every frame overwrites our write, and then there is nothing to give back.
+            if (s.held && !_stillOurs(s)) s.held = null;
+            if (s.weight < 0.01 || !s.target) {
+                if (s.held) {
+                    const w = Math.max(0, s.weight);
+                    for (const j of ['upper', 'lower']) {
+                        const h = s.held[j];
+                        s.bones[j].quaternion.slerpQuaternions(h.base, h.reached, w);
+                        h.written.copy(s.bones[j].quaternion);
+                    }
+                    s.bones.upper.updateMatrixWorld(true);
+                    if (w < 0.01) s.held = null;
+                }
+                continue;
+            }
+
+            if (!s.held) {
+                const Q = _T().Quaternion;
+                s.held = {};
+                for (const j of ['upper', 'lower']) {
+                    const q = s.bones[j].quaternion;
+                    s.held[j] = { base: q.clone(), reached: q.clone(), written: new Q() };
+                }
+            }
             for (let it = 0; it < ITERATIONS; it++) {
                 _ccdJoint(s.bones.lower, s.bones.hand, s.target, s.weight);
                 _ccdJoint(s.bones.upper, s.bones.hand, s.target, s.weight * 0.8);
             }
+            for (const j of ['upper', 'lower']) {
+                s.held[j].reached.copy(s.bones[j].quaternion);
+                s.held[j].written.copy(s.bones[j].quaternion);
+            }
         }
+    }
+
+    /** Are both joints exactly as we last left them (no clip or copy has posed them since)? */
+    function _stillOurs(s) {
+        return (
+            s.held.upper.written.equals(s.bones.upper.quaternion) &&
+            s.held.lower.written.equals(s.bones.lower.quaternion)
+        );
     }
 
     /**
