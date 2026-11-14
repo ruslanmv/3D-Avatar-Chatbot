@@ -20,6 +20,7 @@ its code merges.
 | Walkable from home on desktop / mobile / VR | 26 / 12 / 12 of 26 public zones | atlas audit |
 | First gateway cutting a device off | `walled-town` (mobile, vr) | atlas audit |
 | 3D failures / warnings | 0 / 19 | 3D audit |
+| Avatars / clips / poses (animation audit) | 17 / 145 / 26 · intents 7/7 · 0 fail / 8 warn | animations audit |
 
 Live figures and the ranked next actions: `quality-lab/data/hub.json`.
 

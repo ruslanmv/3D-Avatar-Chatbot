@@ -3,7 +3,8 @@
     "generator": "tools/qa/hub.mjs",
     "readFirst": [
         "quality-lab/README.md",
-        "CLAUDE.md"
+        "CLAUDE.md",
+        "docs/claude/animations-and-motion.md"
     ],
     "areas": {
         "ai": {
@@ -27,7 +28,15 @@
                 "vr": 29
             },
             "fails": 0,
-            "warns": 19
+            "warns": 19,
+            "animations": {
+                "avatars": 17,
+                "clips": 145,
+                "poses": 26,
+                "intentsOk": 7,
+                "fails": 0,
+                "warns": 8
+            }
         },
         "atlas": {
             "zones": 30,
@@ -127,6 +136,20 @@
             ]
         },
         {
+            "id": "3d-anim-playback",
+            "area": "3d",
+            "priority": 2,
+            "title": "Run per-avatar animation playback CSV + frame shots",
+            "why": "Inventory covers 17 avatars × 145 clips (2907 cells). Playback proves sit/dance/pose are not broken on each character.",
+            "command": "npm start & node audits/vrm_animations/run.mjs",
+            "files": [
+                "audits/vrm_animations/",
+                "tools/qa/animation-audit.mjs",
+                "tools/qa/AnimationPlaybackScorer.js",
+                "docs/claude/animations-and-motion.md"
+            ]
+        },
+        {
             "id": "ai-human-review",
             "area": "ai",
             "priority": 3,
@@ -147,6 +170,19 @@
             "files": [
                 "assets/vr-worlds/worlds.json",
                 "tools/vr/playground-subsets.json"
+            ]
+        },
+        {
+            "id": "3d-anim-experimental",
+            "area": "3d",
+            "priority": 3,
+            "title": "Review 19 experimental animation clips",
+            "why": "Manifest dance BVH is marked experimental; Mixamo-origin add-on VRMA invert legs on VRM and must not reach MotionClipMap until retargeted (addons/vrma-dance/README.md).",
+            "command": "node tools/qa/animation-audit.mjs --play --category dance-mixamo --shots all",
+            "files": [
+                "addons/vrma-dance/README.md",
+                "vendor/animations/manifest.json",
+                "src/VRMAAnimationLoader.js"
             ]
         }
     ]

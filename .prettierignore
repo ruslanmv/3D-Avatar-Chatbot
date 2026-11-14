@@ -42,3 +42,5 @@ tests/fixtures/protocol/
 # Quality Lab run data is written by tools/qa/lab-publish.mjs and checked by
 # tests/quality-lab.test.js; reformatting it would fight every publish.
 quality-lab/data/
+audits/vrm_animations/runs/
+audits/wardrobe_sitting_desk/runs/

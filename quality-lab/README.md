@@ -9,7 +9,9 @@ and write its JSON.
   replies, served models, scores, her voice and face, human reviews.
 - **3D quality** (`?area=3d`): whether every world is ready on desktop, phone
   and headset — device availability, triangle budget, previews, measured spots,
-  interactions, and a work queue of what is missing.
+  interactions, and a work queue of what is missing — plus the **animations
+  audit** (every built-in avatar × Pose Navigator / VRMA / BVH, spoken motion
+  intents, playback CSV + frame shots).
 - **World atlas** (`?area=atlas`): the Nexus map as regions of zones, what is
   walkable from home on each device, which zone cuts the map, and new zones as
   briefs. Phases: `docs/engine/NEXUS_OPEN_WORLD_ROADMAP.md`.
@@ -31,15 +33,17 @@ The page shows the same list with a ready-to-paste prompt for each.
 **Or use the MCP server.** `.mcp.json` registers `nexus-quality-lab`
 (`tools/qa/lab-mcp.mjs`, no dependencies); Claude Code asks once to enable it.
 Its tools: `lab_status`, `lab_next_actions`, `lab_worlds`, `lab_world`,
-`lab_atlas`, `lab_screenshot` (a world on desktop and a Pixel 7, inline, with
-the world each really loaded), `lab_score_reply` (instant scoring while you
-iterate on a prompt), `lab_replies`, `lab_new_zone` (dry run by default),
-`lab_regenerate` and `lab_check`. They run the same generators as the CLIs, so
-data written through them passes the same tests. Without the server loaded, call
-any tool from a shell:
+`lab_animations` (AX16 inventory + intent coverage), `lab_atlas`,
+`lab_screenshot` (a world on desktop and a Pixel 7, inline, with the world each
+really loaded), `lab_score_reply` (instant scoring while you iterate on a
+prompt), `lab_replies`, `lab_new_zone` (dry run by default), `lab_regenerate`
+and `lab_check`. They run the same generators as the CLIs, so data written
+through them passes the same tests. Without the server loaded, call any tool
+from a shell:
 `node tools/qa/lab-call.mjs lab_screenshot '{"world":"irish-pub"}'`. The
 real-provider lab is not a tool: it needs the app running, a token and minutes
-per route.
+per route. Animation **playback** (CSV + screenshots) is also CLI-only:
+`node tools/qa/animation-audit.mjs --play`.
 
 The loop is always the same: **measure → change one thing → measure again →
 regenerate → commit code and lab data together.**
@@ -125,15 +129,28 @@ Keys are the rubric ids (A1–A8, B1–B5, C1–C3, D1–D4); `score` is 0–3, 
 ```bash
 node tools/qa/world-audit.mjs          # regenerate quality-lab/data/3d/worlds-audit.json
 node tools/qa/world-audit.mjs --check  # what the test runs: fails if the audit is stale
+node tools/qa/animation-audit.mjs      # regenerate quality-lab/data/3d/animations-audit.json
+node tools/qa/animation-audit.mjs --play   # per-avatar CSV + frame shots → tmp/animation-audit/
 ```
 
-The audit is **generated, never written**. It reads `assets/vr-worlds/`
+The world audit is **generated, never written**. It reads `assets/vr-worlds/`
 (catalogue, scenes, panoramas, props, previews, spots, private configs) and asks
 the shipping code the questions the app asks at runtime: `VRWorlds`'
 `validateCatalogue`, `allowedOn`, `resolveFor` (a place shows its light stand-in
 where it cannot load itself) and `comfortProblem`, and the playground
 `TEMPLATES`. Change a world → regenerate → commit both;
 `tests/quality-lab.test.js` fails otherwise, and fails on any `fail` issue.
+
+### Animations audit (AX16)
+
+Same folder rule: `quality-lab/data/3d/animations-audit.json` is generated from
+`vendor/avatars/avatars.json`, `vendor/animations/manifest.json`,
+`addons/vrma-dance|actions`, Pose Navigator presets, `IntentFastPath` and
+`MotionClipMap`. Product rule: **sit down / dance / come with me / wave / lie
+down / stand up / bow must move the body** — see
+`docs/claude/animations-and-motion.md`. Playback (`--play`) writes one CSV per
+avatar plus JPEG frames for fail/warn under `tmp/animation-audit/` (gitignored);
+use `--full` for every clip × avatar, `--avatar` / `--category` to focus.
 
 | Severity | Raised when                                                                                                                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
