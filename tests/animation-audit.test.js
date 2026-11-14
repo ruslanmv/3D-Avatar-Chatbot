@@ -120,6 +120,31 @@ describe('AnimationPlaybackScorer', () => {
         expect(r.flags).not.toContain('hips-underground');
     });
 
+    test('a floor exercise is not a ruined retarget', () => {
+        // exercise_crunch.bvh: on the floor, knees up — low hips and upward thighs are the clip.
+        const restLegs = {
+            ...rest,
+            leftUpperLeg: { x: -0.1, y: 0.9, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            leftLowerLeg: { x: -0.1, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightUpperLeg: { x: 0.1, y: 0.9, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightLowerLeg: { x: 0.1, y: 0.5, z: 0, qx: 0, qy: 0, qz: 0, qw: 1 },
+        };
+        const sample = {
+            ...restLegs,
+            hips: { x: 0, y: 0.11, z: 0 },
+            leftUpperLeg: { x: -0.1, y: 0.12, z: 0, qx: 1, qy: 0, qz: 0, qw: 0 },
+            leftLowerLeg: { x: -0.1, y: 0.45, z: 0.2, qx: 0, qy: 0, qz: 0, qw: 1 },
+            rightUpperLeg: { x: 0.1, y: 0.12, z: 0, qx: 1, qy: 0, qz: 0, qw: 0 },
+            rightLowerLeg: { x: 0.1, y: 0.45, z: 0.2, qx: 0, qy: 0, qz: 0, qw: 1 },
+        };
+        const base = { played: true, rest: restLegs, samples: [sample], category: 'exercise', standingHipsY: 0.9 };
+        expect(Scorer.score(base).verdict).toBe('fail'); // without the hint it reads as broken
+        const r = Scorer.score({ ...base, floor: true });
+        expect(r.flags).not.toContain('legs-inverted');
+        expect(r.flags).not.toContain('hips-underground');
+        expect(r.verdict).toBe('ok');
+    });
+
     test('a jump-height bob is not a float', () => {
         const sample = { ...rest, hips: { x: 0, y: 1.3, z: 0 }, leftUpperArm: { x: -0.1, y: 1.5, z: 0 } };
         const r = Scorer.score({ played: true, rest, samples: [sample], category: 'dance-vrma' });

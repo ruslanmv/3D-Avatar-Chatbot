@@ -384,7 +384,18 @@ async function tickAndSample(page, seconds = 0.35, opts = {}) {
             // update and Pose Navigator correctly; the audit should measure that, not re-run it.
             const viewer = window.NEXUS_VIEWER;
             const vrm = viewer?.avatarManager?.vrmLoader?.currentVRM;
+            // Wall time AND drawn frames. Under SwiftShader the heaviest avatars (VRM_Viewer_Sample,
+            // Sendagaya_Shibu, PerfectSync) render a few frames a second, so 0.35 s could pass
+            // with no frame at all: the pose preset landed one job late, "sitting" read motion 0
+            // at standing height and the NEXT preset inherited it as its rest. Wait for the app to
+            // actually draw a few frames (bounded, so a stalled page still returns).
+            const info = viewer?.renderer?.info?.render;
+            const f0 = info ? info.frame : 0;
+            const t0 = performance.now();
             await new Promise((resolve) => setTimeout(resolve, Math.max(50, seconds * 1000)));
+            while (info && info.frame - f0 < 4 && performance.now() - t0 < 8000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
             const h = vrm?.humanoid;
             if (!h || (typeof h.getRawBoneNode !== 'function' && typeof h.getNormalizedBoneNode !== 'function'))
                 return null;
@@ -618,6 +629,7 @@ export async function playAudit(opts = {}) {
             const scored = Scorer.score({
                 ...sample,
                 standingHipsY,
+                floor: /crunch|sit.?up|plank|push.?up/i.test(job.id || ''),
                 kind: job.kind,
                 category: job.category,
                 experimental: job.experimental,
