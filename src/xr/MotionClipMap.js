@@ -1016,6 +1016,18 @@ const MotionClipMap = (() => {
             }
         }
 
+        // MO13. Latest *explicit* request wins. Loading a clip is a fetch + parse that can take
+        // seconds on a slow device; a "stop" (or a newer gesture) that arrived during that await
+        // used to be overtaken by the late clip starting anyway — measured by the motion audit as
+        // a dance still playing through the next two actions. Each play() holds a ticket; stop()
+        // and every explicit play() issue a new one, and a stale ticket never reaches playClip.
+        //
+        // Ambient requests (idle, talking, the sit / lay holds) do NOT issue a ticket: speech
+        // starting asks for `talking` at the same moment the reply's gesture is loading, and
+        // that automatic request must never cancel the gesture the person is meant to see. They
+        // hold the current ticket, so a gesture or stop arriving during their load cancels them.
+        const passive = !!entry.ambient || /(^|_)idle$|^talking$/.test(String(name || '').toLowerCase());
+        const ticket = passive ? _playTicket : ++_playTicket;
         const tried = [];
         for (let i = 0; i < candidates.length; i++) {
             const path = candidates[i];
@@ -1035,6 +1047,10 @@ const MotionClipMap = (() => {
             _trace('trying', path);
             try {
                 const clip = await loader.loadClip(path);
+                if (ticket !== _playTicket) {
+                    _trace('superseded while loading', path);
+                    return Object.assign(fail, { reason: 'superseded', procedural: null });
+                }
                 if (!clip) {
                     _unavailable[path] = true;
                     if (typeof console !== 'undefined' && console.warn) {
@@ -1117,7 +1133,10 @@ const MotionClipMap = (() => {
     }
 
     /** Stop the current clip (crossfade handled by the loader). */
+    let _playTicket = 0;
+
     function stop(opts) {
+        _playTicket++; // a clip still loading for an earlier play() must not start after this
         const loader = _loader();
         if (loader && typeof loader.stopClip === 'function') loader.stopClip(opts || { fadeOut: 0.3 });
     }
