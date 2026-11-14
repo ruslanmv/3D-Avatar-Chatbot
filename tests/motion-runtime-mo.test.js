@@ -130,11 +130,77 @@ describe('MO2 — the conversation never claims what the body did not do', () =>
         expect(MI.state.sitting).toBe(true);
     });
 
+    test('the observed record says requested, then what the loader answered', async () => {
+        MI.playAnimation('dance');
+        expect(MI.state.execution).toMatchObject({ action: 'dance', status: 'requested' });
+        await new Promise((r) => setTimeout(r, 0));
+        expect(MI.state.execution).toMatchObject({
+            action: 'dance',
+            status: 'failed',
+            reason: 'all_candidates_failed',
+        });
+        expect(MI.getWorldSnapshot().body).toEqual({
+            action: 'dance',
+            status: 'failed',
+            reason: 'all_candidates_failed',
+        });
+
+        playResult = { ok: true, duration: 3, loop: true, sticky: true, resolved: 'dance_rumba' };
+        MI.playAnimation('dance');
+        await new Promise((r) => setTimeout(r, 0));
+        expect(MI.state.execution).toMatchObject({ status: 'playing', clip: 'dance_rumba' });
+    });
+
+    test('a slow answer for an older request never overwrites the newer one', async () => {
+        let release;
+        window.NEXUS_MOTION_CLIPS.play = (name) =>
+            name === 'dance'
+                ? new Promise((r) => (release = () => r({ ok: false, reason: 'late' })))
+                : Promise.resolve({ ok: true, loop: true, resolved: 'sit_idle4' });
+        MI.playAnimation('dance');
+        MI.playAnimation('sit_idle');
+        await new Promise((r) => setTimeout(r, 0));
+        release();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(MI.state.execution).toMatchObject({ action: 'sit_idle', status: 'playing' });
+    });
+
     test('with body control off the model is told she cannot move', () => {
         Policy._setOverride({ enabled: false });
         const suffix = MI.systemPromptSuffix();
         expect(suffix).toMatch(/cannot sit, stand up/);
         expect(suffix).toMatch(/Never say or imply/);
+    });
+});
+
+describe('MO4 — clips measured broken are never drawn', () => {
+    const ClipMap = require('../src/xr/MotionClipMap');
+    test('wave, talking and dance never reach a quarantined clip', () => {
+        for (const name of ['wave', 'talking', 'dance', 'idle_happy', 'idle_sad', 'dance_1', 'greeting']) {
+            const entry = ClipMap.resolve(name);
+            const drawn = entry ? entry.candidates : [];
+            expect([name, drawn.filter((p) => ClipMap.QUARANTINE[p])]).toEqual([name, []]);
+        }
+    });
+
+    test('a quarantined first choice falls through to a clip that keeps her on her feet', () => {
+        // Library mode needs the page's trusted manifest, which Jest does not load.
+        ClipMap._setLibraryOnly(false);
+        try {
+            expect(ClipMap.resolve('wave').candidates[0]).toBe('vendor/animations/action/action_greeting.bvh');
+            expect(ClipMap.resolve('talking').candidates[0]).toBe('vendor/animations/idle/neutral_idle.bvh');
+        } finally {
+            ClipMap._setLibraryOnly(null);
+        }
+    });
+
+    test('every quarantined path is a real file with a measured reason', () => {
+        const fs = require('fs');
+        const path = require('path');
+        for (const [p, why] of Object.entries(ClipMap.QUARANTINE)) {
+            expect(fs.existsSync(path.join(__dirname, '..', p))).toBe(true);
+            expect(['sink', 'float', 'contorted']).toContain(why);
+        }
     });
 });
 

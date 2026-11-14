@@ -1196,6 +1196,20 @@ const POSE_PRESETS = {
 
 // Ordered list for cycling in VR panel
 // Chat/everyday first → Rest/lounge → Adult → Technical last
+/** MO5. Joints that can rest on the floor, for grounding a settled posture. */
+const GROUND_JOINTS = [
+    'leftFoot',
+    'rightFoot',
+    'leftToes',
+    'rightToes',
+    'leftLowerLeg',
+    'rightLowerLeg',
+    'leftHand',
+    'rightHand',
+    'head',
+    'hips',
+];
+
 const PRESET_ORDER = [
     // Presenter / Professional (best defaults — replaces T-pose)
     'lecturerNeutral',
@@ -1828,6 +1842,10 @@ export class VRPoseSystem {
 
         // Hips position blending (for ground poses that need to lower the avatar)
         this._hipsRestPosition = null; // THREE.Vector3 — captured on setAvatar
+        // MO5. Lower settled postures onto the floor (see _groundSettledPose).
+        this.autoGround = true;
+        this._restLowest = null;
+        this._groundPending = false;
         this._hipsPositionFrom = null;
         this._hipsPositionTo = null;
 
@@ -2083,6 +2101,67 @@ export class VRPoseSystem {
         if (hipsBone) {
             this._hipsRestPosition = hipsBone.position.clone();
         }
+        // MO5. Where her lowest joint is when she stands: the floor every posture is measured against.
+        this._restLowest = this._lowestJointY();
+    }
+
+    /**
+     * MO5. World height of her lowest joint (feet, toes, knees, hands, head, hips), or null.
+     * Measured on the bones this system drives, after bringing their world matrices up to date.
+     */
+    _lowestJointY() {
+        if (!this.avatarRoot) return null;
+        try {
+            this.avatarRoot.updateMatrixWorld(true);
+        } catch (_e) {
+            return null;
+        }
+        const v = new THREE.Vector3();
+        let lowest = Infinity;
+        for (const key of GROUND_JOINTS) {
+            const bone = this._bones.get(key);
+            if (!bone) continue;
+            bone.getWorldPosition(v);
+            if (Number.isFinite(v.y)) lowest = Math.min(lowest, v.y);
+        }
+        return Number.isFinite(lowest) ? lowest : null;
+    }
+
+    /**
+     * MO5. Lower her onto the floor once a posture has settled.
+     *
+     * Only one preset ever set `hipsPosition`, so every sitting, kneeling and lying preset left her
+     * body at standing height: the Pose Navigator audit measured her lowest joint 0.19–0.86 m
+     * above where her feet stand — sitting on nothing, lying in mid-air. Rather than hand-tune a
+     * height for 40 presets (and again for every avatar), the settled pose is measured and the
+     * hips are lowered by exactly how far it floats: feet down for a chair sit, knees for kneeling,
+     * the body for lying. A preset with its own `hipsPosition` keeps it. Returns true when a short
+     * grounding blend was started.
+     */
+    _groundSettledPose() {
+        if (!this.autoGround || this._restLowest == null) return false;
+        const hipsBone = this._bones.get('hips');
+        const lowest = this._lowestJointY();
+        if (!hipsBone || !hipsBone.parent || lowest == null) return false;
+        const floating = lowest - this._restLowest;
+        if (floating < 0.03) return false;
+        const world = new THREE.Vector3();
+        hipsBone.getWorldPosition(world);
+        const from = hipsBone.parent.worldToLocal(world.clone());
+        const to = hipsBone.parent.worldToLocal(world.clone().setY(world.y - floating));
+        this._hipsPositionFrom = hipsBone.position.clone();
+        this._hipsPositionTo = hipsBone.position.clone().add(to.sub(from));
+        // Rotations are already at their targets: only the hips travel in this second blend.
+        this._blendFrom.clear();
+        this._blendTo.clear();
+        for (const [key, bone] of this._bones) {
+            this._blendFrom.set(key, bone.quaternion.clone());
+            this._blendTo.set(key, bone.quaternion.clone());
+        }
+        this._blendTime = 0;
+        this._blendDuration = 0.35;
+        this._isBlending = true;
+        return true;
     }
 
     // =========================================================================
@@ -2207,6 +2286,8 @@ export class VRPoseSystem {
         }
 
         this._currentPreset = presetName;
+        // MO5. A preset that places her hips itself is left alone; every other one is grounded.
+        this._groundPending = !preset.hipsPosition;
 
         // Notify desktop UI so dropdown stays synced
         window.dispatchEvent(new CustomEvent('vr-pose-changed', { detail: { preset: presetName } }));
@@ -2226,6 +2307,15 @@ export class VRPoseSystem {
                 }
             }
             this._isBlending = false;
+            if (this._groundPending) {
+                this._groundPending = false;
+                if (this._groundSettledPose()) {
+                    // Instant means instant: finish the grounding now too.
+                    const hips = this._bones.get('hips');
+                    if (hips && this._hipsPositionTo) hips.position.copy(this._hipsPositionTo);
+                    this._isBlending = false;
+                }
+            }
             this._settleCloth();
             console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
             return;
@@ -2515,6 +2605,10 @@ export class VRPoseSystem {
 
         if (t >= 1) {
             this._isBlending = false;
+            if (this._groundPending) {
+                this._groundPending = false;
+                if (this._groundSettledPose()) return; // cloth is corrected once she is down
+            }
             this._settleCloth();
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
         }

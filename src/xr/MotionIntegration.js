@@ -63,6 +63,10 @@ const MotionIntegration = (() => {
         // honestly ("I'd love to, but I can't walk yet") instead of repeating
         // a command that silently went nowhere.
         lastAction: null, // { type, result } | null
+        // MO2. What her body is observably doing, for the model, the UI and debugMotion() alike:
+        // { action, status: requested|playing|started|failed, clip, reason, at }. Set when a clip
+        // is asked for, and settled only when the loader answers — never from the request alone.
+        execution: null,
     };
 
     let _viewer = null;
@@ -536,7 +540,21 @@ const MotionIntegration = (() => {
                 if (!st || !st.isPlaying || ambient) _capturePoseSnapshot(pr);
             }
         }
+        const asked = { action: key, status: 'requested', clip: null, reason: null, at: _now() };
+        state.execution = asked;
         clips.play(key).then((res) => {
+            // A later request superseded this one: its answer must not overwrite the newer record.
+            if (state.execution === asked) {
+                if (res && res.ok) {
+                    asked.status = res.loop ? 'playing' : 'started';
+                    asked.clip = res.resolved || null;
+                } else {
+                    asked.status = 'failed';
+                    asked.reason = (res && (res.reason || res.procedural)) || 'did_not_play';
+                    // A procedural stand-in still moves her (nod, reach): say so rather than "failed".
+                    if (res && res.procedural) asked.status = 'started';
+                }
+            }
             if (res.ok) {
                 state.lastActivity = key;
                 if (res.then && !res.loop) {
@@ -1168,6 +1186,9 @@ const MotionIntegration = (() => {
                 .filter((k) => _anchors[k])
                 .map((k) => ({ type: k })),
             last_action: state.lastAction,
+            body: state.execution
+                ? { action: state.execution.action, status: state.execution.status, reason: state.execution.reason }
+                : null,
         };
     }
 

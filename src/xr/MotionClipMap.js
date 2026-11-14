@@ -125,9 +125,10 @@ const MotionClipMap = (() => {
             ambient: true,
             curated: true,
         },
-        idle_happy: { candidates: [ACT + 'happyIdle.vrma'], loop: true, sticky: true },
-        idle_sad: { candidates: [ACT + 'sadIdle.vrma'], loop: true, sticky: true },
-        talking: { candidates: [ACT + 'talking.vrma'], loop: true, sticky: true },
+        // MO4. The VRMA first is quarantined (it floats); a standing BVH idle keeps her on her feet.
+        idle_happy: { candidates: [ACT + 'happyIdle.vrma', VEND + 'idle/neutral2.bvh'], loop: true, sticky: true },
+        idle_sad: { candidates: [ACT + 'sadIdle.vrma', VEND + 'idle/neutral4.bvh'], loop: true, sticky: true },
+        talking: { candidates: [ACT + 'talking.vrma', VEND + 'idle/neutral_idle.bvh'], loop: true, sticky: true },
 
         wave: { candidates: [ACT + 'waving.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
         greeting: { candidates: [ACT + 'standingGreeting.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
@@ -463,10 +464,32 @@ const MotionClipMap = (() => {
         'addons/vrma-dance/rumbaDancing.vrma': 'float',
         'addons/vrma-dance/sambaDancing.vrma': 'float',
         'addons/vrma-dance/sillyDancing.vrma': 'float',
+        // The Mixamo-origin action pack does the same: measured 2.3–3.7 m on a fresh page. "wave"
+        // drew waving.vrma first and she left the frame; the talking idle that plays while she
+        // speaks drew talking.vrma, so turning the motion stack on would have floated her away
+        // mid-sentence. bowing.vrma stays on the floor but folds her body visibly wrong.
+        'addons/vrma-actions/backflip.vrma': 'float',
+        'addons/vrma-actions/happyIdle.vrma': 'float',
+        'addons/vrma-actions/jumpingJacks.vrma': 'float',
+        'addons/vrma-actions/sadIdle.vrma': 'float',
+        'addons/vrma-actions/shrugging.vrma': 'float',
+        'addons/vrma-actions/singing.vrma': 'float',
+        'addons/vrma-actions/standingClap.vrma': 'float',
+        'addons/vrma-actions/standingGreeting.vrma': 'float',
+        'addons/vrma-actions/talking.vrma': 'float',
+        'addons/vrma-actions/victory.vrma': 'float',
+        'addons/vrma-actions/waving.vrma': 'float',
+        'addons/vrma-actions/bowing.vrma': 'contorted',
     };
 
+    let _quarantineOn = true;
+    /** Tests of selection mechanics use clips that happen to be quarantined; they switch it off. */
+    function _setQuarantine(on) {
+        _quarantineOn = on !== false;
+    }
+
     function _restrict(paths) {
-        paths = paths.filter((p) => !QUARANTINE[p]);
+        if (_quarantineOn) paths = paths.filter((p) => !QUARANTINE[p]);
         // Format policy first, in EVERY mode. BVH is on by default; switching
         // it off leaves only VRMA — but only where a VRM humanoid exists for
         // those to retarget onto (see _formatPolicyApplies).
@@ -1021,6 +1044,7 @@ const MotionClipMap = (() => {
         _keysFor,
         ADDON_DANCE,
         QUARANTINE,
+        _setQuarantine,
         ADDON_ACTIONS,
         ENTRIES,
         ALIASES,

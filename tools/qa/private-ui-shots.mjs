@@ -103,10 +103,18 @@ function measure(page) {
             const r = el.getBoundingClientRect();
             const s = getComputedStyle(el);
             const shown = r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-            return shown ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : null;
+            return shown
+                ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
+                : null;
         };
         const label = (el) =>
-            !el ? 'nothing' : el.id ? '#' + el.id : el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : el.tagName.toLowerCase();
+            !el
+                ? 'nothing'
+                : el.id
+                  ? '#' + el.id
+                  : el.className && typeof el.className === 'string'
+                    ? '.' + el.className.trim().split(/\s+/)[0]
+                    : el.tagName.toLowerCase();
         let face = null;
         const covered = [];
         if (head) {
@@ -141,7 +149,9 @@ function measure(page) {
         const row = document.getElementById('nexus-private-conversation-row');
         const card = row && row.querySelector('.nexus-private-card');
         const end = row && [...row.querySelectorAll('button')].find((b) => /^(End|Fine)\b/i.test(b.textContent.trim()));
-        const input = document.getElementById('user-input') || document.querySelector('.chat-input-shell textarea, .chat-input-shell input');
+        const input =
+            document.getElementById('user-input') ||
+            document.querySelector('.chat-input-shell textarea, .chat-input-shell input');
         const onTop = (el) => {
             const r = el && el.getBoundingClientRect();
             if (!r || !r.width) return false;
@@ -153,7 +163,13 @@ function measure(page) {
             canvas: rect(canvas),
             face,
             faceCoveredBy: [...new Set(covered)],
-            chips: bar ? { inPrivateCard: !!(row && row.contains(bar)), rect: rect(bar), count: bar.querySelectorAll('button').length } : null,
+            chips: bar
+                ? {
+                      inPrivateCard: !!(row && row.contains(bar)),
+                      rect: rect(bar),
+                      count: bar.querySelectorAll('button').length,
+                  }
+                : null,
             privateCard: rect(row),
             transcript: card ? { visibleH: Math.round(card.clientHeight), contentH: card.scrollHeight } : null,
             endVisible: !!end && onTop(end),
@@ -185,12 +201,20 @@ async function privateRun(browser, size, out) {
         const panel = window.NEXUS_BD.togetherPanel;
         const a = panel.activities.get('intimate');
         if (a.setAtmosphere) a.setAtmosphere({ world: 'private-cabaret' });
-        const opt = (panel.contractFor('intimate')?.inputs() || []).find((x) => x.id === 'romantic') || { id: 'romantic' };
+        const opt = (panel.contractFor('intimate')?.inputs() || []).find((x) => x.id === 'romantic') || {
+            id: 'romantic',
+        };
         const r = await panel.startActivity('intimate', opt);
         return { ok: !!(r && r.ok), why: r && r.why };
     });
-    await page.waitForFunction(() => /private-cabaret/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, { timeout: 120000 }).catch(() => {});
-    await page.waitForFunction(() => document.getElementById('nexus-playground-bar'), null, { timeout: 30000 }).catch(() => {});
+    await page
+        .waitForFunction(() => /private-cabaret/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, {
+            timeout: 120000,
+        })
+        .catch(() => {});
+    await page
+        .waitForFunction(() => document.getElementById('nexus-playground-bar'), null, { timeout: 30000 })
+        .catch(() => {});
     await page.waitForTimeout(3500);
     const shots = {};
     await fill(page, SHORT);
@@ -202,7 +226,9 @@ async function privateRun(browser, size, out) {
     if (size !== 'desktop') {
         // Keyboard: focusing the composer is what sets html.nexus-keyboard-open (MobileChatOverlay).
         await page.evaluate(() => {
-            const i = document.getElementById('user-input') || document.querySelector('.chat-input-shell textarea, .chat-input-shell input');
+            const i =
+                document.getElementById('user-input') ||
+                document.querySelector('.chat-input-shell textarea, .chat-input-shell input');
             if (i) i.focus();
         });
         await page.waitForTimeout(800);
@@ -217,9 +243,16 @@ async function privateRun(browser, size, out) {
 async function experiencesRun(browser, size, out) {
     const { ctx, page, errors } = await boot(browser, size);
     await page.evaluate(() =>
-        window.__NEXUS_COMPANION_LIVE.session.enter('experiences', 'place-irish-pub', { source: 'together', silent: true })
+        window.__NEXUS_COMPANION_LIVE.session.enter('experiences', 'place-irish-pub', {
+            source: 'together',
+            silent: true,
+        })
     );
-    await page.waitForFunction(() => /irish-pub/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, { timeout: 120000 }).catch(() => {});
+    await page
+        .waitForFunction(() => /irish-pub/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, {
+            timeout: 120000,
+        })
+        .catch(() => {});
     await page.waitForTimeout(3500);
     await page.screenshot({ path: path.join(out, `${LABEL}-${size}-experiences.png`) });
     const m = await measure(page);
