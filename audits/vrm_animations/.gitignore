@@ -1,0 +1,4 @@
+# Large screenshots and CSVs belong in CI artifacts, not git history.
+runs/
+__pycache__/
+*.pyc

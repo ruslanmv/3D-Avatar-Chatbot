@@ -26,6 +26,7 @@ import readline from 'node:readline';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { audit, auditAtlas } from './world-audit.mjs';
+import { audit as auditAnimations } from './animation-audit.mjs';
 import { buildHub, writeHub } from './hub.mjs';
 import { loadScorer } from './lab-publish.mjs';
 import { screenshot, shutdown } from './lab-screenshot.mjs';
@@ -247,12 +248,38 @@ export const TOOLS = [
         },
     },
     {
+        name: 'lab_animations',
+        description:
+            'AX16. Animation inventory for every built-in avatar, Pose Navigator pose, VRMA/BVH clip and spoken motion intent (sit down, dance, come with me, …). Computed now from vendor/avatars, vendor/animations, addons/vrma-*, IntentFastPath and MotionClipMap. Playback CSVs need the CLI: node tools/qa/animation-audit.mjs --play.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                issues_only: { type: 'boolean' },
+                intent: str('filter intentCoverage by intent id, e.g. sit or dance'),
+            },
+        },
+        run: (a) => {
+            const doc = auditAnimations();
+            const intents = (doc.intentCoverage || []).filter((i) => !a.intent || i.intent === a.intent);
+            return {
+                summary: doc.summary,
+                rules: doc.rules,
+                intents,
+                issues: a.issues_only ? doc.issues : doc.issues,
+                categories: doc.categories,
+                avatars: doc.avatars.map((x) => ({ name: x.name, file: x.file, exists: x.exists })),
+                playback: doc.playback,
+            };
+        },
+    },
+    {
         name: 'lab_regenerate',
         description:
-            'Regenerate the 3D audit, the atlas audit and hub.json from the files as they are now (after changing a world, the atlas or publishing a run). Returns the new summaries.',
+            'Regenerate the 3D audit, the animations audit, the atlas audit and hub.json from the files as they are now (after changing a world, an avatar/clip, the atlas or publishing a run). Returns the new summaries.',
         inputSchema: { type: 'object', properties: {} },
         run: () => {
             execFileSync(process.execPath, [path.join(HERE, 'world-audit.mjs')], { cwd: ROOT, encoding: 'utf8' });
+            execFileSync(process.execPath, [path.join(HERE, 'animation-audit.mjs')], { cwd: ROOT, encoding: 'utf8' });
             writeHub();
             const h = buildHub();
             return { areas: h.areas, openActions: h.nextActions.length };
@@ -287,6 +314,7 @@ export const TOOLS = [
             const out = {};
             for (const [name, file] of [
                 ['audits', 'world-audit.mjs'],
+                ['animations', 'animation-audit.mjs'],
                 ['hub', 'hub.mjs'],
             ]) {
                 try {

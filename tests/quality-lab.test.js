@@ -193,7 +193,13 @@ describe('Quality Lab MCP server (AX13)', () => {
         expect(out[0].result.serverInfo.name).toBe('nexus-quality-lab');
         const names = out[1].result.tools.map((t) => t.name);
         expect(names).toEqual(
-            expect.arrayContaining(['lab_next_actions', 'lab_score_reply', 'lab_new_zone', 'lab_check'])
+            expect.arrayContaining([
+                'lab_next_actions',
+                'lab_score_reply',
+                'lab_new_zone',
+                'lab_animations',
+                'lab_check',
+            ])
         );
         for (const t of out[1].result.tools) expect(t.inputSchema.type).toBe('object');
         expect(JSON.parse(out[2].result.content[0].text).flags).toContain('assistant-register');

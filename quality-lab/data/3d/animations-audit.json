@@ -1,0 +1,1882 @@
+{
+    "schema": 1,
+    "generator": "tools/qa/animation-audit.mjs",
+    "rules": {
+        "product": "Every spoken motion (sit down, dance, come with me, wave, lie down, stand up, bow) must move the body — IntentFastPath → MotionClipMap → ClipAnimationLoader. A text-only reply is a UX failure.",
+        "playback": "node tools/qa/animation-audit.mjs --play writes per-avatar CSV and frame screenshots under tmp/animation-audit/",
+        "scorer": "tools/qa/AnimationPlaybackScorer.js"
+    },
+    "summary": {
+        "avatars": 17,
+        "avatarsMissing": 0,
+        "poses": 26,
+        "clips": 145,
+        "clipsMissing": 0,
+        "categories": 9,
+        "experimentalClips": 19,
+        "intentsOk": 7,
+        "intents": 7,
+        "fails": 0,
+        "warns": 8,
+        "matrixCells": 2907
+    },
+    "categories": [
+        {
+            "id": "dance",
+            "label": "Dance (Experimental BVH)",
+            "experimental": true,
+            "count": 11
+        },
+        {
+            "id": "emotion",
+            "label": "Emotions",
+            "experimental": false,
+            "count": 63
+        },
+        {
+            "id": "idle",
+            "label": "Idle",
+            "experimental": false,
+            "count": 6
+        },
+        {
+            "id": "sitting",
+            "label": "Sitting",
+            "experimental": false,
+            "count": 4
+        },
+        {
+            "id": "laying",
+            "label": "Laying",
+            "experimental": false,
+            "count": 3
+        },
+        {
+            "id": "kneeling",
+            "label": "Kneeling",
+            "experimental": false,
+            "count": 2
+        },
+        {
+            "id": "action",
+            "label": "Actions",
+            "experimental": false,
+            "count": 14
+        },
+        {
+            "id": "exercise",
+            "label": "Exercise",
+            "experimental": false,
+            "count": 4
+        },
+        {
+            "id": "vrma",
+            "label": "VRM Animations",
+            "experimental": false,
+            "count": 6
+        }
+    ],
+    "avatars": [
+        {
+            "name": "AvatarSample A",
+            "file": "AvatarSample_A.vrm",
+            "path": "vendor/avatars/AvatarSample_A.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "AvatarSample B",
+            "file": "AvatarSample_B.vrm",
+            "path": "vendor/avatars/AvatarSample_B.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "AvatarSample C",
+            "file": "AvatarSample_C.vrm",
+            "path": "vendor/avatars/AvatarSample_C.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "VRoid Female",
+            "file": "fem_vroid.vrm",
+            "path": "vendor/avatars/fem_vroid.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "VRoid Male",
+            "file": "masc_vroid.vrm",
+            "path": "vendor/avatars/masc_vroid.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Sendagaya Shibu",
+            "file": "Sendagaya_Shibu.vrm",
+            "path": "vendor/avatars/Sendagaya_Shibu.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Sendagaya Shino",
+            "file": "Sendagaya_Shino.vrm",
+            "path": "vendor/avatars/Sendagaya_Shino.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Victoria Rubin",
+            "file": "Victoria_Rubin.vrm",
+            "path": "vendor/avatars/Victoria_Rubin.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Vita",
+            "file": "Vita.vrm",
+            "path": "vendor/avatars/Vita.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Vivi",
+            "file": "Vivi.vrm",
+            "path": "vendor/avatars/Vivi.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Darkness Shibu",
+            "file": "Darkness_Shibu.vrm",
+            "path": "vendor/avatars/Darkness_Shibu.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "HairSample Female",
+            "file": "HairSample_Female.vrm",
+            "path": "vendor/avatars/HairSample_Female.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "HairSample Male",
+            "file": "HairSample_Male.vrm",
+            "path": "vendor/avatars/HairSample_Male.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "Sakurada Fumiriya",
+            "file": "Sakurada_Fumiriya.vrm",
+            "path": "vendor/avatars/Sakurada_Fumiriya.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        },
+        {
+            "name": "VRoid PerfectSync Female",
+            "file": "VRoid_PerfectSync_Female.vrm",
+            "path": "vendor/avatars/VRoid_PerfectSync_Female.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink",
+                "perfectsync"
+            ]
+        },
+        {
+            "name": "VRoid PerfectSync Male",
+            "file": "VRoid_PerfectSync_Male.vrm",
+            "path": "vendor/avatars/VRoid_PerfectSync_Male.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink",
+                "perfectsync"
+            ]
+        },
+        {
+            "name": "VRM Viewer Sample",
+            "file": "VRM_Viewer_Sample.vrm",
+            "path": "vendor/avatars/VRM_Viewer_Sample.vrm",
+            "exists": true,
+            "depictsAdult": true,
+            "features": [
+                "lipsync",
+                "emotions",
+                "gaze",
+                "blink"
+            ]
+        }
+    ],
+    "poses": [
+        {
+            "id": "lecturerNeutral",
+            "label": "Lecturer",
+            "category": "Presenter",
+            "kind": "pose"
+        },
+        {
+            "id": "presenterOpen",
+            "label": "Presenter",
+            "category": "Presenter",
+            "kind": "pose"
+        },
+        {
+            "id": "anchorGrounded",
+            "label": "Anchor",
+            "category": "Presenter",
+            "kind": "pose"
+        },
+        {
+            "id": "standingRelaxed",
+            "label": "Relaxed",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "standingFriendly",
+            "label": "Friendly",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "standingHandsClasped",
+            "label": "Hands Clasped",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "conversational",
+            "label": "Conversational",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "standingBendForward",
+            "label": "Bent Over",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "standingBentBackward",
+            "label": "Bent Backward",
+            "category": "Standing",
+            "kind": "pose"
+        },
+        {
+            "id": "confident",
+            "label": "Confident",
+            "category": "Companion",
+            "kind": "pose"
+        },
+        {
+            "id": "lounge",
+            "label": "Lounge",
+            "category": "Companion",
+            "kind": "pose"
+        },
+        {
+            "id": "shy",
+            "label": "Shy",
+            "category": "Companion",
+            "kind": "pose"
+        },
+        {
+            "id": "elegant",
+            "label": "Elegant",
+            "category": "Companion",
+            "kind": "pose"
+        },
+        {
+            "id": "intimateSafe",
+            "label": "Intimate",
+            "category": "Companion",
+            "kind": "pose"
+        },
+        {
+            "id": "sitting",
+            "label": "Sitting",
+            "category": "Sitting",
+            "kind": "pose"
+        },
+        {
+            "id": "sittingCrossed",
+            "label": "Crossed",
+            "category": "Sitting",
+            "kind": "pose"
+        },
+        {
+            "id": "sittingWide",
+            "label": "Wide",
+            "category": "Sitting",
+            "kind": "pose"
+        },
+        {
+            "id": "sittingDesk",
+            "label": "Desk",
+            "category": "Sitting",
+            "kind": "pose"
+        },
+        {
+            "id": "sittingLegsUp",
+            "label": "Lounging",
+            "category": "Sitting",
+            "kind": "pose"
+        },
+        {
+            "id": "kneeling",
+            "label": "Kneeling",
+            "category": "Kneeling",
+            "kind": "pose"
+        },
+        {
+            "id": "kneelingUp",
+            "label": "Kneeling (Up)",
+            "category": "Kneeling",
+            "kind": "pose"
+        },
+        {
+            "id": "lyingBack",
+            "label": "Back",
+            "category": "Lying",
+            "kind": "pose"
+        },
+        {
+            "id": "lyingBackRelaxed",
+            "label": "Relaxed",
+            "category": "Lying",
+            "kind": "pose"
+        },
+        {
+            "id": "lyingFront",
+            "label": "Front",
+            "category": "Lying",
+            "kind": "pose"
+        },
+        {
+            "id": "lyingSide",
+            "label": "Side",
+            "category": "Lying",
+            "kind": "pose"
+        },
+        {
+            "id": "standing",
+            "label": "T-Pose (Reset)",
+            "category": "Reset",
+            "kind": "pose"
+        }
+    ],
+    "clips": [
+        {
+            "id": "addon_action_backflip.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/backflip.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "backflip"
+        },
+        {
+            "id": "addon_action_bowing.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/bowing.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "bowing"
+        },
+        {
+            "id": "addon_action_happyIdle.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/happyIdle.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "happyIdle"
+        },
+        {
+            "id": "addon_action_jumpingJacks.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/jumpingJacks.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "jumpingJacks"
+        },
+        {
+            "id": "addon_action_sadIdle.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/sadIdle.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "sadIdle"
+        },
+        {
+            "id": "addon_action_shrugging.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/shrugging.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "shrugging"
+        },
+        {
+            "id": "addon_action_singing.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/singing.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "singing"
+        },
+        {
+            "id": "addon_action_standingClap.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/standingClap.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "standingClap"
+        },
+        {
+            "id": "addon_action_standingGreeting.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/standingGreeting.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "standingGreeting"
+        },
+        {
+            "id": "addon_action_talking.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/talking.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "talking"
+        },
+        {
+            "id": "addon_action_victory.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/victory.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "victory"
+        },
+        {
+            "id": "addon_action_victoryIdle.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/victoryIdle.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "victoryIdle"
+        },
+        {
+            "id": "addon_action_waving.vrma",
+            "kind": "vrma",
+            "category": "actions-vrma",
+            "path": "addons/vrma-actions/waving.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "waving"
+        },
+        {
+            "id": "addon_dance_breakdanceUprock.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/breakdanceUprock.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "breakdanceUprock"
+        },
+        {
+            "id": "addon_dance_dance_1.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_1.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_1"
+        },
+        {
+            "id": "addon_dance_dance_2.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_2.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_2"
+        },
+        {
+            "id": "addon_dance_dance_backup.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_backup.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_backup"
+        },
+        {
+            "id": "addon_dance_dance_dab.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_dab.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_dab"
+        },
+        {
+            "id": "addon_dance_dance_gangnam_style.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_gangnam_style.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_gangnam_style"
+        },
+        {
+            "id": "addon_dance_dance_headdrop.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_headdrop.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_headdrop"
+        },
+        {
+            "id": "addon_dance_dance_marachinostep.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_marachinostep.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_marachinostep"
+        },
+        {
+            "id": "addon_dance_dance_northern_soul_spin.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_northern_soul_spin.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_northern_soul_spin"
+        },
+        {
+            "id": "addon_dance_dance_ontop.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_ontop.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_ontop"
+        },
+        {
+            "id": "addon_dance_dance_pushback.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_pushback.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_pushback"
+        },
+        {
+            "id": "addon_dance_dance_rumba.vrma",
+            "kind": "vrma",
+            "category": "dance-vrma",
+            "path": "addons/vrma-dance/dance_rumba.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "dance_rumba"
+        },
+        {
+            "id": "addon_dance_dancingTwerk.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/dancingTwerk.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "dancingTwerk"
+        },
+        {
+            "id": "addon_dance_hipHopDance.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/hipHopDance.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "hipHopDance"
+        },
+        {
+            "id": "addon_dance_hipHopDancing.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/hipHopDancing.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "hipHopDancing"
+        },
+        {
+            "id": "addon_dance_rumbaDancing.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/rumbaDancing.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "rumbaDancing"
+        },
+        {
+            "id": "addon_dance_sambaDancing.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/sambaDancing.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "sambaDancing"
+        },
+        {
+            "id": "addon_dance_sillyDancing.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/sillyDancing.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "sillyDancing"
+        },
+        {
+            "id": "addon_dance_twistDance.vrma",
+            "kind": "vrma",
+            "category": "dance-mixamo",
+            "path": "addons/vrma-dance/twistDance.vrma",
+            "exists": true,
+            "experimental": true,
+            "label": "twistDance"
+        },
+        {
+            "id": "action_action_attention_seeking.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_attention_seeking.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_attention_seeking"
+        },
+        {
+            "id": "action_action_crawling.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_crawling.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_crawling"
+        },
+        {
+            "id": "action_action_crouch.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_crouch.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_crouch"
+        },
+        {
+            "id": "action_action_gaming.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_gaming.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_gaming"
+        },
+        {
+            "id": "action_action_greeting.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_greeting.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_greeting"
+        },
+        {
+            "id": "action_action_greeting1.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_greeting1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_greeting1"
+        },
+        {
+            "id": "action_action_jog.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_jog.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_jog"
+        },
+        {
+            "id": "action_action_jump.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_jump.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_jump"
+        },
+        {
+            "id": "action_action_laydown.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_laydown.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_laydown"
+        },
+        {
+            "id": "action_action_pat.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_pat.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_pat"
+        },
+        {
+            "id": "action_action_pickingup.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_pickingup.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_pickingup"
+        },
+        {
+            "id": "action_action_run.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_run.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_run"
+        },
+        {
+            "id": "action_action_standup.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_standup.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_standup"
+        },
+        {
+            "id": "action_action_walk.bvh",
+            "kind": "bvh",
+            "category": "action",
+            "path": "vendor/animations/action/action_walk.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "action_walk"
+        },
+        {
+            "id": "dance_dance_1.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_1.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_1"
+        },
+        {
+            "id": "dance_dance_2.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_2.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_2"
+        },
+        {
+            "id": "dance_dance_backup.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_backup.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_backup"
+        },
+        {
+            "id": "dance_dance_dab.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_dab.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_dab"
+        },
+        {
+            "id": "dance_dance_gangnam_style.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_gangnam_style.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_gangnam_style"
+        },
+        {
+            "id": "dance_dance_headdrop.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_headdrop.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_headdrop"
+        },
+        {
+            "id": "dance_dance_marachinostep.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_marachinostep.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_marachinostep"
+        },
+        {
+            "id": "dance_dance_northern_soul_spin.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_northern_soul_spin.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_northern_soul_spin"
+        },
+        {
+            "id": "dance_dance_ontop.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_ontop.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_ontop"
+        },
+        {
+            "id": "dance_dance_pushback.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_pushback.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_pushback"
+        },
+        {
+            "id": "dance_dance_rumba.bvh",
+            "kind": "bvh",
+            "category": "dance",
+            "path": "vendor/animations/dance/dance_rumba.bvh",
+            "exists": true,
+            "experimental": true,
+            "label": "dance_rumba"
+        },
+        {
+            "id": "emotion_admiration.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/admiration.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "admiration"
+        },
+        {
+            "id": "emotion_admiration2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/admiration2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "admiration2"
+        },
+        {
+            "id": "emotion_admiration3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/admiration3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "admiration3"
+        },
+        {
+            "id": "emotion_amusement.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/amusement.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "amusement"
+        },
+        {
+            "id": "emotion_amusement2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/amusement2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "amusement2"
+        },
+        {
+            "id": "emotion_amusement3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/amusement3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "amusement3"
+        },
+        {
+            "id": "emotion_anger.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/anger.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "anger"
+        },
+        {
+            "id": "emotion_anger2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/anger2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "anger2"
+        },
+        {
+            "id": "emotion_anger3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/anger3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "anger3"
+        },
+        {
+            "id": "emotion_annoyance.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/annoyance.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "annoyance"
+        },
+        {
+            "id": "emotion_annoyance1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/annoyance1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "annoyance1"
+        },
+        {
+            "id": "emotion_approval.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/approval.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "approval"
+        },
+        {
+            "id": "emotion_approval2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/approval2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "approval2"
+        },
+        {
+            "id": "emotion_approval3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/approval3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "approval3"
+        },
+        {
+            "id": "emotion_caring.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/caring.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "caring"
+        },
+        {
+            "id": "emotion_caring1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/caring1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "caring1"
+        },
+        {
+            "id": "emotion_confusion.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/confusion.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "confusion"
+        },
+        {
+            "id": "emotion_confusion2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/confusion2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "confusion2"
+        },
+        {
+            "id": "emotion_confusion3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/confusion3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "confusion3"
+        },
+        {
+            "id": "emotion_curiosity.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/curiosity.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "curiosity"
+        },
+        {
+            "id": "emotion_curiosity2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/curiosity2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "curiosity2"
+        },
+        {
+            "id": "emotion_curiosity3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/curiosity3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "curiosity3"
+        },
+        {
+            "id": "emotion_desire.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/desire.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "desire"
+        },
+        {
+            "id": "emotion_desire1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/desire1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "desire1"
+        },
+        {
+            "id": "emotion_desire2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/desire2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "desire2"
+        },
+        {
+            "id": "emotion_disappointment.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disappointment.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disappointment"
+        },
+        {
+            "id": "emotion_disappointment2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disappointment2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disappointment2"
+        },
+        {
+            "id": "emotion_disapproval.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disapproval.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disapproval"
+        },
+        {
+            "id": "emotion_disaproval1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disaproval1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disaproval1"
+        },
+        {
+            "id": "emotion_disgust.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disgust.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disgust"
+        },
+        {
+            "id": "emotion_disgust1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disgust1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disgust1"
+        },
+        {
+            "id": "emotion_disgust2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/disgust2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "disgust2"
+        },
+        {
+            "id": "emotion_embarrassment.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/embarrassment.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "embarrassment"
+        },
+        {
+            "id": "emotion_excitement.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/excitement.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "excitement"
+        },
+        {
+            "id": "emotion_excitement2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/excitement2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "excitement2"
+        },
+        {
+            "id": "emotion_excitement3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/excitement3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "excitement3"
+        },
+        {
+            "id": "emotion_fear.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/fear.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "fear"
+        },
+        {
+            "id": "emotion_fear2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/fear2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "fear2"
+        },
+        {
+            "id": "emotion_fear3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/fear3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "fear3"
+        },
+        {
+            "id": "emotion_gratitude.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/gratitude.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "gratitude"
+        },
+        {
+            "id": "emotion_grief.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/grief.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "grief"
+        },
+        {
+            "id": "emotion_joy.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/joy.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "joy"
+        },
+        {
+            "id": "emotion_joy2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/joy2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "joy2"
+        },
+        {
+            "id": "emotion_joy3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/joy3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "joy3"
+        },
+        {
+            "id": "emotion_love.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/love.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "love"
+        },
+        {
+            "id": "emotion_love2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/love2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "love2"
+        },
+        {
+            "id": "emotion_love3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/love3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "love3"
+        },
+        {
+            "id": "emotion_nervousnes3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/nervousnes3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "nervousnes3"
+        },
+        {
+            "id": "emotion_nervousness.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/nervousness.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "nervousness"
+        },
+        {
+            "id": "emotion_nervousness2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/nervousness2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "nervousness2"
+        },
+        {
+            "id": "emotion_optimism.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/optimism.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "optimism"
+        },
+        {
+            "id": "emotion_pride.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/pride.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "pride"
+        },
+        {
+            "id": "emotion_pride2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/pride2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "pride2"
+        },
+        {
+            "id": "emotion_realization.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/realization.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "realization"
+        },
+        {
+            "id": "emotion_relief.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/relief.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "relief"
+        },
+        {
+            "id": "emotion_relief1.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/relief1.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "relief1"
+        },
+        {
+            "id": "emotion_remorse.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/remorse.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "remorse"
+        },
+        {
+            "id": "emotion_remorse2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/remorse2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "remorse2"
+        },
+        {
+            "id": "emotion_remorse3.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/remorse3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "remorse3"
+        },
+        {
+            "id": "emotion_sadness.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/sadness.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sadness"
+        },
+        {
+            "id": "emotion_sadness2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/sadness2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sadness2"
+        },
+        {
+            "id": "emotion_surprise.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/surprise.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "surprise"
+        },
+        {
+            "id": "emotion_surprise2.bvh",
+            "kind": "bvh",
+            "category": "emotion",
+            "path": "vendor/animations/emotion/surprise2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "surprise2"
+        },
+        {
+            "id": "exercise_exercise_crunch.bvh",
+            "kind": "bvh",
+            "category": "exercise",
+            "path": "vendor/animations/exercise/exercise_crunch.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "exercise_crunch"
+        },
+        {
+            "id": "exercise_exercise_crunches.bvh",
+            "kind": "bvh",
+            "category": "exercise",
+            "path": "vendor/animations/exercise/exercise_crunches.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "exercise_crunches"
+        },
+        {
+            "id": "exercise_exercise_jogging.bvh",
+            "kind": "bvh",
+            "category": "exercise",
+            "path": "vendor/animations/exercise/exercise_jogging.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "exercise_jogging"
+        },
+        {
+            "id": "exercise_exercise_jumping_jacks.bvh",
+            "kind": "bvh",
+            "category": "exercise",
+            "path": "vendor/animations/exercise/exercise_jumping_jacks.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "exercise_jumping_jacks"
+        },
+        {
+            "id": "idle_neutral_idle.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral_idle.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral_idle"
+        },
+        {
+            "id": "idle_neutral_idle2.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral_idle2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral_idle2"
+        },
+        {
+            "id": "idle_neutral.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral"
+        },
+        {
+            "id": "idle_neutral2.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral2"
+        },
+        {
+            "id": "idle_neutral3.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral3"
+        },
+        {
+            "id": "idle_neutral4.bvh",
+            "kind": "bvh",
+            "category": "idle",
+            "path": "vendor/animations/idle/neutral4.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "neutral4"
+        },
+        {
+            "id": "kneeling_kneel_idle.bvh",
+            "kind": "bvh",
+            "category": "kneeling",
+            "path": "vendor/animations/kneeling/kneel_idle.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "kneel_idle"
+        },
+        {
+            "id": "kneeling_kneel_idle2.bvh",
+            "kind": "bvh",
+            "category": "kneeling",
+            "path": "vendor/animations/kneeling/kneel_idle2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "kneel_idle2"
+        },
+        {
+            "id": "laying_laying_idle.bvh",
+            "kind": "bvh",
+            "category": "laying",
+            "path": "vendor/animations/laying/laying_idle.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "laying_idle"
+        },
+        {
+            "id": "laying_laying_idle2.bvh",
+            "kind": "bvh",
+            "category": "laying",
+            "path": "vendor/animations/laying/laying_idle2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "laying_idle2"
+        },
+        {
+            "id": "laying_laying_idle3.bvh",
+            "kind": "bvh",
+            "category": "laying",
+            "path": "vendor/animations/laying/laying_idle3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "laying_idle3"
+        },
+        {
+            "id": "sitting_sit_idle.bvh",
+            "kind": "bvh",
+            "category": "sitting",
+            "path": "vendor/animations/sitting/sit_idle.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sit_idle"
+        },
+        {
+            "id": "sitting_sit_idle2.bvh",
+            "kind": "bvh",
+            "category": "sitting",
+            "path": "vendor/animations/sitting/sit_idle2.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sit_idle2"
+        },
+        {
+            "id": "sitting_sit_idle3.bvh",
+            "kind": "bvh",
+            "category": "sitting",
+            "path": "vendor/animations/sitting/sit_idle3.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sit_idle3"
+        },
+        {
+            "id": "sitting_sit_idle4.bvh",
+            "kind": "bvh",
+            "category": "sitting",
+            "path": "vendor/animations/sitting/sit_idle4.bvh",
+            "exists": true,
+            "experimental": false,
+            "label": "sit_idle4"
+        },
+        {
+            "id": "vrma_Angry.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Angry.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Angry"
+        },
+        {
+            "id": "vrma_Relax.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Relax.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Relax"
+        },
+        {
+            "id": "vrma_Sad.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Sad.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Sad"
+        },
+        {
+            "id": "vrma_Surprised.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Surprised.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Surprised"
+        },
+        {
+            "id": "vrma_Thinking.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/Thinking.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "Thinking"
+        },
+        {
+            "id": "vrma_waiting-standard.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/waiting-standard.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "waiting-standard"
+        }
+    ],
+    "intentCoverage": [
+        {
+            "utterance": "sit down",
+            "intent": "sit",
+            "fastPath": "sit",
+            "candidates": 2,
+            "existing": 1,
+            "ok": true,
+            "why": "posture; bubble yes with a standing body is a fail"
+        },
+        {
+            "utterance": "dance",
+            "intent": "dance",
+            "fastPath": "dance",
+            "candidates": 7,
+            "existing": 7,
+            "ok": true,
+            "why": "clip-first; must play a shipped dance VRMA/BVH"
+        },
+        {
+            "utterance": "come with me",
+            "intent": "follow",
+            "fastPath": "follow",
+            "candidates": 0,
+            "existing": 0,
+            "ok": true,
+            "why": "follow path, not only a spoken acknowledgement"
+        },
+        {
+            "utterance": "wave",
+            "intent": "wave",
+            "fastPath": "wave",
+            "candidates": 2,
+            "existing": 2,
+            "ok": true,
+            "why": "one-shot gesture"
+        },
+        {
+            "utterance": "lie down",
+            "intent": "lay",
+            "fastPath": "lay",
+            "candidates": 3,
+            "existing": 3,
+            "ok": true,
+            "why": "posture like sit"
+        },
+        {
+            "utterance": "stand up",
+            "intent": "stand",
+            "fastPath": "stand",
+            "candidates": 2,
+            "existing": 1,
+            "ok": true,
+            "why": "leave a sticky posture"
+        },
+        {
+            "utterance": "bow",
+            "intent": "bow",
+            "fastPath": "bow",
+            "candidates": 1,
+            "existing": 1,
+            "ok": true,
+            "why": "one-shot gesture"
+        }
+    ],
+    "issues": [
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/breakdanceUprock.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/dancingTwerk.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/hipHopDance.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/hipHopDancing.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/rumbaDancing.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/sambaDancing.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/sillyDancing.vrma (see addons/vrma-dance/README.md)"
+        },
+        {
+            "severity": "warn",
+            "text": "Mixamo-origin dance kept on disk but not production: addons/vrma-dance/twistDance.vrma (see addons/vrma-dance/README.md)"
+        }
+    ],
+    "playback": {
+        "defaultSuite": "critical",
+        "criticalIntents": [
+            "sit",
+            "dance",
+            "follow",
+            "wave",
+            "lay",
+            "stand",
+            "bow"
+        ],
+        "csvDir": "tmp/animation-audit",
+        "publishDir": "quality-lab/data/3d/animations"
+    }
+}
