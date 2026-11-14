@@ -375,48 +375,28 @@ export function buildPlayPlan(inventory, opts = {}) {
 /** Advance mixers / VRM even when headless rAF is idle, then sample bones. */
 async function tickAndSample(page, seconds = 0.35, opts = {}) {
     return page.evaluate(
-        ({ boneNames, seconds, clipOnly }) => {
+        async ({ boneNames, seconds }) => {
+            // Let the APP's own frame loop run for `seconds`, then read the skeleton it will draw.
+            // Ticking the clip loader, vrm.update and VRPoseSystem by hand here disturbed what was
+            // measured: with the raw rig sampled, every BVH clip read the same 0.297 rad with the
+            // hips at standing height (sit_idle4 included), while the screenshot taken a moment
+            // later from the app's loop showed her seated. The loop already orders mixer, humanoid
+            // update and Pose Navigator correctly; the audit should measure that, not re-run it.
             const viewer = window.NEXUS_VIEWER;
             const vrm = viewer?.avatarManager?.vrmLoader?.currentVRM;
-            const loader = window.NEXUS_CLIP_LOADER;
-            const steps = 8;
-            const dt = seconds / steps;
-            for (let i = 0; i < steps; i++) {
-                try {
-                    if (loader && typeof loader.update === 'function') loader.update(dt);
-                } catch (_) {
-                    /* ignore */
-                }
-                try {
-                    if (vrm && typeof vrm.update === 'function') vrm.update(dt);
-                } catch (_) {
-                    /* ignore */
-                }
-                // While a clip owns the skeleton, Pose Navigator must not tick —
-                // its update re-applies the last preset over the mixer.
-                if (!clipOnly) {
-                    try {
-                        if (viewer?.vrPoseSystem && typeof viewer.vrPoseSystem.update === 'function')
-                            viewer.vrPoseSystem.update(dt);
-                    } catch (_) {
-                        /* ignore */
-                    }
-                }
-                // Do NOT call ProceduralAnimator.update here: it writes the base
-                // pose every tick and would wipe VRPoseSystem / clip mixer results
-                // before we can sample them (the same fight Pose Studio avoids).
-            }
-            try {
-                if (viewer?.renderer && viewer?.scene && viewer?.camera)
-                    viewer.renderer.render(viewer.scene, viewer.camera);
-            } catch (_) {
-                /* ignore */
-            }
+            await new Promise((resolve) => setTimeout(resolve, Math.max(50, seconds * 1000)));
             const h = vrm?.humanoid;
-            if (!h || typeof h.getNormalizedBoneNode !== 'function') return null;
+            if (!h || (typeof h.getRawBoneNode !== 'function' && typeof h.getNormalizedBoneNode !== 'function'))
+                return null;
             const out = {};
             for (const name of boneNames) {
-                const node = h.getNormalizedBoneNode(name);
+                // RAW bones: what is drawn. BVH clips are played onto the raw rig, so the
+                // normalized nodes never move under them — sampling those scored every BVH clip
+                // "no-motion" with the hips frozen at standing height, while the shots showed her
+                // seated, lying or dancing. VRMA drives normalized → raw, so raw sees both.
+                const node =
+                    (typeof h.getRawBoneNode === 'function' && h.getRawBoneNode(name)) ||
+                    (typeof h.getNormalizedBoneNode === 'function' && h.getNormalizedBoneNode(name));
                 if (!node) continue;
                 // Local quaternion + world position: rotation catches poses that
                 // keep the hips planted; position catches sit/lay height changes.
@@ -427,7 +407,7 @@ async function tickAndSample(page, seconds = 0.35, opts = {}) {
             }
             return out;
         },
-        { boneNames: Scorer.SAMPLE_BONES, seconds, clipOnly: !!opts.clipOnly }
+        { boneNames: Scorer.SAMPLE_BONES, seconds, clipOnly: !!opts.clipOnly } // clipOnly: kept for callers
     );
 }
 
@@ -478,6 +458,13 @@ async function resetToNeutral(page) {
         } catch (_) {
             /* ignore */
         }
+        // Leave pose mode between jobs (PoseStudioPanel._exitPoseMode) so a clip job is measured
+        // the way it plays in the app, not under a pose job's settings.
+        try {
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(false);
+        } catch (_) {
+            /* ignore */
+        }
         const vr = window.vrPoseSystem || window.NEXUS_VIEWER?.vrPoseSystem;
         if (vr && typeof vr.applyPreset === 'function') {
             try {
@@ -519,6 +506,20 @@ async function playJob(page, job) {
                         vr.setEnabled?.(true);
                     } catch (_) {
                         /* older builds */
+                    }
+                    // Exactly what the Pose Navigator does first (PoseStudioPanel._enterPoseMode):
+                    // stop clips, let ProceduralAnimator yield, and have vrm.update copy the
+                    // normalized pose to the raw bones that are drawn. Without it the preset is
+                    // overwritten by the idle animator on the next frame and scores "no-motion".
+                    try {
+                        window.NEXUS_CLIP_LOADER?.stopClip?.({ fadeOut: 0 });
+                        window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(true);
+                        const v = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+                        if (v && v.humanoid && 'autoUpdateHumanBones' in v.humanoid)
+                            v.humanoid.autoUpdateHumanBones = true;
+                    } catch (_) {
+                        /* fail soft: the preset is still applied and measured */
                     }
                     vr.applyPreset(poseId, 0);
                     return { ok: true, via: 'vrPoseSystem' };
@@ -601,14 +602,22 @@ export async function playAudit(opts = {}) {
         await waitForApp(page, 180000);
 
         let lastAvatar = null;
+        let standingHipsY = null;
         for (const job of jobs) {
             if (job.avatarPath !== lastAvatar) {
                 await ensureAvatar(page, job.avatarPath);
                 lastAvatar = job.avatarPath;
+                // Her standing height on the freshly loaded avatar. A broken VRMA can leave the hips
+                // displaced through "reset to neutral", which made the NEXT job's rest baseline
+                // wrong (gangnam_style read "floating" at 0.82 m after dance_1 sank her). Float and
+                // sink are judged against this, not against a rest a previous clip may have moved.
+                const fresh = await sampleBones(page);
+                standingHipsY = fresh && fresh.hips ? fresh.hips.y : null;
             }
             const sample = await playJob(page, job);
             const scored = Scorer.score({
                 ...sample,
+                standingHipsY,
                 kind: job.kind,
                 category: job.category,
                 experimental: job.experimental,

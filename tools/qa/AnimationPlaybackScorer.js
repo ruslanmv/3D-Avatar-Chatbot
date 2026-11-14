@@ -148,6 +148,8 @@
         const category = String((input && input.category) || '').toLowerCase();
         if (rest && last && rest.hips && last.hips) {
             const drop = rest.hips.y - last.hips.y;
+            // Standing height: the harness's fresh-avatar measurement when given, else this rest.
+            const standY = input && Number.isFinite(input.standingHipsY) ? input.standingHipsY : rest.hips.y;
             // Pose Navigator sitting often rotates the legs without a large world-Y
             // hip drop (root stays planted). Only clip playback is judged on height.
             if (kind !== 'pose' && (category === 'sitting' || category === 'sit') && drop < 0.05 && motion > 0)
@@ -155,14 +157,19 @@
             if (kind !== 'pose' && (category === 'laying' || category === 'lay' || category === 'lying')) {
                 if (last.hips.y > rest.hips.y * 0.55) flags.push('lay-not-lowered');
             }
-            if (!/lay|lying|sit|kneel|ground/.test(category) && last.hips.y < rest.hips.y * 0.25)
+            if (!/lay|lying|sit|kneel|ground/.test(category) && last.hips.y < standY * 0.25)
                 flags.push('hips-underground');
+            // The opposite failure: Mixamo-origin VRMA (waving, backflip, the hip-hop/samba dances)
+            // carry an absolute root track that lifts her 2.3–3.5 m — out of frame, gone. Nothing
+            // flagged it, so backflip.vrma scored "ok" at 3.4 m. 1.6× the standing hips is above any
+            // jump the shipped clips make and far below the floats measured.
+            if (last.hips.y > standY * 1.6) flags.push('hips-floating');
         }
 
         let verdict = 'ok';
         // near-black is warn, not fail: animation audits run on the app's black void,
         // so the world-preview luma gate would false-fail every healthy clip.
-        const failFlags = ['load-error', 'play-failed', 'nan-bones', 'legs-inverted', 't-pose'];
+        const failFlags = ['load-error', 'play-failed', 'nan-bones', 'legs-inverted', 't-pose', 'hips-floating'];
         const warnFlags = [
             'near-black',
             'no-motion',

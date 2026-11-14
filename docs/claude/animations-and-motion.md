@@ -53,3 +53,16 @@ Change IntentFastPath / MotionClipMap / loaders / VRPoseSystem **on the motion
 PR**, then re-run both the inventory and a `--play` (or #152’s runtime audit)
 and commit regenerated audit data with that fix — not as a silent edit of lab
 JSON alone.
+
+## How `--play` measures (and why)
+
+- It samples **raw** bones (what is drawn); BVH drives the raw rig, so the
+  normalized rig read every BVH as "no-motion".
+- It waits on the **app's own frame loop** instead of ticking the mixer itself;
+  manual ticks overwrote the clip and gave every BVH the same numbers.
+- Pose jobs mirror `PoseStudioPanel._enterPoseMode()` (stop clips, procedural
+  pose mode, `autoUpdateHumanBones`), else presets read "no-motion".
+- Float/sink are judged against her **standing height on the freshly loaded
+  avatar**, not the per-job rest: a sinking VRMA displaces the next job's rest.
+  `hips-floating` (> 1.6× standing) is a fail — Mixamo root tracks lift her
+  2.4–3.6 m.

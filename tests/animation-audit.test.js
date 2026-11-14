@@ -90,6 +90,42 @@ describe('AnimationPlaybackScorer', () => {
         expect(r.flags).toContain('legs-inverted');
     });
 
+    test('fail when a clip floats her out of frame (Mixamo root track)', () => {
+        // Measured: backflip.vrma 3.4 m, waving.vrma 2.39 m on AvatarSample_A, both scored "ok"
+        // before hips-floating existed.
+        const sample = {
+            ...rest,
+            hips: { x: 0, y: 2.39, z: 0 },
+            leftUpperArm: { x: -0.2, y: 2.6, z: 0.1 },
+            rightUpperArm: { x: 0.25, y: 2.6, z: 0 },
+        };
+        const r = Scorer.score({ played: true, rest, samples: [sample], category: 'actions-vrma' });
+        expect(r.verdict).toBe('fail');
+        expect(r.flags).toContain('hips-floating');
+    });
+
+    test('float and sink are judged against her standing height, not a displaced rest', () => {
+        // After a sinking clip the next job's rest can start low (hips 0.4 here); a normal 0.82 m
+        // dance must not read "floating" because of it.
+        const lowRest = { ...rest, hips: { x: 0, y: 0.4, z: 0 } };
+        const sample = { ...rest, hips: { x: 0, y: 0.82, z: 0 }, leftUpperArm: { x: -0.2, y: 1.0, z: 0.1 } };
+        const r = Scorer.score({
+            played: true,
+            rest: lowRest,
+            samples: [sample],
+            category: 'dance-vrma',
+            standingHipsY: 0.9,
+        });
+        expect(r.flags).not.toContain('hips-floating');
+        expect(r.flags).not.toContain('hips-underground');
+    });
+
+    test('a jump-height bob is not a float', () => {
+        const sample = { ...rest, hips: { x: 0, y: 1.3, z: 0 }, leftUpperArm: { x: -0.1, y: 1.5, z: 0 } };
+        const r = Scorer.score({ played: true, rest, samples: [sample], category: 'dance-vrma' });
+        expect(r.flags).not.toContain('hips-floating');
+    });
+
     test('warn on experimental clips even when they play', () => {
         const sample = {
             ...rest,
