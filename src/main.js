@@ -4194,8 +4194,9 @@ async function _handleStreamingResponse(text) {
             if (!kept) speakText(displayText);
             else if (!streamed.audible()) setStatus('idle', 'READY');
         } else {
+            // Idle is speakText's own onEnd. Setting it here made the voice
+            // controller hear "she finished" before any audio had played.
             speakText(displayText);
-            setStatus('idle', 'READY');
         }
     } catch (error) {
         _setTyping(false);
@@ -4319,8 +4320,8 @@ async function _handleNonStreamingResponse(text) {
         store.addMessage('assistant', displayText);
         store.persist();
         _applyEmotionFromText(displayText);
+        // Same as the streaming path: playback end, not this line, is idle.
         speakText(displayText);
-        setStatus('idle', 'READY');
     } catch (error) {
         _setTyping(false);
         logError('Error processing message', error);

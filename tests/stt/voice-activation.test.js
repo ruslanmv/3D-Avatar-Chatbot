@@ -871,3 +871,338 @@ describe('WU alexa modes', () => {
         expect(sends).toEqual([]);
     });
 });
+
+describe('WU reply lifecycle', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    function say(va, recs, text) {
+        recs[0].onresult(finalEvent(text, 1));
+        jest.advanceTimersByTime(1200);
+    }
+
+    test('an unresolved reply does not reopen the microphone', async () => {
+        let resolveSend;
+        const { va, recs } = harness({
+            send() {
+                return new Promise((resolve) => {
+                    resolveSend = resolve;
+                });
+            },
+        });
+        va.micTap();
+        say(va, recs, 'Explain black holes.');
+        jest.advanceTimersByTime(5000);
+        expect(recs).toHaveLength(1);
+        expect(va.statusText()).toBe('Nexus is thinking…');
+        va.noteSpeaking(true);
+        resolveSend();
+        await Promise.resolve();
+        jest.advanceTimersByTime(3000);
+        expect(recs).toHaveLength(1);
+        expect(va.statusText()).toBe('Nexus is speaking…');
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(799);
+        expect(recs).toHaveLength(1);
+        expect(va.statusText()).toBe('Getting ready to listen…');
+        jest.advanceTimersByTime(1);
+        expect(recs).toHaveLength(2);
+        expect(va.statusText()).toBe('Conversation on · Listening to you');
+    });
+
+    test('a reply with no audio listens again once the call has settled', async () => {
+        let resolveSend;
+        const { va, recs } = harness({
+            send() {
+                return new Promise((resolve) => {
+                    resolveSend = resolve;
+                });
+            },
+        });
+        va.micTap();
+        say(va, recs, 'Hello.');
+        resolveSend();
+        await Promise.resolve();
+        jest.advanceTimersByTime(0);
+        expect(recs).toHaveLength(2);
+        expect(va.owner()).toBe('manual');
+    });
+
+    test('a rejected reply releases the microphone', async () => {
+        const { va, recs } = harness({
+            send() {
+                return Promise.reject(new Error('down'));
+            },
+        });
+        va.micTap();
+        say(va, recs, 'Hello.');
+        await Promise.resolve();
+        expect(va.state()).toBe('ERROR');
+        expect(va.owner()).toBe(null);
+        expect(va.mode()).toBe('idle');
+        expect(va.busy()).toBe(false);
+        expect(va.micTap()).toBe(true);
+        expect(recs).toHaveLength(2);
+    });
+
+    test('playback that ends after Stop does not listen again', () => {
+        const { va, recs } = harness({});
+        va.micTap();
+        say(va, recs, 'Keep going.');
+        va.noteSpeaking(true);
+        va.endConversation();
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(5000);
+        expect(recs).toHaveLength(1);
+        expect(va.mode()).toBe('idle');
+    });
+
+    test('Companion during a reply invalidates the late playback end', async () => {
+        let resolveSend;
+        const { va, recs } = harness({
+            send() {
+                return new Promise((resolve) => {
+                    resolveSend = resolve;
+                });
+            },
+        });
+        va.micTap();
+        say(va, recs, 'Hello.');
+        va.noteSpeaking(true);
+        va.onCompanionActive(true);
+        resolveSend();
+        await Promise.resolve();
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(5000);
+        expect(recs).toHaveLength(1);
+        expect(va.mode()).toBe('idle');
+    });
+
+    test('the PCM ring keeps eight seconds at the rate it was given', () => {
+        [16000, 44100, 48000].forEach((rate) => {
+            const n = Math.ceil(rate * 8);
+            const ring = VA.createPcmRing(n);
+            ring.push(new Float32Array(n));
+            expect(ring.filled()).toBe(n);
+            expect(ring.snapshot(n).length).toBe(n);
+        });
+    });
+
+    test('a 48 kHz capture is transcribed at 48 kHz with eight seconds retained', async () => {
+        const calls = [];
+        let pushes = null;
+        const { va, sends } = harness({
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal(samples, rate) {
+                calls.push({ n: samples.length, rate });
+                return { text: calls.length === 1 ? 'nexus' : 'nexus open my calendar' };
+            },
+        });
+        va.setWakeEnabled(true);
+        const rate = 48000;
+        pushes(new Float32Array(rate * 8).fill(0.25), rate);
+        await jest.advanceTimersByTimeAsync(200);
+        expect(calls[0].rate).toBe(48000);
+        expect(calls[0].n).toBe(Math.round(48000 * 3.5));
+        pushes(new Float32Array(Math.round(rate * 0.25)).fill(0.25), rate);
+        await jest.advanceTimersByTimeAsync(200);
+        pushes(new Float32Array(Math.round(rate * 0.25)), rate);
+        await jest.advanceTimersByTimeAsync(1200);
+        expect(sends).toEqual(['open my calendar']);
+        expect(calls[1].rate).toBe(48000);
+        expect(calls[1].n).toBe(48000 * 8);
+    });
+
+    test('steady noise cannot leave a wake command listening forever', async () => {
+        let pushes = null;
+        const { va, sends } = harness({
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal() {
+                return { text: sends.length ? '' : 'nexus' };
+            },
+        });
+        va.setWakeEnabled(true);
+        const loud = new Float32Array(16000);
+        loud.fill(0.25);
+        pushes(loud);
+        await jest.advanceTimersByTimeAsync(200);
+        expect(va.state()).toBe('LISTENING');
+        await jest.advanceTimersByTimeAsync(30000);
+        expect(va.state()).not.toBe('LISTENING');
+        expect(sends).toEqual([]);
+    });
+
+    test('quiet speech still ends a wake command', async () => {
+        const Audio = require('../../src/stt/SpeechAudio.js');
+        const prev = global.NEXUS_STT_AUDIO;
+        global.NEXUS_STT_AUDIO = prev;
+        let pushes = null;
+        let calls = 0;
+        const { va, sends } = harness({
+            createEndpointer: (rate, opts) => Audio.createEndpointer(rate, opts),
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal() {
+                calls += 1;
+                return { text: calls === 1 ? 'nexus' : 'nexus turn the lamp on' };
+            },
+        });
+        va.setWakeEnabled(true);
+        pushes(new Float32Array(16000).fill(0.25));
+        await jest.advanceTimersByTimeAsync(200);
+        expect(va.state()).toBe('LISTENING');
+        const quiet = new Float32Array(Math.round(16000 * 0.2)).fill(0.0001);
+        const speech = new Float32Array(Math.round(16000 * 0.25)).fill(0.05);
+        const gap = new Float32Array(Math.round(16000 * 1.5));
+        pushes(quiet);
+        pushes(speech);
+        pushes(gap);
+        await jest.advanceTimersByTimeAsync(200);
+        expect(sends).toEqual(['turn the lamp on']);
+        global.NEXUS_STT_AUDIO = prev;
+    });
+
+    test('silence restarts do not postpone the hands-free inactivity deadline', () => {
+        const { va, recs } = harness({});
+        va.micTap();
+        jest.advanceTimersByTime(105000);
+        expect(va.mode()).toBe('manual');
+        expect(va.statusText()).toBe('Conversation ends in 15 seconds unless you speak');
+        recs[recs.length - 1].onresult(interimEvent('still here'));
+        expect(va.statusText()).toBe('Conversation on · Listening to you');
+        jest.advanceTimersByTime(20000);
+        expect(va.mode()).toBe('manual');
+        jest.advanceTimersByTime(100000);
+        expect(va.mode()).toBe('idle');
+        expect(va.state()).toBe('OFF');
+    });
+
+    test('inactivity restores wake standby when wake word stays on', () => {
+        const { va } = harness({});
+        va.setWakeEnabled(true);
+        va.micTap();
+        jest.advanceTimersByTime(120000);
+        expect(va.mode()).toBe('wake');
+        expect(va.wakeEnabled()).toBe(true);
+        expect(va.mode()).not.toBe('manual');
+    });
+
+    test('an injected transcript that is not the phrase is ignored', () => {
+        const starts = [];
+        const detector = {
+            local: true,
+            audioLeavesDevice: false,
+            start(hooks) {
+                starts.push(hooks);
+            },
+            stop() {},
+        };
+        const { va, sends, recs } = harness({ detector: () => detector });
+        va.setPhrase('nexus');
+        va.setWakeEnabled(true);
+        starts[0].onWake({ transcript: 'hey computer open the door' });
+        expect(sends).toEqual([]);
+        expect(recs).toHaveLength(0);
+        expect(va.state()).toBe('STANDBY');
+    });
+
+    test('a detector that throws on start leaves no owner', () => {
+        const { va } = harness({
+            detector: () => ({
+                local: true,
+                audioLeavesDevice: false,
+                start() {
+                    throw new Error('no model');
+                },
+                stop() {},
+            }),
+        });
+        va.setWakeEnabled(true);
+        expect(va.state()).toBe('ERROR');
+        expect(va.owner()).toBe(null);
+        expect(va.busy()).toBe(false);
+        expect(va.micTap()).toBe(true);
+    });
+
+    test('a capture error during spotter start does not keep a timer', async () => {
+        let transcribed = 0;
+        const { va } = harness({
+            openCapture(hooks) {
+                hooks.onError({ reason: 'failed' });
+                return { close() {} };
+            },
+            transcribeLocal() {
+                transcribed += 1;
+                return { text: 'nexus hello' };
+            },
+        });
+        va.setWakeEnabled(true);
+        await jest.advanceTimersByTimeAsync(3000);
+        expect(transcribed).toBe(0);
+        expect(va.owner()).toBe(null);
+    });
+
+    test('permission loss during a conversation does not retry by itself', () => {
+        const { va, recs } = harness({});
+        va.micTap();
+        recs[0].onerror({ error: 'not-allowed' });
+        expect(va.state()).toBe('ERROR');
+        expect(va.mode()).toBe('idle');
+        expect(recs).toHaveLength(1);
+        jest.advanceTimersByTime(5000);
+        expect(recs).toHaveLength(1);
+    });
+
+    test('the page marks Nexus as the initial phrase', () => {
+        const html = fs.readFileSync(path.join(__dirname, '../../index.html'), 'utf8');
+        expect(html).toMatch(/<option value="nexus" selected>Nexus<\/option>/);
+    });
+
+    test('Pause suspends wake word and Stop turns it off', () => {
+        const { va } = harness({});
+        va.setWakeEnabled(true);
+        va.pause();
+        expect(va.settings().paused).toBe(true);
+        expect(va.wakeEnabled()).toBe(true);
+        expect(va.state()).toBe('PAUSED');
+        va.resume();
+        expect(va.settings().paused).toBe(false);
+        va.stopListening();
+        expect(va.wakeEnabled()).toBe(false);
+        expect(va.state()).toBe('OFF');
+    });
+
+    test('hiding the tab during a wake command submits nothing', async () => {
+        let pushes = null;
+        const { va, sends } = harness({
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal() {
+                return { text: 'nexus' };
+            },
+        });
+        va.boot();
+        va.setWakeEnabled(true);
+        pushes(new Float32Array(16000).fill(0.25));
+        await jest.advanceTimersByTimeAsync(200);
+        expect(va.state()).toBe('LISTENING');
+        const prev = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        await jest.advanceTimersByTimeAsync(5000);
+        expect(sends).toEqual([]);
+        expect(va.state()).toBe('PAUSED');
+        if (prev) Object.defineProperty(Document.prototype, 'visibilityState', prev);
+        else delete document.visibilityState;
+    });
+});

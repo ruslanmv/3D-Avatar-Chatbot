@@ -31,9 +31,17 @@ A sentence that ends with punctuation closes after about 1200 ms of quiet.
 A clause with no ending waits about 1800 ms, so a thinking pause is not
 treated as the end of the request. There is no semantic turn model in this
 browser build. In a tapped conversation, 7 s of silence ends that sentence
-and listens again; it does not end the conversation. The turn cap is 30
-seconds unless Settings chooses 60 seconds or 2 minutes, and hitting it
-says so. Interim text is not sent. Confidence is not a gate.
+and listens again; it does not end the conversation. The whole session
+ends after 2 minutes without the person speaking (90 seconds is the other
+choice, or Never). A restart of a silent recognizer does not reset that
+clock. Speech does. The turn cap is 30 seconds unless Settings chooses 60
+seconds or 2 minutes, and hitting it says so. Interim text is not sent.
+Confidence is not a gate.
+
+The microphone does not reopen because a clock guessed that she had
+finished. It reopens when the reply has settled and playback has ended,
+failed, been cancelled, or never started, and then only after the echo
+guard. A rejected send releases the microphone instead of staying busy.
 
 **Stop conversation** sits under the status line only while that session is
 open, including while she is speaking. It stops playback and the microphone.
@@ -62,12 +70,14 @@ and **not** shipped:
 
 `window.NEXUS_WAKE_DETECTOR` may be injected only when `local: true` and
 `audioLeavesDevice: false`, and it implements `start` / `stop`. `local: true`
-alone is refused: that flag does not prove the audio stays here. Without
-that detector,
-and only when on-device Whisper is the selected engine, a ring buffer of the
-microphone is transcribed locally and the name is matched in that text. The
-buffer is the pre-roll, so “Nexus, open my calendar” is not split across two
-captures. Loudness does not count as the name, and browser or SonicAgent
+alone is refused: that flag does not prove the audio stays here. A transcript
+that is not the selected phrase is ignored. Without that detector, and only
+when on-device Whisper is the selected engine, a ring buffer of the microphone
+is transcribed locally and the name is matched in that text. The buffer is
+sized from the capture's real sample rate and is the pre-roll, so “Nexus, open
+my calendar” is not split across two captures. A command that never goes quiet
+still ends at the selected turn limit. Loudness does not count as the name,
+and browser or SonicAgent
 audio is not sent away to hunt for it. If neither a local detector nor
 on-device Whisper is available, wake word stays unavailable and the tap
 conversation still works.

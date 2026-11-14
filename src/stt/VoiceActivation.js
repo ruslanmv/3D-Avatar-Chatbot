@@ -26,15 +26,17 @@
  *   and waits for the name again.
  *
  * The name is spotted on the device. A local detector injected as
- * `NEXUS_WAKE_DETECTOR` (`local: true`) is used when one is present. Otherwise
- * on-device Whisper reads a ring buffer of the microphone and the phrase is
- * matched in that transcript. The buffer is the pre-roll: "Nexus, what is the
- * weather" is one window, and the words after the name are the request. Audio
- * is not streamed to a cloud recognizer to notice the name. Picovoice Porcupine
- * is the usual engine for this and is not shipped — its license is not
- * Apache-2.0, and "Nexus" is not a built-in keyword. With no on-device spotter
- * the tap conversation still works and wake word stays unavailable. Nothing
- * here listens with the tab hidden, the browser closed, or the phone locked.
+ * `NEXUS_WAKE_DETECTOR` is used only when `local === true` and
+ * `audioLeavesDevice === false` and it implements `start` / `stop`. `local`
+ * alone is not evidence. Otherwise on-device Whisper reads a ring buffer of
+ * the microphone and the phrase is matched in that transcript. The buffer is
+ * sized from the capture's real sample rate and is the pre-roll: "Nexus, what
+ * is the weather" is one window, and the words after the name are the request.
+ * Audio is not streamed to a cloud recognizer to notice the name. Picovoice
+ * Porcupine is not shipped — its license is not Apache-2.0, and "Nexus" is not
+ * a built-in keyword. With no on-device spotter the tap conversation still
+ * works and wake word stays unavailable. Nothing here listens with the tab
+ * hidden, the browser closed, or the phone locked.
  *
  * Exposes: window.NEXUS_VOICE_ACTIVATION
  */
@@ -54,9 +56,8 @@
 
     const DEFAULTS = Object.freeze({
         holdMs: 3000,
-        // A pause shorter than this keeps the sentence open. Sustained quiet
-        // at endSilenceMs ends it. Both are starting points, not a measured room.
-        minPauseMs: 800,
+        // A pause shorter than this is not the end of a sentence. Sustained
+        // quiet at endSilenceMs ends it. Estimates, not a measured room.
         endSilenceMs: 1200,
         // A clause with no ending punctuation waits longer. This is a pause
         // rule, not a semantic turn model — none is bundled.
@@ -65,8 +66,10 @@
         maxUtteranceMs: 30000,
         echoGuardMs: 800,
         slopPx: 16,
-        phraseCheckMs: 5000,
-        respondFallbackMs: 1500,
+        // How long a hands-free session may sit with nobody speaking. A 7 s
+        // gap only ends the sentence. 0 means the person chose Never.
+        idleLimitMs: 120000,
+        idleWarnMs: 15000,
         spotWindowMs: 3500,
         spotStepMs: 1200,
         ringSeconds: 8,
@@ -80,6 +83,7 @@
         continuous: 'nexus_wake_continuous',
         paused: 'nexus_wake_paused',
         maxMs: 'nexus_wake_max_ms',
+        idleMs: 'nexus_wake_idle_ms',
         migrated: 'nexus_wake_migrated',
     });
 
@@ -123,13 +127,18 @@
             wakeHint: 'Tap for a voice conversation, or hold for 3 seconds to turn wake word on.',
             wakeOnConfirm: 'Wake word on. Say Nexus.',
             wakeOffConfirm: 'Wake word off.',
-            conversationOn: 'Conversation on. Listening for your next question after each reply.',
+            conversationOn: 'Conversation on · Listening to you',
             conversationOff: 'Conversation ended.',
             wakeListening: 'Listening…',
-            wakeTranscribing: 'Transcribing…',
-            wakeSpeaking: 'Speaking…',
-            wakeStandby: 'Say the wake phrase',
-            wakePaused: 'Wake listening paused',
+            wakeCommand: 'Nexus heard you · Listening for your request',
+            wakeTranscribing: 'Transcribing your request…',
+            wakeThinking: 'Nexus is thinking…',
+            wakeSpeaking: 'Nexus is speaking…',
+            wakeReady: 'Getting ready to listen…',
+            wakeStandby: 'Listening for the wake phrase',
+            wakePaused: 'Wake listening paused · Microphone off',
+            wakeIdle: 'Hands-free session ends after',
+            wakeIdleWarn: 'Conversation ends in 15 seconds unless you speak',
             wakeOff: 'Wake word is off',
             wakeDenied: 'Microphone permission denied',
             wakeBusy: 'Microphone is in use',
@@ -141,7 +150,7 @@
             wakeTestMiss: 'That was not the wake phrase',
             wakeCompanion:
                 'Companion’s own wake word still runs only inside Companion. Leaving it on does not listen in the main chat.',
-            wakeManual: 'On-device wake detection is not available here. Tap the microphone for a conversation.',
+            wakeManual: 'Wake detection unavailable · Tap the microphone',
             wakeError: 'Voice input stopped',
         },
         'it-IT': {
@@ -178,13 +187,18 @@
             wakeHint: 'Tocca per una conversazione, oppure tieni premuto 3 secondi per la parola di attivazione.',
             wakeOnConfirm: 'Parola di attivazione attiva. Di’ Nexus.',
             wakeOffConfirm: 'Parola di attivazione disattivata.',
-            conversationOn: 'Conversazione attiva. In ascolto della prossima domanda dopo ogni risposta.',
+            conversationOn: 'Conversazione attiva · Ti ascolto',
             conversationOff: 'Conversazione chiusa.',
             wakeListening: 'In ascolto…',
-            wakeTranscribing: 'Trascrizione…',
-            wakeSpeaking: 'Sta parlando…',
-            wakeStandby: 'Di’ la frase di attivazione',
-            wakePaused: 'Ascolto in pausa',
+            wakeCommand: 'Nexus ti ha sentito · In ascolto della richiesta',
+            wakeTranscribing: 'Trascrivo la richiesta…',
+            wakeThinking: 'Nexus sta pensando…',
+            wakeSpeaking: 'Nexus sta parlando…',
+            wakeReady: 'Mi preparo ad ascoltare…',
+            wakeStandby: 'In ascolto della frase di attivazione',
+            wakePaused: 'Ascolto in pausa · Microfono spento',
+            wakeIdle: 'La conversazione a mani libere si chiude dopo',
+            wakeIdleWarn: 'La conversazione si chiude tra 15 secondi se non parli',
             wakeOff: 'Parola di attivazione disattivata',
             wakeDenied: 'Permesso del microfono negato',
             wakeBusy: 'Microfono in uso',
@@ -196,7 +210,7 @@
             wakeTestMiss: 'Non era la frase di attivazione',
             wakeCompanion:
                 'La parola di attivazione di Companion resta solo dentro Companion. Lasciarla accesa non ascolta nella chat principale.',
-            wakeManual: 'Il rilevamento sul dispositivo non è disponibile. Tocca il microfono per una conversazione.',
+            wakeManual: 'Rilevamento non disponibile · Tocca il microfono',
             wakeError: 'Input vocale interrotto',
         },
     };
@@ -479,6 +493,15 @@
         let monitorOn = false;
         let manualOpen = false;
         let errorStrikes = 0;
+        // One reply in flight. Settled means the AI call finished. Playback
+        // stays 'unknown' until she actually starts, 'playing' while audible,
+        // then 'done' or 'none'. Listening does not reopen on a timer.
+        let turn = null;
+        let activity = '';
+        let idleDeadline = 0;
+        let idleRemaining = null;
+        let idleWarned = false;
+        let idleTimer = null;
         let sessionMode = null;
         let activeRec = null;
         let phraseRec = null;
@@ -501,6 +524,7 @@
                 continuous: true,
                 paused: false,
                 maxMs: DEFAULTS.maxUtteranceMs,
+                idleMs: DEFAULTS.idleLimitMs,
                 migrated: false,
             };
         }
@@ -578,6 +602,33 @@
             paint();
         }
 
+        function standbyLine() {
+            const phrase = activePhrase();
+            const shown = phrase ? phrase.charAt(0).toUpperCase() + phrase.slice(1) : 'Nexus';
+            return "Listening for '" + shown + "'";
+        }
+
+        function statusLine() {
+            if (idleWarned && manualOpen && (state === 'LISTENING' || state === 'OFF')) return label('wakeIdleWarn');
+            if (activity === 'echo') return label('wakeReady');
+            if (activity === 'thinking' || (state === 'RESPONDING' && !speaking && activity !== 'speaking')) {
+                return label('wakeThinking');
+            }
+            if (speaking || activity === 'speaking') return label('wakeSpeaking');
+            if (state === 'TRANSCRIBING') return label('wakeTranscribing');
+            if (state === 'LISTENING' && activity === 'command') return label('wakeCommand');
+            if (state === 'LISTENING' && owner === 'manual') return label('conversationOn');
+            if (state === 'LISTENING') return label('wakeListening');
+            if (state === 'STANDBY' && settings.wakeEnabled) {
+                return plan() === 'manual-only' ? label('wakeManual') : standbyLine();
+            }
+            if (state === 'PAUSED') return hidden ? label('wakeHidden') : label('wakePaused');
+            if (state === 'ERROR') return label('wakeError');
+            if (manualOpen) return label('conversationOn');
+            if (state === 'OFF') return label('wakeHint');
+            return '';
+        }
+
         function paint() {
             try {
                 if (typeof deps.onState === 'function') deps.onState(state, owner);
@@ -587,14 +638,7 @@
             const btn = global.document.getElementById('listen-btn');
             const feedback = global.document.getElementById('wake-feedback');
             const ours = owner === 'manual' || owner === 'hold' || owner === 'assist' || owner === 'wake';
-            let line = '';
-            if (state === 'LISTENING' && ours) line = label(owner === 'manual' ? 'conversationOn' : 'wakeListening');
-            else if (state === 'TRANSCRIBING') line = label('wakeTranscribing');
-            else if (state === 'RESPONDING' && (ours || manualOpen)) line = label('wakeSpeaking');
-            else if (state === 'STANDBY' && settings.wakeEnabled) line = label('wakeStandby');
-            else if (state === 'PAUSED') line = hidden ? label('wakeHidden') : label('wakePaused');
-            else if (state === 'ERROR') line = label('wakeError');
-            else if (state === 'OFF' && !manualOpen) line = label('wakeHint');
+            const line = statusLine();
             if (status && line && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') status.textContent = line;
             if (feedback && line) feedback.textContent = line;
             if (btn && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') {
@@ -669,6 +713,20 @@
                 if (typeof stt.isLocal === 'function') return !!stt.isLocal();
             } catch (_) {}
             return false;
+        }
+
+        function endpointerFor(sampleRate) {
+            const opts = {
+                maxUtteranceMs: settings.maxMs || DEFAULTS.maxUtteranceMs,
+                endSilenceMs: DEFAULTS.endSilenceMs,
+            };
+            try {
+                if (typeof deps.createEndpointer === 'function') return deps.createEndpointer(sampleRate, opts);
+                const audio = global.NEXUS_STT_AUDIO;
+                if (audio && typeof audio.createEndpointer === 'function')
+                    return audio.createEndpointer(sampleRate, opts);
+            } catch (_) {}
+            return null;
         }
 
         function transcribeLocal(samples, rate) {
@@ -747,6 +805,10 @@
             const paused = readKey(STORAGE.paused) === 'on';
             const maxRaw = Number(readKey(STORAGE.maxMs));
             const maxMs = maxRaw === 60000 || maxRaw === 120000 ? maxRaw : DEFAULTS.maxUtteranceMs;
+            const idleRaw = readKey(STORAGE.idleMs);
+            let idleMs = DEFAULTS.idleLimitMs;
+            if (idleRaw === '0') idleMs = 0;
+            else if (idleRaw === '90000' || idleRaw === '120000') idleMs = Number(idleRaw);
             settings = {
                 wakeEnabled: enabled,
                 phrase: storedPhrase || '',
@@ -755,6 +817,7 @@
                 continuous: continuous,
                 paused: paused,
                 maxMs: maxMs,
+                idleMs: idleMs,
                 migrated: readKey(STORAGE.migrated) === '1',
             };
             return currentSettings();
@@ -769,6 +832,7 @@
                 continuous: settings.continuous,
                 paused: settings.paused,
                 maxMs: settings.maxMs,
+                idleMs: settings.idleMs,
                 migrated: settings.migrated,
                 overlayWakeWord: overlayWakeOn(),
             };
@@ -803,6 +867,7 @@
             writeKey(STORAGE.continuous, settings.continuous ? 'on' : 'off');
             writeKey(STORAGE.paused, settings.paused ? 'on' : 'off');
             writeKey(STORAGE.maxMs, String(settings.maxMs || DEFAULTS.maxUtteranceMs));
+            writeKey(STORAGE.idleMs, String(settings.idleMs));
         }
 
         function stopStream(stream) {
@@ -1005,20 +1070,27 @@
                     },
                     onError: function () {
                         if (gen !== wakeGen) return;
-                        setState('ERROR');
-                        feedbackKey('wakeError');
+                        failClosed('wakeError');
                     },
                 });
+                return true;
             } catch (_) {
-                monitorOn = false;
-                setState('ERROR');
+                failClosed('wakeError');
+                return false;
             }
         }
 
         function onDetectorWake(gen, detail) {
             if (gen !== wakeGen || !monitorOn) return;
             const heard = detail && (detail.transcript || detail.command || '');
-            const hit = heard ? matchWake(heard, activePhrase()) : { command: '' };
+            // No transcript: the detector already decided. A transcript that is
+            // not the selected phrase is not a wake hit.
+            let command = '';
+            if (heard) {
+                const hit = matchWake(heard, activePhrase());
+                if (!hit) return;
+                command = hit.command;
+            }
             const decision = decideWake({
                 enabled: settings.wakeEnabled,
                 paused: settings.paused,
@@ -1029,7 +1101,7 @@
                 authorized: true,
                 matched: true,
                 permission: 'granted',
-                command: hit ? hit.command : '',
+                command: command,
             });
             applyWakeDecision(decision);
         }
@@ -1105,7 +1177,7 @@
                 setState('OFF');
                 return;
             }
-            const ring = createPcmRing(DEFAULTS.ringSeconds * 16000);
+            let ring = null;
             let rate = 16000;
             let inflight = false;
             let phase = 'spot';
@@ -1113,7 +1185,16 @@
             let silenceMs = 0;
             let commandHeard = false;
             let commandWait = 0;
+            let commandStartedAt = 0;
+            let endpointer = null;
             let tickPrev = depsNow();
+
+            function ensureRing(sampleRate) {
+                const next = sampleRate > 0 ? sampleRate : rate;
+                if (ring && next === rate) return;
+                rate = next;
+                ring = createPcmRing(Math.ceil(rate * DEFAULTS.ringSeconds));
+            }
 
             function closeCapture() {
                 if (spotTimer) {
@@ -1181,15 +1262,24 @@
                 commandHeard = false;
                 silenceMs = 0;
                 commandWait = 0;
+                commandStartedAt = depsNow();
+                endpointer = endpointerFor(rate);
+                activity = 'command';
                 setState('LISTENING');
-                feedbackKey('wakeListening');
+                feedbackKey('wakeCommand');
             }
 
             function finishCommand() {
                 if (gen !== wakeGen || phase === 'done') return;
                 phase = 'done';
                 inflight = true;
-                const samples = ring.snapshot(rate * DEFAULTS.ringSeconds);
+                if (!ring) {
+                    inflight = false;
+                    phase = 'spot';
+                    activity = '';
+                    return;
+                }
+                const samples = ring.snapshot(Math.ceil(rate * DEFAULTS.ringSeconds));
                 Promise.resolve(transcribeLocal(samples, rate))
                     .then(function (res) {
                         inflight = false;
@@ -1203,6 +1293,8 @@
                         if (gen !== wakeGen) return;
                         monitorOn = false;
                         closeCapture();
+                        owner = null;
+                        activity = '';
                         feedbackKey('wakeError');
                         setState('ERROR');
                     });
@@ -1211,8 +1303,22 @@
             captureLease = openCapture({
                 onFrames: function (samples, sampleRate) {
                     if (gen !== wakeGen || !monitorOn) return;
-                    if (sampleRate) rate = sampleRate;
+                    ensureRing(sampleRate);
                     ring.push(samples);
+                    if (phase !== 'command' || !endpointer) return;
+                    let events = [];
+                    try {
+                        events = endpointer.push(samples) || [];
+                    } catch (_) {
+                        events = [];
+                    }
+                    for (let i = 0; i < events.length; i++) {
+                        if (events[i].type === 'speech-start') commandHeard = true;
+                        if (events[i].type === 'speech-end') {
+                            commandHeard = true;
+                            finishCommand();
+                        }
+                    }
                 },
                 onError: function (err) {
                     if (gen !== wakeGen) return;
@@ -1230,6 +1336,9 @@
                     setState('OFF');
                 },
             });
+            // onError during open() already closed the lease. An interval
+            // after that would transcribe a monitor we just marked dead.
+            if (!monitorOn || gen !== wakeGen) return;
 
             spotTimer = setInterval(function () {
                 if (gen !== wakeGen || !monitorOn || phase === 'done') return;
@@ -1241,8 +1350,30 @@
                     return;
                 }
                 if (phase === 'command') {
-                    const tail = ring.snapshot(Math.max(1, Math.round(rate * 0.2)));
-                    if (rmsOf(tail) >= DEFAULTS.commandFloor) {
+                    const limit = settings.maxMs || DEFAULTS.maxUtteranceMs;
+                    if (commandStartedAt && now - commandStartedAt >= limit) {
+                        if (commandHeard) finishCommand();
+                        else {
+                            phase = 'spot';
+                            activity = '';
+                            setState('STANDBY');
+                            feedbackKey('wakeStandby');
+                        }
+                        return;
+                    }
+                    // A real endpointer owns the command edge. RMS is only the
+                    // fallback, and it cannot run forever in a noisy room.
+                    if (endpointer) {
+                        if (!commandHeard && commandStartedAt && now - commandStartedAt >= DEFAULTS.noSpeechMs) {
+                            phase = 'spot';
+                            activity = '';
+                            setState('STANDBY');
+                            feedbackKey('wakeStandby');
+                        }
+                        return;
+                    }
+                    const tail = ring ? ring.snapshot(Math.max(1, Math.round(rate * 0.2))) : null;
+                    if (tail && rmsOf(tail) >= DEFAULTS.commandFloor) {
                         commandHeard = true;
                         silenceMs = 0;
                     } else if (commandHeard) {
@@ -1252,6 +1383,7 @@
                         commandWait += dt;
                         if (commandWait >= DEFAULTS.noSpeechMs) {
                             phase = 'spot';
+                            activity = '';
                             commandWait = 0;
                             setState('STANDBY');
                             feedbackKey('wakeStandby');
@@ -1261,6 +1393,7 @@
                 }
                 if (inflight || now - lastSpot < DEFAULTS.spotStepMs) return;
                 lastSpot = now;
+                if (!ring) return;
                 const windowSamples = ring.snapshot(Math.round(rate * (DEFAULTS.spotWindowMs / 1000)));
                 if (!windowSamples.length || rmsOf(windowSamples) < DEFAULTS.commandFloor) return;
                 inflight = true;
@@ -1428,6 +1561,7 @@
                 killRec(rec);
                 if (reason === 'not-allowed') {
                     manualOpen = false;
+                    stopIdleClock();
                     setState('ERROR');
                     feedbackKey('wakeDenied');
                     log('mic-denied');
@@ -1479,6 +1613,7 @@
                 owner = null;
                 if (reason === 'echo' || reason === 'no-speech' || reason === 'empty' || reason === 'error') {
                     manualOpen = false;
+                    stopIdleClock();
                 }
                 if (settings.wakeEnabled && !settings.paused && !hidden && !companionActive && reason !== 'error') {
                     setState('OFF');
@@ -1567,12 +1702,14 @@
                 if (read.anyInterim && read.interim) {
                     interimText = read.interim;
                     showInterim(read.interim);
+                    if (who === 'manual') touchIdle();
                     // Heard something: the no-speech timer is only for silence.
                     // Interim text is still not a submission.
                     clearTimeout(noSpeechTimer);
                 }
                 if (read.anyFinal && read.finalText) {
                     finalText = read.finalText;
+                    if (who === 'manual') touchIdle();
                     clearTimeout(noSpeechTimer);
                     if (local) {
                         finishWith(finalText);
@@ -1654,39 +1791,58 @@
             if (!clean) return false;
             errorStrikes = 0;
             stopOwnMonitor();
+            suspendIdle();
             setState('SENDING');
             log(isPrivate() ? 'submit-private' : 'submit');
             fillInput('');
+            activity = 'thinking';
             setState('RESPONDING');
             const token = ++resumeToken;
             const sentOwner = who || owner;
+            turn = { token: token, who: sentOwner, settled: false, playback: 'unknown' };
+            let ret;
             try {
-                if (typeof deps.send === 'function') {
-                    const ret = deps.send(clean);
-                    if (ret && typeof ret.then === 'function') {
-                        ret.catch(function () {
-                            if (token === resumeToken) setState('ERROR');
-                        });
-                    }
-                }
+                if (typeof deps.send === 'function') ret = deps.send(clean);
             } catch (_) {
-                setState('ERROR');
                 log('submit-failed');
+                failClosed('wakeError');
                 return false;
             }
-            setTimeout(function () {
-                if (token !== resumeToken) return;
-                if (state !== 'RESPONDING') return;
-                if (speaking) return;
-                finishResponse(sentOwner);
-            }, DEFAULTS.respondFallbackMs);
+            if (ret && typeof ret.then === 'function') {
+                Promise.resolve(ret).then(
+                    function () {
+                        if (!turn || turn.token !== token || token !== resumeToken) return;
+                        turn.settled = true;
+                        // She never started. Waiting for a playback that will
+                        // not come is how a silent reply used to stall.
+                        if (turn.playback === 'unknown') turn.playback = 'none';
+                        maybeCompleteTurn();
+                    },
+                    function () {
+                        if (token !== resumeToken) return;
+                        log('submit-failed');
+                        failClosed('wakeError');
+                    }
+                );
+                return true;
+            }
+            turn.settled = true;
             return true;
+        }
+
+        function maybeCompleteTurn() {
+            if (!turn || turn.token !== resumeToken || !turn.settled) return;
+            if (turn.playback === 'unknown' || turn.playback === 'playing') return;
+            const who = turn.who;
+            turn = null;
+            finishResponse(who);
         }
 
         function finishResponse(sentOwner) {
             if (state !== 'RESPONDING' && state !== 'SENDING') return;
             resumeToken++;
             const who = sentOwner || owner || (manualOpen ? 'manual' : null);
+            activity = 'echo';
             // Wake word always returns to the name. A tapped conversation is the
             // one that listens again, and only while that session is still open.
             const manualContinues =
@@ -1694,16 +1850,21 @@
             if (manualContinues) {
                 const wait = Math.max(0, echoUntil - depsNow());
                 const token = resumeToken;
+                feedbackKey('wakeReady');
                 setTimeout(function () {
                     if (token !== resumeToken || !manualOpen) return;
                     if (speaking || depsNow() < echoUntil) return;
+                    activity = '';
+                    resumeIdleClock();
                     captureUtterance({ owner: 'manual', deliver: 'send' });
                 }, wait);
                 return;
             }
+            activity = '';
             if (who === 'manual') manualOpen = false;
             sessionMode = null;
             owner = null;
+            stopIdleClock();
             if (settings.wakeEnabled && !manualOpen && !settings.paused && !hidden && !companionActive) {
                 setState('OFF');
                 armMonitor();
@@ -1712,12 +1873,34 @@
             }
         }
 
-        function cancel(reason) {
+        function failClosed(key) {
+            turn = null;
+            activity = '';
             resumeToken++;
             sessionGen++;
             sessionDone = true;
             manualOpen = false;
             sessionMode = null;
+            const rec = activeRec;
+            activeRec = null;
+            killRec(rec);
+            stopOwnMonitor();
+            stopIdleClock();
+            owner = null;
+            monitorOn = false;
+            setState('ERROR');
+            feedbackKey(key || 'wakeError');
+        }
+
+        function cancel(reason) {
+            resumeToken++;
+            turn = null;
+            activity = '';
+            sessionGen++;
+            sessionDone = true;
+            manualOpen = false;
+            sessionMode = null;
+            stopIdleClock();
             const rec = activeRec;
             activeRec = null;
             killRec(rec);
@@ -1741,6 +1924,9 @@
             speaking = !!on;
             if (speaking) {
                 echoUntil = depsNow() + DEFAULTS.echoGuardMs;
+                if (turn) turn.playback = 'playing';
+                activity = 'speaking';
+                suspendIdle();
                 if (owner === 'wake' || monitorOn) stopOwnMonitor();
                 // Her voice is not the next question. Drop the open mic and
                 // keep a tapped conversation so it can listen when she stops.
@@ -1757,8 +1943,15 @@
             }
             if (!was) return;
             echoUntil = depsNow() + DEFAULTS.echoGuardMs;
-            if (state === 'RESPONDING') finishResponse(owner || (manualOpen ? 'manual' : null));
-            else if (settings.wakeEnabled && !settings.paused && !hidden && !busy() && !manualOpen) armMonitor();
+            if (turn && turn.playback === 'playing') {
+                turn.playback = 'done';
+                activity = 'echo';
+                if (turn.settled) maybeCompleteTurn();
+                return;
+            }
+            if (state === 'RESPONDING' && (!turn || turn.settled)) {
+                finishResponse(owner || (manualOpen ? 'manual' : null));
+            } else if (settings.wakeEnabled && !settings.paused && !hidden && !busy() && !manualOpen) armMonitor();
         }
 
         function noteSpoken(text) {
@@ -1806,6 +1999,81 @@
             settings.maxMs = n === 60000 || n === 120000 ? n : DEFAULTS.maxUtteranceMs;
             persist();
             syncPanel();
+        }
+
+        function setIdleMs(ms) {
+            const n = Number(ms);
+            settings.idleMs = n === 0 || n === 90000 || n === 120000 ? n : DEFAULTS.idleLimitMs;
+            persist();
+            if (manualOpen) armIdle();
+            syncPanel();
+        }
+
+        function stopIdleClock() {
+            if (idleTimer) {
+                clearInterval(idleTimer);
+                idleTimer = null;
+            }
+            idleDeadline = 0;
+            idleRemaining = null;
+            idleWarned = false;
+        }
+
+        function ensureIdleTimer() {
+            if (idleTimer || !settings.idleMs) return;
+            idleTimer = setInterval(tickIdle, 500);
+        }
+
+        function armIdle() {
+            idleWarned = false;
+            idleRemaining = null;
+            if (!manualOpen || !settings.idleMs) {
+                stopIdleClock();
+                return;
+            }
+            idleDeadline = depsNow() + settings.idleMs;
+            ensureIdleTimer();
+        }
+
+        function suspendIdle() {
+            if (!idleDeadline) return;
+            idleRemaining = Math.max(0, idleDeadline - depsNow());
+            idleDeadline = 0;
+        }
+
+        function resumeIdleClock() {
+            if (!manualOpen || !settings.idleMs) return;
+            if (idleDeadline) return;
+            const remain = idleRemaining == null ? settings.idleMs : idleRemaining;
+            idleRemaining = null;
+            idleDeadline = depsNow() + remain;
+            if (remain > DEFAULTS.idleWarnMs) idleWarned = false;
+            ensureIdleTimer();
+        }
+
+        function touchIdle() {
+            if (!manualOpen || !settings.idleMs) return;
+            idleDeadline = depsNow() + settings.idleMs;
+            idleRemaining = null;
+            const wasWarned = idleWarned;
+            idleWarned = false;
+            ensureIdleTimer();
+            if (wasWarned) feedbackKey('conversationOn');
+        }
+
+        function tickIdle() {
+            if (!manualOpen || !settings.idleMs || !idleDeadline) return;
+            if (speaking || state === 'RESPONDING' || state === 'SENDING' || activity === 'thinking') return;
+            const left = idleDeadline - depsNow();
+            if (left <= DEFAULTS.idleWarnMs && left > 0 && !idleWarned) {
+                idleWarned = true;
+                feedbackKey('wakeIdleWarn');
+                return;
+            }
+            if (left <= 0) {
+                idleDeadline = 0;
+                endConversation();
+            }
         }
 
         function pause() {
@@ -1860,6 +2128,7 @@
                 return false;
             }
             feedbackKey('conversationOn');
+            armIdle();
             return true;
         }
 
@@ -1892,11 +2161,15 @@
         }
 
         function stopListening() {
-            // Stop closes the conversation. It does not forget a saved wake word:
-            // the hold and the checkbox are that switch. With the conversation
-            // closed and wake word saved, standby starts again.
+            // Footer Stop ends the conversation and may resume a saved wake word.
+            // Settings Stop is the off switch: a live conversation ends, and if
+            // none is open the saved wake word turns off. Pause is the other button.
             if (manualOpen) return endConversation();
-            if (settings.wakeEnabled && !settings.paused) return pause();
+            if (settings.wakeEnabled) {
+                setWakeEnabled(false);
+                feedbackKey('wakeOffConfirm');
+                return true;
+            }
             cancel('user-stop');
             syncPanel();
             return true;
@@ -1906,7 +2179,12 @@
             companionActive = !!active;
             if (companionActive) {
                 // Companion takes the microphone. A page conversation does not
-                // stay busy underneath it.
+                // stay busy underneath it, and a late playback end must not
+                // reopen the recognizer.
+                resumeToken++;
+                turn = null;
+                activity = '';
+                stopIdleClock();
                 manualOpen = false;
                 sessionMode = null;
                 sessionGen++;
@@ -2100,6 +2378,8 @@
             if (autosend) autosend.checked = settings.autoSend;
             if (continuous) continuous.checked = settings.continuous;
             if (maxSel) maxSel.value = String(settings.maxMs || DEFAULTS.maxUtteranceMs);
+            const idleSel = global.document.getElementById('wake-idle');
+            if (idleSel) idleSel.value = String(settings.idleMs);
             const phraseValue = activePhrase();
             if (phrase) {
                 const known = Array.from(phrase.options || []).some(function (o) {
@@ -2214,6 +2494,12 @@
                     setMaxMs(maxSel.value);
                 });
             }
+            const idleSel = global.document.getElementById('wake-idle');
+            if (idleSel) {
+                idleSel.addEventListener('change', function () {
+                    setIdleMs(idleSel.value);
+                });
+            }
             const speak = global.document.getElementById('wake-speak');
             const test = global.document.getElementById('wake-test');
             const pauseBtn = global.document.getElementById('wake-pause');
@@ -2320,6 +2606,8 @@
             setAutoSend: setAutoSend,
             setContinuous: setContinuous,
             setMaxMs: setMaxMs,
+            setIdleMs: setIdleMs,
+            statusText: statusLine,
             pause: pause,
             resume: resume,
             stopListening: stopListening,

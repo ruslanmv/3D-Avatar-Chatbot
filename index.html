@@ -1455,7 +1455,7 @@
                             <select id="wake-phrase" class="select-input">
                                 <option value="hey nexus">Hey Nexus</option>
                                 <option value="ehi nexus">Ehi Nexus</option>
-                                <option value="nexus">Nexus</option>
+                                <option value="nexus" selected>Nexus</option>
                                 <option value="custom">Custom</option>
                             </select>
                             <input
@@ -1507,6 +1507,16 @@
                                 <option value="30000">30 seconds</option>
                                 <option value="60000">60 seconds</option>
                                 <option value="120000">2 minutes</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-idle" data-wake-key="wakeIdle"
+                                >Hands-free session ends after</label
+                            >
+                            <select id="wake-idle" class="select-input">
+                                <option value="120000" selected>2 minutes</option>
+                                <option value="90000">90 seconds</option>
+                                <option value="0">Never</option>
                             </select>
                         </div>
                         <div class="input-group">
