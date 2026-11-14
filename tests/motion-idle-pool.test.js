@@ -30,6 +30,7 @@ const IDLE_POOL = [
     'vendor/animations/idle/neutral3.bvh',
     'vendor/animations/idle/neutral4.bvh',
     'vendor/animations/vrma/waiting-standard.vrma',
+    'vendor/animations/vrma/idle_loop.vrma', // MO9 — weighted ×3 in the draw, listed once
 ];
 
 let playing;
@@ -113,6 +114,22 @@ describe('the pool holds ONLY standing idles', () => {
         const pool = ClipMap.resolve('dance').candidates;
         expect(pool.length).toBeGreaterThanOrEqual(15);
         expect(pool.filter((p) => ClipMap.QUARANTINE[p])).toEqual([]);
+    });
+});
+
+describe('MO9: the breathing idle is preferred, not exclusive', () => {
+    test('about a third of idles are the breathing loop, and every other idle still comes up', () => {
+        // The draw is a shuffle bag shared across tests, so count over many bags, not one.
+        const counts = {};
+        const N = (IDLE_POOL.length + 2) * 100; // ten tickets per bag
+        for (let i = 0; i < N; i++) {
+            const pick = ClipMap.resolve('idle').candidates[0];
+            counts[pick] = (counts[pick] || 0) + 1;
+        }
+        const share = counts['vendor/animations/vrma/idle_loop.vrma'] / N;
+        expect(share).toBeGreaterThan(0.27);
+        expect(share).toBeLessThan(0.33);
+        for (const p of new Set(IDLE_POOL)) expect(counts[p]).toBeGreaterThan(0);
     });
 });
 

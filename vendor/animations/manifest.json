@@ -168,7 +168,14 @@
         "vrma/Sad.vrma",
         "vrma/Thinking.vrma",
         "vrma/Surprised.vrma",
-        "vrma/Relax.vrma"
+        "vrma/Relax.vrma",
+        "vrma/idle_loop.vrma",
+        "vrma/Blush.vrma",
+        "vrma/Clapping.vrma",
+        "vrma/Goodbye.vrma",
+        "vrma/Jump.vrma",
+        "vrma/LookAround.vrma",
+        "vrma/Sleepy.vrma"
       ]
     }
   },

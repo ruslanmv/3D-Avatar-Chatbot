@@ -118,7 +118,15 @@ const MotionClipMap = (() => {
                 VEND + 'idle/neutral3.bvh',
                 VEND + 'idle/neutral4.bvh',
                 VEND + 'vrma/waiting-standard.vrma',
+                // MO9. ChatVRM's breathing idle (MIT, audited in PR #153): a calm, centred loop
+                // that reads as "listening" rather than a mocap performer shifting her weight.
+                // Authored in centimetres (hips rest 90.57); the loader scales it (MO8).
+                VEND + 'vrma/idle_loop.vrma',
             ],
+            // MO9. Preferred, not exclusive: three tickets in the shuffle bag, so it is 3 of every
+            // 10 idles — the single most likely one — and the BVH idles keep their variety. The
+            // weight lives here, not as repeated candidates, so the pool stays a list of files.
+            weights: { [VEND + 'vrma/idle_loop.vrma']: 3 },
             loop: true,
             sticky: true,
             random: true,
@@ -155,10 +163,21 @@ const MotionClipMap = (() => {
         // vocabulary while its only clip is quarantined.
         bow: { candidates: [ACT + 'bowing.vrma'], loop: false, procedural: 'bow' },
         shrug: { candidates: [ACT + 'shrugging.vrma', VEND + 'emotion/confusion.bvh'], loop: false },
-        clap: { candidates: [ACT + 'standingClap.vrma', VEND + 'emotion/approval2.bvh'], loop: false },
+        clap: {
+            candidates: [ACT + 'standingClap.vrma', VEND + 'vrma/Clapping.vrma', VEND + 'emotion/approval2.bvh'],
+            loop: false,
+        },
         victory: { candidates: [ACT + 'victory.vrma', VEND + 'emotion/excitement2.bvh'], loop: false },
         sing: { candidates: [ACT + 'singing.vrma', VEND + 'emotion/joy.bvh'], loop: true, sticky: true },
         backflip: { candidates: [ACT + 'backflip.vrma'], loop: false },
+        // MO9. The tk256 six, re-enabled once MO8 scaled their hips to the avatar (they were
+        // parked as "skeleton-incompatible"; it was a lookup bug). Native VRMA, MIT, measured
+        // grounded on AvatarSample_A, VRM_Viewer_Sample (0.69 m), Vita (0.98 m) and others.
+        goodbye: { candidates: [VEND + 'vrma/Goodbye.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
+        look_around: { candidates: [VEND + 'vrma/LookAround.vrma'], loop: false },
+        blush: { candidates: [VEND + 'vrma/Blush.vrma'], loop: false },
+        sleepy: { candidates: [VEND + 'vrma/Sleepy.vrma'], loop: false },
+        jump: { candidates: [VEND + 'vrma/Jump.vrma', VEND + 'action/action_jump.bvh'], loop: false },
         jumping_jacks: {
             candidates: [ACT + 'jumpingJacks.vrma', VEND + 'exercise/exercise_jumping_jacks.bvh'],
             loop: false,
@@ -289,6 +308,16 @@ const MotionClipMap = (() => {
         no: 'headshake',
         yes: 'nod',
         celebrate: 'victory',
+        bye: 'goodbye',
+        farewell: 'goodbye',
+        see_you: 'goodbye',
+        look: 'look_around',
+        curious: 'look_around',
+        shy: 'blush',
+        embarrassed: 'blush',
+        tired: 'sleepy',
+        yawn: 'sleepy',
+        hop: 'jump',
     };
 
     /** Paths that failed to load once are skipped next time (missing pack). */
@@ -648,11 +677,15 @@ const MotionClipMap = (() => {
 
     /** Shuffle bags per name, so repeats do not come back-to-back. @private */
     const _bags = Object.create(null);
-    function _drawFrom(key, paths) {
+    function _drawFrom(key, paths, weights) {
         if (paths.length === 1) return paths.slice();
         let bag = _bags[key];
         if (!bag || !bag.length) {
-            bag = paths.slice();
+            bag = [];
+            for (const p of paths) {
+                const n = weights && weights[p] > 1 ? Math.floor(weights[p]) : 1;
+                for (let k = 0; k < n; k++) bag.push(p);
+            }
             for (let i = bag.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 const t = bag[i];
@@ -738,7 +771,7 @@ const MotionClipMap = (() => {
                     direct.candidates.concat(extra.filter((p) => direct.candidates.indexOf(p) === -1))
                 );
                 if (pool.length) {
-                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool) });
+                    return Object.assign({}, direct, { candidates: _drawFrom(libraryKey, pool, direct.weights) });
                 }
                 return Object.assign({}, direct, { candidates: [] });
             }
