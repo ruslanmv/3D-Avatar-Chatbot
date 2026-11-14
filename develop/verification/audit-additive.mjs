@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Additive clip audit for AI coders (Claude / Cursor / Grok):
+ * Additive-only audit for develop/addons/stable.
+ * High-signal, short loop for AI coders (Claude / Cursor / Grok):
  *
  *   npm start
  *   node develop/verification/audit-additive.mjs
- *   node develop/verification/audit-additive.mjs --dir path/to/clips --strict
+ *   node develop/verification/audit-additive.mjs --strict
  *
- * Default scans vendor/animations/vrma/ (shipped MIT). Use --dir for new packs.
+ * Scans only develop/addons/stable/ for .vrma and .bvh — not the full vendor matrix.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,12 +17,12 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
-const DEFAULT_DIR = path.join(ROOT, 'vendor/animations/vrma');
+const STABLE = path.join(ROOT, 'develop/addons/stable');
 const require = createRequire(path.join(ROOT, 'package.json'));
 const STRICT = process.argv.includes('--strict');
 const AVATAR = '/vendor/avatars/AvatarSample_A.vrm';
 
-/** Optional: --dir <path> (repeatable). Default = vendor/animations/vrma. */
+/** Optional: --dir <path> (repeatable). Default = develop/addons/stable. */
 function scanRoots() {
     const roots = [];
     const argv = process.argv.slice(2);
@@ -30,7 +31,7 @@ function scanRoots() {
             roots.push(path.resolve(argv[++i]));
         }
     }
-    return roots.length ? roots : [DEFAULT_DIR];
+    return roots.length ? roots : [STABLE];
 }
 
 function loadScorer() {
@@ -99,10 +100,7 @@ async function main() {
     const roots = scanRoots();
     const clips = listClips(roots);
     if (!clips.length) {
-        console.log(
-            'additive-audit: no .vrma/.bvh under',
-            roots.map((r) => path.relative(ROOT, r)).join(', ') || '(none)'
-        );
+        console.log('additive-audit: no .vrma/.bvh under', roots.map((r) => path.relative(ROOT, r)).join(', '));
         process.exit(0);
     }
 

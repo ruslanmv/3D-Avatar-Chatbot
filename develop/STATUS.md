@@ -1,29 +1,27 @@
-# develop/ status — audit tooling only
+# Staging status
 
-**Product promotion lives in
-[#155](https://github.com/ruslanmv/3D-Avatar-Chatbot/pull/155)** (MO7–MO9):
-idle_loop + tk256 six wired into chat, VRMA hips scaling fixed (node-0 `safeGet`
-bug), MIT notices in `vendor/animations/vrma/THIRD_PARTY_LICENSES.md`.
+> **Development staging only — not redistribution.** Binaries under
+> `develop/addons/` stay in this PR for local/agent work. Product shipping and
+> MIT notices are handled in
+> [#155](https://github.com/ruslanmv/3D-Avatar-Chatbot/pull/155); BOOTH/mocopi
+> remain pending license gates and must not be copied into public `vendor/` as
+> extractable redistributables.
 
-## This PR (#153) keeps
+## `addons/stable/` — MIT VRMA, additive **ok**
 
-| Path                              | Role                                           |
-| --------------------------------- | ---------------------------------------------- |
-| `verification/AGENT.md`           | Brief for Claude / Cursor / Grok               |
-| `verification/audit-additive.mjs` | Additive clip audit (`--dir` for ad-hoc packs) |
-| `verification/CHECKLIST.md`       | Promotion checklist                            |
-| `CATALOG.md`                      | Compatible internet sources                    |
-| `verification/runs/`              | Historical evidence / screenshots              |
+| Pack                    | Location                               | Verification |
+| ----------------------- | -------------------------------------- | ------------ |
+| ChatVRM / three-vrm MIT | `addons/stable/vrma-mit/`              | **ok** ×2    |
+| tk256 candidates        | `addons/stable/vrma-tk256-candidates/` | **ok** ×6    |
 
-## Removed from this PR (per review)
+Stable additive: **8/8 ok**.
 
-- Duplicate tk256 / idle_loop VRMA copies (already in `vendor/` or promoted in
-  #155)
-- Quaternius GLB/zip (LFS pointer + unconverted — keep out of git until VRMA
-  passes)
-- BOOTH / mocopi binaries (license / redistrib gates)
+## `addons/pending/` — development binaries
 
-## Pass bar (suggested)
+| Pack                 | Playback                        | License gate                         |
+| -------------------- | ------------------------------- | ------------------------------------ |
+| Quaternius UAL GLB   | not playable                    | CC0 — convert → VRMA                 |
+| BOOTH VRoid (6 kept) | **ok** ×6; Greeting **removed** | Credit; no product `vendor/` extract |
+| mocopi tfuru (5)     | **ok** ×5                       | No SPDX — clarify before stable      |
 
-Audit on **AvatarSample_A** plus one short avatar (`VRM_Viewer_Sample`) and one
-tall (`Vita`). Single-avatar-only audits miss hips scale bugs (#155 MO8).
+See `addons/pending/README.md`. ACCAD/CMU floaters removed.
