@@ -143,6 +143,9 @@ where it cannot load itself) and `comfortProblem`, and the playground
 
 ### Animations audit (AX16)
 
+**Audit only** — this lab surface does not change product motion (`src/`).
+Spoken sit / dance / follow fixes live in issue #150 / PR #152 (MO1–MO6).
+
 Same folder rule: `quality-lab/data/3d/animations-audit.json` is generated from
 `vendor/avatars/avatars.json`, `vendor/animations/manifest.json`,
 `addons/vrma-dance|actions`, Pose Navigator presets, `IntentFastPath` and

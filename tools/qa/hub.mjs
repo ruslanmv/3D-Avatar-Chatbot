@@ -237,12 +237,13 @@ export function buildHub() {
                 id: `3d-anim-intent-${intent.intent}`,
                 area: '3d',
                 priority: 1,
-                title: `Wire motion for "${intent.utterance}"`,
-                why: `${intent.why} Fast path=${intent.fastPath || 'none'}; ${intent.existing}/${intent.candidates} candidates on disk.`,
+                title: `Motion gap for "${intent.utterance}" (fix in #150 / PR #152, not this audit)`,
+                why: `${intent.why} Fast path=${intent.fastPath || 'none'}; ${intent.existing}/${intent.candidates} candidates on disk. Audit measures only — product wiring is MO1–MO6.`,
                 command:
                     'node tools/qa/animation-audit.mjs && node tools/qa/animation-audit.mjs --play --category ' +
                     (intent.intent === 'dance' ? 'dance-vrma' : intent.intent === 'sit' ? 'sitting' : ''),
-                files: ['src/xr/IntentFastPath.js', 'src/xr/MotionClipMap.js', 'docs/claude/animations-and-motion.md'],
+                files: ['docs/claude/animations-and-motion.md', 'audits/vrm_animations/AGENT.md'],
+                note: 'Do not patch IntentFastPath / MotionClipMap on the audit branch; land product fixes on PR #152.',
             });
         if ((animations.summary.experimentalClips || 0) > 0)
             add({
@@ -267,6 +268,7 @@ export function buildHub() {
                 'tools/qa/AnimationPlaybackScorer.js',
                 'docs/claude/animations-and-motion.md',
             ],
+            note: 'Audit only — product motion fixes are issue #150 / PR #152 (MO1–MO6), not this inventory.',
         });
     }
 

@@ -147,7 +147,8 @@
                 "tools/qa/animation-audit.mjs",
                 "tools/qa/AnimationPlaybackScorer.js",
                 "docs/claude/animations-and-motion.md"
-            ]
+            ],
+            "note": "Audit only — product motion fixes are issue #150 / PR #152 (MO1–MO6), not this inventory."
         },
         {
             "id": "ai-human-review",

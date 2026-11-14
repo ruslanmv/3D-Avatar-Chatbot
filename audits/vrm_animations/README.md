@@ -5,11 +5,12 @@ built-in avatar can play Pose Navigator poses, VRMA clips and BVH categories
 without looking broken — and that spoken motion (`sit down`, `dance`,
 `come with me`, …) is wired to a real clip.
 
-Product code is unchanged by this folder. The generators live in
-`tools/qa/animation-audit.mjs` and `tools/qa/AnimationPlaybackScorer.js`; the
-committed inventory is `quality-lab/data/3d/animations-audit.json`. This
-directory is the **procedure and the run output** an AI coder (or a human) uses
-when auditing motion.
+**Audit only.** This folder and its generators do **not** modify `src/`. Product
+fixes for frozen sit / dance / follow belong in issue #150 / PR #152 (MO1–MO6).
+The generators live in `tools/qa/animation-audit.mjs` and
+`tools/qa/AnimationPlaybackScorer.js`; the committed inventory is
+`quality-lab/data/3d/animations-audit.json`. This directory is the **procedure
+and the run output** when auditing motion.
 
 ## Why this exists
 
