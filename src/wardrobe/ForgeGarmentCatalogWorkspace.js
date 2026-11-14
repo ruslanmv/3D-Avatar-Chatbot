@@ -6,6 +6,17 @@
 (function (global) {
     'use strict';
 
+    function tx(key, fallback, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
     var STYLE_ID = 'nexus-forge-catalog-styles';
     var CSS = [
         '.nexus-catalog-host{position:relative!important}',
@@ -102,7 +113,7 @@
             this.host.classList.add('nexus-catalog-host');
             this.overlay = node(doc, 'section', 'nexus-catalog-overlay');
             this.overlay.setAttribute('role', 'dialog');
-            this.overlay.setAttribute('aria-label', 'Customize this look');
+            this.overlay.setAttribute('aria-label', tx('catalog.aria', 'Customize this look'));
             this.host.appendChild(this.overlay);
             this.opened = true;
             this.onState(true);
@@ -116,7 +127,8 @@
                     this.loaded = true;
                     this.error = '';
                 } catch (error) {
-                    this.error = (error && error.message) || 'Could not load garments from Forge.';
+                    this.error =
+                        (error && error.message) || tx('catalog.loadError', 'Could not load garments from Forge.');
                 }
                 if (this.opened) this.render();
             }
@@ -165,20 +177,27 @@
             var doc = this.doc;
             var header = node(doc, 'header', 'nexus-catalog-header');
             var title = node(doc, 'div');
-            title.appendChild(node(doc, 'h2', '', 'Customize This Look'));
-            title.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Real Forge garments · choose before applying'));
+            title.appendChild(node(doc, 'h2', '', tx('catalog.title', 'Customize This Look')));
+            title.appendChild(
+                node(
+                    doc,
+                    'p',
+                    'nexus-catalog-muted',
+                    tx('catalog.subtitle', 'Real Forge garments · choose before applying')
+                )
+            );
             header.appendChild(title);
             header.appendChild(
-                this.button('Close ×', function () {
+                this.button(tx('catalog.close', 'Close ×'), function () {
                     self.close();
                 })
             );
             var tabs = node(doc, 'nav', 'nexus-catalog-cats');
-            tabs.setAttribute('aria-label', 'Garment category');
+            tabs.setAttribute('aria-label', tx('catalog.category', 'Garment category'));
             this.categories.forEach(function (group) {
                 tabs.appendChild(
                     self.button(
-                        group.label + ' (' + group.count + ')',
+                        tx('group.' + group.id, group.label) + ' (' + group.count + ')',
                         function () {
                             self.category = group.id;
                             self.selected = null;
@@ -198,15 +217,22 @@
                 card.type = 'button';
                 card.disabled = self.busy;
                 card.setAttribute('aria-pressed', String(Boolean(self.selected && self.selected.id === item.id)));
-                card.setAttribute('aria-label', 'Select ' + item.name);
+                card.setAttribute('aria-label', tx('catalog.select', 'Select {name}', { name: item.name }));
                 if (item.previewStatus === 'ready' && item.previewUrl) {
                     var image = node(doc, 'img', 'nexus-catalog-image');
                     image.src = self.client.resolveUrl(item.previewUrl);
-                    image.alt = item.name + ' preview on reference avatar';
+                    image.alt = tx('catalog.previewAlt', '{name} preview on reference avatar', { name: item.name });
                     image.loading = 'lazy';
                     card.appendChild(image);
                 } else {
-                    card.appendChild(node(doc, 'span', 'nexus-catalog-placeholder', 'Preview not ready'));
+                    card.appendChild(
+                        node(
+                            doc,
+                            'span',
+                            'nexus-catalog-placeholder',
+                            tx('catalog.previewMissing', 'Preview not ready')
+                        )
+                    );
                 }
                 card.appendChild(node(doc, 'span', 'nexus-catalog-name', item.name));
                 card.addEventListener('click', function () {
@@ -215,11 +241,16 @@
                 grid.appendChild(card);
             });
             main.appendChild(grid);
-            if (!this.client) main.appendChild(node(doc, 'p', 'nexus-catalog-error', 'Wardrobe Forge is unavailable.'));
+            if (!this.client)
+                main.appendChild(
+                    node(doc, 'p', 'nexus-catalog-error', tx('catalog.forgeDown', 'Wardrobe Forge is unavailable.'))
+                );
             else if (!this.loaded && !this.error)
-                main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Loading garments…'));
+                main.appendChild(node(doc, 'p', 'nexus-catalog-muted', tx('catalog.loading', 'Loading garments…')));
             else if (this.loaded && !this.categories.length)
-                main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'No public garments available.'));
+                main.appendChild(
+                    node(doc, 'p', 'nexus-catalog-muted', tx('catalog.empty', 'No public garments available.'))
+                );
             var foot = node(doc, 'div', 'nexus-catalog-detail');
             if (this.selected) {
                 foot.appendChild(node(doc, 'strong', '', this.selected.name));
@@ -229,8 +260,8 @@
                         var swatch = node(doc, 'button', 'nexus-catalog-swatch');
                         swatch.type = 'button';
                         swatch.style.backgroundColor = name;
-                        swatch.title = name;
-                        swatch.setAttribute('aria-label', name);
+                        swatch.title = tx('color.' + name, name.charAt(0).toUpperCase() + name.slice(1));
+                        swatch.setAttribute('aria-label', swatch.title);
                         swatch.setAttribute('aria-pressed', String(self.color === name));
                         swatch.disabled = self.busy;
                         swatch.addEventListener('click', function () {
@@ -242,13 +273,20 @@
                     foot.appendChild(colors);
                 }
             } else {
-                foot.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Select one real garment to propose a change.'));
+                foot.appendChild(
+                    node(
+                        doc,
+                        'p',
+                        'nexus-catalog-muted',
+                        tx('catalog.pick', 'Select one real garment to propose a change.')
+                    )
+                );
             }
             foot.appendChild(this.underneath());
             if (this.error) foot.appendChild(node(doc, 'p', 'nexus-catalog-error', this.error));
             var actions = node(doc, 'div', 'nexus-catalog-actions');
             var apply = this.button(
-                this.busy ? 'Generating…' : 'Apply garment',
+                this.busy ? tx('catalog.generating', 'Generating…') : tx('catalog.apply', 'Apply garment'),
                 function () {
                     self.apply();
                 },
@@ -258,7 +296,7 @@
             apply.disabled = !this.selected || this.busy || !this.view || !this.view.generator;
             actions.appendChild(apply);
             actions.appendChild(
-                this.button('Advanced', function () {
+                this.button(tx('catalog.advanced', 'Advanced'), function () {
                     self.close();
                     self.onAdvanced();
                 })
@@ -283,7 +321,7 @@
             if (!colors.length || !Gen.setFoundationColor) return row;
             var current = Gen.foundationColor() || 'beige';
             var labelId = 'nexus-catalog-under-label';
-            var label = node(doc, 'span', 'nexus-catalog-under-label', 'Underneath:');
+            var label = node(doc, 'span', 'nexus-catalog-under-label', tx('catalog.under', 'Underneath:'));
             label.id = labelId;
             row.setAttribute('role', 'radiogroup');
             row.setAttribute('aria-labelledby', labelId);
@@ -298,21 +336,23 @@
                 dot.style.backgroundColor = color.hex;
                 dot.setAttribute('aria-hidden', 'true');
                 chip.appendChild(dot);
-                chip.appendChild(doc.createTextNode(color.label));
+                chip.appendChild(doc.createTextNode(tx('color.' + color.value, color.label)));
                 chip.addEventListener('click', function () {
                     Gen.setFoundationColor(color.value);
                     self.render();
                 });
                 row.appendChild(chip);
             });
-            row.appendChild(node(doc, 'span', 'nexus-catalog-muted', 'Used from the next look you make.'));
+            row.appendChild(
+                node(doc, 'span', 'nexus-catalog-muted', tx('catalog.underHint', 'Used from the next look you make.'))
+            );
             return row;
         }
 
         async apply() {
             if (!this.selected || this.busy || !this.view) return;
             if (!this.view.generator || !this.view.generator.availability().ok) {
-                this.error = 'Garment creation is not available for this avatar.';
+                this.error = tx('catalog.unavailable', 'Garment creation is not available for this avatar.');
                 this.render();
                 return;
             }
@@ -338,9 +378,11 @@
                     this.close();
                     return;
                 }
-                this.error = this.view.createError || 'This garment could not be applied. Your look was kept.';
+                this.error =
+                    this.view.createError ||
+                    tx('catalog.kept', 'This garment could not be applied. Your look was kept.');
             } catch (error) {
-                this.error = (error && error.message) || 'Unable to apply that garment.';
+                this.error = (error && error.message) || tx('catalog.failed', 'Unable to apply that garment.');
             }
             this.busy = false;
             this.render();

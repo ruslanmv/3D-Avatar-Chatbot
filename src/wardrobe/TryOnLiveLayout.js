@@ -9,6 +9,17 @@
 (function (global) {
     'use strict';
 
+    function tx(key, fallback, vars) {
+        var api = global && global.NEXUS_TRY_ON_LOCALE;
+        if (api && typeof api.tx === 'function') return api.tx(key, fallback, vars);
+        var text = fallback == null ? '' : String(fallback);
+        if (!vars) return text;
+        Object.keys(vars).forEach(function (name) {
+            text = text.split('{' + name + '}').join(vars[name] == null ? '' : String(vars[name]));
+        });
+        return text;
+    }
+
     var STYLE_ID = 'nexus-tryon-live-layout-style';
     var MODES = ['watch', 'conversation', 'history'];
     var CSS = [
@@ -137,23 +148,30 @@
             this.heading = this.card.querySelector('.chat-card-header .section-title');
             this.headingOriginal = this.heading ? this.heading.textContent : null;
             if (this.heading) {
-                this.heading.textContent = 'CONVERSATION WITH NEXUS';
+                this.heading.textContent = tx('live.heading', 'CONVERSATION WITH NEXUS');
                 var wrapper = this.heading.parentNode;
-                this.subtitle = element(doc, 'p', 'nexus-live-subtitle', 'Your AI stylist · Live fashion and ideas');
+                this.subtitle = element(
+                    doc,
+                    'p',
+                    'nexus-live-subtitle',
+                    tx('live.subtitle', 'Your AI stylist · Live fashion and ideas')
+                );
                 wrapper.appendChild(this.subtitle);
             }
             this.controls = element(doc, 'div', 'nexus-live-controls');
-            this.controls.setAttribute('aria-label', 'Try-On conversation view');
+            this.controls.setAttribute('aria-label', tx('live.view', 'Try-On conversation view'));
             var group = element(doc, 'div', 'nexus-live-modes');
             this.modeButtons = {};
             var self = this;
             [
-                ['watch', '● Live'],
-                ['conversation', 'Conversation'],
+                ['watch', '● Live', 'live.live', 'live.liveMode'],
+                ['conversation', 'Conversation', 'live.conversation', 'live.conversationMode'],
             ].forEach(function (entry) {
-                var button = element(doc, 'button', 'nexus-live-button', entry[1]);
+                var button = element(doc, 'button', 'nexus-live-button', tx(entry[2], entry[1]));
                 button.type = 'button';
-                button.setAttribute('aria-label', entry[1] + ' mode');
+                button.dataset.copy = entry[2];
+                button.dataset.fallback = entry[1];
+                button.setAttribute('aria-label', tx(entry[3], entry[1] + ' mode'));
                 button.addEventListener('click', function () {
                     self.setMode(entry[0]);
                 });
@@ -161,35 +179,53 @@
                 group.appendChild(button);
             });
             this.controls.appendChild(group);
-            var historyLink = element(doc, 'button', 'nexus-live-button nexus-live-history-link', 'Full history ↗');
+            var historyLink = element(
+                doc,
+                'button',
+                'nexus-live-button nexus-live-history-link',
+                tx('live.history', 'Full history ↗')
+            );
             historyLink.type = 'button';
-            historyLink.setAttribute('aria-label', 'Open full conversation history');
+            historyLink.setAttribute('aria-label', tx('live.historyAria', 'Open full conversation history'));
             historyLink.addEventListener('click', function () {
                 self.setMode(self.mode === 'history' ? 'conversation' : 'history');
             });
             this.controls.appendChild(historyLink);
             this.historyLink = historyLink;
             this.summary = element(doc, 'section', 'nexus-live-summary');
-            this.summary.setAttribute('aria-label', 'Latest NEXUS commentary');
+            this.summary.setAttribute('aria-label', tx('live.commentary', 'Latest NEXUS commentary'));
             // On a phone the caption is the way into the conversation (the mode buttons are
             // folded away in Live to keep the sheet to two lines and the composer).
             this.summary.addEventListener('click', function () {
                 if (self.phone() && self.mode === 'watch') self.setMode('conversation');
             });
-            var kicker = element(doc, 'p', 'nexus-live-kicker', '● NEXUS');
-            kicker.appendChild(element(doc, 'span', 'nexus-live-kicker-more', ' · LIVE COMMENTARY'));
+            var kicker = element(doc, 'p', 'nexus-live-kicker', tx('live.kicker', '● NEXUS'));
+            kicker.appendChild(
+                element(doc, 'span', 'nexus-live-kicker-more', tx('live.kickerMore', ' · LIVE COMMENTARY'))
+            );
             this.summary.appendChild(kicker);
             this.lastQuestion = element(doc, 'p', 'nexus-live-last-question');
             this.lastQuestion.hidden = true;
             this.summary.appendChild(this.lastQuestion);
-            this.answer = element(doc, 'p', 'nexus-live-answer', 'Choose a look or ask me what to try next.');
+            this.answer = element(
+                doc,
+                'p',
+                'nexus-live-answer',
+                tx('live.prompt', 'Choose a look or ask me what to try next.')
+            );
             this.summary.appendChild(this.answer);
             this.suggestions = element(doc, 'div', 'nexus-live-suggestions');
-            ['How would you style it?', 'Show me the back', 'What should we try next?'].forEach(function (label) {
-                var button = element(doc, 'button', 'nexus-live-button', label);
+            [
+                ['style', 'How would you style it?'],
+                ['back', 'Show me the back'],
+                ['next', 'What should we try next?'],
+            ].forEach(function (entry) {
+                var button = element(doc, 'button', 'nexus-live-button', tx('live.chip.' + entry[0], entry[1]));
                 button.type = 'button';
+                button.dataset.ask = entry[0];
+                button.dataset.fallback = entry[1];
                 button.addEventListener('click', function () {
-                    self.ask(label);
+                    self.ask(tx('live.chip.' + entry[0], entry[1]), entry[0]);
                 });
                 self.suggestions.appendChild(button);
             });
@@ -205,7 +241,7 @@
             this.input = doc.getElementById('speech-text');
             if (this.input) {
                 this.placeholderOriginal = this.input.getAttribute('placeholder');
-                this.input.setAttribute('placeholder', 'Ask NEXUS…');
+                this.input.setAttribute('placeholder', tx('live.placeholder', 'Ask NEXUS…'));
             }
             this.watchSheet();
             this.setMode('watch');
@@ -270,7 +306,9 @@
             }
             if (this.lastQuestion) {
                 this.lastQuestion.hidden = !latestQuestion;
-                this.lastQuestion.textContent = latestQuestion ? 'YOU · ' + latestQuestion : '';
+                this.lastQuestion.textContent = latestQuestion
+                    ? tx('live.you', 'YOU · {text}', { text: latestQuestion })
+                    : '';
             }
             var visible = recentRows(rows, 4);
             rows.forEach(function (row) {
@@ -298,8 +336,17 @@
             return latestAssistantText(this.rows().slice(this.baseline));
         }
 
-        ask(text) {
-            if (text === 'Show me the back') {
+        ask(text, kind) {
+            var mode =
+                kind ||
+                (text === 'Show me the back'
+                    ? 'back'
+                    : text === 'How would you style it?'
+                      ? 'style'
+                      : text === 'What should we try next?'
+                        ? 'next'
+                        : '');
+            if (mode === 'back') {
                 var turn =
                     this.doc.querySelector('.nexus-stage-action[data-command="turn"]') ||
                     this.doc.querySelector('#nexus-try-on-view [data-key="turn"]');
@@ -311,17 +358,20 @@
             // Add the currently shown look to chip queries so the AI has context.
             var lookTitle = this.doc.querySelector('.nexus-stage-look-name');
             var lookName = lookTitle && lookTitle.textContent ? lookTitle.textContent.trim() : '';
-            if (lookName && lookName !== 'Choose your first look') {
-                if (text === 'How would you style it?') {
-                    text =
-                        'For my current outfit (' +
-                        lookName +
-                        '), how would you style it? Give two specific, concise fashion suggestions.';
-                } else if (text === 'What should we try next?') {
-                    text =
-                        'We are trying on ' +
-                        lookName +
-                        '. Suggest one different style direction for our next outfit and explain briefly.';
+            var firstLook = tx('stage.chooseFirst', 'Choose your first look');
+            if (lookName && lookName !== 'Choose your first look' && lookName !== firstLook) {
+                if (mode === 'style') {
+                    text = tx(
+                        'live.ask.style',
+                        'For my current outfit ({name}), how would you style it? Give two specific, concise fashion suggestions.',
+                        { name: lookName }
+                    );
+                } else if (mode === 'next') {
+                    text = tx(
+                        'live.ask.next',
+                        'We are trying on {name}. Suggest one different style direction for our next outfit and explain briefly.',
+                        { name: lookName }
+                    );
                 }
             }
             var input = this.doc.getElementById('speech-text');
@@ -341,7 +391,9 @@
                 if (self.modeButtons[name])
                     self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
             });
-            if (this.historyLink) this.historyLink.textContent = mode === 'history' ? '‹ Recent' : 'Full history ↗';
+            if (this.historyLink)
+                this.historyLink.textContent =
+                    mode === 'history' ? tx('live.recent', '‹ Recent') : tx('live.history', 'Full history ↗');
             this.update();
             if (mode !== 'watch' && this.history) this.history.scrollTop = this.history.scrollHeight;
             if (this._publishSheet) this._publishSheet();

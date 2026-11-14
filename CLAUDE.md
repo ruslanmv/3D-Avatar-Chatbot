@@ -109,12 +109,12 @@ So the rule for new code in `src/gltf-viewer/`:
 
 **`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
 export as `src/features/`, and for the same reason: Jest `require()`s these
-directly. What differs is how they reach the browser — thirty plain `<script>`
-tags at the very end of `<body>`, after the Pose Studio root. That placement is
-deliberate and the commit that moved them there says why: the parity harness
-counts boot scripts by line, so adding them near the top of `index.html` shifted
-every frozen line reference below. Load order within those matters —
-`WardrobeClient` defines the error class `WardrobeController` and
+directly. What differs is how they reach the browser — thirty-two plain
+`<script>` tags at the very end of `<body>`, after the Pose Studio root. That
+placement is deliberate and the commit that moved them there says why: the
+parity harness counts boot scripts by line, so adding them near the top of
+`index.html` shifted every frozen line reference below. Load order within those
+matters — `WardrobeClient` defines the error class `WardrobeController` and
 `WardrobePanel` read off the window at module scope, and `WardrobeBootstrap`
 runs on `DOMContentLoaded`, after every tag has loaded.
 
@@ -309,7 +309,7 @@ feature, and fix it there if it is wrong.
 | VR worlds and playgrounds (VW, PG)                | Plain VR stays black; place activity ids use a dash; private worlds only at the `intimate` owner's request; comfort rules enforced; every world declares measured `triangles`                                                                                                 | `docs/claude/vr-worlds-and-playgrounds.md`                  |
 | Living Worlds (LW)                                | Spots are measured, never typed — re-measure when a model changes; another place waits for the person's yes                                                                                                                                                                   | `docs/claude/living-worlds.md`                              |
 | World engine docs                                 | Start at `docs/engine/AI_CODER_START_HERE.md`; change a cited function or path and update the doc in the same commit                                                                                                                                                          | `docs/claude/world-engine-docs.md`                          |
-| Wardrobe / Try-On (W, LT, WF, FC, SW)             | `vendor/wardrobe/` changes only via `npm run wardrobe:import`; the controller is the only avatar swapper; the thirty `<script>` tags stay at the end of `<body>` (parity harness); never rebuild the service to switch Forge                                                  | `docs/claude/wardrobe.md`                                   |
+| Wardrobe / Try-On (W, LT, WF, FC, SW)             | `vendor/wardrobe/` changes only via `npm run wardrobe:import`; the controller is the only avatar swapper; the thirty-two `<script>` tags stay at the end of `<body>` (parity harness); never rebuild the service to switch Forge                                              | `docs/claude/wardrobe.md`                                   |
 | Speech-to-text (ST)                               | Construct recognizers only through `NEXUS_STT.recognitionClass()`; on-device chosen but impossible is an error, never a cloud fallback                                                                                                                                        | `docs/claude/speech-to-text.md`                             |
 | SonicAgent voice (HV)                             | Never a silent fallback; consent only from the person's tick; a failure is session-only, never written to storage                                                                                                                                                             | `docs/claude/sonicagent-voice.md`                           |
 | Speech engines, Quest voice (Q1–Q7)               | Stored vs active engine; the Quest switch is off by default and never writes `tts_engine`; Piper never synthesizes on the main thread                                                                                                                                         | `docs/claude/speech-engines-quest-voice.md`                 |

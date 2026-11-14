@@ -40,6 +40,16 @@ export class AvatarManager {
         // orphaned avatars to the scene when rapid switching occurs
         this._loadGeneration = 0;
 
+        // LT6. She used to be removed before the next file had arrived, so a try-on
+        // left an empty stage for the whole download. An MMO never despawns a
+        // character to change their gear: the current body stays until the next one
+        // is parsed, then the two crossfade and the pose carries over.
+        this._outgoing = null;
+        this._fadeToken = 0;
+        this._fadeFrame = 0;
+        this._fadeTimer = 0;
+        this._preloads = new Map();
+
         // Register VRMLoaderPlugin if @pixiv/three-vrm is available
         this._registerVRMPlugin();
 
@@ -331,13 +341,282 @@ export class AvatarManager {
     }
 
     /**
+     * LT6. Drop one root out of the scene and free its GPU resources.
+     * Never used on the avatar the camera is still looking at.
+     * @param {THREE.Object3D|null} root
+     */
+    _dropRoot(root) {
+        if (!root) return;
+        try {
+            if (root.parent) root.parent.remove(root);
+            else if (this.scene) this.scene.remove(root);
+        } catch (_) {}
+        try {
+            this.disposeObject(root);
+        } catch (e) {
+            console.warn('[AvatarManager] dispose failed:', e);
+        }
+    }
+
+    /**
+     * LT6. Take a root off the animator without removing the mesh, so the body
+     * that is about to fade out stops being driven twice.
+     * @param {THREE.Object3D|null} root
+     */
+    _detachRoot(root) {
+        if (!root) return;
+        try {
+            if (window.NEXUS_PROCEDURAL_ANIMATOR?.unregisterAvatar) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.unregisterAvatar(root);
+            }
+        } catch (e) {
+            console.warn('[AvatarManager] Procedural unregister failed:', e);
+        }
+    }
+
+    /** Stop the blink and mixer on the avatar that is about to leave. The mesh stays. */
+    _retireDrivers() {
+        if (this.currentMixer) {
+            this.currentMixer.stopAllAction();
+            this.currentMixer = null;
+        }
+        this.currentClips = [];
+        this._currentVRM = null;
+        if (this.vrmLoader) {
+            this.vrmLoader.stopAutoBlink?.();
+            this.vrmLoader.stopLipSync?.();
+            this.vrmLoader = null;
+        }
+    }
+
+    /**
+     * Copy a humanoid pose onto the incoming VRM so a gear swap does not flash
+     * the bind pose. Bone names that exist on both skeletons are the ones an
+     * equipment change can honestly carry; anything else is left as authored.
+     */
+    _copyHumanoidPose(fromVrm, toVrm) {
+        const from = fromVrm && fromVrm.humanoid;
+        const to = toVrm && toVrm.humanoid;
+        if (!from || !to || typeof from.getRawBoneNode !== 'function' || typeof to.getRawBoneNode !== 'function') {
+            return;
+        }
+        const names = Object.keys(from.humanBones || {});
+        for (let i = 0; i < names.length; i += 1) {
+            let source;
+            let target;
+            try {
+                source = from.getRawBoneNode(names[i]);
+                target = to.getRawBoneNode(names[i]);
+            } catch (_) {
+                continue;
+            }
+            if (!source || !target || !source.quaternion || !target.quaternion) continue;
+            if (typeof target.quaternion.copy !== 'function') continue;
+            try {
+                target.quaternion.copy(source.quaternion);
+            } catch (_) {}
+        }
+    }
+
+    _rememberOpacity(mat) {
+        if (!mat.userData.__swapOpacity) {
+            mat.userData.__swapOpacity = {
+                transparent: mat.transparent,
+                opacity: mat.opacity == null ? 1 : mat.opacity,
+                depthWrite: mat.depthWrite,
+            };
+        }
+        return mat.userData.__swapOpacity;
+    }
+
+    /** Fade a whole avatar. Restores authored opacity at 1 so MToon hair is not left transparent. */
+    _setOpacity(root, opacity) {
+        if (!root || typeof root.traverse !== 'function') return;
+        const shown = opacity >= 1;
+        root.traverse((node) => {
+            if (!node.isMesh || !node.material) return;
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            for (const mat of mats) {
+                if (!mat) continue;
+                const saved = this._rememberOpacity(mat);
+                if (shown) {
+                    mat.opacity = saved.opacity;
+                    mat.transparent = saved.transparent;
+                    mat.depthWrite = saved.depthWrite;
+                    delete mat.userData.__swapOpacity;
+                } else {
+                    mat.transparent = true;
+                    mat.opacity = opacity * saved.opacity;
+                    mat.depthWrite = opacity > 0.85 ? saved.depthWrite : false;
+                }
+                mat.needsUpdate = true;
+            }
+        });
+    }
+
+    _cancelFade() {
+        this._fadeToken += 1;
+        if (this._fadeFrame && typeof cancelAnimationFrame === 'function') {
+            try {
+                cancelAnimationFrame(this._fadeFrame);
+            } catch (_) {}
+        }
+        this._fadeFrame = 0;
+        if (this._fadeTimer) {
+            clearTimeout(this._fadeTimer);
+            this._fadeTimer = 0;
+        }
+        if (this._outgoing) {
+            const old = this._outgoing;
+            this._outgoing = null;
+            this._dropRoot(old);
+        }
+    }
+
+    /**
+     * LT6. Both bodies share the stage for a short blend, then the previous one
+     * leaves. If animation frames are not running, a timer finishes the swap so
+     * she cannot stay invisible. She is never removed before the incoming body
+     * is already in the scene.
+     */
+    _crossfade(outgoing, incoming) {
+        if (!incoming) return;
+        if (!outgoing || outgoing === incoming) {
+            this._setOpacity(incoming, 1);
+            return;
+        }
+        this._cancelFade();
+        this._outgoing = outgoing;
+        const fadeMs = 180;
+        const token = ++this._fadeToken;
+        const finish = () => {
+            if (token !== this._fadeToken) return;
+            this._fadeToken += 1;
+            if (this._fadeFrame && typeof cancelAnimationFrame === 'function') {
+                try {
+                    cancelAnimationFrame(this._fadeFrame);
+                } catch (_) {}
+            }
+            this._fadeFrame = 0;
+            if (this._fadeTimer) {
+                clearTimeout(this._fadeTimer);
+                this._fadeTimer = 0;
+            }
+            try {
+                this._setOpacity(incoming, 1);
+            } catch (_) {}
+            if (this._outgoing === outgoing) this._outgoing = null;
+            this._dropRoot(outgoing);
+        };
+        const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
+        if (!raf) {
+            finish();
+            return;
+        }
+        const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+        const step = (now) => {
+            if (token !== this._fadeToken) return;
+            const u = Math.min(1, ((now || Date.now()) - t0) / fadeMs);
+            try {
+                this._setOpacity(incoming, u);
+                this._setOpacity(outgoing, 1 - u);
+            } catch (_) {
+                finish();
+                return;
+            }
+            if (u < 1) this._fadeFrame = raf(step);
+            else finish();
+        };
+        this._setOpacity(incoming, 0);
+        this._fadeFrame = raf(step);
+        this._fadeTimer = setTimeout(finish, fadeMs + 120);
+    }
+
+    /**
+     * Remove AvatarRoot nodes that are neither the body on stage nor the one
+     * fading out. A superseded load must not delete the body the camera is on.
+     * @param {THREE.Object3D[]} keep
+     */
+    _sweepOrphans(keep) {
+        if (!this.scene) return;
+        const hold = new Set((keep || []).filter(Boolean));
+        const orphans = [];
+        this.scene.children.forEach((child) => {
+            if (child.name && child.name.startsWith('AvatarRoot:') && !hold.has(child)) orphans.push(child);
+        });
+        for (const orphan of orphans) {
+            console.warn(`[AvatarManager] Removing orphaned avatar: ${orphan.name}`);
+            this._detachRoot(orphan);
+            this._dropRoot(orphan);
+        }
+    }
+
+    /**
+     * LT6. Start parsing a VRM before anyone asks to wear it. The next and previous
+     * looks of a haul are warmed this way, so Next is already in memory — the same
+     * prefetch an MMO does for the next piece of gear. At most three files are held.
+     * @param {string} url
+     * @returns {Promise<Object|null>}
+     */
+    preload(url) {
+        if (!url || !this.loader || typeof this.loader.load !== 'function') return Promise.resolve(null);
+        if (!this._preloads) this._preloads = new Map();
+        const hit = this._preloads.get(url);
+        if (hit) return hit.promise;
+        let resolve;
+        let reject;
+        const promise = new Promise((res, rej) => {
+            resolve = res;
+            reject = rej;
+        });
+        const entry = { promise, claimed: false };
+        this._preloads.set(url, entry);
+        while (this._preloads.size > 3) {
+            const oldest = this._preloads.keys().next().value;
+            if (!oldest || oldest === url) break;
+            this._preloads.delete(oldest);
+        }
+        const onProgress = () => {};
+        try {
+            this.loader.load(
+                url,
+                (gltf) => {
+                    // A file nobody is waiting to wear — the cache dropped it to stay at three —
+                    // must not keep its textures. A claimed entry was taken by setAvatarByUrl.
+                    if (!entry.claimed && (!this._preloads || this._preloads.get(url) !== entry)) {
+                        const stale = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
+                        if (stale) {
+                            try {
+                                this.disposeObject(stale);
+                            } catch (_) {}
+                        }
+                        resolve(null);
+                        return;
+                    }
+                    resolve(gltf);
+                },
+                onProgress,
+                (err) => {
+                    if (this._preloads && this._preloads.get(url) === entry) this._preloads.delete(url);
+                    reject(err);
+                }
+            );
+        } catch (err) {
+            this._preloads.delete(url);
+            return Promise.reject(err);
+        }
+        return promise;
+    }
+
+    /**
      * Load and set avatar from URL
      * @param {string} url - Avatar file URL
      * @param {string} name - Avatar name (optional)
      * @param {number} index - Avatar index (optional)
+     * @param {{keepFacing?: boolean}} [options] - keepFacing carries her turn across a wardrobe swap
      * @returns {Promise<Object>} Loaded avatar info
      */
-    async setAvatarByUrl(url, name = '', index = -1) {
+    async setAvatarByUrl(url, name = '', index = -1, options = undefined) {
         console.log(`[AvatarManager] Loading avatar: ${name || url}`);
 
         // Increment generation — any in-flight load with an older generation
@@ -373,21 +652,8 @@ export class AvatarManager {
                 }
             }
 
-            // Remove old avatar
-            this._removeCurrentAvatar();
-
-            // Stop animations and dispose previous vrmLoader
-            if (this.currentMixer) {
-                this.currentMixer.stopAllAction();
-                this.currentMixer = null;
-            }
-            this.currentClips = [];
-            this._currentVRM = null;
-            if (this.vrmLoader) {
-                this.vrmLoader.stopAutoBlink?.();
-                this.vrmLoader.stopLipSync?.();
-                this.vrmLoader = null;
-            }
+            // LT6. She stays on stage while the next file downloads. Removing her here
+            // is what made a try-on flash an empty scene between looks.
 
             // Load new avatar
             // L1. Report bytes as they arrive, so the page can show a percentage and tell a slow
@@ -403,9 +669,20 @@ export class AvatarManager {
                     );
                 } catch (_) {}
             };
-            const gltf = await new Promise((resolve, reject) => {
-                this.loader.load(url, resolve, onProgress, reject);
-            });
+            // A haul preloads the next and previous look. Wear that file from the
+            // cache instead of starting a second parse of the same URL.
+            let gltf;
+            const cached = this._preloads && this._preloads.get(url);
+            if (cached) {
+                cached.claimed = true;
+                this._preloads.delete(url);
+                gltf = await cached.promise;
+            }
+            if (!gltf) {
+                gltf = await new Promise((resolve, reject) => {
+                    this.loader.load(url, resolve, onProgress, reject);
+                });
+            }
 
             // ── Stale-load guard ──
             // A newer setAvatarByUrl() call was made while we were loading.
@@ -426,12 +703,9 @@ export class AvatarManager {
                 throw new Error('Loaded avatar has no scene root');
             }
 
-            // Safety: remove any avatar that was added by a concurrent load
-            // that slipped past the generation check (defensive cleanup)
-            if (this.currentRoot) {
-                console.warn('[AvatarManager] Removing unexpected leftover avatar before adding new one');
-                this._removeCurrentAvatar();
-            }
+            // The body on stage is who she still is. Anything else named like an avatar
+            // is a load that lost the race, and it can leave now.
+            this._sweepOrphans([this.currentRoot, this._outgoing]);
 
             // Setup avatar
             root.name = `AvatarRoot:${name || url}`;
@@ -444,6 +718,18 @@ export class AvatarManager {
             // VRM models face -Z (VRM spec: forward = -Z). Camera is at +Z,
             // so rotate VRM models Math.PI to face the camera.
             root.rotation.set(0, isVRM ? Math.PI : 0, 0);
+            // A wardrobe swap is the same person turning in new clothes. The avatar
+            // picker does not ask for this, so a different character still faces the camera.
+            if (
+                options &&
+                options.keepFacing &&
+                this.currentRoot &&
+                this.currentRoot.rotation &&
+                Number.isFinite(this.currentRoot.rotation.y)
+            ) {
+                root.rotation.y = this.currentRoot.rotation.y;
+            }
+            this._copyHumanoidPose(this._currentVRM, vrm);
 
             // Store VRM flag on root for downstream systems (VRIntimacySystem
             // facing calculation needs to know whether to add Math.PI offset).
@@ -491,7 +777,13 @@ export class AvatarManager {
                 }
             });
 
-            // Add to scene
+            // Add the new body before the previous one is allowed to leave. Drivers move
+            // to her now; the mesh she was wearing stays for the crossfade below.
+            const outgoing = this.currentRoot && this.currentRoot !== root ? this.currentRoot : null;
+            if (outgoing) {
+                this._detachRoot(outgoing);
+                this._retireDrivers();
+            }
             this.scene.add(root);
 
             // Setup animations if present
@@ -570,6 +862,8 @@ export class AvatarManager {
             if (this.onAvatarChanged) {
                 this.onAvatarChanged(this.current);
             }
+
+            this._crossfade(outgoing, root);
 
             return this.current;
         } catch (error) {
@@ -705,6 +999,11 @@ export class AvatarManager {
     _buildVRMLoaderBridge(vrm, root) {
         const self = this;
 
+        // LT6. The next wardrobe swap copies this humanoid onto the new clothes.
+        // Remember every VRM, including one whose face has no expression manager —
+        // that branch below is only how her face is driven.
+        if (vrm) this._currentVRM = vrm;
+
         if (vrm && vrm.expressionManager) {
             // ── VRM model: use native expressionManager ──
             this._currentVRM = vrm;
@@ -805,8 +1104,9 @@ export class AvatarManager {
      * Cleanup all resources
      */
     dispose() {
-        // Cancel any in-flight loads
+        // Cancel any in-flight loads and a gear-swap fade still on its way out.
         this._loadGeneration++;
+        this._cancelFade();
 
         if (this.vrmLoader) {
             this.vrmLoader.stopAutoBlink?.();
