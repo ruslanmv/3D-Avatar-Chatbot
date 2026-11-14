@@ -168,3 +168,12 @@ creating looks (WF1)** — see the Forge bullet below.
   entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
   source that forbids modification is never overridden — Forge refuses with
   `source_model_modification_not_permitted` and the drawer says so.
+
+## Garment Engine V2 (proposal, not implemented)
+
+Clothing deformation in poses, Forge garments under motion, XPBD cloth: read
+`docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md` (architecture and gates),
+`docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md` (Cut 0 → Cut 4) and
+`docs/IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md` (north star) first. Each opens
+with a dated status block; the pose corrector is still the default and the XPBD
+pilot (PR #149) was closed unmerged.
