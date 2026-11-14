@@ -230,7 +230,8 @@ first four commits say `V5:` by mistake), `DX` for desktop control layout and
 adult experience configuration
 (`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md`) and `PX` for Private
 3.0's in-session actions
-(`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`) and `MO` for the
+(`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`), `PMA` for
+Private's more-actions menu (the Playground chips behind one ⋯) and `MO` for the
 motion runtime fixes (the body doing what the conversation says;
 `docs/audits/animation-runtime-audit.md`). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
