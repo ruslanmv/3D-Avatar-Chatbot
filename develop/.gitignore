@@ -1,4 +1,4 @@
-# Local verification runs (screenshots / CSV) — never commit evidence dumps here
-verification/runs/
+# JPEG dumps from local playback (CSV/JSON summaries are committed)
+verification/runs/**/shots/
 tmp/
 *.log
