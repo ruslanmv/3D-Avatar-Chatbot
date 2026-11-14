@@ -816,8 +816,15 @@ body {
 
 /* WU. Orange is the person talking. Cyan is Nexus. Green is idle or hands-free
    waiting. The fills for idle and listening stay the ones already approved. */
+.voice-btn-compact.handsfree-session {
+    /* Purple is the persistent hands-free mode indicator; orange/cyan still
+       describe whose audio is active inside that mode. */
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 3px;
+}
+
 .voice-btn-compact.hands-free {
-    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.35);
+    box-shadow: 0 0 0 0 rgba(179, 136, 255, 0.35);
     animation: handsFreeHalo 3.6s ease-in-out infinite;
 }
 
@@ -844,7 +851,7 @@ body {
 
 .voice-btn-compact .hold-ring circle {
     fill: none;
-    stroke: currentColor;
+    stroke: var(--accent-purple);
     stroke-width: 2;
     stroke-dasharray: 126;
     stroke-dashoffset: 126;
@@ -853,7 +860,7 @@ body {
 
 .voice-btn-compact.hold-arming .hold-ring circle {
     opacity: 1;
-    animation: holdDraw 3s linear forwards;
+    animation: holdDraw 2s linear forwards;
 }
 
 .voice-btn-compact.hold-armed .hold-ring circle {
@@ -880,6 +887,15 @@ body {
 
 .voice-btn-compact.active.is-stop .stop-icon,
 .voice-btn-compact.nexus-thinking.is-stop .stop-icon {
+    display: none;
+}
+
+/* A one-shot tap must show an obvious Stop mark while it is recording. */
+.voice-btn-compact.one-shot-recording.active .stop-icon {
+    display: block;
+}
+
+.voice-btn-compact.one-shot-recording.active .mic-wave {
     display: none;
 }
 
@@ -944,10 +960,10 @@ body {
 @keyframes handsFreeHalo {
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.28);
+        box-shadow: 0 0 0 0 rgba(179, 136, 255, 0.28);
     }
     50% {
-        box-shadow: 0 0 0 6px rgba(0, 255, 136, 0);
+        box-shadow: 0 0 0 6px rgba(179, 136, 255, 0);
     }
 }
 
@@ -990,7 +1006,7 @@ body {
 
     .voice-btn-compact.hands-free {
         box-shadow: none;
-        outline: 2px solid currentColor;
+        outline: 2px solid var(--accent-purple);
         outline-offset: 2px;
     }
 }
