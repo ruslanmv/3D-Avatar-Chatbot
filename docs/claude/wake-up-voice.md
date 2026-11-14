@@ -12,15 +12,15 @@ an older generation cannot call `start()` again.
 
 ## The button
 
-A short tap starts a hands-free conversation (`micTap`). Finished speech is
-sent once through `handleUserMessage`. After the spoken reply ends, the same
-session listens again until a second tap or Stop. Wake word is not required
-inside that session. Continuous conversation defaults on; turning it off makes
-the tap a single turn.
+A short tap records one request (`micTap` → `captureOnce`). Finished speech is
+sent once through `handleUserMessage`. After the spoken reply the microphone
+stays closed. Wake word is not required.
 
-Holding the button for 3000 ms, while that conversation is not open, toggles
-Wake Word and writes `nexus_wake_enabled`. That is the same switch as
-Settings. The hold does not record. Release before 3000 ms is the tap.
+Holding the button for 3000 ms, while a hands-free session is not open, starts
+that session (`holdForHandsFree`). It listens again after each reply until a
+tap or another hold. The same button shows a stop mark for the session. Wake
+word stays the Settings checkbox. The hold does not record and does not flip
+that checkbox. Release before 3000 ms is the tap.
 `pointercancel`, a drag past 16 px, `pagehide` and a disabled control cancel
 and swallow the click. The outline uses `currentColor`. Idle green and
 listening orange are unchanged. `wake-standby` is the visible “microphone is
@@ -43,10 +43,12 @@ finished. It reopens when the reply has settled and playback has ended,
 failed, been cancelled, or never started, and then only after the echo
 guard. A rejected send releases the microphone instead of staying busy.
 
-**Stop conversation** sits under the status line only while that session is
-open, including while she is speaking. It stops playback and the microphone.
-A second tap does the same. Wake word is a different switch and is not
-cleared by Stop.
+The microphone is the only stop. While hands-free is open it shows a square in
+the same place, and a tap ends the session and playback. Wake word is a
+different switch and is not cleared by that tap. Orange on the button is the
+person speaking. Cyan is Nexus thinking or speaking. Green is idle, or the
+slow halo while hands-free is waiting. `prefers-reduced-motion` drops the
+loops and keeps a steady outline.
 
 ## Wake word
 

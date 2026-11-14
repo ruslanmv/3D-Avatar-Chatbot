@@ -578,7 +578,7 @@ describe('WU alexa modes', () => {
         return a;
     }
 
-    test('a three-second hold toggles the saved wake word and does not record', () => {
+    test('a three-second hold starts hands-free and does not change wake word', () => {
         const { va, storage, recs } = harness({});
         const btn = document.createElement('button');
         document.body.appendChild(btn);
@@ -601,23 +601,21 @@ describe('WU alexa modes', () => {
         down();
         jest.advanceTimersByTime(3000);
         up();
-        expect(va.wakeEnabled()).toBe(true);
-        expect(storage.getItem('nexus_wake_enabled')).toBe('on');
-        expect(recs).toHaveLength(0);
-        expect(va.plan()).toBe('manual-only');
+        expect(va.wakeEnabled()).toBe(false);
+        expect(storage.getItem('nexus_wake_enabled')).not.toBe('on');
+        expect(va.mode()).toBe('manual');
+        expect(recs).toHaveLength(1);
         down();
         jest.advanceTimersByTime(3000);
         up();
+        expect(va.mode()).toBe('idle');
         expect(va.wakeEnabled()).toBe(false);
-        expect(storage.getItem('nexus_wake_enabled')).toBe('off');
-        expect(recs).toHaveLength(0);
     });
 
-    test('a tap starts a conversation that listens again after the reply', () => {
+    test('a tap records one request and does not listen again after the reply', () => {
         const { va, sends, recs } = harness({});
-        expect(va.settings().continuous).toBe(true);
         expect(va.micTap()).toBe(true);
-        expect(va.mode()).toBe('manual');
+        expect(va.mode()).toBe('idle');
         expect(va.owner()).toBe('manual');
         recs[0].onresult(finalEvent('explain black holes.', 0.2));
         jest.advanceTimersByTime(1200);
@@ -625,12 +623,8 @@ describe('WU alexa modes', () => {
         va.noteSpeaking(true);
         va.noteSpeaking(false);
         jest.advanceTimersByTime(800);
-        expect(recs).toHaveLength(2);
-        expect(va.mode()).toBe('manual');
-        expect(va.owner()).toBe('manual');
-        va.micTap();
+        expect(recs).toHaveLength(1);
         expect(va.mode()).toBe('idle');
-        expect(va.state()).toBe('OFF');
     });
 
     test('wake word returns to the name after a reply and does not keep the conversation open', () => {
@@ -706,7 +700,7 @@ describe('WU alexa modes', () => {
         expect(recs).toHaveLength(0);
     });
 
-    test('a recognizer error ends the conversation so a later hold can toggle wake word', () => {
+    test('a recognizer error ends the one-shot and a later hold can start hands-free', () => {
         const { va } = harness({
             recognitionClass() {
                 return class Bad {
@@ -720,12 +714,13 @@ describe('WU alexa modes', () => {
             },
         });
         expect(va.micTap()).toBe(true);
-        expect(va.mode()).toBe('manual');
-        jest.advanceTimersByTime(400);
         expect(va.mode()).toBe('idle');
         expect(va.state()).toBe('ERROR');
-        expect(va.toggleWakeFromHold()).toBe(true);
-        expect(va.wakeEnabled()).toBe(true);
+        expect(va.wakeEnabled()).toBe(false);
+        expect(va.holdForHandsFree()).toBe(true);
+        jest.advanceTimersByTime(400);
+        expect(va.mode()).toBe('idle');
+        expect(va.wakeEnabled()).toBe(false);
     });
 
     test('wake spotting does not open when the microphone permission is denied', () => {
@@ -759,7 +754,7 @@ describe('WU alexa modes', () => {
 
     test('silence in a hands-free conversation does not end it', () => {
         const { va, sends, recs } = harness({});
-        va.micTap();
+        va.startConversation();
         jest.advanceTimersByTime(7000);
         expect(sends).toEqual([]);
         expect(va.mode()).toBe('manual');
@@ -770,7 +765,7 @@ describe('WU alexa modes', () => {
 
     test('two questions are sent with a reply between them and no second tap', () => {
         const { va, sends, recs } = harness({});
-        va.micTap();
+        va.startConversation();
         recs[0].onresult(finalEvent('First question.', 1));
         jest.advanceTimersByTime(1200);
         va.noteSpeaking(true);
@@ -791,19 +786,22 @@ describe('WU alexa modes', () => {
             },
         });
         const btn = document.createElement('button');
-        btn.id = 'end-conversation';
-        btn.hidden = true;
+        btn.id = 'listen-btn';
         document.body.appendChild(btn);
-        va.micTap();
-        expect(btn.hidden).toBe(false);
+        va.startConversation();
+        expect(btn.classList.contains('is-stop')).toBe(true);
         recs[0].onresult(finalEvent('Keep going.', 1));
         jest.advanceTimersByTime(1200);
         va.noteSpeaking(true);
-        va.endConversation();
+        expect(btn.classList.contains('nexus-speaking')).toBe(true);
+        expect(btn.classList.contains('active')).toBe(false);
+        va.micTap();
         expect(stops).toEqual(['stop']);
         expect(va.mode()).toBe('idle');
         expect(va.state()).toBe('OFF');
-        expect(btn.hidden).toBe(true);
+        expect(btn.classList.contains('is-stop')).toBe(false);
+        jest.advanceTimersByTime(5000);
+        expect(recs).toHaveLength(1);
     });
 
     test('turning wake word off stops local monitoring', () => {
@@ -830,7 +828,7 @@ describe('WU alexa modes', () => {
 
     test('Companion opening takes the microphone from a page conversation', () => {
         const { va } = harness({});
-        va.micTap();
+        va.startConversation();
         expect(va.mode()).toBe('manual');
         va.onCompanionActive(true);
         expect(va.mode()).toBe('idle');
@@ -890,7 +888,7 @@ describe('WU reply lifecycle', () => {
                 });
             },
         });
-        va.micTap();
+        va.startConversation();
         say(va, recs, 'Explain black holes.');
         jest.advanceTimersByTime(5000);
         expect(recs).toHaveLength(1);
@@ -919,7 +917,7 @@ describe('WU reply lifecycle', () => {
                 });
             },
         });
-        va.micTap();
+        va.startConversation();
         say(va, recs, 'Hello.');
         resolveSend();
         await Promise.resolve();
@@ -947,7 +945,7 @@ describe('WU reply lifecycle', () => {
 
     test('playback that ends after Stop does not listen again', () => {
         const { va, recs } = harness({});
-        va.micTap();
+        va.startConversation();
         say(va, recs, 'Keep going.');
         va.noteSpeaking(true);
         va.endConversation();
@@ -966,7 +964,7 @@ describe('WU reply lifecycle', () => {
                 });
             },
         });
-        va.micTap();
+        va.startConversation();
         say(va, recs, 'Hello.');
         va.noteSpeaking(true);
         va.onCompanionActive(true);
@@ -1072,7 +1070,7 @@ describe('WU reply lifecycle', () => {
 
     test('silence restarts do not postpone the hands-free inactivity deadline', () => {
         const { va, recs } = harness({});
-        va.micTap();
+        va.startConversation();
         jest.advanceTimersByTime(105000);
         expect(va.mode()).toBe('manual');
         expect(va.statusText()).toBe('Conversation ends in 15 seconds unless you speak');
@@ -1088,7 +1086,7 @@ describe('WU reply lifecycle', () => {
     test('inactivity restores wake standby when wake word stays on', () => {
         const { va } = harness({});
         va.setWakeEnabled(true);
-        va.micTap();
+        va.startConversation();
         jest.advanceTimersByTime(120000);
         expect(va.mode()).toBe('wake');
         expect(va.wakeEnabled()).toBe(true);

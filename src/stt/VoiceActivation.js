@@ -17,13 +17,15 @@
  *
  * Two modes share the button and never share the microphone.
  *
- *   Tap, while idle: a hands-free conversation. Each finished sentence is sent,
- *   and after she has finished speaking the same session listens again, until
- *   Stop or a second tap. The wake phrase is not required inside that session.
- *   Hold for three seconds, while idle: toggles Wake Word and saves it. That is
- *   the same switch as Settings. It does not record a sentence. While Wake Word
- *   is on, the page waits for the name, takes the command that follows, answers,
- *   and waits for the name again.
+ *   Tap, while idle: one request. The sentence is sent, she answers, and the
+ *   microphone is not opened again. Tap while she is speaking stops playback.
+ *   Hold for three seconds, while idle: a hands-free conversation. Each
+ *   finished sentence is sent, and after she has finished speaking the same
+ *   session listens again, until a tap or another hold. The button itself
+ *   becomes Stop for that session. There is no second Stop control.
+ *   Wake word is only the Settings switch. While it is on, the page waits for
+ *   the name, takes the command that follows, answers, and waits for the name
+ *   again. A hold does not flip that switch.
  *
  * The name is spotted on the device. A local detector injected as
  * `NEXUS_WAKE_DETECTOR` is used only when `local === true` and
@@ -97,15 +99,15 @@
             wakeTitle: 'WAKE UP',
             wakeToggle: 'Wake word',
             wakeDisclosure:
-                'Wake word stays on this device: the name is recognized here, and audio is not sent away just to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS waits for the name again. A tap starts a hands-free conversation that listens again after each reply, until you end it. Hold the microphone for three seconds to turn wake word on or off. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
+                'Wake word stays on this device: the name is recognized here, and audio is not sent away just to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS waits for the name again. A tap records one request. Hold the microphone for three seconds for a hands-free conversation, and tap that same button to end it. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
             wakePhrase: 'Activation phrase',
             wakePhraseCustom: 'Custom phrase',
             wakeAutosend: 'Auto-send completed speech',
             wakeAutosendHelp:
-                'A finished sentence is sent on its own. A tap starts a conversation; a three-second hold turns wake word on or off.',
+                'A finished sentence is sent on its own. A tap records one request. A three-second hold starts hands-free.',
             wakeContinuous: 'Continuous conversation',
             wakeContinuousHelp:
-                'After Nexus replies, a conversation you started with a tap listens for the next question. A quiet moment ends that sentence, not the conversation. Stop stays on screen until you end it. Wake word still waits for the name.',
+                'After Nexus replies, a hands-free conversation listens for the next question. A quiet moment ends that sentence, not the conversation. Tap the microphone to end it. Wake word still waits for the name.',
             wakeMax: 'Longest one turn',
             wakeMic: 'Microphone',
             wakeMicGranted: 'Microphone allowed',
@@ -115,16 +117,19 @@
             wakeMicUnsupported: 'This browser has no microphone API',
             wakeTest: 'Test wake word',
             wakeSpeak: 'Speak and send',
-            wakeSpeakHelp: 'Starts the same hands-free conversation as a tap on the microphone.',
+            wakeSpeakHelp: 'Records one request, the same as a tap on the microphone.',
             wakePause: 'Pause listening',
             wakeResume: 'Resume listening',
             wakeStop: 'Stop listening',
             wakeStopConversation: 'Stop conversation',
             wakeTimeout: 'That turn reached the time limit. Still in the conversation.',
             wakeRecover: 'Voice input dropped. Listening again.',
-            wakeHold: 'Keep holding to switch wake word…',
-            wakeRelease: 'Release to switch wake word',
-            wakeHint: 'Tap for a voice conversation, or hold for 3 seconds to turn wake word on.',
+            wakeHold: 'Keep holding for hands-free…',
+            wakeRelease: 'Release to start hands-free',
+            wakeHoldEnd: 'Keep holding to end hands-free…',
+            wakeReleaseEnd: 'Release to end hands-free',
+            wakeHint: 'Tap to speak · Hold 3 seconds for hands-free',
+            handsFreeOn: 'Hands-free on · Tap to end',
             wakeOnConfirm: 'Wake word on. Say Nexus.',
             wakeOffConfirm: 'Wake word off.',
             conversationOn: 'Conversation on · Listening to you',
@@ -157,15 +162,15 @@
             wakeTitle: 'SVEGLIA',
             wakeToggle: 'Parola di attivazione',
             wakeDisclosure:
-                'La parola di attivazione resta sul dispositivo: il nome si riconosce qui e l’audio non viene inviato solo per accorgersene. Di’ “Nexus” e la richiesta che segue viene presa, risposta, e poi NEXUS aspetta di nuovo il nome. Un tocco avvia una conversazione a mani libere che riascolta dopo ogni risposta, finché non la chiudi. Tieni premuto il microfono per tre secondi per accendere o spegnere la parola. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
+                'La parola di attivazione resta sul dispositivo: il nome si riconosce qui e l’audio non viene inviato solo per accorgersene. Di’ “Nexus” e la richiesta che segue viene presa, risposta, e poi NEXUS aspetta di nuovo il nome. Un tocco registra una richiesta. Tieni premuto il microfono per tre secondi per una conversazione a mani libere, e tocca lo stesso pulsante per chiuderla. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
             wakePhrase: 'Frase di attivazione',
             wakePhraseCustom: 'Frase personalizzata',
             wakeAutosend: 'Invia automaticamente il parlato concluso',
             wakeAutosendHelp:
-                'La frase finita viene inviata da sola. Un tocco avvia la conversazione; tre secondi accendono o spengono la parola di attivazione.',
+                'La frase finita viene inviata da sola. Un tocco registra una richiesta. Tre secondi avviano le mani libere.',
             wakeContinuous: 'Conversazione continua',
             wakeContinuousHelp:
-                'Dopo la risposta, una conversazione avviata con un tocco ascolta la domanda successiva. Una pausa chiude la frase, non la conversazione. Chiudi resta visibile finché non la termini. La parola di attivazione aspetta ancora il nome.',
+                'Dopo la risposta, una conversazione a mani libere ascolta la domanda successiva. Una pausa chiude la frase, non la conversazione. Tocca il microfono per chiuderla. La parola di attivazione aspetta ancora il nome.',
             wakeMax: 'Durata massima di un turno',
             wakeMic: 'Microfono',
             wakeMicGranted: 'Microfono consentito',
@@ -175,16 +180,19 @@
             wakeMicUnsupported: 'Questo browser non ha un’API microfono',
             wakeTest: 'Prova la parola di attivazione',
             wakeSpeak: 'Parla e invia',
-            wakeSpeakHelp: 'Avvia la stessa conversazione a mani libere di un tocco sul microfono.',
+            wakeSpeakHelp: 'Registra una richiesta, come un tocco sul microfono.',
             wakePause: 'Metti in pausa',
             wakeResume: 'Riprendi l’ascolto',
             wakeStop: 'Interrompi l’ascolto',
             wakeStopConversation: 'Chiudi la conversazione',
             wakeTimeout: 'Quel turno ha raggiunto il limite. La conversazione resta aperta.',
             wakeRecover: 'L’input vocale si è interrotto. Di nuovo in ascolto.',
-            wakeHold: 'Tieni premuto per cambiare la parola di attivazione…',
-            wakeRelease: 'Rilascia per cambiare la parola di attivazione',
-            wakeHint: 'Tocca per una conversazione, oppure tieni premuto 3 secondi per la parola di attivazione.',
+            wakeHold: 'Tieni premuto per le mani libere…',
+            wakeRelease: 'Rilascia per avviare le mani libere',
+            wakeHoldEnd: 'Tieni premuto per chiudere le mani libere…',
+            wakeReleaseEnd: 'Rilascia per chiudere le mani libere',
+            wakeHint: 'Tocca per parlare · Tieni premuto 3 secondi per le mani libere',
+            handsFreeOn: 'Mani libere attive · Tocca per chiudere',
             wakeOnConfirm: 'Parola di attivazione attiva. Di’ Nexus.',
             wakeOffConfirm: 'Parola di attivazione disattivata.',
             conversationOn: 'Conversazione attiva · Ti ascolto',
@@ -360,7 +368,7 @@
      *
      * A release before the threshold does not activate and does not swallow
      * the click that follows — that click starts or ends the conversation.
-     * Reaching the threshold arms a wake-word toggle, not a recording; the
+     * Reaching the threshold starts or ends hands-free, not a wake-word toggle; the
      * synthetic click is swallowed so it cannot also start that conversation.
      * pointercancel,
      * a drag past the slop, pagehide and disable never activate, and they
@@ -642,23 +650,32 @@
             if (status && line && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') status.textContent = line;
             if (feedback && line) feedback.textContent = line;
             if (btn && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') {
-                const listening = state === 'LISTENING' && ours;
-                const processing = state === 'TRANSCRIBING' || (state === 'RESPONDING' && ours);
-                const standby = state === 'STANDBY' && settings.wakeEnabled && !listening;
-                btn.classList.toggle('active', listening);
-                btn.classList.toggle('processing', processing);
+                const userListening = state === 'LISTENING' && ours && !speaking && activity !== 'echo';
+                const thinking =
+                    !speaking &&
+                    (activity === 'thinking' ||
+                        state === 'TRANSCRIBING' ||
+                        (state === 'RESPONDING' && activity !== 'speaking' && activity !== 'echo'));
+                const aiSpeaking = speaking || activity === 'speaking';
+                const standby = state === 'STANDBY' && settings.wakeEnabled && !userListening && !manualOpen;
+                btn.classList.toggle('active', userListening && !aiSpeaking);
+                btn.classList.toggle('nexus-thinking', thinking && !aiSpeaking);
+                btn.classList.toggle('nexus-speaking', aiSpeaking);
+                btn.classList.toggle('hands-free', manualOpen && !userListening && !aiSpeaking);
+                btn.classList.toggle('is-stop', !!manualOpen);
+                btn.classList.toggle('processing', thinking && !aiSpeaking);
                 btn.classList.toggle('wake-standby', standby);
-                btn.setAttribute('aria-pressed', listening || processing || standby ? 'true' : 'false');
+                const hint = manualOpen ? label('handsFreeOn') : label('wakeHint');
+                btn.setAttribute(
+                    'aria-pressed',
+                    userListening || aiSpeaking || manualOpen || standby ? 'true' : 'false'
+                );
+                btn.setAttribute('aria-label', hint);
                 btn.dataset.wakeTitle = '1';
-                btn.title = label('wakeHint');
+                btn.title = hint;
             }
             const pauseBtn = global.document.getElementById('wake-pause');
             if (pauseBtn) pauseBtn.textContent = settings.paused ? label('wakeResume') : label('wakePause');
-            const endBtn = global.document.getElementById('end-conversation');
-            if (endBtn) {
-                endBtn.hidden = !manualOpen;
-                endBtn.textContent = label('wakeStopConversation');
-            }
         }
 
         function recognitionClass() {
@@ -1939,6 +1956,9 @@
                     owner = 'manual';
                 }
                 if (state === 'SENDING' || state === 'RESPONDING' || manualOpen) setState('RESPONDING');
+                // setState does nothing when she was already answering, and that
+                // is exactly when the button has to leave orange for cyan.
+                paint();
                 return;
             }
             if (!was) return;
@@ -1947,6 +1967,7 @@
                 turn.playback = 'done';
                 activity = 'echo';
                 if (turn.settled) maybeCompleteTurn();
+                paint();
                 return;
             }
             if (state === 'RESPONDING' && (!turn || turn.settled)) {
@@ -2155,9 +2176,41 @@
             return true;
         }
 
+        function captureOnce() {
+            if (speaking || state === 'RESPONDING' || state === 'SENDING') {
+                stopSpeechPlayback();
+                const keepWake = settings.wakeEnabled && !settings.paused && !hidden && !companionActive;
+                cancel(keepWake ? 'conversation-end' : 'user-stop');
+                if (keepWake) armMonitor();
+                feedbackKey(keepWake ? 'wakeStandby' : 'conversationOff');
+                return true;
+            }
+            if (busy() && owner && owner !== 'manual' && owner !== 'wake') {
+                feedbackKey('wakeBusy');
+                return false;
+            }
+            stopOwnMonitor();
+            if (owner === 'wake') owner = null;
+            manualOpen = false;
+            sessionMode = 'once';
+            try {
+                if (typeof deps.stopTap === 'function') deps.stopTap();
+            } catch (_) {}
+            return captureUtterance({ owner: 'manual', deliver: 'send' });
+        }
+
+        function holdForHandsFree() {
+            if (manualOpen) return endConversation();
+            if (busy() && owner && owner !== 'wake') {
+                feedbackKey('wakeBusy');
+                return false;
+            }
+            return startConversation();
+        }
+
         function micTap() {
             if (manualOpen) return endConversation();
-            return startConversation();
+            return captureOnce();
         }
 
         function stopListening() {
@@ -2233,7 +2286,7 @@
 
         function speakAndSend() {
             if (manualOpen) return true;
-            return startConversation();
+            return captureOnce();
         }
 
         function holdCapture() {
@@ -2266,14 +2319,14 @@
                 if (result.action === 'press') {
                     visuals('press');
                     const status = global.document && global.document.getElementById('recognition-status');
-                    if (status) status.textContent = label('wakeHold');
+                    if (status) status.textContent = label(manualOpen ? 'wakeHoldEnd' : 'wakeHold');
                     if (typeof h.onPress === 'function') h.onPress();
                     return;
                 }
                 if (result.action === 'arm') {
                     visuals('arm');
                     const status = global.document && global.document.getElementById('recognition-status');
-                    if (status) status.textContent = label('wakeRelease');
+                    if (status) status.textContent = label(manualOpen ? 'wakeReleaseEnd' : 'wakeRelease');
                     if (typeof h.onArm === 'function') h.onArm();
                     return;
                 }
@@ -2281,7 +2334,7 @@
                 visuals('clear');
                 if (result.action === 'activate') {
                     if (typeof h.onActivate === 'function') h.onActivate();
-                    else toggleWakeFromHold();
+                    else holdForHandsFree();
                     return;
                 }
                 if (result.action === 'cancel' || result.action === 'drag-cancel') {
@@ -2557,13 +2610,6 @@
                 global.document.addEventListener('visibilitychange', onVisibility);
                 global.addEventListener('pagehide', onPageHide);
                 mountPanel();
-                const endBtn = global.document.getElementById('end-conversation');
-                if (endBtn && endBtn.dataset.nexusStop !== '1') {
-                    endBtn.dataset.nexusStop = '1';
-                    endBtn.addEventListener('click', function () {
-                        endConversation();
-                    });
-                }
             }
             sync();
         }
@@ -2612,6 +2658,8 @@
             resume: resume,
             stopListening: stopListening,
             micTap: micTap,
+            captureOnce: captureOnce,
+            holdForHandsFree: holdForHandsFree,
             startConversation: startConversation,
             endConversation: endConversation,
             toggleWakeFromHold: toggleWakeFromHold,

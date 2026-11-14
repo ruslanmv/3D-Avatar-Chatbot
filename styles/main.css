@@ -773,14 +773,15 @@ body {
 
 .chat-input-bar {
     display: grid;
-    grid-template-columns: 46px 1fr auto;
+    grid-template-columns: 48px 1fr auto;
     gap: 10px;
     align-items: center;
 }
 
 .voice-btn-compact {
-    width: 46px;
-    height: 46px;
+    position: relative;
+    width: 48px;
+    height: 48px;
     border-radius: var(--border-radius);
     border: 1px solid var(--glass-border);
     background: rgba(0, 255, 136, 0.1);
@@ -789,7 +790,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition:
+        transform 0.16s ease,
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
     padding: 0;
 }
 
@@ -804,58 +809,189 @@ body {
     color: var(--accent-orange);
 }
 
-.voice-btn-compact.active .mic-icon {
-    animation: micPulse 0.5s ease-in-out infinite;
-}
-
-/* WU. The three-second hold announces itself with the button's own color.
-   Listening still uses .active above — no new bar color. */
-.voice-btn-compact.hold-arming,
-.voice-btn-compact.hold-armed {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
-}
-
+.voice-btn-compact:active,
 .voice-btn-compact.hold-arming {
-    animation: wakeHoldPulse 1s ease-in-out infinite;
+    transform: scale(0.96);
 }
 
-/* WU. Standby, listening and processing are distinguishable. Idle green and
-   listening orange stay the colors already approved for this button. */
+/* WU. Orange is the person talking. Cyan is Nexus. Green is idle or hands-free
+   waiting. The fills for idle and listening stay the ones already approved. */
+.voice-btn-compact.hands-free {
+    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.35);
+    animation: handsFreeHalo 3.6s ease-in-out infinite;
+}
+
+.voice-btn-compact.nexus-thinking,
+.voice-btn-compact.nexus-speaking {
+    background: rgba(0, 229, 255, 0.12);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
 .voice-btn-compact.wake-standby {
     outline: 2px solid currentColor;
     outline-offset: 2px;
 }
 
-.voice-btn-compact.processing {
-    outline: 2px dashed currentColor;
-    outline-offset: 2px;
+.voice-btn-compact .hold-ring {
+    position: absolute;
+    inset: 1px;
+    width: calc(100% - 2px);
+    height: calc(100% - 2px);
+    transform: rotate(-90deg);
+    pointer-events: none;
 }
 
-/* Shown only while a tapped conversation is open, including while she speaks. */
-.end-conversation {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 6px 12px;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--glass-border);
-    background: transparent;
-    color: var(--accent-green);
-    font-size: 12px;
-    cursor: pointer;
+.voice-btn-compact .hold-ring circle {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-dasharray: 126;
+    stroke-dashoffset: 126;
+    opacity: 0;
 }
 
-.end-conversation[hidden] {
+.voice-btn-compact.hold-arming .hold-ring circle {
+    opacity: 1;
+    animation: holdDraw 3s linear forwards;
+}
+
+.voice-btn-compact.hold-armed .hold-ring circle {
+    opacity: 1;
+    stroke-dashoffset: 0;
+    animation: none;
+}
+
+.voice-btn-compact .stop-icon,
+.voice-btn-compact .mic-wave,
+.voice-btn-compact .think-dots {
     display: none;
 }
 
-@keyframes wakeHoldPulse {
+.voice-btn-compact.is-stop .mic-icon {
+    display: none;
+}
+
+.voice-btn-compact.is-stop .stop-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+.voice-btn-compact.active.is-stop .stop-icon,
+.voice-btn-compact.nexus-thinking.is-stop .stop-icon {
+    display: none;
+}
+
+.voice-btn-compact.active .mic-icon,
+.voice-btn-compact.nexus-thinking .mic-icon {
+    display: none;
+}
+
+.voice-btn-compact.active .mic-wave,
+.voice-btn-compact.nexus-thinking .think-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 16px;
+}
+
+.voice-btn-compact .mic-wave i,
+.voice-btn-compact .think-dots i {
+    display: block;
+    width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+}
+
+.voice-btn-compact .mic-wave i {
+    height: 8px;
+    animation: micWave 0.7s ease-in-out infinite;
+}
+
+.voice-btn-compact .mic-wave i:nth-child(2) {
+    height: 14px;
+    animation-delay: 0.12s;
+}
+
+.voice-btn-compact .mic-wave i:nth-child(3) {
+    animation-delay: 0.24s;
+}
+
+.voice-btn-compact .think-dots i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    opacity: 0.35;
+    animation: thinkDot 0.9s ease-in-out infinite;
+}
+
+.voice-btn-compact .think-dots i:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.voice-btn-compact .think-dots i:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes holdDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes handsFreeHalo {
     0%,
     100% {
-        outline-offset: 1px;
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.28);
     }
     50% {
-        outline-offset: 3px;
+        box-shadow: 0 0 0 6px rgba(0, 255, 136, 0);
+    }
+}
+
+@keyframes micWave {
+    0%,
+    100% {
+        transform: scaleY(0.45);
+    }
+    50% {
+        transform: scaleY(1);
+    }
+}
+
+@keyframes thinkDot {
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .voice-btn-compact,
+    .voice-btn-compact.hold-arming,
+    .voice-btn-compact.hands-free,
+    .voice-btn-compact .mic-wave i,
+    .voice-btn-compact .think-dots i,
+    .voice-btn-compact.hold-arming .hold-ring circle {
+        animation: none;
+        transform: none;
+    }
+
+    .voice-btn-compact.hold-arming .hold-ring circle,
+    .voice-btn-compact.hold-armed .hold-ring circle {
+        opacity: 1;
+        stroke-dashoffset: 0;
+    }
+
+    .voice-btn-compact.hands-free {
+        box-shadow: none;
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
     }
 }
 
@@ -2102,15 +2238,15 @@ body {
         padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 8px);
     }
 
-    /* DX2. 44 px: Apple's and Google's minimum touch target (was 42). */
+    /* The microphone stays a 48 px target on a phone, in the same cell. */
     .chat-input-bar {
-        grid-template-columns: 44px 1fr auto;
+        grid-template-columns: 48px 1fr auto;
         gap: 8px;
     }
 
     .voice-btn-compact {
-        width: 44px;
-        height: 44px;
+        width: 48px;
+        height: 48px;
     }
 
     .chat-input {

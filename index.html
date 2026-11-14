@@ -596,9 +596,17 @@
                                     id="listen-btn"
                                     type="button"
                                     aria-pressed="false"
-                                    aria-label="Tap for a voice conversation, or hold 3 seconds for wake word"
-                                    title="Tap for a voice conversation, or hold 3 seconds for wake word"
+                                    aria-label="Tap to speak · Hold 3 seconds for hands-free"
+                                    title="Tap to speak · Hold 3 seconds for hands-free"
                                 >
+                                    <svg class="hold-ring" viewBox="0 0 46 46" aria-hidden="true">
+                                        <circle cx="23" cy="23" r="20"></circle>
+                                    </svg>
+                                    <span class="mic-wave" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <span class="think-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                                    <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"></rect>
+                                    </svg>
                                     <svg
                                         class="mic-icon"
                                         width="20"
@@ -643,10 +651,9 @@
                                     <span class="send-btn-label">Send</span>
                                 </button>
                             </div>
-                            <p class="voice-status-inline" id="recognition-status">Voice system standby</p>
-                            <button type="button" id="end-conversation" class="end-conversation" hidden>
-                                Stop conversation
-                            </button>
+                            <p class="voice-status-inline" id="recognition-status">
+                                Tap to speak · Hold 3 seconds for hands-free
+                            </p>
                             <span id="voice-btn-text" class="hidden">ACTIVATE VOICE</span>
                         </footer>
                     </div>
@@ -1437,10 +1444,9 @@
                         <p class="voice-status" data-wake-key="wakeDisclosure" style="margin-top: 0">
                             Wake word stays on this device: the name is recognized here, and audio is not sent away just
                             to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS
-                            waits for the name again. A tap starts a hands-free conversation that listens again after
-                            each reply, until you end it. Hold the microphone for three seconds to turn wake word on or
-                            off. Nothing listens while this tab is hidden, the browser is closed, or the phone is
-                            locked. Off until you turn it on.
+                            waits for the name again. A tap records one request. Hold the microphone for three seconds
+                            for a hands-free conversation, and tap that same button to end it. Nothing listens while
+                            this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.
                         </p>
                         <div class="input-group">
                             <label class="input-label" for="wake-enabled">
@@ -1480,8 +1486,8 @@
                                 data-wake-key="wakeAutosendHelp"
                                 style="margin-top: 8px; opacity: 0.8"
                             >
-                                A finished sentence is sent on its own. A tap starts a conversation; a three-second hold
-                                turns wake word on or off.
+                                A finished sentence is sent on its own. A tap records one request. A three-second hold
+                                starts hands-free.
                             </p>
                         </div>
                         <div class="input-group">
@@ -1496,9 +1502,9 @@
                                 data-wake-key="wakeContinuousHelp"
                                 style="margin-top: 8px; opacity: 0.8"
                             >
-                                After Nexus replies, a conversation you started with a tap listens for the next
-                                question. A quiet moment ends that sentence, not the conversation. Stop stays on screen
-                                until you end it. Wake word still waits for the name.
+                                After Nexus replies, a hands-free conversation listens for the next question. A quiet
+                                moment ends that sentence, not the conversation. Tap the microphone to end it. Wake word
+                                still waits for the name.
                             </p>
                         </div>
                         <div class="input-group">
@@ -1551,7 +1557,7 @@
                             </button>
                         </div>
                         <p class="voice-status" data-wake-key="wakeSpeakHelp" style="margin-top: 8px; opacity: 0.8">
-                            Starts the same hands-free conversation as a tap on the microphone.
+                            Records one request, the same as a tap on the microphone.
                         </p>
                     </div>
 
