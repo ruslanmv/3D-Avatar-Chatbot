@@ -1,13 +1,21 @@
-# Staging status (stable only)
+# Staging status
 
-| Pack                        | License | Location                                 | Verification               |
-| --------------------------- | ------- | ---------------------------------------- | -------------------------- |
-| ChatVRM `idle_loop.vrma`    | MIT     | `addons/stable/vrma-mit/`                | **ok** (hips 0.894)        |
-| three-vrm `test.vrma`       | MIT     | `addons/stable/vrma-mit/`                | **ok** (hips 0.896)        |
-| tk256 inactive six (retest) | MIT     | `addons/stable/vrma-tk256-candidates/`   | **ok** ×6 (Blush…Sleepy)   |
-| Quaternius UAL Standard     | CC0     | `addons/stable/quaternius-ual-standard/` | Convert → VRMA, then audit |
+## `addons/stable/` — verified working (additive audit)
 
-**Additive audit (latest):** 8/8 ok — see `verification/runs/LATEST.json`.
+| Pack                        | License | Location                               | Verification        |
+| --------------------------- | ------- | -------------------------------------- | ------------------- |
+| ChatVRM `idle_loop.vrma`    | MIT     | `addons/stable/vrma-mit/`              | **ok** (hips ~0.89) |
+| three-vrm `test.vrma`       | MIT     | `addons/stable/vrma-mit/`              | **ok** (hips ~0.90) |
+| tk256 inactive six (retest) | MIT     | `addons/stable/vrma-tk256-candidates/` | **ok** ×6           |
 
-**Removed:** ACCAD / CMU BVH (hips-floating). See `CATALOG.md` for more
-compatible internet sources.
+Latest: `verification/runs/LATEST.json` — **8/8 ok**.
+
+## `addons/pending/` — not playable yet
+
+| Pack                    | License | Why                                                            |
+| ----------------------- | ------- | -------------------------------------------------------------- |
+| Quaternius UAL Standard | CC0     | GLB / `DEF-*` bones; does not drive VRM — convert → VRMA first |
+
+See `addons/pending/README.md` and `…/NOT_PLAYABLE_YET.md`.
+
+**Removed from staging:** ACCAD / CMU BVH (hips-floating).

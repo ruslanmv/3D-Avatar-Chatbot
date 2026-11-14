@@ -16,12 +16,17 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 
 ## New in `develop/addons/stable/` (verified ok)
 
-| Pack                                        | License | Smoke                                                            |
-| ------------------------------------------- | ------- | ---------------------------------------------------------------- |
-| `vrma-mit/idle_loop.vrma` (ChatVRM)         | MIT     | **ok**                                                           |
-| `vrma-mit/test.vrma` (three-vrm)            | MIT     | **ok**                                                           |
-| `vrma-tk256-candidates/{Blush…Sleepy}.vrma` | MIT     | **ok** ×6 (safe to re-enable in a product PR)                    |
-| `quaternius-ual-standard/` GLB              | CC0     | Convert → VRMA, then audit (same path as working `dance_*.vrma`) |
+| Pack                                        | License | Smoke                                         |
+| ------------------------------------------- | ------- | --------------------------------------------- |
+| `vrma-mit/idle_loop.vrma` (ChatVRM)         | MIT     | **ok**                                        |
+| `vrma-mit/test.vrma` (three-vrm)            | MIT     | **ok**                                        |
+| `vrma-tk256-candidates/{Blush…Sleepy}.vrma` | MIT     | **ok** ×6 (safe to re-enable in a product PR) |
+
+## Pending (`develop/addons/pending/`) — not playable yet
+
+| Pack                           | License | Status                                                              |
+| ------------------------------ | ------- | ------------------------------------------------------------------- |
+| `quaternius-ual-standard/` GLB | CC0     | Loads but **0** tracks bind to VRM (`DEF-*` bones). Convert → VRMA. |
 
 ## More to fetch (compatible format / license)
 
@@ -47,7 +52,8 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 
 1. ~~Re-AX16 the six inactive tk256 VRMA~~ — **done** (all ok in
    `vrma-tk256-candidates/`). Promote via product PR + `manifest.json`.
-2. Convert Quaternius idle/sit/walk clips → VRMA; keep only **ok**.
+2. Convert pending Quaternius idle/sit/walk → VRMA; graduate only **ok** into
+   `addons/stable/`.
 3. Optionally document VRoid BOOTH 7-pack as an external optional set (credit;
    do not vendor).
 

@@ -1,15 +1,15 @@
-# Stable addon staging
+# Stable addon staging — ok-only
 
-| Folder                     | License | Notes                                         |
-| -------------------------- | ------- | --------------------------------------------- |
-| `vrma-mit/`                | MIT     | Native VRMA; additive audit **ok**            |
-| `vrma-tk256-candidates/`   | MIT     | Former inactive six; additive audit **ok** ×6 |
-| `quaternius-ual-standard/` | CC0     | Multi-clip GLB — split/convert before ship    |
+**Only** clips that passed `node develop/verification/audit-additive.mjs` live
+here.
 
-Audit only this tree:
+| Folder                   | License | Notes                           |
+| ------------------------ | ------- | ------------------------------- |
+| `vrma-mit/`              | MIT     | `idle_loop`, `test` — **ok**    |
+| `vrma-tk256-candidates/` | MIT     | Former inactive six — **ok** ×6 |
+
+Quaternius GLB is **not** here — see `../pending/` (`NOT_PLAYABLE_YET`).
 
 ```bash
 node develop/verification/audit-additive.mjs
 ```
-
-See `../../CATALOG.md` for other compatible sources.

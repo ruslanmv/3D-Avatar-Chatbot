@@ -1,55 +1,39 @@
 {
-  "schema": 2,
-  "purpose": "License-clean additive animation staging. Only addons/stable/ is promotion-ready after audit.",
-  "stable_rule": "develop/addons/stable holds ok-only VRMA (or conversion-pending CC0 with no product wire).",
+  "schema": 3,
+  "purpose": "Staging: stable=ok-only VRMA; pending=not playable yet.",
   "additive_audit": "node develop/verification/audit-additive.mjs",
   "packs": [
     {
       "id": "vrma-mit",
+      "tier": "stable",
       "license": "MIT",
       "status": "verified-ok",
-      "clips": [
-        "idle_loop.vrma",
-        "test.vrma"
-      ],
       "path": "develop/addons/stable/vrma-mit"
     },
     {
       "id": "vrma-tk256-candidates",
+      "tier": "stable",
       "license": "MIT",
       "status": "verified-ok",
-      "clips": [
-        "Blush.vrma",
-        "Clapping.vrma",
-        "Goodbye.vrma",
-        "Jump.vrma",
-        "LookAround.vrma",
-        "Sleepy.vrma"
-      ],
       "path": "develop/addons/stable/vrma-tk256-candidates"
     },
     {
       "id": "quaternius-ual-standard",
+      "tier": "pending",
       "license": "CC0",
-      "status": "conversion-pending",
-      "path": "develop/addons/stable/quaternius-ual-standard"
+      "status": "not-playable-yet",
+      "path": "develop/addons/pending/quaternius-ual-standard",
+      "note": "GLB DEF-* bones; convert to VRMA before stable"
     }
   ],
   "latest_additive": {
-    "outDir": "develop/verification/runs/additive-2026-11-14T08-30-57",
+    "outDir": "develop/verification/runs/additive-2026-11-14T08-50-09",
     "jobs": 8,
     "ok": 8,
     "warn": 0,
     "fail": 0,
-    "at": "2026-11-14T08:31:17.609Z"
+    "at": "2026-11-14T08:50:29.955Z"
   },
-  "archives": [
-    {
-      "path": "develop/archives/quaternius_universal_animation_library_standard.zip",
-      "bytes": 14541205,
-      "sha256": "18ff1a7215f4852b320203e8aaf02a1578b5c8eef9027fbaedfcedc7b85a3ac2"
-    }
-  ],
   "files": [
     {
       "path": "develop/.gitignore",
@@ -58,58 +42,78 @@
     },
     {
       "path": "develop/CATALOG.md",
-      "bytes": 5593,
-      "sha256": "8c37df9b5814d218b5bb19b699d0ce27da7430ccdec69b58abc813368fdc807d"
+      "bytes": 5884,
+      "sha256": "4b8e66de77533d1e456df5e59d477e5d3b81ce6936514ef9560fa5da8aab9995"
     },
     {
       "path": "develop/README.md",
-      "bytes": 1542,
-      "sha256": "6bf066fc80a622b550212401b35e3f0c938098fbeda065f0c581b7a3c3b37e42"
+      "bytes": 1233,
+      "sha256": "b0ce1cc8cb3d54ede60bb686e216b3f9714a0404ca4db525297e87b0a1af7584"
     },
     {
       "path": "develop/STATUS.md",
-      "bytes": 979,
-      "sha256": "3699f7ce81d2a1d5add6dad35355c74f5bee1b5b2d74e84c4e9dbcb72bd082c2"
+      "bytes": 1184,
+      "sha256": "0784ca3993155219c047fd6c24acee846bcb59c69eb4393716f6661b1c0773e7"
     },
     {
-      "path": "develop/addons/stable/README.md",
-      "bytes": 617,
-      "sha256": "1c5e4ff26c03637f643ad5dd100c3ad3a1e82a7bc547f81fb5c4b938262dc486"
+      "path": "develop/addons/pending/README.md",
+      "bytes": 1063,
+      "sha256": "e30ebca299367e2c6f5441f2bfb2945c70363d3c5c9d16f60e4eed314e0163a8"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/Godot/AnimationLibrary_Godot_Standard.glb",
+      "path": "develop/addons/pending/archives/SHA256SUMS.txt",
+      "bytes": 118,
+      "sha256": "7ea2fb298c49e1ef2105e9155db5aeb51e646d75ea6a676ef037f223df65a6d4"
+    },
+    {
+      "path": "develop/addons/pending/archives/quaternius_universal_animation_library_standard.zip",
+      "bytes": 133,
+      "sha256": "9a935df51376b5395fd9730d944121d5988df90424392de95ea65c0234adc385"
+    },
+    {
+      "path": "develop/addons/pending/quaternius-ual-standard/Godot/AnimationLibrary_Godot_Standard.glb",
       "bytes": 6671104,
       "sha256": "1b7bf67866360665426bb99e4c71bd619f19b408453c24e30f0c3071601eee5c"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/License.txt",
+      "path": "develop/addons/pending/quaternius-ual-standard/License.txt",
       "bytes": 446,
       "sha256": "11eac7504a28077e9d8dbac8ddfca2566510efba7eef46e11f21cdd2bc96d4d5"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/PROVENANCE.md",
-      "bytes": 951,
-      "sha256": "f0db3c5626b5a941b4b57a17b59bd071215a41f2b802ccd6e479f3c628aa10e3"
+      "path": "develop/addons/pending/quaternius-ual-standard/NOT_PLAYABLE_YET.md",
+      "bytes": 897,
+      "sha256": "3b0589f446b5c6cb9e952881295259f1cb2aef45c29398e0714b34276c6c0074"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/Preview.png",
+      "path": "develop/addons/pending/quaternius-ual-standard/PROVENANCE.md",
+      "bytes": 1208,
+      "sha256": "e25531fba90d77821e9c8e6127ae93977991f8fd39f54b5bf70ef8595bfd4cc4"
+    },
+    {
+      "path": "develop/addons/pending/quaternius-ual-standard/Preview.png",
       "bytes": 2424027,
       "sha256": "4491742a3ffe68c571a04fdf8fdf9bf761a3cba690b60d96e87c858df92159ab"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.bin",
-      "bytes": 1587224,
-      "sha256": "6e65377d81558333c4093dbb144a48fd19019343d82b1a3a7992a98ec0e0543c"
+      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.bin",
+      "bytes": 132,
+      "sha256": "c159f09fb8b6ad87cefb281ada0914196ac621a40f9b96d745f21a21995b3b8b"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.gltf",
+      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/AnimationLibrary_Godot_Standard.gltf",
       "bytes": 2459987,
       "sha256": "0ff075c7ad6855c5c2c37a171592ee8f0d6ab2f58259e2be77a9b63dd8027765"
     },
     {
-      "path": "develop/addons/stable/quaternius-ual-standard/glTF-mirror/LICENSE",
+      "path": "develop/addons/pending/quaternius-ual-standard/glTF-mirror/LICENSE",
       "bytes": 7048,
       "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "path": "develop/addons/stable/README.md",
+      "bytes": 553,
+      "sha256": "cc43d56012aef5490006ba437ed462729f65b0087eae4c13d3812ac262de3eea"
     },
     {
       "path": "develop/addons/stable/vrma-mit/PROVENANCE.md",
@@ -153,8 +157,8 @@
     },
     {
       "path": "develop/addons/stable/vrma-tk256-candidates/PROVENANCE.md",
-      "bytes": 791,
-      "sha256": "ee32e2adfe47448796e24f60ae43007714bd4982d044b7b7e747fa9c19f60653"
+      "bytes": 775,
+      "sha256": "ab73f3703ca97fc9b98189bcf4f0becb39f87c83468aeb78022c93fbc0c02fba"
     },
     {
       "path": "develop/addons/stable/vrma-tk256-candidates/Sleepy.vrma",
@@ -163,28 +167,33 @@
     },
     {
       "path": "develop/verification/AGENT.md",
-      "bytes": 1365,
-      "sha256": "c0ad9d854aa88b0f9945a19d785b38043c186cda9d750f51477041421d73eb69"
+      "bytes": 1591,
+      "sha256": "2199f5e64a21bd6625ef92e34f1a89cbdbd258f29b267caef315214b16ccdaa4"
     },
     {
       "path": "develop/verification/CHECKLIST.md",
-      "bytes": 2195,
-      "sha256": "c58dbadcd770056bdc7ef24ebb97f359fdef5e4c03643d04ab88d8fe69bca703"
+      "bytes": 1972,
+      "sha256": "cb88f2eed2e580fe72a6ccd27bb59e405ab391167a457824b5e715bff607a7d3"
     },
     {
       "path": "develop/verification/REPORT.md",
-      "bytes": 798,
-      "sha256": "87e10b772a9aaa5b5d9c02e09f1fa096bb19fc31f41f1539ff2e34374dfbb792"
+      "bytes": 768,
+      "sha256": "7a008d8ec0fb0e9542d38fee47e4e70ac6b6d044918a469219c6b3bb8a36e5e3"
     },
     {
       "path": "develop/verification/audit-additive.mjs",
-      "bytes": 10324,
-      "sha256": "dbb5f35d406085481e2fb47e9f18ceee9ae037e76265c1f006b067fffb456009"
+      "bytes": 10197,
+      "sha256": "892e84e4c5c572e52d11e8da55d0cc4411f15bb27293e31a685e58e02917ab92"
+    },
+    {
+      "path": "develop/verification/probe-quaternius-glb.mjs",
+      "bytes": 7353,
+      "sha256": "4df2efa49711e9fa1951d06db61c4fb2600cb88931177fd040b22906b7a9f471"
     },
     {
       "path": "develop/verification/runs/LATEST.json",
       "bytes": 159,
-      "sha256": "4451af0482d18681b3ec25b613a0c57fc0c20d974906098bfe57d171885fa145"
+      "sha256": "aef98e9f49ebe952304db5423de5753dfd501fb766c8bae85924cbd61cbb4d74"
     },
     {
       "path": "develop/verification/runs/additive-2026-11-14T08-30-57/additive.csv",
@@ -195,6 +204,26 @@
       "path": "develop/verification/runs/additive-2026-11-14T08-30-57/summary.json",
       "bytes": 2893,
       "sha256": "266836510a81108727f62e7a4ea98f99f3837ec2e6c8a2f7eb254e04d81e4668"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-45-59/additive.csv",
+      "bytes": 1113,
+      "sha256": "458298e139a0a1dc333ea90a5578bad96da6fb3aed3cc8a3681c6139d7ed367f"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-45-59/summary.json",
+      "bytes": 2892,
+      "sha256": "368e12d661f639b14e9d6506a8f5e624b301e5a645504635cf52152790591e35"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-50-09/additive.csv",
+      "bytes": 1114,
+      "sha256": "058984a13694a31468e1ef78789646c7a943cdbd407c6d7921a8c98b53ce708c"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-50-09/summary.json",
+      "bytes": 2893,
+      "sha256": "5635ea9dbffa3cee12270dc6938119872abb72d69d7952f9733d7f402be65c41"
     },
     {
       "path": "develop/verification/runs/avatar-sample-a-critical/AvatarSample_A.csv",
@@ -210,6 +239,11 @@
       "path": "develop/verification/runs/avatar-sample-a-critical/summary.json",
       "bytes": 4610,
       "sha256": "ef5474c63152798b46bb1505f8f7dc9d384f1252b2fb654ca5d99087707b68d8"
+    },
+    {
+      "path": "develop/verification/runs/quaternius-glb-probe/probe.json",
+      "bytes": 7600,
+      "sha256": "5d3705dfc139e0e619d1c3471fba112915a731590528c22248e148fe785fc435"
     },
     {
       "path": "develop/verification/runs/stable-vrma-mit/summary.json",

@@ -15,13 +15,14 @@ but does not fail the process unless `--strict`.
 
 ## Rules
 
-1. Audit **additive paths only** — `develop/addons/stable/**/*.{vrma,bvh}`. Do
-   not re-run the full vendor matrix unless asked.
+1. Audit **additive paths only** — `develop/addons/stable/` `.vrma` / `.bvh`. Do
+   not re-run the full vendor matrix unless asked. **Ignore `addons/pending/`**
+   (not playable yet).
 2. Never modify `src/` from this folder. Promote in a separate product PR.
 3. Fail/warn clips: delete or move out of `addons/stable/` (do not leave junk).
 4. Record provenance in each pack’s `PROVENANCE.md`.
 5. Prefer native **VRMA** (same class as shipped tk256 clips). Raw academic BVH
-   usually floats — skip unless grounded.
+   and Quaternius GLB stay in `pending/` until converted.
 
 ## Pass bar
 
