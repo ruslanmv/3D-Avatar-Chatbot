@@ -325,6 +325,49 @@ const IntentFastPath = (() => {
         return fixed ? [fixed].concat(words.slice(1)).join(' ') : null;
     }
 
+    /**
+     * UN2. Japanese, Korean and Chinese, which Private speaks and these rules did not.
+     *
+     * Matched against the raw text (NFC), not `_normalize`: NFD splits a Hangul syllable into
+     * jamo and drops a kana's voicing mark (脱いで → 脱いて), so a pattern written the way people
+     * type it would never match the normalised string. Each entry names an existing rule and
+     * reuses its plan, so a pose asked for in Japanese moves her exactly as it does in English.
+     * Short messages only: these scripts have no spaces, so the word count cannot tell a command
+     * from a sentence, and a length bound does that job instead. Order matters: a spin is
+     * checked before turning round, a dance before a jump.
+     */
+    const CJK_MAX = 16;
+    const CJK_RULES = [
+        { label: 'spin', re: /くるっと回って|一回転|回転して|빙글|한\s?바퀴|转个圈|转一圈|转圈/u },
+        { label: 'turn_around', re: /振り向いて|後ろを向いて|回って|뒤돌아|돌아\s?봐|돌아\s?서|转过身|转身/u },
+        { label: 'sit', re: /座って|座ろう|座りなさい|앉아|坐下|坐吧|请坐/u },
+        { label: 'lay', re: /横になって|寝転んで|寝そべって|누워|躺下|躺着/u },
+        { label: 'stand', re: /立って|立ち上がって|일어나|일어서|站起来|起来/u },
+        { label: 'dance', re: /踊って|踊ろう|춤\s?춰|춤추자|跳舞|跳支舞/u },
+        { label: 'wave', re: /手を振って|손\s?흔들어|挥手|挥挥手/u },
+        { label: 'model_pose', re: /ポーズ|포즈|摆个姿势|摆姿势|摆个pose/u },
+        { label: 'show_outfit', re: /服を見せて|옷\s?보여\s?줘|看看你的衣服|展示一下/u },
+        { label: 'bow', re: /お辞儀|おじぎ|인사해|鞠躬/u },
+        { label: 'look_at_me', re: /こっち見て|こっちを見て|나를\s?봐|날\s?봐|看着我|看我/u },
+        { label: 'come_here', re: /こっちに来て|こっちおいで|이리\s?와|过来/u },
+        { label: 'peace_sign', re: /ピース|브이|比个耶|比耶/u },
+        { label: 'nod_yes', re: /うなずいて|끄덕|点头/u },
+        { label: 'jump', re: /ジャンプ|점프|跳一下|跳起来/u },
+    ];
+
+    function _cjkRule(raw) {
+        const text = String(raw || '')
+            .normalize('NFC')
+            .trim();
+        if (!text || text.length > CJK_MAX) return null;
+        for (const entry of CJK_RULES) {
+            if (!entry.re.test(text)) continue;
+            const rule = RULES.find((r) => r.label === entry.label);
+            if (rule) return rule;
+        }
+        return null;
+    }
+
     function _firstRule(t) {
         for (let i = 0; i < RULES.length; i++) {
             const rule = RULES[i];
@@ -357,13 +400,14 @@ const IntentFastPath = (() => {
             corrected = _corrected(t);
             rule = corrected ? _firstRule(corrected) : null;
         }
+        if (!rule) rule = _cjkRule(text);
         if (!rule) return null;
         const hit = { label: rule.label, plan: rule.plan() };
         if (corrected) hit.corrected = corrected;
         return hit;
     }
 
-    return { match, RULES, _normalize, _corrected, MAX_WORDS };
+    return { match, RULES, CJK_RULES, _normalize, _corrected, _cjkRule, MAX_WORDS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_INTENT_FASTPATH = IntentFastPath;

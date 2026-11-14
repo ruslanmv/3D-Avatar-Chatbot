@@ -310,13 +310,22 @@
     /**
      * PX14. "Togliti il vestito", "spogliati": in this app that is a change into underwear, made by
      * the same wardrobe as any other outfit and behind the same private-outfit gate — never a
-     * removal the avatar cannot show. Without this the request reached the model as talk and she
+     * removal the avatar cannot show. UN1: it is `wardrobe.undress`, one layer at a time, open
+     * only at the top of the evening's pace. Without this the request reached the model as talk and she
      * described undressing while the avatar stayed exactly as she was.
      */
     const UNDRESS = new RegExp(
         `^(?:${word(
-            'togliti|toglierti|levati|spogliati|svestiti|take off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
+            'togliti|toglierti|levati|spogliati|svestiti|take off|take (?:\\S+ ){0,3}?\\S+ off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
         )})`,
+        'iu'
+    );
+
+    /** UN1. "All of it": straight to the last layer she has, not one at a time. */
+    const UNDRESS_ALL = new RegExp(
+        `${word(
+            'everything|all of it|completely|all the way|tutto|tutta|completamente|del tutto|todo|toda|completamente|tout|complètement|entièrement|alles|ganz|komplett|tudo|toda'
+        )}|全部|すべて|全部脱|다 벗|모두|全部脱|都脱`,
         'iu'
     );
 
@@ -482,7 +491,10 @@
             if (!BARE_UNDO.test(body) || c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
         }
         if (UNDRESS.test(body) || /脱いで|벗어|脱掉/u.test(body)) {
-            return action('wardrobe.wear', { style: 'lingerie', words: bare.slice(0, 120) }, 'wardrobe');
+            // UN1. One layer at a time unless they say "all of it"; the policy decides whether the
+            // evening is there yet (level 4), and the bridge picks the layer from her own looks.
+            const step = UNDRESS_ALL.test(body) ? 'all' : 'next';
+            return action('wardrobe.undress', { step, words: bare.slice(0, 120) }, 'wardrobe');
         }
         if (CHANGE_OUTFIT.test(body) || CHANGE_OUTFIT_CJK.test(body)) {
             const wanted = wardrobeFrom(bare);

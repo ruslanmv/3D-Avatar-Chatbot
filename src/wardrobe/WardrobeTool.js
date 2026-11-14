@@ -100,6 +100,12 @@
         },
         { name: 'wardrobe_undo', description: 'Go back to the previous look.', inputSchema: { type: 'object' } },
         {
+            // UN1. Private only, and only at the top of the evening's pace: the bridge decides.
+            name: 'wardrobe_undress',
+            description: 'Take one layer off (Private only, at the closest pace): step "next" or "all".',
+            inputSchema: { type: 'object', properties: { step: { type: 'string', enum: ['next', 'all'] } } },
+        },
+        {
             // FC2. Her suggestion only: it opens a colour chooser for the person, with this colour
             // highlighted, on the look she has on. The person chooses; the tag changes nothing.
             name: 'wardrobe_underneath',
@@ -114,7 +120,7 @@
         },
     ]);
 
-    var ACTIONS = { wear: 1, change: 1, create: 1, tattoo: 1, keep: 1, undo: 1, underneath: 1 };
+    var ACTIONS = { wear: 1, change: 1, create: 1, tattoo: 1, keep: 1, undo: 1, underneath: 1, undress: 1 };
     var UNDERNEATH = { beige: 1, nude: 1, white: 1, black: 1, red: 1, pink: 1 };
     var ALLOWED = {
         wear: ['outfit', 'look'],
@@ -124,6 +130,7 @@
         keep: [],
         underneath: ['color'],
         undo: [],
+        undress: ['step'],
     };
     var ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
     var PROMPT = /^[a-z0-9][a-z0-9 ,'+&-]{1,119}$/;
@@ -392,6 +399,8 @@
                 return { name: 'wardrobe.create', params: { prompt: args.prompt } };
             case 'wardrobe_undo':
                 return { name: 'wardrobe.undo', params: {} };
+            case 'wardrobe_undress':
+                return { name: 'wardrobe.undress', params: { step: args.step || 'next' } };
             default:
                 // keep / tattoo / underneath belong to the haul's own screen.
                 return null;
@@ -461,6 +470,11 @@
             args.design = design;
             args.placement = placement;
         }
+        if (action === 'undress') {
+            var step = String(attributes.step || 'next').toLowerCase();
+            if (step !== 'next' && step !== 'all') return { reason: 'undress step is next or all' };
+            args.step = step;
+        }
         if (action === 'underneath') {
             var color = String(attributes.color || '').toLowerCase();
             if (!UNDERNEATH[color]) return { reason: 'underneath needs a colour she can wear underneath' };
@@ -519,6 +533,8 @@
             return t.name === name;
         });
         if (!tool) return { ok: false, why: 'no such tool' };
+        // UN1. Undressing is Private's, through its bridge; the haul has no such step.
+        if (name === 'wardrobe_undress') return { ok: false, why: 'Undressing happens only in Private.' };
         if (!isEnabled()) return { ok: false, why: 'Changing her outfit from the chat is turned off in Settings.' };
         var a = activity(deps);
         if (!a || typeof a.request !== 'function') return { ok: false, why: 'Try-On is not available.' };
