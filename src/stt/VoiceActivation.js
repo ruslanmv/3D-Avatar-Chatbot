@@ -57,7 +57,10 @@
         // A pause shorter than this keeps the sentence open. Sustained quiet
         // at endSilenceMs ends it. Both are starting points, not a measured room.
         minPauseMs: 800,
-        endSilenceMs: 1000,
+        endSilenceMs: 1200,
+        // A clause with no ending punctuation waits longer. This is a pause
+        // rule, not a semantic turn model — none is bundled.
+        hesitationMs: 1800,
         noSpeechMs: 7000,
         maxUtteranceMs: 30000,
         echoGuardMs: 800,
@@ -76,6 +79,7 @@
         autosend: 'nexus_wake_autosend',
         continuous: 'nexus_wake_continuous',
         paused: 'nexus_wake_paused',
+        maxMs: 'nexus_wake_max_ms',
         migrated: 'nexus_wake_migrated',
     });
 
@@ -97,7 +101,8 @@
                 'A finished sentence is sent on its own. A tap starts a conversation; a three-second hold turns wake word on or off.',
             wakeContinuous: 'Continuous conversation',
             wakeContinuousHelp:
-                'After Nexus replies, a conversation you started with a tap listens for the next question. Wake word still waits for the name.',
+                'After Nexus replies, a conversation you started with a tap listens for the next question. A quiet moment ends that sentence, not the conversation. Stop stays on screen until you end it. Wake word still waits for the name.',
+            wakeMax: 'Longest one turn',
             wakeMic: 'Microphone',
             wakeMicGranted: 'Microphone allowed',
             wakeMicDenied: 'Microphone blocked',
@@ -110,6 +115,9 @@
             wakePause: 'Pause listening',
             wakeResume: 'Resume listening',
             wakeStop: 'Stop listening',
+            wakeStopConversation: 'Stop conversation',
+            wakeTimeout: 'That turn reached the time limit. Still in the conversation.',
+            wakeRecover: 'Voice input dropped. Listening again.',
             wakeHold: 'Keep holding to switch wake word…',
             wakeRelease: 'Release to switch wake word',
             wakeHint: 'Tap for a voice conversation, or hold for 3 seconds to turn wake word on.',
@@ -148,7 +156,8 @@
                 'La frase finita viene inviata da sola. Un tocco avvia la conversazione; tre secondi accendono o spengono la parola di attivazione.',
             wakeContinuous: 'Conversazione continua',
             wakeContinuousHelp:
-                'Dopo la risposta, una conversazione avviata con un tocco ascolta la domanda successiva. La parola di attivazione aspetta ancora il nome.',
+                'Dopo la risposta, una conversazione avviata con un tocco ascolta la domanda successiva. Una pausa chiude la frase, non la conversazione. Chiudi resta visibile finché non la termini. La parola di attivazione aspetta ancora il nome.',
+            wakeMax: 'Durata massima di un turno',
             wakeMic: 'Microfono',
             wakeMicGranted: 'Microfono consentito',
             wakeMicDenied: 'Microfono bloccato',
@@ -161,6 +170,9 @@
             wakePause: 'Metti in pausa',
             wakeResume: 'Riprendi l’ascolto',
             wakeStop: 'Interrompi l’ascolto',
+            wakeStopConversation: 'Chiudi la conversazione',
+            wakeTimeout: 'Quel turno ha raggiunto il limite. La conversazione resta aperta.',
+            wakeRecover: 'L’input vocale si è interrotto. Di nuovo in ascolto.',
             wakeHold: 'Tieni premuto per cambiare la parola di attivazione…',
             wakeRelease: 'Rilascia per cambiare la parola di attivazione',
             wakeHint: 'Tocca per una conversazione, oppure tieni premuto 3 secondi per la parola di attivazione.',
@@ -466,6 +478,7 @@
         let booted = false;
         let monitorOn = false;
         let manualOpen = false;
+        let errorStrikes = 0;
         let sessionMode = null;
         let activeRec = null;
         let phraseRec = null;
@@ -487,6 +500,7 @@
                 autoSend: true,
                 continuous: true,
                 paused: false,
+                maxMs: DEFAULTS.maxUtteranceMs,
                 migrated: false,
             };
         }
@@ -596,6 +610,11 @@
             }
             const pauseBtn = global.document.getElementById('wake-pause');
             if (pauseBtn) pauseBtn.textContent = settings.paused ? label('wakeResume') : label('wakePause');
+            const endBtn = global.document.getElementById('end-conversation');
+            if (endBtn) {
+                endBtn.hidden = !manualOpen;
+                endBtn.textContent = label('wakeStopConversation');
+            }
         }
 
         function recognitionClass() {
@@ -611,6 +630,13 @@
         function detector() {
             try {
                 const d = typeof deps.detector === 'function' ? deps.detector() : global.NEXUS_WAKE_DETECTOR;
+                // `local: true` is not evidence. The host has to say the audio
+                // does not leave the device. We still only hand it PCM we hold,
+                // or call start/stop — we never open a cloud recognizer for it.
+                if (d && d.audioLeavesDevice !== false) {
+                    log('detector-refused-audio-unverified');
+                    return null;
+                }
                 if (d && d.local === true && typeof d.start === 'function' && typeof d.stop === 'function') return d;
                 if (d && d.local !== true) log('detector-refused-not-local');
             } catch (_) {}
@@ -719,6 +745,8 @@
             // A new install resumes a tapped conversation. An explicit "off" stays off.
             const continuous = continuousRaw == null ? true : continuousRaw === 'on';
             const paused = readKey(STORAGE.paused) === 'on';
+            const maxRaw = Number(readKey(STORAGE.maxMs));
+            const maxMs = maxRaw === 60000 || maxRaw === 120000 ? maxRaw : DEFAULTS.maxUtteranceMs;
             settings = {
                 wakeEnabled: enabled,
                 phrase: storedPhrase || '',
@@ -726,6 +754,7 @@
                 autoSend: autosend == null ? true : autosend === 'on',
                 continuous: continuous,
                 paused: paused,
+                maxMs: maxMs,
                 migrated: readKey(STORAGE.migrated) === '1',
             };
             return currentSettings();
@@ -739,6 +768,7 @@
                 autoSend: settings.autoSend,
                 continuous: settings.continuous,
                 paused: settings.paused,
+                maxMs: settings.maxMs,
                 migrated: settings.migrated,
                 overlayWakeWord: overlayWakeOn(),
             };
@@ -772,6 +802,7 @@
             writeKey(STORAGE.autosend, settings.autoSend ? 'on' : 'off');
             writeKey(STORAGE.continuous, settings.continuous ? 'on' : 'off');
             writeKey(STORAGE.paused, settings.paused ? 'on' : 'off');
+            writeKey(STORAGE.maxMs, String(settings.maxMs || DEFAULTS.maxUtteranceMs));
         }
 
         function stopStream(stream) {
@@ -1405,13 +1436,33 @@
                     return;
                 }
                 if (
+                    reason === 'error' &&
+                    manualOpen &&
+                    settings.continuous &&
+                    errorStrikes < 1 &&
+                    !hidden &&
+                    !settings.paused
+                ) {
+                    errorStrikes++;
+                    owner = null;
+                    setState('OFF');
+                    feedbackKey('wakeRecover');
+                    const token = ++resumeToken;
+                    setTimeout(function () {
+                        if (token !== resumeToken || !manualOpen) return;
+                        captureUtterance({ owner: 'manual', deliver: 'send' });
+                    }, 400);
+                    return;
+                }
+                if (
                     manualOpen &&
                     settings.continuous &&
                     (reason === 'echo' || reason === 'no-speech' || reason === 'empty') &&
                     !hidden &&
                     !settings.paused
                 ) {
-                    owner = 'manual';
+                    owner = null;
+                    setState('OFF');
                     const token = ++resumeToken;
                     const wait = reason === 'echo' ? Math.max(300, echoUntil - depsNow()) : 400;
                     setTimeout(function () {
@@ -1470,19 +1521,30 @@
                 submitText(clean, who);
             }
 
+            function silenceFor(text) {
+                const t = String(text || '').trim();
+                // A finished sentence can close. A pause in the middle — no
+                // period, or a trailing "and" — is not the end of the request.
+                if (t && /[.?!]["']?$/.test(t)) return DEFAULTS.endSilenceMs;
+                return DEFAULTS.hesitationMs;
+            }
+
             function armSilence() {
                 clearTimeout(silenceTimer);
                 if (!finalText && !interimText) return;
-                silenceTimer = setTimeout(function () {
-                    if (stale()) return;
-                    if (finalText) finishWith(finalText);
-                    else {
-                        awaitingFinal = true;
-                        try {
-                            rec.stop();
-                        } catch (_) {}
-                    }
-                }, DEFAULTS.endSilenceMs);
+                silenceTimer = setTimeout(
+                    function () {
+                        if (stale()) return;
+                        if (finalText) finishWith(finalText);
+                        else {
+                            awaitingFinal = true;
+                            try {
+                                rec.stop();
+                            } catch (_) {}
+                        }
+                    },
+                    silenceFor(finalText || interimText)
+                );
             }
 
             rec.onstart = function () {
@@ -1543,6 +1605,13 @@
                     finishWith(finalText);
                     return;
                 }
+                // The engine closed itself. A hands-free session listens again.
+                // A one-shot turn with text still in hand is sent; an empty
+                // close is silence, not a crash.
+                if (finalText) {
+                    finishWith(finalText);
+                    return;
+                }
                 if (!finalText) giveUp(awaitingFinal ? 'empty' : 'no-speech');
             };
 
@@ -1552,7 +1621,9 @@
             }, DEFAULTS.noSpeechMs);
             maxTimer = setTimeout(function () {
                 if (stale()) return;
+                feedbackKey('wakeTimeout');
                 if (finalText) finishWith(finalText);
+                else if (manualOpen) giveUp('no-speech');
                 else {
                     awaitingFinal = true;
                     try {
@@ -1561,7 +1632,7 @@
                         giveUp('empty');
                     }
                 }
-            }, DEFAULTS.maxUtteranceMs);
+            }, settings.maxMs || DEFAULTS.maxUtteranceMs);
 
             setState('LISTENING');
             try {
@@ -1581,6 +1652,7 @@
         function submitText(text, who) {
             const clean = String(text || '').trim();
             if (!clean) return false;
+            errorStrikes = 0;
             stopOwnMonitor();
             setState('SENDING');
             log(isPrivate() ? 'submit-private' : 'submit');
@@ -1729,6 +1801,13 @@
             syncPanel();
         }
 
+        function setMaxMs(ms) {
+            const n = Number(ms);
+            settings.maxMs = n === 60000 || n === 120000 ? n : DEFAULTS.maxUtteranceMs;
+            persist();
+            syncPanel();
+        }
+
         function pause() {
             settings.paused = true;
             persist();
@@ -1784,10 +1863,23 @@
             return true;
         }
 
+        function stopSpeechPlayback() {
+            speaking = false;
+            try {
+                if (typeof deps.stopSpeech === 'function') deps.stopSpeech();
+                else if (global.speechSynthesis && typeof global.speechSynthesis.cancel === 'function') {
+                    global.speechSynthesis.cancel();
+                }
+            } catch (_) {}
+        }
+
         function endConversation() {
             const keepWake = settings.wakeEnabled && !settings.paused && !hidden && !companionActive;
+            // Clear the session before stopping speech, so her onend cannot
+            // open another listen.
             manualOpen = false;
             sessionMode = null;
+            stopSpeechPlayback();
             cancel(keepWake ? 'conversation-end' : 'user-stop');
             if (keepWake) armMonitor();
             feedbackKey(keepWake ? 'wakeStandby' : 'conversationOff');
@@ -1813,8 +1905,25 @@
         function onCompanionActive(active) {
             companionActive = !!active;
             if (companionActive) {
+                // Companion takes the microphone. A page conversation does not
+                // stay busy underneath it.
+                manualOpen = false;
+                sessionMode = null;
+                sessionGen++;
+                sessionDone = true;
+                const rec = activeRec;
+                activeRec = null;
+                killRec(rec);
                 stopOwnMonitor();
-                if (owner === 'wake') owner = null;
+                if (owner === 'wake' || owner === 'manual' || owner === 'hold' || owner === 'assist') owner = null;
+                if (
+                    state === 'LISTENING' ||
+                    state === 'TRANSCRIBING' ||
+                    state === 'SENDING' ||
+                    state === 'RESPONDING'
+                ) {
+                    setState('OFF');
+                }
                 if (settings.wakeEnabled || overlayWakeOn()) {
                     try {
                         if (global.companionMode && global.companionMode.startStandby) {
@@ -1986,9 +2095,11 @@
             const custom = global.document.getElementById('wake-phrase-custom');
             const autosend = global.document.getElementById('wake-autosend');
             const continuous = global.document.getElementById('wake-continuous');
+            const maxSel = global.document.getElementById('wake-max');
             if (enabled) enabled.checked = settings.wakeEnabled;
             if (autosend) autosend.checked = settings.autoSend;
             if (continuous) continuous.checked = settings.continuous;
+            if (maxSel) maxSel.value = String(settings.maxMs || DEFAULTS.maxUtteranceMs);
             const phraseValue = activePhrase();
             if (phrase) {
                 const known = Array.from(phrase.options || []).some(function (o) {
@@ -2097,6 +2208,12 @@
                     setContinuous(continuous.checked);
                 });
             }
+            const maxSel = global.document.getElementById('wake-max');
+            if (maxSel) {
+                maxSel.addEventListener('change', function () {
+                    setMaxMs(maxSel.value);
+                });
+            }
             const speak = global.document.getElementById('wake-speak');
             const test = global.document.getElementById('wake-test');
             const pauseBtn = global.document.getElementById('wake-pause');
@@ -2154,6 +2271,13 @@
                 global.document.addEventListener('visibilitychange', onVisibility);
                 global.addEventListener('pagehide', onPageHide);
                 mountPanel();
+                const endBtn = global.document.getElementById('end-conversation');
+                if (endBtn && endBtn.dataset.nexusStop !== '1') {
+                    endBtn.dataset.nexusStop = '1';
+                    endBtn.addEventListener('click', function () {
+                        endConversation();
+                    });
+                }
             }
             sync();
         }
@@ -2195,6 +2319,7 @@
             setPhrase: setPhrase,
             setAutoSend: setAutoSend,
             setContinuous: setContinuous,
+            setMaxMs: setMaxMs,
             pause: pause,
             resume: resume,
             stopListening: stopListening,

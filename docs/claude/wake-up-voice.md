@@ -26,9 +26,19 @@ and swallow the click. The outline uses `currentColor`. Idle green and
 listening orange are unchanged. `wake-standby` is the visible “microphone is
 hot” mark while the name is being watched.
 
-Endpoint defaults, not device-measured: a pause under 800 ms stays open,
-about 1000 ms of quiet ends the turn, 7 s with no speech at all, 30 s
-maximum. Interim text is not sent. Confidence is not a gate.
+Endpoint defaults, not device-measured: a pause under 800 ms stays open.
+A sentence that ends with punctuation closes after about 1200 ms of quiet.
+A clause with no ending waits about 1800 ms, so a thinking pause is not
+treated as the end of the request. There is no semantic turn model in this
+browser build. In a tapped conversation, 7 s of silence ends that sentence
+and listens again; it does not end the conversation. The turn cap is 30
+seconds unless Settings chooses 60 seconds or 2 minutes, and hitting it
+says so. Interim text is not sent. Confidence is not a gate.
+
+**Stop conversation** sits under the status line only while that session is
+open, including while she is speaking. It stops playback and the microphone.
+A second tap does the same. Wake word is a different switch and is not
+cleared by Stop.
 
 ## Wake word
 
@@ -50,8 +60,10 @@ and **not** shipped:
 - Multilingual custom keywords are a paid console feature.
 - Always-on CPU and battery cost was not measured on Quest.
 
-`window.NEXUS_WAKE_DETECTOR` may be injected if `local: true` and it implements
-`start` / `stop`. Anything not marked local is refused. Without that detector,
+`window.NEXUS_WAKE_DETECTOR` may be injected only when `local: true` and
+`audioLeavesDevice: false`, and it implements `start` / `stop`. `local: true`
+alone is refused: that flag does not prove the audio stays here. Without
+that detector,
 and only when on-device Whisper is the selected engine, a ring buffer of the
 microphone is transcribed locally and the name is matched in that text. The
 buffer is the pre-roll, so “Nexus, open my calendar” is not split across two
@@ -79,7 +91,7 @@ headset, a phone, or a laptop microphone, and it does not claim:
   `continuous: false` if `start()` throws)
 - Quest Browser's built-in recognizer hearing anything (it still does not;
   on-device Whisper remains the recognizer when that provider is selected)
-- a calibrated 800 / 1000 / 7000 / 30000 ms on real rooms — those are the
+- a calibrated 800 / 1200 / 1800 / 7000 / 30000 ms on real rooms — those are the
   initial defaults (`DEFAULTS` in `src/stt/VoiceActivation.js`). Whisper's own
   endpointer is already about 900 ms of silence and about 28 s maximum; the
   controller also stops a silent command at 7 s.

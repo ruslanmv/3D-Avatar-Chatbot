@@ -5,19 +5,19 @@
   "allowlistReferences": [
     {
       "file": "index.html",
-      "line": 1560,
+      "line": 1572,
       "guarded": true,
       "comment": false
     },
     {
       "file": "index.html",
-      "line": 1929,
+      "line": 1941,
       "guarded": true,
       "comment": false
     },
     {
       "file": "index.html",
-      "line": 1964,
+      "line": 1976,
       "guarded": true,
       "comment": false
     },
@@ -107,7 +107,7 @@
     },
     {
       "file": "src/main.js",
-      "line": 5988,
+      "line": 5994,
       "guarded": false,
       "comment": true
     },

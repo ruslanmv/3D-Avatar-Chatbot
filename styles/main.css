@@ -832,6 +832,23 @@ body {
     outline-offset: 2px;
 }
 
+/* Shown only while a tapped conversation is open, including while she speaks. */
+.end-conversation {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: var(--accent-green);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.end-conversation[hidden] {
+    display: none;
+}
+
 @keyframes wakeHoldPulse {
     0%,
     100% {

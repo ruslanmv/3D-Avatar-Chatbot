@@ -133,6 +133,7 @@ describe('WU hold gesture', () => {
         const tracker = VA.createHoldTracker({ holdMs: 3000 });
         tracker.pointerdown({ pointerId: 1, button: 0, clientX: 0, clientY: 0 }, 0);
         expect(tracker.pagehide().action).toBe('cancel');
+        expect(tracker.keydown({ key: ' ', repeat: true }, 0).action).toBe('ignore');
         tracker.pointerdown({ pointerId: 2, button: 0, clientX: 0, clientY: 0 }, 10);
         expect(tracker.disable().action).toBe('cancel');
         expect(tracker.tick(4000).action).toBe('ignore');
@@ -243,20 +244,20 @@ describe('WU utterance completion', () => {
         rec.onresult(interimEvent('hel'));
         jest.advanceTimersByTime(999);
         expect(sends).toEqual([]);
-        rec.onresult(finalEvent('hello there', 0));
-        jest.advanceTimersByTime(999);
+        rec.onresult(finalEvent('hello there.', 0));
+        jest.advanceTimersByTime(1199);
         expect(sends).toEqual([]);
         jest.advanceTimersByTime(1);
-        expect(sends).toEqual(['hello there']);
+        expect(sends).toEqual(['hello there.']);
         jest.advanceTimersByTime(10000);
-        expect(sends).toEqual(['hello there']);
+        expect(sends).toEqual(['hello there.']);
     });
 
     test('interim text that never becomes final is not sent', () => {
         const { va, sends, recs } = harness({});
         va.captureUtterance({ owner: 'hold' });
         recs[0].onresult(interimEvent('almost'));
-        jest.advanceTimersByTime(1000);
+        jest.advanceTimersByTime(1800);
         expect(sends).toEqual([]);
         expect(recs[0].stopped).toBe(true);
     });
@@ -316,10 +317,10 @@ describe('WU auto-send setting', () => {
         });
         va.setAutoSend(false);
         va.captureUtterance({ owner: 'hold' });
-        recs[0].onresult(finalEvent('hold this', 0.99));
-        jest.advanceTimersByTime(1000);
+        recs[0].onresult(finalEvent('hold this.', 0.99));
+        jest.advanceTimersByTime(1200);
         expect(sends).toEqual([]);
-        expect(filled).toContain('hold this');
+        expect(filled).toContain('hold this.');
     });
 });
 
@@ -358,6 +359,7 @@ describe('WU wake policy', () => {
         const starts = [];
         const detector = {
             local: true,
+            audioLeavesDevice: false,
             start(hooks) {
                 starts.push(hooks);
             },
@@ -374,6 +376,7 @@ describe('WU wake policy', () => {
         const starts = [];
         const detector = {
             local: true,
+            audioLeavesDevice: false,
             start(hooks) {
                 starts.push(hooks);
             },
@@ -398,11 +401,27 @@ describe('WU wake policy', () => {
         expect(va.plan()).not.toBe('local-detector');
     });
 
+    test('local: true without an on-device declaration does not start a detector', () => {
+        let started = false;
+        const detector = {
+            local: true,
+            start() {
+                started = true;
+            },
+            stop() {},
+        };
+        const { va } = harness({ detector: () => detector });
+        va.setWakeEnabled(true);
+        expect(va.plan()).not.toBe('local-detector');
+        expect(started).toBe(false);
+    });
+
     test('avatar speech cannot wake a session', () => {
         jest.useFakeTimers();
         const starts = [];
         const detector = {
             local: true,
+            audioLeavesDevice: false,
             start(hooks) {
                 starts.push(hooks);
             },
@@ -600,9 +619,9 @@ describe('WU alexa modes', () => {
         expect(va.micTap()).toBe(true);
         expect(va.mode()).toBe('manual');
         expect(va.owner()).toBe('manual');
-        recs[0].onresult(finalEvent('explain black holes', 0.2));
-        jest.advanceTimersByTime(1000);
-        expect(sends).toEqual(['explain black holes']);
+        recs[0].onresult(finalEvent('explain black holes.', 0.2));
+        jest.advanceTimersByTime(1200);
+        expect(sends).toEqual(['explain black holes.']);
         va.noteSpeaking(true);
         va.noteSpeaking(false);
         jest.advanceTimersByTime(800);
@@ -618,6 +637,7 @@ describe('WU alexa modes', () => {
         const starts = [];
         const detector = {
             local: true,
+            audioLeavesDevice: false,
             start(hooks) {
                 starts.push(hooks);
             },
@@ -681,7 +701,7 @@ describe('WU alexa modes', () => {
         pushes(loud(8000));
         await jest.advanceTimersByTimeAsync(200);
         pushes(new Float32Array(4000));
-        await jest.advanceTimersByTimeAsync(1000);
+        await jest.advanceTimersByTimeAsync(1200);
         expect(sends).toEqual(['open my calendar']);
         expect(recs).toHaveLength(0);
     });
@@ -700,6 +720,8 @@ describe('WU alexa modes', () => {
             },
         });
         expect(va.micTap()).toBe(true);
+        expect(va.mode()).toBe('manual');
+        jest.advanceTimersByTime(400);
         expect(va.mode()).toBe('idle');
         expect(va.state()).toBe('ERROR');
         expect(va.toggleWakeFromHold()).toBe(true);
@@ -720,5 +742,132 @@ describe('WU alexa modes', () => {
         expect(va.state()).toBe('ERROR');
         expect(sends).toEqual([]);
         expect(recs).toHaveLength(0);
+    });
+
+    test('a pause in the middle of a sentence is not sent', () => {
+        const { va, sends, recs } = harness({});
+        va.captureUtterance({ owner: 'manual' });
+        recs[0].onresult(interimEvent('I was thinking'));
+        jest.advanceTimersByTime(1100);
+        expect(sends).toEqual([]);
+        recs[0].onresult(finalEvent('I was thinking about black holes.', 0.4));
+        jest.advanceTimersByTime(1199);
+        expect(sends).toEqual([]);
+        jest.advanceTimersByTime(1);
+        expect(sends).toEqual(['I was thinking about black holes.']);
+    });
+
+    test('silence in a hands-free conversation does not end it', () => {
+        const { va, sends, recs } = harness({});
+        va.micTap();
+        jest.advanceTimersByTime(7000);
+        expect(sends).toEqual([]);
+        expect(va.mode()).toBe('manual');
+        jest.advanceTimersByTime(400);
+        expect(recs.length).toBeGreaterThan(1);
+        expect(va.mode()).toBe('manual');
+    });
+
+    test('two questions are sent with a reply between them and no second tap', () => {
+        const { va, sends, recs } = harness({});
+        va.micTap();
+        recs[0].onresult(finalEvent('First question.', 1));
+        jest.advanceTimersByTime(1200);
+        va.noteSpeaking(true);
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(800);
+        recs[1].onresult(finalEvent('Second question.', 1));
+        jest.advanceTimersByTime(1200);
+        expect(sends).toEqual(['First question.', 'Second question.']);
+        expect(va.mode()).toBe('manual');
+    });
+
+    test('stop during speech stops playback and the session', () => {
+        const stops = [];
+        const { va, recs } = harness({
+            dom: true,
+            stopSpeech() {
+                stops.push('stop');
+            },
+        });
+        const btn = document.createElement('button');
+        btn.id = 'end-conversation';
+        btn.hidden = true;
+        document.body.appendChild(btn);
+        va.micTap();
+        expect(btn.hidden).toBe(false);
+        recs[0].onresult(finalEvent('Keep going.', 1));
+        jest.advanceTimersByTime(1200);
+        va.noteSpeaking(true);
+        va.endConversation();
+        expect(stops).toEqual(['stop']);
+        expect(va.mode()).toBe('idle');
+        expect(va.state()).toBe('OFF');
+        expect(btn.hidden).toBe(true);
+    });
+
+    test('turning wake word off stops local monitoring', () => {
+        let closed = false;
+        const { va } = harness({
+            openCapture() {
+                return {
+                    close() {
+                        closed = true;
+                    },
+                };
+            },
+            transcribeLocal() {
+                return { text: '' };
+            },
+        });
+        va.setWakeEnabled(true);
+        expect(va.plan()).toBe('local-spotter');
+        va.setWakeEnabled(false);
+        expect(closed).toBe(true);
+        expect(va.wakeEnabled()).toBe(false);
+        expect(va.plan()).toBe('off');
+    });
+
+    test('Companion opening takes the microphone from a page conversation', () => {
+        const { va } = harness({});
+        va.micTap();
+        expect(va.mode()).toBe('manual');
+        va.onCompanionActive(true);
+        expect(va.mode()).toBe('idle');
+        expect(va.busy()).toBe(false);
+        expect(va.owner()).toBe(null);
+    });
+
+    test('a hidden tab stops capture', () => {
+        const { va } = harness({});
+        va.boot();
+        va.micTap();
+        const prev = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(va.state()).toBe('PAUSED');
+        expect(va.mode()).toBe('idle');
+        if (prev) Object.defineProperty(Document.prototype, 'visibilityState', prev);
+        else delete document.visibilityState;
+    });
+
+    test('the turn limit is saved and a silent cap does not send', () => {
+        const { va, storage, sends } = harness({});
+        va.setMaxMs(60000);
+        expect(storage.getItem('nexus_wake_max_ms')).toBe('60000');
+        const again = VA.createVoiceActivation({
+            storage,
+            dom: false,
+            recognitionClass: () =>
+                class Rec {
+                    start() {}
+                    stop() {}
+                    abort() {}
+                },
+        });
+        expect(again.settings().maxMs).toBe(60000);
+        va.captureUtterance({ owner: 'hold' });
+        jest.advanceTimersByTime(30000);
+        expect(sends).toEqual([]);
     });
 });

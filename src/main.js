@@ -2232,6 +2232,12 @@ function setupEventListeners() {
                         !!(window.speechSynthesis && window.speechSynthesis.speaking)
                     );
                 },
+                stopSpeech: () => {
+                    try {
+                        window.speechSynthesis?.cancel?.();
+                    } catch (_) {}
+                    setStatus('idle', 'READY');
+                },
             });
             voiceActivation.attachHold(listenBtn, { onTap: () => voiceActivation.micTap() });
         } else {

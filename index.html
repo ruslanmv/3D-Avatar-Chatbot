@@ -644,6 +644,9 @@
                                 </button>
                             </div>
                             <p class="voice-status-inline" id="recognition-status">Voice system standby</p>
+                            <button type="button" id="end-conversation" class="end-conversation" hidden>
+                                Stop conversation
+                            </button>
                             <span id="voice-btn-text" class="hidden">ACTIVATE VOICE</span>
                         </footer>
                     </div>
@@ -1494,8 +1497,17 @@
                                 style="margin-top: 8px; opacity: 0.8"
                             >
                                 After Nexus replies, a conversation you started with a tap listens for the next
-                                question. Wake word still waits for the name.
+                                question. A quiet moment ends that sentence, not the conversation. Stop stays on screen
+                                until you end it. Wake word still waits for the name.
                             </p>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-max" data-wake-key="wakeMax">Longest one turn</label>
+                            <select id="wake-max" class="select-input">
+                                <option value="30000">30 seconds</option>
+                                <option value="60000">60 seconds</option>
+                                <option value="120000">2 minutes</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <div class="input-label" data-wake-key="wakeMic">Microphone</div>
