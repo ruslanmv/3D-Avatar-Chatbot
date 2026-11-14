@@ -596,8 +596,8 @@
                                     id="listen-btn"
                                     type="button"
                                     aria-pressed="false"
-                                    aria-label="Voice input"
-                                    title="Voice input"
+                                    aria-label="Tap for a voice conversation, or hold 3 seconds for wake word"
+                                    title="Tap for a voice conversation, or hold 3 seconds for wake word"
                                 >
                                     <svg
                                         class="mic-icon"
@@ -1432,11 +1432,12 @@
                     <div class="config-section" id="wake-up-section">
                         <h3 class="config-title" data-wake-key="wakeTitle">WAKE UP</h3>
                         <p class="voice-status" data-wake-key="wakeDisclosure" style="margin-top: 0">
-                            While this tab is open and visible, NEXUS can listen for the wake phrase. An on-device
-                            detector keeps that audio on this device. If this browser has none, one short check uses the
-                            speech recognizer you already chose — browser speech recognition can send that clip to the
-                            browser’s speech service. Nothing listens while this tab is hidden, the browser is closed,
-                            or the phone is locked. Off until you turn it on.
+                            Wake word stays on this device: the name is recognized here, and audio is not sent away just
+                            to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS
+                            waits for the name again. A tap starts a hands-free conversation that listens again after
+                            each reply, until you end it. Hold the microphone for three seconds to turn wake word on or
+                            off. Nothing listens while this tab is hidden, the browser is closed, or the phone is
+                            locked. Off until you turn it on.
                         </p>
                         <div class="input-group">
                             <label class="input-label" for="wake-enabled">
@@ -1476,13 +1477,13 @@
                                 data-wake-key="wakeAutosendHelp"
                                 style="margin-top: 8px; opacity: 0.8"
                             >
-                                A three-second hold, Speak and send, or a wake phrase sends the finished sentence. A
-                                normal tap still follows Speech-to-text auto-send.
+                                A finished sentence is sent on its own. A tap starts a conversation; a three-second hold
+                                turns wake word on or off.
                             </p>
                         </div>
                         <div class="input-group">
                             <label class="input-label" for="wake-continuous">
-                                <input type="checkbox" id="wake-continuous" />
+                                <input type="checkbox" id="wake-continuous" checked />
                                 <span data-wake-key="wakeContinuous" style="margin-left: 8px"
                                     >Continuous conversation</span
                                 >
@@ -1492,7 +1493,8 @@
                                 data-wake-key="wakeContinuousHelp"
                                 style="margin-top: 8px; opacity: 0.8"
                             >
-                                After a reply, listen for one more sentence. Off by default.
+                                After Nexus replies, a conversation you started with a tap listens for the next
+                                question. Wake word still waits for the name.
                             </p>
                         </div>
                         <div class="input-group">
@@ -1527,7 +1529,7 @@
                             </button>
                         </div>
                         <p class="voice-status" data-wake-key="wakeSpeakHelp" style="margin-top: 8px; opacity: 0.8">
-                            Keyboard and switch alternative to holding the microphone for three seconds.
+                            Starts the same hands-free conversation as a tap on the microphone.
                         </p>
                     </div>
 

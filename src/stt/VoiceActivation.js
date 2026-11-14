@@ -15,17 +15,26 @@
  * generation is not current is dropped, so cancelling cannot be undone by the
  * event that arrives afterwards.
  *
- * Wake phrase spotting stays off until Settings → Wake Up is turned on. Turning
- * on Companion's older `overlay_wakeword` does not start a listener in the main
- * chat. Picovoice Porcupine was the obvious on-device spotter and is not
- * shipped: its license is not Apache-2.0 compatible, it needs an access key and
- * a console-trained keyword for "Hey Nexus", and that cost was not measured on
- * a Quest battery. A host may inject `NEXUS_WAKE_DETECTOR` (`local: true`) and
- * it is the only spotter used. Otherwise, after the opt-in disclosure, a local
- * energy meter runs and one short pass of the already-chosen recognizer checks
- * the phrase — browser Web Speech may send that clip to the browser vendor.
- * Nothing here listens with the tab hidden, the browser closed, or the phone
- * locked.
+ * Two modes share the button and never share the microphone.
+ *
+ *   Tap, while idle: a hands-free conversation. Each finished sentence is sent,
+ *   and after she has finished speaking the same session listens again, until
+ *   Stop or a second tap. The wake phrase is not required inside that session.
+ *   Hold for three seconds, while idle: toggles Wake Word and saves it. That is
+ *   the same switch as Settings. It does not record a sentence. While Wake Word
+ *   is on, the page waits for the name, takes the command that follows, answers,
+ *   and waits for the name again.
+ *
+ * The name is spotted on the device. A local detector injected as
+ * `NEXUS_WAKE_DETECTOR` (`local: true`) is used when one is present. Otherwise
+ * on-device Whisper reads a ring buffer of the microphone and the phrase is
+ * matched in that transcript. The buffer is the pre-roll: "Nexus, what is the
+ * weather" is one window, and the words after the name are the request. Audio
+ * is not streamed to a cloud recognizer to notice the name. Picovoice Porcupine
+ * is the usual engine for this and is not shipped — its license is not
+ * Apache-2.0, and "Nexus" is not a built-in keyword. With no on-device spotter
+ * the tap conversation still works and wake word stays unavailable. Nothing
+ * here listens with the tab hidden, the browser closed, or the phone locked.
  *
  * Exposes: window.NEXUS_VOICE_ACTIVATION
  */
@@ -45,13 +54,20 @@
 
     const DEFAULTS = Object.freeze({
         holdMs: 3000,
-        endSilenceMs: 900,
+        // A pause shorter than this keeps the sentence open. Sustained quiet
+        // at endSilenceMs ends it. Both are starting points, not a measured room.
+        minPauseMs: 800,
+        endSilenceMs: 1000,
         noSpeechMs: 7000,
         maxUtteranceMs: 30000,
         echoGuardMs: 800,
         slopPx: 16,
         phraseCheckMs: 5000,
         respondFallbackMs: 1500,
+        spotWindowMs: 3500,
+        spotStepMs: 1200,
+        ringSeconds: 8,
+        commandFloor: 0.02,
     });
 
     const STORAGE = Object.freeze({
@@ -73,14 +89,15 @@
             wakeTitle: 'WAKE UP',
             wakeToggle: 'Wake word',
             wakeDisclosure:
-                'While this tab is open and visible, NEXUS can listen for the wake phrase. An on-device detector keeps that audio on this device. If this browser has none, one short check uses the speech recognizer you already chose — browser speech recognition can send that clip to the browser’s speech service. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
+                'Wake word stays on this device: the name is recognized here, and audio is not sent away just to notice it. Say “Nexus” and the request that follows is taken, answered, and then NEXUS waits for the name again. A tap starts a hands-free conversation that listens again after each reply, until you end it. Hold the microphone for three seconds to turn wake word on or off. Nothing listens while this tab is hidden, the browser is closed, or the phone is locked. Off until you turn it on.',
             wakePhrase: 'Activation phrase',
             wakePhraseCustom: 'Custom phrase',
             wakeAutosend: 'Auto-send completed speech',
             wakeAutosendHelp:
-                'A three-second hold, Speak and send, or a wake phrase sends the finished sentence. A normal tap still follows Speech-to-text auto-send.',
+                'A finished sentence is sent on its own. A tap starts a conversation; a three-second hold turns wake word on or off.',
             wakeContinuous: 'Continuous conversation',
-            wakeContinuousHelp: 'After a reply, listen for one more sentence. Off by default.',
+            wakeContinuousHelp:
+                'After Nexus replies, a conversation you started with a tap listens for the next question. Wake word still waits for the name.',
             wakeMic: 'Microphone',
             wakeMicGranted: 'Microphone allowed',
             wakeMicDenied: 'Microphone blocked',
@@ -89,14 +106,20 @@
             wakeMicUnsupported: 'This browser has no microphone API',
             wakeTest: 'Test wake word',
             wakeSpeak: 'Speak and send',
-            wakeSpeakHelp: 'Keyboard and switch alternative to holding the microphone for three seconds.',
+            wakeSpeakHelp: 'Starts the same hands-free conversation as a tap on the microphone.',
             wakePause: 'Pause listening',
             wakeResume: 'Resume listening',
             wakeStop: 'Stop listening',
-            wakeHold: 'Keep holding…',
-            wakeRelease: 'Release, then speak',
+            wakeHold: 'Keep holding to switch wake word…',
+            wakeRelease: 'Release to switch wake word',
+            wakeHint: 'Tap for a voice conversation, or hold for 3 seconds to turn wake word on.',
+            wakeOnConfirm: 'Wake word on. Say Nexus.',
+            wakeOffConfirm: 'Wake word off.',
+            conversationOn: 'Conversation on. Listening for your next question after each reply.',
+            conversationOff: 'Conversation ended.',
             wakeListening: 'Listening…',
             wakeTranscribing: 'Transcribing…',
+            wakeSpeaking: 'Speaking…',
             wakeStandby: 'Say the wake phrase',
             wakePaused: 'Wake listening paused',
             wakeOff: 'Wake word is off',
@@ -110,21 +133,22 @@
             wakeTestMiss: 'That was not the wake phrase',
             wakeCompanion:
                 'Companion’s own wake word still runs only inside Companion. Leaving it on does not listen in the main chat.',
-            wakeManual: 'On-device wake detection is not available here. Use Speak and send, or hold the microphone.',
+            wakeManual: 'On-device wake detection is not available here. Tap the microphone for a conversation.',
             wakeError: 'Voice input stopped',
         },
         'it-IT': {
             wakeTitle: 'SVEGLIA',
             wakeToggle: 'Parola di attivazione',
             wakeDisclosure:
-                'Con questa scheda aperta e visibile, NEXUS può ascoltare la frase di attivazione. Un rilevatore sul dispositivo tiene l’audio qui. Se il browser non ne ha uno, un breve controllo usa il riconoscitore già scelto: il riconoscimento del browser può inviare quel frammento al servizio vocale del browser. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
+                'La parola di attivazione resta sul dispositivo: il nome si riconosce qui e l’audio non viene inviato solo per accorgersene. Di’ “Nexus” e la richiesta che segue viene presa, risposta, e poi NEXUS aspetta di nuovo il nome. Un tocco avvia una conversazione a mani libere che riascolta dopo ogni risposta, finché non la chiudi. Tieni premuto il microfono per tre secondi per accendere o spegnere la parola. Non ascolta con la scheda nascosta, il browser chiuso o il telefono bloccato. Resta spento finché non lo attivi.',
             wakePhrase: 'Frase di attivazione',
             wakePhraseCustom: 'Frase personalizzata',
             wakeAutosend: 'Invia automaticamente il parlato concluso',
             wakeAutosendHelp:
-                'Una pressione di tre secondi, Parla e invia, o la frase di attivazione invia la frase finita. Un tocco normale segue ancora l’invio automatico di Speech-to-text.',
+                'La frase finita viene inviata da sola. Un tocco avvia la conversazione; tre secondi accendono o spengono la parola di attivazione.',
             wakeContinuous: 'Conversazione continua',
-            wakeContinuousHelp: 'Dopo una risposta, ascolta un’altra frase. Spento per impostazione predefinita.',
+            wakeContinuousHelp:
+                'Dopo la risposta, una conversazione avviata con un tocco ascolta la domanda successiva. La parola di attivazione aspetta ancora il nome.',
             wakeMic: 'Microfono',
             wakeMicGranted: 'Microfono consentito',
             wakeMicDenied: 'Microfono bloccato',
@@ -133,14 +157,20 @@
             wakeMicUnsupported: 'Questo browser non ha un’API microfono',
             wakeTest: 'Prova la parola di attivazione',
             wakeSpeak: 'Parla e invia',
-            wakeSpeakHelp: 'Alternativa da tastiera e tecnologie assistive alla pressione di tre secondi.',
+            wakeSpeakHelp: 'Avvia la stessa conversazione a mani libere di un tocco sul microfono.',
             wakePause: 'Metti in pausa',
             wakeResume: 'Riprendi l’ascolto',
             wakeStop: 'Interrompi l’ascolto',
-            wakeHold: 'Continua a tenere premuto…',
-            wakeRelease: 'Rilascia, poi parla',
+            wakeHold: 'Tieni premuto per cambiare la parola di attivazione…',
+            wakeRelease: 'Rilascia per cambiare la parola di attivazione',
+            wakeHint: 'Tocca per una conversazione, oppure tieni premuto 3 secondi per la parola di attivazione.',
+            wakeOnConfirm: 'Parola di attivazione attiva. Di’ Nexus.',
+            wakeOffConfirm: 'Parola di attivazione disattivata.',
+            conversationOn: 'Conversazione attiva. In ascolto della prossima domanda dopo ogni risposta.',
+            conversationOff: 'Conversazione chiusa.',
             wakeListening: 'In ascolto…',
             wakeTranscribing: 'Trascrizione…',
+            wakeSpeaking: 'Sta parlando…',
             wakeStandby: 'Di’ la frase di attivazione',
             wakePaused: 'Ascolto in pausa',
             wakeOff: 'Parola di attivazione disattivata',
@@ -154,8 +184,7 @@
             wakeTestMiss: 'Non era la frase di attivazione',
             wakeCompanion:
                 'La parola di attivazione di Companion resta solo dentro Companion. Lasciarla accesa non ascolta nella chat principale.',
-            wakeManual:
-                'Il rilevamento sul dispositivo non è disponibile. Usa Parla e invia, oppure tieni premuto il microfono.',
+            wakeManual: 'Il rilevamento sul dispositivo non è disponibile. Tocca il microfono per una conversazione.',
             wakeError: 'Input vocale interrotto',
         },
     };
@@ -209,12 +238,52 @@
         return -1;
     }
 
-    function defaultPhrase(lang) {
-        return String(lang || '')
-            .toLowerCase()
-            .startsWith('it')
-            ? 'ehi nexus'
-            : 'hey nexus';
+    function defaultPhrase() {
+        // The name is the activation phrase in every language. "Hey Nexus" and
+        // "Ehi Nexus" stay selectable; they are not assumed.
+        return 'nexus';
+    }
+
+    /**
+     * A fixed-capacity float buffer. The spotter transcribes the tail, and the
+     * command that was already in the air when the name was noticed is still
+     * in the tail — that is the pre-roll. Dropping the capture and opening a
+     * new recognizer is how the start of "open my calendar" used to vanish.
+     */
+    function createPcmRing(capacity) {
+        const size = Math.max(1, capacity | 0);
+        const buf = new Float32Array(size);
+        let write = 0;
+        let count = 0;
+        function push(samples) {
+            const src = samples || [];
+            for (let i = 0; i < src.length; i++) {
+                buf[write] = src[i];
+                write = (write + 1) % size;
+                if (count < size) count++;
+            }
+        }
+        function snapshot(maxSamples) {
+            const n = Math.min(count, Math.max(0, maxSamples | 0));
+            const out = new Float32Array(n);
+            const start = (write - n + size) % size;
+            for (let i = 0; i < n; i++) out[i] = buf[(start + i) % size];
+            return out;
+        }
+        return {
+            push: push,
+            snapshot: snapshot,
+            filled: function () {
+                return count;
+            },
+        };
+    }
+
+    function rmsOf(samples) {
+        if (!samples || !samples.length) return 0;
+        let sum = 0;
+        for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+        return Math.sqrt(sum / samples.length);
     }
 
     /**
@@ -244,8 +313,9 @@
     /**
      * Which standby implementation may run. `off` when the person has not
      * opted in — including when only Companion's overlay_wakeword is stored.
-     * Never `continuous-cloud`: a cloud recognizer is not left open to hunt
-     * for the phrase.
+     * Never `continuous-cloud`, and never an energy meter: loudness is not the
+     * name. `local-spotter` transcribes a ring buffer on the device.
+     * `manual-only` means the tap conversation works and the name is not watched.
      */
     function monitorPlan(input) {
         const i = input || {};
@@ -254,7 +324,7 @@
         if (i.speaking) return 'suspended';
         if (i.companionActive) return 'companion';
         if (i.detectorLocal) return 'local-detector';
-        if (i.canVad && i.recognition) return 'vad-then-stt';
+        if (i.localTranscribe) return 'local-spotter';
         return 'manual-only';
     }
 
@@ -263,9 +333,10 @@
      * so a test can advance time without a real pointer.
      *
      * A release before the threshold does not activate and does not swallow
-     * the click that follows — that click is the existing tap. Reaching the
-     * threshold arms; the following pointerup activates and the synthetic
-     * click is swallowed so it cannot toggle the tap recognizer. pointercancel,
+     * the click that follows — that click starts or ends the conversation.
+     * Reaching the threshold arms a wake-word toggle, not a recording; the
+     * synthetic click is swallowed so it cannot also start that conversation.
+     * pointercancel,
      * a drag past the slop, pagehide and disable never activate, and they
      * swallow a click too: a cancelled press must not turn the mic on.
      */
@@ -394,9 +465,13 @@
         let hidden = false;
         let booted = false;
         let monitorOn = false;
+        let manualOpen = false;
+        let sessionMode = null;
         let activeRec = null;
         let phraseRec = null;
         let sessionDone = false;
+        let spotTimer = null;
+        let captureLease = null;
         let vadTimer = null;
         let vadStream = null;
         let vadCtx = null;
@@ -410,7 +485,7 @@
                 phrase: '',
                 phraseCustom: false,
                 autoSend: true,
-                continuous: false,
+                continuous: true,
                 paused: false,
                 migrated: false,
             };
@@ -497,19 +572,27 @@
             const status = global.document.getElementById('recognition-status');
             const btn = global.document.getElementById('listen-btn');
             const feedback = global.document.getElementById('wake-feedback');
+            const ours = owner === 'manual' || owner === 'hold' || owner === 'assist' || owner === 'wake';
             let line = '';
-            if (state === 'LISTENING' && (owner === 'hold' || owner === 'assist' || owner === 'wake')) {
-                line = label('wakeListening');
-            } else if (state === 'TRANSCRIBING') line = label('wakeTranscribing');
+            if (state === 'LISTENING' && ours) line = label(owner === 'manual' ? 'conversationOn' : 'wakeListening');
+            else if (state === 'TRANSCRIBING') line = label('wakeTranscribing');
+            else if (state === 'RESPONDING' && (ours || manualOpen)) line = label('wakeSpeaking');
             else if (state === 'STANDBY' && settings.wakeEnabled) line = label('wakeStandby');
             else if (state === 'PAUSED') line = hidden ? label('wakeHidden') : label('wakePaused');
             else if (state === 'ERROR') line = label('wakeError');
+            else if (state === 'OFF' && !manualOpen) line = label('wakeHint');
             if (status && line && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') status.textContent = line;
             if (feedback && line) feedback.textContent = line;
-            if (btn && (owner === 'hold' || owner === 'assist' || owner === 'wake')) {
-                const live = state === 'LISTENING' || state === 'TRANSCRIBING';
-                btn.classList.toggle('active', live);
-                btn.setAttribute('aria-pressed', live ? 'true' : 'false');
+            if (btn && owner !== 'tap' && owner !== 'vr' && owner !== 'companion') {
+                const listening = state === 'LISTENING' && ours;
+                const processing = state === 'TRANSCRIBING' || (state === 'RESPONDING' && ours);
+                const standby = state === 'STANDBY' && settings.wakeEnabled && !listening;
+                btn.classList.toggle('active', listening);
+                btn.classList.toggle('processing', processing);
+                btn.classList.toggle('wake-standby', standby);
+                btn.setAttribute('aria-pressed', listening || processing || standby ? 'true' : 'false');
+                btn.dataset.wakeTitle = '1';
+                btn.title = label('wakeHint');
             }
             const pauseBtn = global.document.getElementById('wake-pause');
             if (pauseBtn) pauseBtn.textContent = settings.paused ? label('wakeResume') : label('wakePause');
@@ -549,6 +632,27 @@
             return readKey('overlay_wakeword') === 'on';
         }
 
+        function canTranscribeLocal() {
+            try {
+                if (typeof deps.transcribeLocal === 'function') return true;
+                const stt = global.NEXUS_STT;
+                if (!stt || typeof stt.transcribeSamples !== 'function') return false;
+                // SonicAgent is an app-owned recognizer and still a network.
+                // Wake spotting refuses it. The tap conversation may still use it.
+                if (typeof stt.isRemote === 'function' && stt.isRemote()) return false;
+                if (typeof stt.isLocal === 'function') return !!stt.isLocal();
+            } catch (_) {}
+            return false;
+        }
+
+        function transcribeLocal(samples, rate) {
+            if (typeof deps.transcribeLocal === 'function') {
+                return deps.transcribeLocal(samples, rate, { language: language() });
+            }
+            const stt = global.NEXUS_STT;
+            return stt.transcribeSamples(samples, rate, { language: language() });
+        }
+
         function plan() {
             return monitorPlan({
                 enabled: settings.wakeEnabled,
@@ -557,8 +661,7 @@
                 speaking: speaking || depsNow() < echoUntil,
                 companionActive: companionActive,
                 detectorLocal: !!detector(),
-                canVad: canVad(),
-                recognition: !!recognitionClass(),
+                localTranscribe: canTranscribeLocal(),
             });
         }
 
@@ -612,7 +715,9 @@
             const enabled = readKey(STORAGE.enabled) === 'on';
             const storedPhrase = readKey(STORAGE.phrase);
             const autosend = readKey(STORAGE.autosend);
-            const continuous = readKey(STORAGE.continuous) === 'on';
+            const continuousRaw = readKey(STORAGE.continuous);
+            // A new install resumes a tapped conversation. An explicit "off" stays off.
+            const continuous = continuousRaw == null ? true : continuousRaw === 'on';
             const paused = readKey(STORAGE.paused) === 'on';
             settings = {
                 wakeEnabled: enabled,
@@ -723,6 +828,16 @@
             }
             killRec(phraseRec);
             phraseRec = null;
+            if (spotTimer) {
+                clearInterval(spotTimer);
+                spotTimer = null;
+            }
+            if (captureLease) {
+                try {
+                    captureLease.close();
+                } catch (_) {}
+                captureLease = null;
+            }
             stopAllTracks();
         }
 
@@ -773,9 +888,22 @@
                 if (!busy()) setState('OFF');
                 return which;
             }
-            if (which === 'paused' || which === 'suspended') {
+            if (which === 'paused') {
                 stopOwnMonitor();
                 if (!busy()) setState('PAUSED');
+                return which;
+            }
+            if (which === 'suspended') {
+                // She just spoke. Wait out the echo guard, then watch for the
+                // name again. This is not the user's Pause.
+                stopOwnMonitor();
+                const wait = Math.max(0, echoUntil - depsNow());
+                const token = resumeToken;
+                setTimeout(function () {
+                    if (token !== resumeToken) return;
+                    if (!settings.wakeEnabled || settings.paused || hidden || manualOpen || speaking || busy()) return;
+                    armMonitor();
+                }, wait);
                 return which;
             }
             if (which === 'manual-only') {
@@ -801,7 +929,13 @@
             setState('STANDBY');
             owner = 'wake';
             if (which === 'local-detector') startDetector(gen);
-            else startVad(gen);
+            else if (which === 'local-spotter') startLocalSpotter(gen);
+            else {
+                monitorOn = false;
+                owner = null;
+                feedbackKey('wakeManual');
+                setState('OFF');
+            }
             return which;
         }
 
@@ -891,186 +1025,224 @@
             return true;
         }
 
-        function startVad(gen) {
-            if (gen !== wakeGen) return;
-            const md = global.navigator && global.navigator.mediaDevices;
-            if (!md || !md.getUserMedia) {
-                monitorOn = false;
-                feedbackKey('wakeManual');
-                return;
-            }
-            let pending = true;
-            md.getUserMedia({ audio: true })
-                .then(function (stream) {
-                    pending = false;
-                    if (gen !== wakeGen || !settings.wakeEnabled || hidden || settings.paused) {
-                        stopStream(stream);
-                        return;
-                    }
-                    vadStream = stream;
-                    streams.add(stream);
-                    watchEnergy(gen, stream);
-                })
-                .catch(function (err) {
-                    pending = false;
-                    if (gen !== wakeGen) return;
-                    monitorOn = false;
-                    const name = err && (err.name || err.message || '');
-                    if (String(name).indexOf('NotAllowed') !== -1 || String(name).indexOf('Permission') !== -1) {
-                        setState('ERROR');
-                        feedbackKey('wakeDenied');
-                        log('mic-denied');
-                        return;
-                    }
-                    feedbackKey('wakeManual');
-                    setState('OFF');
-                });
-            // If generation moves while the prompt is up, the then() stops the
-            // stream. `pending` is only so a test can see we didn't leak it.
-            void pending;
-        }
-
-        function watchEnergy(gen, stream) {
-            const AC = global.AudioContext || global.webkitAudioContext;
-            if (!AC) {
-                stopStream(stream);
-                feedbackKey('wakeManual');
-                return;
-            }
+        function openCapture(hooks) {
+            const h = hooks || {};
             try {
-                vadCtx = new AC();
-                const src = vadCtx.createMediaStreamSource(stream);
-                const analyser = vadCtx.createAnalyser();
-                analyser.fftSize = 512;
-                src.connect(analyser);
-                const buf = new Uint8Array(analyser.fftSize);
-                let hot = 0;
-                const floor = [];
-                vadTimer = setInterval(function () {
-                    if (gen !== wakeGen || !monitorOn) {
-                        stopAllTracks();
-                        return;
-                    }
-                    if (speaking || depsNow() < echoUntil) {
-                        hot = 0;
-                        return;
-                    }
-                    analyser.getByteTimeDomainData(buf);
-                    let sum = 0;
-                    for (let i = 0; i < buf.length; i++) {
-                        const d = (buf[i] - 128) / 128;
-                        sum += d * d;
-                    }
-                    const rms = Math.sqrt(sum / buf.length);
-                    if (floor.length < 12) {
-                        floor.push(rms);
-                        return;
-                    }
-                    const avg =
-                        floor.reduce(function (a, b) {
-                            return a + b;
-                        }, 0) / floor.length;
-                    const threshold = Math.max(0.02, avg * 3);
-                    if (rms > threshold) hot++;
-                    else hot = Math.max(0, hot - 1);
-                    if (hot >= 3) {
-                        stopAllTracks();
-                        oneShotPhrase(gen);
-                    }
-                }, 80);
-            } catch (_) {
-                stopStream(stream);
-                feedbackKey('wakeManual');
-            }
-        }
-
-        function oneShotPhrase(gen) {
-            if (gen !== wakeGen) return;
-            const SR = recognitionClass();
-            if (!SR) {
-                feedbackKey('wakeUnsupported');
-                monitorOn = false;
-                setState('ERROR');
-                return;
-            }
-            let rec;
-            try {
-                rec = new SR();
-            } catch (_) {
-                setState('ERROR');
-                return;
-            }
-            phraseRec = rec;
-            rec.lang = language();
-            rec.continuous = false;
-            rec.interimResults = true;
-            rec.perfSurface = 'wake-phrase';
-            let settled = false;
-            const finish = function (matched) {
-                if (settled) return;
-                settled = true;
-                killRec(rec);
-                if (phraseRec === rec) phraseRec = null;
-                if (gen !== wakeGen) return;
-                if (!matched && settings.wakeEnabled && !settings.paused && !hidden && !companionActive) {
-                    monitorOn = false;
-                    armMonitor();
+                if (typeof deps.openCapture === 'function') {
+                    return deps.openCapture(h) || { close: function () {} };
                 }
-            };
-            rec.onresult = function (event) {
-                if (gen !== wakeGen || settled) return;
-                const read = readResults(event);
-                if (!read.anyFinal) return;
-                if (isEcho(read.finalText)) {
-                    finish(false);
+                const api = global.NEXUS_MIC_SESSION;
+                const session = api && (typeof api.get === 'function' ? api.get() : api);
+                if (session && typeof session.open === 'function') {
+                    const lease = session.open({
+                        owner: 'wake',
+                        onFrames: function (samples, sampleRate) {
+                            if (h.onFrames) h.onFrames(samples, sampleRate);
+                        },
+                    });
+                    if (lease.ready && typeof lease.ready.then === 'function') {
+                        lease.ready.then(function (r) {
+                            if (r && r.ok) {
+                                if (h.onReady) h.onReady(r);
+                            } else if (h.onError) h.onError(r || { reason: 'unavailable' });
+                        });
+                    }
+                    return {
+                        close: function () {
+                            try {
+                                lease.close('closed');
+                            } catch (_) {}
+                        },
+                    };
+                }
+            } catch (_) {}
+            if (h.onError) h.onError({ reason: 'unsupported' });
+            return { close: function () {} };
+        }
+
+        /**
+         * Wake spotting on one capture. Loudness only decides whether a window
+         * is worth a local transcription and, after the name, when the command
+         * has finished. It never decides that the name was said, and it never
+         * opens the cloud recognizer.
+         */
+        function startLocalSpotter(gen) {
+            if (gen !== wakeGen || !canTranscribeLocal()) {
+                monitorOn = false;
+                owner = null;
+                feedbackKey('wakeManual');
+                setState('OFF');
+                return;
+            }
+            const ring = createPcmRing(DEFAULTS.ringSeconds * 16000);
+            let rate = 16000;
+            let inflight = false;
+            let phase = 'spot';
+            let lastSpot = 0;
+            let silenceMs = 0;
+            let commandHeard = false;
+            let commandWait = 0;
+            let tickPrev = depsNow();
+
+            function closeCapture() {
+                if (spotTimer) {
+                    clearInterval(spotTimer);
+                    spotTimer = null;
+                }
+                if (captureLease) {
+                    try {
+                        captureLease.close();
+                    } catch (_) {}
+                    captureLease = null;
+                }
+            }
+
+            function textOf(res) {
+                if (!res) return '';
+                if (typeof res === 'string') return res;
+                return res.text || res.raw || '';
+            }
+
+            function acceptCommand(command) {
+                phase = 'done';
+                monitorOn = false;
+                closeCapture();
+                sessionMode = 'wake';
+                manualOpen = false;
+                if (!command || isEcho(command)) {
+                    if (settings.wakeEnabled && !settings.paused && !hidden && !companionActive) armMonitor();
                     return;
                 }
-                const hit = matchWake(read.finalText, activePhrase());
+                submitText(command, 'wake');
+            }
+
+            function consider(text) {
+                if (gen !== wakeGen || !monitorOn || phase === 'done') return;
+                if (speaking || isEcho(text)) return;
+                const hit = matchWake(text, activePhrase());
                 const decision = decideWake({
                     enabled: settings.wakeEnabled,
                     paused: settings.paused,
                     hidden: hidden,
                     speaking: speaking,
-                    echo: isEcho(read.finalText),
-                    companionOwnsMic: false,
+                    echo: isEcho(text),
+                    companionOwnsMic: companionActive && owner === 'companion' && busy(),
                     authorized: gen === wakeGen && monitorOn,
                     matched: !!hit,
                     permission: 'granted',
                     command: hit ? hit.command : '',
                 });
-                if (decision.action === 'ignore') return;
-                settled = true;
-                killRec(rec);
-                if (phraseRec === rec) phraseRec = null;
-                monitorOn = false;
-                applyWakeDecision(decision);
-            };
-            rec.onerror = function (event) {
-                if (gen !== wakeGen) return;
-                const code = event && event.error;
-                if (code === 'not-allowed' || code === 'service-not-allowed') {
-                    settled = true;
+                if (!decision || decision.action === 'ignore') return;
+                if (decision.action === 'error') {
+                    phase = 'done';
                     monitorOn = false;
-                    setState('ERROR');
-                    feedbackKey('wakeDenied');
-                    log('mic-denied');
+                    closeCapture();
+                    applyWakeDecision(decision);
                     return;
                 }
-                if (code === 'aborted') return;
-                finish(false);
-            };
-            rec.onend = function () {
-                finish(false);
-            };
-            try {
-                rec.start();
-            } catch (_) {
-                finish(false);
-                return;
+                if (decision.action === 'send-command') {
+                    acceptCommand(decision.command);
+                    return;
+                }
+                // The name alone. Keep this same buffer so the command that
+                // follows is not clipped by opening a second recognizer.
+                phase = 'command';
+                commandHeard = false;
+                silenceMs = 0;
+                commandWait = 0;
+                setState('LISTENING');
+                feedbackKey('wakeListening');
             }
-            setTimeout(function () {
-                if (phraseRec === rec && gen === wakeGen) finish(false);
-            }, DEFAULTS.phraseCheckMs);
+
+            function finishCommand() {
+                if (gen !== wakeGen || phase === 'done') return;
+                phase = 'done';
+                inflight = true;
+                const samples = ring.snapshot(rate * DEFAULTS.ringSeconds);
+                Promise.resolve(transcribeLocal(samples, rate))
+                    .then(function (res) {
+                        inflight = false;
+                        if (gen !== wakeGen) return;
+                        const text = textOf(res);
+                        const hit = matchWake(text, activePhrase());
+                        acceptCommand(hit && hit.command ? hit.command : '');
+                    })
+                    .catch(function () {
+                        inflight = false;
+                        if (gen !== wakeGen) return;
+                        monitorOn = false;
+                        closeCapture();
+                        feedbackKey('wakeError');
+                        setState('ERROR');
+                    });
+            }
+
+            captureLease = openCapture({
+                onFrames: function (samples, sampleRate) {
+                    if (gen !== wakeGen || !monitorOn) return;
+                    if (sampleRate) rate = sampleRate;
+                    ring.push(samples);
+                },
+                onError: function (err) {
+                    if (gen !== wakeGen) return;
+                    monitorOn = false;
+                    closeCapture();
+                    const reason = err && err.reason;
+                    if (reason === 'denied') {
+                        setState('ERROR');
+                        feedbackKey('wakeDenied');
+                        log('mic-denied');
+                        return;
+                    }
+                    owner = null;
+                    feedbackKey('wakeManual');
+                    setState('OFF');
+                },
+            });
+
+            spotTimer = setInterval(function () {
+                if (gen !== wakeGen || !monitorOn || phase === 'done') return;
+                const now = depsNow();
+                const dt = Math.max(0, now - tickPrev);
+                tickPrev = now;
+                if (speaking || now < echoUntil) {
+                    silenceMs = 0;
+                    return;
+                }
+                if (phase === 'command') {
+                    const tail = ring.snapshot(Math.max(1, Math.round(rate * 0.2)));
+                    if (rmsOf(tail) >= DEFAULTS.commandFloor) {
+                        commandHeard = true;
+                        silenceMs = 0;
+                    } else if (commandHeard) {
+                        silenceMs += dt;
+                        if (silenceMs >= DEFAULTS.endSilenceMs) finishCommand();
+                    } else {
+                        commandWait += dt;
+                        if (commandWait >= DEFAULTS.noSpeechMs) {
+                            phase = 'spot';
+                            commandWait = 0;
+                            setState('STANDBY');
+                            feedbackKey('wakeStandby');
+                        }
+                    }
+                    return;
+                }
+                if (inflight || now - lastSpot < DEFAULTS.spotStepMs) return;
+                lastSpot = now;
+                const windowSamples = ring.snapshot(Math.round(rate * (DEFAULTS.spotWindowMs / 1000)));
+                if (!windowSamples.length || rmsOf(windowSamples) < DEFAULTS.commandFloor) return;
+                inflight = true;
+                Promise.resolve(transcribeLocal(windowSamples, rate))
+                    .then(function (res) {
+                        inflight = false;
+                        if (gen !== wakeGen || phase !== 'spot') return;
+                        consider(textOf(res));
+                    })
+                    .catch(function () {
+                        inflight = false;
+                    });
+            }, 200);
         }
 
         function readResults(event) {
@@ -1224,6 +1396,7 @@
                 if (activeRec === rec) activeRec = null;
                 killRec(rec);
                 if (reason === 'not-allowed') {
+                    manualOpen = false;
                     setState('ERROR');
                     feedbackKey('wakeDenied');
                     log('mic-denied');
@@ -1231,11 +1404,31 @@
                     stopOwnMonitor();
                     return;
                 }
+                if (
+                    manualOpen &&
+                    settings.continuous &&
+                    (reason === 'echo' || reason === 'no-speech' || reason === 'empty') &&
+                    !hidden &&
+                    !settings.paused
+                ) {
+                    owner = 'manual';
+                    const token = ++resumeToken;
+                    const wait = reason === 'echo' ? Math.max(300, echoUntil - depsNow()) : 400;
+                    setTimeout(function () {
+                        if (token !== resumeToken || !manualOpen) return;
+                        if (speaking || depsNow() < echoUntil) return;
+                        captureUtterance({ owner: 'manual', deliver: 'send' });
+                    }, wait);
+                    return;
+                }
                 if (reason === 'echo') {
                     /* not a failure and not a turn */
                 } else if (reason === 'no-speech' || reason === 'empty') feedbackKey('wakeNoSpeech');
                 else feedbackKey('wakeError');
                 owner = null;
+                if (reason === 'echo' || reason === 'no-speech' || reason === 'empty' || reason === 'error') {
+                    manualOpen = false;
+                }
                 if (settings.wakeEnabled && !settings.paused && !hidden && !companionActive && reason !== 'error') {
                     setState('OFF');
                     armMonitor();
@@ -1421,20 +1614,25 @@
         function finishResponse(sentOwner) {
             if (state !== 'RESPONDING' && state !== 'SENDING') return;
             resumeToken++;
-            const who = sentOwner || owner;
-            const cont = settings.continuous && (who === 'wake' || who === 'hold' || who === 'assist');
-            if (cont && !hidden && !settings.paused) {
+            const who = sentOwner || owner || (manualOpen ? 'manual' : null);
+            // Wake word always returns to the name. A tapped conversation is the
+            // one that listens again, and only while that session is still open.
+            const manualContinues =
+                manualOpen && settings.continuous && who === 'manual' && !hidden && !settings.paused;
+            if (manualContinues) {
                 const wait = Math.max(0, echoUntil - depsNow());
                 const token = resumeToken;
                 setTimeout(function () {
-                    if (token !== resumeToken) return;
+                    if (token !== resumeToken || !manualOpen) return;
                     if (speaking || depsNow() < echoUntil) return;
-                    captureUtterance({ owner: who, deliver: 'send' });
+                    captureUtterance({ owner: 'manual', deliver: 'send' });
                 }, wait);
                 return;
             }
+            if (who === 'manual') manualOpen = false;
+            sessionMode = null;
             owner = null;
-            if (settings.wakeEnabled && !settings.paused && !hidden && !companionActive) {
+            if (settings.wakeEnabled && !manualOpen && !settings.paused && !hidden && !companionActive) {
                 setState('OFF');
                 armMonitor();
             } else {
@@ -1446,13 +1644,15 @@
             resumeToken++;
             sessionGen++;
             sessionDone = true;
+            manualOpen = false;
+            sessionMode = null;
             const rec = activeRec;
             activeRec = null;
             killRec(rec);
             stopOwnMonitor();
             const who = owner;
             owner = null;
-            if (reason === 'user-stop' || reason === 'disabled') {
+            if (reason === 'user-stop' || reason === 'disabled' || reason === 'conversation-end') {
                 setState('OFF');
                 return who;
             }
@@ -1470,13 +1670,23 @@
             if (speaking) {
                 echoUntil = depsNow() + DEFAULTS.echoGuardMs;
                 if (owner === 'wake' || monitorOn) stopOwnMonitor();
-                if (state === 'SENDING' || state === 'RESPONDING') setState('RESPONDING');
+                // Her voice is not the next question. Drop the open mic and
+                // keep a tapped conversation so it can listen when she stops.
+                if (manualOpen && (state === 'LISTENING' || state === 'TRANSCRIBING' || owner === 'manual')) {
+                    sessionGen++;
+                    sessionDone = true;
+                    const rec = activeRec;
+                    activeRec = null;
+                    killRec(rec);
+                    owner = 'manual';
+                }
+                if (state === 'SENDING' || state === 'RESPONDING' || manualOpen) setState('RESPONDING');
                 return;
             }
             if (!was) return;
             echoUntil = depsNow() + DEFAULTS.echoGuardMs;
-            if (state === 'RESPONDING') finishResponse(owner);
-            else if (settings.wakeEnabled && !settings.paused && !hidden && !busy()) armMonitor();
+            if (state === 'RESPONDING') finishResponse(owner || (manualOpen ? 'manual' : null));
+            else if (settings.wakeEnabled && !settings.paused && !hidden && !busy() && !manualOpen) armMonitor();
         }
 
         function noteSpoken(text) {
@@ -1533,12 +1743,71 @@
             syncPanel();
         }
 
+        function idleForWakeToggle() {
+            if (manualOpen) return false;
+            if (busy() && owner && owner !== 'wake') return false;
+            return true;
+        }
+
+        function toggleWakeFromHold() {
+            if (!idleForWakeToggle()) {
+                feedbackKey('wakeBusy');
+                return false;
+            }
+            const next = !settings.wakeEnabled;
+            setWakeEnabled(next);
+            // "Say Nexus" is only honest when a local spotter is actually running.
+            if (next && plan() === 'manual-only') feedbackKey('wakeManual');
+            else feedbackKey(next ? 'wakeOnConfirm' : 'wakeOffConfirm');
+            return next;
+        }
+
+        function startConversation() {
+            if (busy() && owner && owner !== 'manual' && owner !== 'wake') {
+                feedbackKey('wakeBusy');
+                return false;
+            }
+            stopOwnMonitor();
+            if (owner === 'wake') owner = null;
+            manualOpen = true;
+            sessionMode = 'manual';
+            try {
+                if (typeof deps.stopTap === 'function') deps.stopTap();
+            } catch (_) {}
+            const ok = captureUtterance({ owner: 'manual', deliver: 'send' });
+            if (!ok) {
+                manualOpen = false;
+                sessionMode = null;
+                return false;
+            }
+            feedbackKey('conversationOn');
+            return true;
+        }
+
+        function endConversation() {
+            const keepWake = settings.wakeEnabled && !settings.paused && !hidden && !companionActive;
+            manualOpen = false;
+            sessionMode = null;
+            cancel(keepWake ? 'conversation-end' : 'user-stop');
+            if (keepWake) armMonitor();
+            feedbackKey(keepWake ? 'wakeStandby' : 'conversationOff');
+            return true;
+        }
+
+        function micTap() {
+            if (manualOpen) return endConversation();
+            return startConversation();
+        }
+
         function stopListening() {
-            settings.wakeEnabled = false;
-            settings.paused = false;
-            persist();
+            // Stop closes the conversation. It does not forget a saved wake word:
+            // the hold and the checkbox are that switch. With the conversation
+            // closed and wake word saved, standby starts again.
+            if (manualOpen) return endConversation();
+            if (settings.wakeEnabled && !settings.paused) return pause();
             cancel('user-stop');
             syncPanel();
+            return true;
         }
 
         function onCompanionActive(active) {
@@ -1576,14 +1845,8 @@
         }
 
         function speakAndSend() {
-            if (busy() && owner && owner !== 'assist') {
-                feedbackKey('wakeBusy');
-                return false;
-            }
-            try {
-                if (typeof deps.stopTap === 'function') deps.stopTap();
-            } catch (_) {}
-            return captureUtterance({ owner: 'assist', deliver: 'send' });
+            if (manualOpen) return true;
+            return startConversation();
         }
 
         function holdCapture() {
@@ -1631,7 +1894,7 @@
                 visuals('clear');
                 if (result.action === 'activate') {
                     if (typeof h.onActivate === 'function') h.onActivate();
-                    else holdCapture();
+                    else toggleWakeFromHold();
                     return;
                 }
                 if (result.action === 'cancel' || result.action === 'drag-cancel') {
@@ -1703,6 +1966,7 @@
                         return;
                     }
                     if (typeof h.onTap === 'function') h.onTap(e);
+                    else micTap();
                 },
                 true
             );
@@ -1934,6 +2198,15 @@
             pause: pause,
             resume: resume,
             stopListening: stopListening,
+            micTap: micTap,
+            startConversation: startConversation,
+            endConversation: endConversation,
+            toggleWakeFromHold: toggleWakeFromHold,
+            mode: function () {
+                if (manualOpen) return 'manual';
+                if (settings.wakeEnabled && !settings.paused && !hidden) return 'wake';
+                return 'idle';
+            },
             sync: sync,
             plan: plan,
             captureUtterance: captureUtterance,
@@ -1972,6 +2245,8 @@
     singleton.norm = norm;
     singleton.labelsFor = labelsFor;
     singleton.defaultPhrase = defaultPhrase;
+    singleton.createPcmRing = createPcmRing;
+    singleton.rmsOf = rmsOf;
     singleton.STORAGE = STORAGE;
 
     if (typeof module !== 'undefined' && module.exports) module.exports = singleton;

@@ -10,22 +10,25 @@ States: `OFF → STANDBY → LISTENING → TRANSCRIBING → SENDING → RESPONDI
 plus `PAUSED` and `ERROR`. A generation id is bumped on cancel. A callback from
 an older generation cannot call `start()` again.
 
-## Hold
+## The button
 
-`pointerdown` starts a 3000 ms timer. Release earlier leaves the click alone,
-and that click is the existing tap (`toggleVoiceInput`). At 3000 ms the button
-gets `hold-armed` (an outline in `currentColor`, not a new bar color). Release
-then opens one utterance. `pointercancel`, a drag past 16 px, `pagehide` and a
-disabled control cancel and swallow the click that would otherwise toggle the
-tap. Keyboard Space/Enter uses the same timer. Settings → Wake Up → **Speak
-and send** is the switch/keyboard path that does not require a hold.
+A short tap starts a hands-free conversation (`micTap`). Finished speech is
+sent once through `handleUserMessage`. After the spoken reply ends, the same
+session listens again until a second tap or Stop. Wake word is not required
+inside that session. Continuous conversation defaults on; turning it off makes
+the tap a single turn.
 
-Endpoint defaults, not device-measured: 900 ms of silence, 7 s with no speech
-at all, 30 s maximum. Only a non-empty final transcript is submitted, once,
-through `handleUserMessage`. Interim text may sit in the field. Confidence is
-not a gate — Whisper and SonicAgent often have none. The tap path still uses
-`SpeechSettings.autoSend` and its 80% rule. The new auto-send checkbox
-defaults on and applies to hold, Speak and send, and wake only.
+Holding the button for 3000 ms, while that conversation is not open, toggles
+Wake Word and writes `nexus_wake_enabled`. That is the same switch as
+Settings. The hold does not record. Release before 3000 ms is the tap.
+`pointercancel`, a drag past 16 px, `pagehide` and a disabled control cancel
+and swallow the click. The outline uses `currentColor`. Idle green and
+listening orange are unchanged. `wake-standby` is the visible “microphone is
+hot” mark while the name is being watched.
+
+Endpoint defaults, not device-measured: a pause under 800 ms stays open,
+about 1000 ms of quiet ends the turn, 7 s with no speech at all, 30 s
+maximum. Interim text is not sent. Confidence is not a gate.
 
 ## Wake word
 
@@ -47,13 +50,18 @@ and **not** shipped:
 - Multilingual custom keywords are a paid console feature.
 - Always-on CPU and battery cost was not measured on Quest.
 
-`window.NEXUS_WAKE_DETECTOR` may be injected later if `local: true` and it
-implements `start` / `stop`. Anything that is not marked local is refused.
-Without that detector, and only after the opt-in, a local energy meter runs
-(audio is not played out) and **one** short pass of the already chosen
-recognizer checks the phrase. That pass is not left open. Browser Web Speech
-may send the clip to the browser vendor; on-device Whisper does not. There is
-no mode that streams the room to a model just to spot the phrase.
+`window.NEXUS_WAKE_DETECTOR` may be injected if `local: true` and it implements
+`start` / `stop`. Anything not marked local is refused. Without that detector,
+and only when on-device Whisper is the selected engine, a ring buffer of the
+microphone is transcribed locally and the name is matched in that text. The
+buffer is the pre-roll, so “Nexus, open my calendar” is not split across two
+captures. Loudness does not count as the name, and browser or SonicAgent
+audio is not sent away to hunt for it. If neither a local detector nor
+on-device Whisper is available, wake word stays unavailable and the tap
+conversation still works.
+
+After a wake command is answered, the page waits for the name again. It does
+not keep a conversation open.
 
 Her own TTS cannot wake her: `noteSpeaking` / `noteSpoken` from `setStatus` and
 `speakText`, plus an echo guard of about 800 ms.
@@ -71,10 +79,10 @@ headset, a phone, or a laptop microphone, and it does not claim:
   `continuous: false` if `start()` throws)
 - Quest Browser's built-in recognizer hearing anything (it still does not;
   on-device Whisper remains the recognizer when that provider is selected)
-- a calibrated 900 / 7000 / 30000 ms on real rooms — those are the initial
-  defaults (`DEFAULTS` in `src/stt/VoiceActivation.js`). Whisper's own
-  endpointer is already 900 ms of silence and about 28 s maximum; the
-  controller also stops a silent session at 7 s.
+- a calibrated 800 / 1000 / 7000 / 30000 ms on real rooms — those are the
+  initial defaults (`DEFAULTS` in `src/stt/VoiceActivation.js`). Whisper's own
+  endpointer is already about 900 ms of silence and about 28 s maximum; the
+  controller also stops a silent command at 7 s.
 
-Manual fallback when there is no microphone, no Web Audio meter, and no local
-detector: the existing tap, and **Speak and send**.
+When this browser cannot spot the name on the device, the tap and **Speak and
+send** still start the hands-free conversation.

@@ -2233,7 +2233,7 @@ function setupEventListeners() {
                     );
                 },
             });
-            voiceActivation.attachHold(listenBtn, { onTap: () => toggleVoiceInput() });
+            voiceActivation.attachHold(listenBtn, { onTap: () => voiceActivation.micTap() });
         } else {
             listenBtn.addEventListener('click', toggleVoiceInput);
         }

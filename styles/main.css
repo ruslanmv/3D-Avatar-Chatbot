@@ -820,6 +820,18 @@ body {
     animation: wakeHoldPulse 1s ease-in-out infinite;
 }
 
+/* WU. Standby, listening and processing are distinguishable. Idle green and
+   listening orange stay the colors already approved for this button. */
+.voice-btn-compact.wake-standby {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.voice-btn-compact.processing {
+    outline: 2px dashed currentColor;
+    outline-offset: 2px;
+}
+
 @keyframes wakeHoldPulse {
     0%,
     100% {

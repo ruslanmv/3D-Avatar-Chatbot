@@ -241,10 +241,10 @@ describe('WU utterance completion', () => {
         const rec = recs[0];
         expect(rec.continuous).toBe(true);
         rec.onresult(interimEvent('hel'));
-        jest.advanceTimersByTime(899);
+        jest.advanceTimersByTime(999);
         expect(sends).toEqual([]);
         rec.onresult(finalEvent('hello there', 0));
-        jest.advanceTimersByTime(899);
+        jest.advanceTimersByTime(999);
         expect(sends).toEqual([]);
         jest.advanceTimersByTime(1);
         expect(sends).toEqual(['hello there']);
@@ -256,7 +256,7 @@ describe('WU utterance completion', () => {
         const { va, sends, recs } = harness({});
         va.captureUtterance({ owner: 'hold' });
         recs[0].onresult(interimEvent('almost'));
-        jest.advanceTimersByTime(900);
+        jest.advanceTimersByTime(1000);
         expect(sends).toEqual([]);
         expect(recs[0].stopped).toBe(true);
     });
@@ -317,7 +317,7 @@ describe('WU auto-send setting', () => {
         va.setAutoSend(false);
         va.captureUtterance({ owner: 'hold' });
         recs[0].onresult(finalEvent('hold this', 0.99));
-        jest.advanceTimersByTime(900);
+        jest.advanceTimersByTime(1000);
         expect(sends).toEqual([]);
         expect(filled).toContain('hold this');
     });
@@ -330,10 +330,12 @@ describe('WU wake policy', () => {
         expect(VA.monitorPlan({ enabled: true, hidden: true })).toBe('paused');
         expect(VA.monitorPlan({ enabled: true, speaking: true, detectorLocal: true })).toBe('suspended');
         expect(VA.monitorPlan({ enabled: true, companionActive: true, detectorLocal: true })).toBe('companion');
-        expect(VA.monitorPlan({ enabled: true, detectorLocal: true })).toBe('local-detector');
-        expect(VA.monitorPlan({ enabled: true, canVad: true, recognition: true })).toBe('vad-then-stt');
+        expect(VA.monitorPlan({ enabled: true, detectorLocal: true, localTranscribe: true })).toBe('local-detector');
+        expect(VA.monitorPlan({ enabled: true, localTranscribe: true })).toBe('local-spotter');
+        expect(VA.monitorPlan({ enabled: true, canVad: true, recognition: true })).toBe('manual-only');
         expect(VA.monitorPlan({ enabled: true })).toBe('manual-only');
         expect(VA.monitorPlan({ enabled: true, detectorLocal: true })).not.toBe('continuous-cloud');
+        expect(VA.monitorPlan({ enabled: true, canVad: true, recognition: true })).not.toBe('vad-then-stt');
     });
 
     test('a wake hit is ignored when disabled, paused, hidden, echoing, unauthorized, or unmatched', () => {
@@ -480,8 +482,8 @@ describe('WU settings', () => {
         expect(en.wakeListening).not.toBe(it.wakeListening);
         expect(en.wakeTitle).toBe('WAKE UP');
         expect(it.wakeSpeak).toMatch(/Parla/);
-        expect(VA.defaultPhrase('en-US')).toBe('hey nexus');
-        expect(VA.defaultPhrase('it-IT')).toBe('ehi nexus');
+        expect(VA.defaultPhrase('en-US')).toBe('nexus');
+        expect(VA.defaultPhrase('it-IT')).toBe('nexus');
         const english = harness({ language: () => 'en-GB' });
         english.va.captureUtterance({ owner: 'assist' });
         expect(english.recs[0].lang).toBe('en-GB');
@@ -490,7 +492,7 @@ describe('WU settings', () => {
         italian.va.captureUtterance({ owner: 'assist' });
         expect(italian.recs[0].lang).toBe('it-IT');
         italian.va.cancel('hidden');
-        expect(italian.va.settings().phrase).toBe('ehi nexus');
+        expect(italian.va.settings().phrase).toBe('nexus');
         expect(italian.va.label('wakeStandby')).toBe(it.wakeStandby);
     });
 });
@@ -532,6 +534,7 @@ describe('WU arbitration and privacy', () => {
         const vr = fs.readFileSync(path.join(root, 'src/gltf-viewer/VRChatIntegration.js'), 'utf8');
         expect(main).toMatch(/send: \(text\) => handleUserMessage\(text\)/);
         expect(main).toMatch(/voiceActivation\.attachHold\(listenBtn/);
+        expect(main).toMatch(/voiceActivation\.micTap\(\)/);
         expect(main).toMatch(/function startVoiceInput\(\)/);
         expect(html).toMatch(/id="wake-up-section"/);
         expect(html).toMatch(/src="src\/stt\/VoiceActivation\.js"/);
@@ -540,5 +543,182 @@ describe('WU arbitration and privacy', () => {
         expect(vr).toMatch(/release\?\.\('vr'\)/);
         // Private turns still enter through the conversation surface inside handleUserMessage.
         expect(main).toMatch(/function handleUserMessage\(text\) \{[\s\S]*?_surface\(\)\.renderUser\(text\)/);
+    });
+});
+
+describe('WU alexa modes', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => {
+        jest.useRealTimers();
+        document.body.innerHTML = '';
+    });
+
+    function loud(n) {
+        const a = new Float32Array(n);
+        for (let i = 0; i < n; i++) a[i] = 0.25;
+        return a;
+    }
+
+    test('a three-second hold toggles the saved wake word and does not record', () => {
+        const { va, storage, recs } = harness({});
+        const btn = document.createElement('button');
+        document.body.appendChild(btn);
+        va.attachHold(btn);
+        const down = () => {
+            const event = new Event('pointerdown', { bubbles: true });
+            event.pointerId = 1;
+            event.button = 0;
+            event.clientX = 0;
+            event.clientY = 0;
+            btn.dispatchEvent(event);
+        };
+        const up = () => {
+            const event = new Event('pointerup', { bubbles: true });
+            event.pointerId = 1;
+            event.button = 0;
+            btn.dispatchEvent(event);
+            btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        };
+        down();
+        jest.advanceTimersByTime(3000);
+        up();
+        expect(va.wakeEnabled()).toBe(true);
+        expect(storage.getItem('nexus_wake_enabled')).toBe('on');
+        expect(recs).toHaveLength(0);
+        expect(va.plan()).toBe('manual-only');
+        down();
+        jest.advanceTimersByTime(3000);
+        up();
+        expect(va.wakeEnabled()).toBe(false);
+        expect(storage.getItem('nexus_wake_enabled')).toBe('off');
+        expect(recs).toHaveLength(0);
+    });
+
+    test('a tap starts a conversation that listens again after the reply', () => {
+        const { va, sends, recs } = harness({});
+        expect(va.settings().continuous).toBe(true);
+        expect(va.micTap()).toBe(true);
+        expect(va.mode()).toBe('manual');
+        expect(va.owner()).toBe('manual');
+        recs[0].onresult(finalEvent('explain black holes', 0.2));
+        jest.advanceTimersByTime(1000);
+        expect(sends).toEqual(['explain black holes']);
+        va.noteSpeaking(true);
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(800);
+        expect(recs).toHaveLength(2);
+        expect(va.mode()).toBe('manual');
+        expect(va.owner()).toBe('manual');
+        va.micTap();
+        expect(va.mode()).toBe('idle');
+        expect(va.state()).toBe('OFF');
+    });
+
+    test('wake word returns to the name after a reply and does not keep the conversation open', () => {
+        const starts = [];
+        const detector = {
+            local: true,
+            start(hooks) {
+                starts.push(hooks);
+            },
+            stop() {},
+        };
+        const { va, recs, sends } = harness({ detector: () => detector });
+        va.setWakeEnabled(true);
+        starts[0].onWake({ transcript: 'nexus what is the weather today' });
+        expect(sends).toEqual(['what is the weather today']);
+        expect(recs).toHaveLength(0);
+        va.noteSpeaking(true);
+        va.noteSpeaking(false);
+        jest.advanceTimersByTime(800);
+        expect(recs).toHaveLength(0);
+        expect(va.mode()).toBe('wake');
+        expect(va.state()).toBe('STANDBY');
+        expect(starts.length).toBeGreaterThan(1);
+    });
+
+    test('a local spotter sends the words after the name and ignores other noise', async () => {
+        const transcripts = ['the door slammed', 'nexus what is the weather today'];
+        let pushes = null;
+        const { va, sends, recs } = harness({
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal() {
+                return { text: transcripts.shift() || '' };
+            },
+        });
+        va.setWakeEnabled(true);
+        expect(va.plan()).toBe('local-spotter');
+        pushes(loud(16000));
+        await jest.advanceTimersByTimeAsync(200);
+        expect(sends).toEqual([]);
+        expect(recs).toHaveLength(0);
+        pushes(loud(16000));
+        await jest.advanceTimersByTimeAsync(1200);
+        expect(sends).toEqual(['what is the weather today']);
+        expect(recs).toHaveLength(0);
+    });
+
+    test('phrase-only keeps the same capture until the command finishes', async () => {
+        const transcripts = ['nexus', 'nexus open my calendar'];
+        let pushes = null;
+        const { va, sends, recs } = harness({
+            openCapture(hooks) {
+                pushes = hooks.onFrames;
+                return { close() {} };
+            },
+            transcribeLocal() {
+                return { text: transcripts.shift() || '' };
+            },
+        });
+        va.setWakeEnabled(true);
+        pushes(loud(16000));
+        await jest.advanceTimersByTimeAsync(200);
+        expect(va.state()).toBe('LISTENING');
+        expect(sends).toEqual([]);
+        pushes(loud(8000));
+        await jest.advanceTimersByTimeAsync(200);
+        pushes(new Float32Array(4000));
+        await jest.advanceTimersByTimeAsync(1000);
+        expect(sends).toEqual(['open my calendar']);
+        expect(recs).toHaveLength(0);
+    });
+
+    test('a recognizer error ends the conversation so a later hold can toggle wake word', () => {
+        const { va } = harness({
+            recognitionClass() {
+                return class Bad {
+                    start() {
+                        if (this.onerror) this.onerror({ error: 'audio-capture' });
+                        if (this.onend) this.onend();
+                    }
+                    stop() {}
+                    abort() {}
+                };
+            },
+        });
+        expect(va.micTap()).toBe(true);
+        expect(va.mode()).toBe('idle');
+        expect(va.state()).toBe('ERROR');
+        expect(va.toggleWakeFromHold()).toBe(true);
+        expect(va.wakeEnabled()).toBe(true);
+    });
+
+    test('wake spotting does not open when the microphone permission is denied', () => {
+        const { va, sends, recs } = harness({
+            openCapture(hooks) {
+                hooks.onError({ reason: 'denied' });
+                return { close() {} };
+            },
+            transcribeLocal() {
+                return { text: 'nexus hello' };
+            },
+        });
+        va.setWakeEnabled(true);
+        expect(va.state()).toBe('ERROR');
+        expect(sends).toEqual([]);
+        expect(recs).toHaveLength(0);
     });
 });
