@@ -29,9 +29,7 @@
       "tier": "pending",
       "license": "BOOTH-credit-no-extract",
       "status": "playback-ok-dev-only",
-      "removed_failed": [
-        "VRMA_02.vrma"
-      ],
+      "removed_failed": ["VRMA_02.vrma"],
       "path": "develop/addons/pending/vrma-booth-vroid/ok"
     },
     {

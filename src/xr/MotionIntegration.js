@@ -1322,7 +1322,8 @@ const MotionIntegration = (() => {
             types = policy.allowedTypes(parser.ALLOWED_TYPES, _policyCtx());
         }
 
-        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips, types);
+        const guide = _clips() && _clips().gestureGuide ? _clips().gestureGuide(clips) : [];
+        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips, types, guide);
     }
 
     // ── Lifecycle ───────────────────────────────────────────────────────

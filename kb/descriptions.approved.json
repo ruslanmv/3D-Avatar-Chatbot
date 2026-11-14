@@ -2,9 +2,9 @@
   "$comment": "Review ledger for the KB descriptions. An entry means a person read that exact description and signed it off; the hash is the first 16 hex of sha256(description), so editing a line silently un-approves it. Add entries as { \"<id>\": { \"sha256\": \"…\", \"by\": \"…\", \"at\": \"YYYY-MM-DD\" } }.",
   "policy": "kb/scripts/validate-manifest.mjs --require-approval fails while anything is pending. CI does not run that flag yet: the drafts below are machine-written and have not been through human review, and saying so is better than a gate that quietly passes.",
   "counts": {
-    "total": 167,
+    "total": 178,
     "approved": 0,
-    "pending": 167
+    "pending": 178
   },
   "approved": {},
   "pending": [
@@ -165,15 +165,26 @@
     "vrma_vrma_angry",
     "vrma_vrma_blush",
     "vrma_vrma_clapping",
+    "vrma_vrma_explain",
+    "vrma_vrma_finger_gun",
     "vrma_vrma_goodbye",
+    "vrma_vrma_hand_on_heart",
     "vrma_vrma_idle_loop",
     "vrma_vrma_jump",
     "vrma_vrma_lookaround",
+    "vrma_vrma_model_pose",
+    "vrma_vrma_open_arms",
+    "vrma_vrma_peace_sign",
+    "vrma_vrma_playful_dip",
+    "vrma_vrma_present",
     "vrma_vrma_relax",
     "vrma_vrma_sad",
+    "vrma_vrma_show_outfit",
     "vrma_vrma_sleepy",
+    "vrma_vrma_spin",
     "vrma_vrma_surprised",
     "vrma_vrma_thinking",
+    "vrma_vrma_turn_aside",
     "vrma_vrma_waiting_standard"
   ]
 }

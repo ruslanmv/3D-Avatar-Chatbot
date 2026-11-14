@@ -115,13 +115,17 @@ const BASELINE_RULES = [
     'goodbye', // MO9 — the tk256 VRMA gestures
     'jump', // MO9
     'look_around', // MO9
+    'peace_sign', // MO10 — BOOTH VRoid gestures
+    'spin', // MO10
+    'model_pose', // MO10
+    'show_outfit', // MO10
     'bow',
     'nod_yes',
     'backflip',
 ];
 
 describe('baseline: IntentFastPath', () => {
-    test('the rule set is exactly these 22 labels, in this order', () => {
+    test('the rule set is exactly these 26 labels, in this order', () => {
         expect(FastPath.RULES.map((r) => r.label)).toEqual(BASELINE_RULES);
     });
 
@@ -139,6 +143,10 @@ describe('baseline: IntentFastPath', () => {
             ['bye', 'goodbye'],
             ['look around', 'look_around'],
             ['jump', 'jump'],
+            ['peace sign', 'peace_sign'],
+            ['twirl', 'spin'],
+            ['strike a pose', 'model_pose'],
+            ['show me your outfit', 'show_outfit'],
         ];
         for (const [utterance, label] of cases) {
             const hit = FastPath.match(utterance);
@@ -176,16 +184,18 @@ describe('baseline: IntentFastPath', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('baseline: MotionClipMap', () => {
-    test('31 entries and 31 aliases resolve today', () => {
+    test('42 entries and 46 aliases resolve today', () => {
         // +raise_hand in B4; +lay/lay_idle and eight laying phrasings when the
         // laying POSTURE landed.
-        expect(Object.keys(Clips.ENTRIES)).toHaveLength(31); // MO9: goodbye, look_around, blush, sleepy, jump
-        expect(Object.keys(Clips.ALIASES)).toHaveLength(31);
+        expect(Object.keys(Clips.ENTRIES)).toHaveLength(42); // MO9 tk256 five + MO10 BOOTH six, mocopi five
+        expect(Object.keys(Clips.ALIASES)).toHaveLength(46);
     });
 
-    test('25 names are advertised to the model — every *_idle and every unperformable name is withheld', () => {
+    test('36 names are advertised to the model — every *_idle and every unperformable name is withheld', () => {
         const names = Clips.availableNames();
-        expect(names).toHaveLength(25);
+        expect(names).toHaveLength(36);
+        // MO10. Every advertised name carries a when-to-use hint for the model.
+        for (const n of names) expect(Clips.USE[n]).toBeTruthy();
         // MO7. backflip's only clip is quarantined (it floats her out of frame) and nothing stands
         // in for it, so the model is not offered a gesture her body cannot do.
         expect(names).not.toContain('backflip');

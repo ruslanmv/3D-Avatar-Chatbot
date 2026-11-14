@@ -20,6 +20,17 @@ copyright notices: [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
 | `Jump.vrma`             | `jump` gesture, `surprised` emotion fallback                      |
 | `LookAround.vrma`       | `look_around` gesture, `thinking` emotion fallback                |
 | `Sleepy.vrma`           | `sleepy` gesture ("I'm tired")                                    |
+| `show_outfit.vrma` | `show_outfit` — "show me your outfit" (BOOTH VRoid) |
+| `peace_sign.vrma` | `peace_sign` — "peace sign" (BOOTH VRoid) |
+| `finger_gun.vrma` | `finger_gun` (BOOTH VRoid) |
+| `spin.vrma` | `spin` — "spin", "twirl" (BOOTH VRoid) |
+| `model_pose.vrma` | `model_pose` — "strike a pose" (BOOTH VRoid) |
+| `playful_dip.vrma` | `playful_dip` (BOOTH VRoid “Squat”) |
+| `turn_aside.vrma` | `turn_aside` (mocopi) |
+| `open_arms.vrma` | `open_arms` — welcome (mocopi) |
+| `hand_on_heart.vrma` | `hand_on_heart` — sincere (mocopi) |
+| `explain.vrma` | `explain` — talking with her hands (mocopi) |
+| `present.vrma` | `present` — "look at this" (mocopi) |
 
 ## Why six of these were "inactive" until MO8
 
@@ -34,11 +45,22 @@ read as 0, height scaling fell back to ×1, and the clip's absolute hips height
 the five "active" clips too. `src/VRMAAnimationLoader.js` (MO8) now reads the
 index directly and scales to the avatar's recorded rest height.
 
+## Rotated rest poses (MO10)
+
+The BOOTH Spin, Model pose and Squat clips keep their hips under a `root` node
+with a ~120° rest rotation. Played as raw tracks they tipped her over sideways
+with her hips still at standing height. The loader now converts every bone track
+out of the clip's own rest frame (`parentRest · track · rest⁻¹`, as
+@pixiv/three-vrm-animation does) — the identity for every other clip here.
+
+Clips that failed review are tagged in `develop/NEEDS_FIX.md`.
+
 ## Before adding a clip
 
 1. Stage it under `develop/addons/stable/` and run
    `node develop/verification/audit-additive.mjs` (exit 0, all ok).
-2. Measure it on more than one avatar height — a clip that is fine on
+2. **Look at the frames**, not only the numbers: hips height missed both a
+   sideways tilt and a leg flip. Measure it on more than one avatar height — a clip that is fine on
    AvatarSample_A can float or sink elsewhere. `node tools/qa/animation-audit.mjs
    --play --avatar <name>` covers the shipped matrix.
 3. Record its upstream and licence in `THIRD_PARTY_LICENSES.md`, then add it to
