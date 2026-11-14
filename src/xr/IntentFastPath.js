@@ -94,7 +94,7 @@ const IntentFastPath = (() => {
         // "levanta la mano", which would stand her up instead of raising a hand.
         {
             label: 'turn_around',
-            re: /\b(turn\s*a?round|turn back|spin\s*a?round|date la vuelta|da(te)? la vuelta|girate|voltate|girati|gira ti|fais demi tour|tourne toi|dreh dich um|umdrehen|vira te|da meia volta)\b/,
+            re: /\b(turn\s*a?round|turn back|spin\s*a?round|date la vuelta|da(te)? la vuelta|girate|voltate|girati|voltati|gira ti|fais demi tour|tourne toi|dreh dich um|umdrehen|vira te|da meia volta|fammi vedere la schiena|mostrami la schiena|show me your back|let me see your back|muestrame la espalda|montre moi ton dos|zeig mir deinen rucken|mostra me as costas)\b/,
             plan: () => _plan([{ type: 'turn', degrees: 180 }]),
         },
         {
@@ -339,7 +339,10 @@ const IntentFastPath = (() => {
     const CJK_MAX = 16;
     const CJK_RULES = [
         { label: 'spin', re: /くるっと回って|一回転|回転して|빙글|한\s?바퀴|转个圈|转一圈|转圈/u },
-        { label: 'turn_around', re: /振り向いて|後ろを向いて|回って|뒤돌아|돌아\s?봐|돌아\s?서|转过身|转身/u },
+        {
+            label: 'turn_around',
+            re: /振り向いて|後ろを向いて|背中を見せて|回って|뒤돌아|돌아\s?봐|돌아\s?서|등\s?보여\s?줘|转过身|转身|让我看看你的背/u,
+        },
         { label: 'sit', re: /座って|座ろう|座りなさい|앉아|坐下|坐吧|请坐/u },
         { label: 'lay', re: /横になって|寝転んで|寝そべって|누워|躺下|躺着/u },
         { label: 'stand', re: /立って|立ち上がって|일어나|일어서|站起来|起来/u },

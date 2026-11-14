@@ -16,7 +16,7 @@
  *
  * ## What it guarantees
  *
- * - **An allowlist.** Fourteen names; anything else is refused before a handler is looked up.
+ * - **An allowlist.** Sixteen names; anything else is refused before a handler is looked up.
  * - **Validated parameters.** Each name has a schema; unknown keys are dropped, strings are
  *   bounded and stripped of markup and links. A model's arguments are data, never instructions.
  * - **Her own initiative is narrow.** A model-sourced action runs only when the person asked for
@@ -58,6 +58,21 @@
     ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
+    /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
+    const POSE_KEYS = [
+        'kneel',
+        'kneel-up',
+        'all-fours',
+        'lie-back',
+        'lie-front',
+        'lie-side',
+        'bend-forward',
+        'arch-back',
+        'lounge',
+        'stand',
+        'back',
+    ];
+    const ADULT_POSES = ['all-fours'];
 
     const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
     const GARMENT = /^[a-z0-9][a-z0-9 ,'+&-]{1,119}$/;
@@ -111,6 +126,8 @@
             required: ['prompt'],
         },
         'wardrobe.undo': { family: 'wardrobe', params: {} },
+        // UN5. Dressed again: the outfit she wore before the first layer came off this evening.
+        'wardrobe.redress': { family: 'wardrobe', params: {} },
         // UN1. One layer off (`next`), or down to the last layer she has (`all`); `look` is the
         // look an approved offer already chose, so the yes wears what was offered.
         'wardrobe.undress': {
@@ -122,6 +139,9 @@
             },
         },
         'avatar.dance': { family: 'avatar', params: {} },
+        // UN5. A held position from Pose Studio's presets (PrivatePoseController.POSES), or
+        // `stand` to let go of it.
+        'avatar.pose': { family: 'avatar', params: { pose: oneOf(POSE_KEYS) }, required: ['pose'] },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
@@ -208,6 +228,13 @@
         // UN1. Before who asked: the person's own words below the top of the pace are refused too.
         if (action.name === 'wardrobe.undress' && !(Number(f.level) >= UNDRESS_LEVEL))
             return { allow: false, why: 'pace' };
+        // UN5. The adult positions open exactly when undressing does.
+        if (
+            action.name === 'avatar.pose' &&
+            ADULT_POSES.includes(action.params && action.params.pose) &&
+            !(Number(f.level) >= UNDRESS_LEVEL)
+        )
+            return { allow: false, why: 'pace' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
@@ -219,6 +246,8 @@
                 if (QUIETING.includes(action.name)) return { allow: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
             case 'wardrobe': {
+                // UN5. Putting her clothes back on is never a risk: hers to do whenever.
+                if (action.name === 'wardrobe.redress') return { allow: true };
                 if (GENERATES.includes(action.name))
                     return asked ? { allow: true } : { allow: false, why: 'needs-approval', suggest: true };
                 if (asked) return { allow: true };
@@ -251,6 +280,8 @@
         GENERATES,
         QUIETING,
         UNDRESS_LEVEL,
+        POSE_KEYS,
+        ADULT_POSES,
         validate,
         decide,
         autonomy,

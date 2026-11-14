@@ -136,6 +136,9 @@
             unwatch: [],
             // UN3. The evening's outline and narrative state (StoryWeaver / StoryDirector).
             story: null,
+            // UN5. Her held position (PrivatePoseController), and what she wore before undressing.
+            poses: (o.deps && o.deps.poses) || makePoses(win),
+            dressedLook: null,
         };
         const s = state;
         startStory(s, o.deps && o.deps.story);
@@ -182,6 +185,12 @@
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
         if (s.travel) clearTimeout(s.travel.timer);
         s.travel = null;
+        // UN5. Whatever ended the evening, her skeleton is hers again.
+        try {
+            if (s.poses) s.poses.release();
+        } catch (_) {
+            /* the pose system restores itself on its own reset */
+        }
         if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
@@ -629,6 +638,10 @@
                 });
             case 'wardrobe.undress':
                 return undress(s, action, alive);
+            case 'wardrobe.redress':
+                return redress(s, action, alive);
+            case 'avatar.pose':
+                return pose(s, action);
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
                 const out = await s.closet.undo();
@@ -661,6 +674,61 @@
      * (`OutfitDecisionEngine.undressStep`), worn the way every look is worn — the controller keeps
      * her on screen until the new file has loaded, and a stale result is taken off again.
      */
+    function makePoses(win) {
+        const Poses = pick(win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+        return Poses && typeof Poses.create === 'function' ? Poses.create({ win }) : null;
+    }
+
+    /**
+     * UN5. A look is a whole avatar file: a pose held on the old one would be held on bones that
+     * are gone. Let go before the swap, and take the same position again on the new one, so she
+     * stays kneeling while a layer comes off.
+     */
+    async function keepingPose(s, change) {
+        const was = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        if (was) s.poses.release({ keepHistory: true });
+        const out = await change();
+        if (was && state === s) {
+            try {
+                s.poses.apply(was, { restoring: true });
+            } catch (_) {
+                /* she stands in the new outfit; the next request poses her */
+            }
+        }
+        return out;
+    }
+
+    const ORIGINAL = { original: true };
+
+    async function redress(s, action, alive) {
+        if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
+        if (!s.dressedLook) return settle(action, 'failed', 'already-dressed');
+        const back = s.dressedLook;
+        if (s.poses) s.poses.release(); // dressed again, she stands
+        const out = back === ORIGINAL ? await s.closet.wearOriginal(alive) : await s.closet.wearLook(back, alive);
+        if (out.ok) s.dressedLook = null;
+        return settle(
+            action,
+            out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
+            out.ok ? null : out.why,
+            { name: back === ORIGINAL ? '' : back.name || '' }
+        );
+    }
+
+    function pose(s, action) {
+        if (!s.poses) return settle(action, 'failed', 'no-pose-system');
+        if (action.params.pose === 'stand') {
+            s.poses.release();
+            return settle(action, 'completed', null, { name: 'stand' });
+        }
+        if (action.params.pose === 'back') {
+            const out = s.poses.back();
+            return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
+        }
+        const out = s.poses.apply(action.params.pose);
+        return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: action.params.pose });
+    }
+
     function nextLayer(s, params) {
         const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
         const rank = allureOf(s);
@@ -686,7 +754,9 @@
         if (!s.closet.privateOpen) return settle(action, 'failed', 'adult-ineligible');
         const look = nextLayer(s, action.params);
         if (!look) return settle(action, 'failed', 'last-layer');
-        const out = await s.closet.wearLook(look, alive);
+        // UN5. What she wore before the first layer came off is what "rivestiti" puts back.
+        if (!s.dressedLook) s.dressedLook = s.closet.current() || ORIGINAL;
+        const out = await keepingPose(s, () => s.closet.wearLook(look, alive));
         if (out.ok) s.offer = null;
         return settle(
             action,
@@ -860,7 +930,10 @@
         emit();
         const alive = () => state === s && !s.session._stopped && s.wardrobe === action;
         try {
-            if (offer.kind === 'wear') {
+            if (offer.undress) {
+                // UN5. Through the undress step itself: it remembers what she wore and keeps her pose.
+                await undress(s, action, alive);
+            } else if (offer.kind === 'wear') {
                 const out = await s.closet.wearLook(offer.look, alive);
                 settle(
                     action,
@@ -995,6 +1068,8 @@
             musicStatus: media.status,
             canUndoOutfit: closet.canUndo,
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
+            poseHeld: Boolean(s.poses && typeof s.poses.held === 'function' && s.poses.held()),
+            undressed: Boolean(s.dressedLook),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -1208,6 +1283,17 @@
             '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
         );
         lines.push('- Dancing: when they ask you to dance, you do.');
+        // UN5. Positions and dressing again, as the app can do them.
+        if (s.poses) {
+            const open = levelOf(s) >= UNDRESS_AT;
+            lines.push(
+                `- Positions: when they ask you to kneel, lie on your back, front or side, bend forward or arch your back${open ? ', or get on all fours' : ''}, the app puts your body in that position and holds it until they ask you to stand. Say it in a few words, in the moment.`
+            );
+            if (s.dressedLook)
+                lines.push(
+                    '- Getting dressed again: when they say they are done or ask you to get dressed, the app puts back the outfit you wore before; then the evening can end gently.'
+                );
+        }
         // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
         // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
         // asked for in any language. The motion contract carries the names; this says they apply.
@@ -1267,7 +1353,9 @@
             const name = (w.result && w.result.name) || '';
             w.told = true;
             if (['failed', 'blocked'].includes(w.status)) w.toldFailure = true;
-            if (w.name === 'wardrobe.undress') {
+            if (w.name === 'wardrobe.redress') {
+                // UN5. Told in its own words below.
+            } else if (w.name === 'wardrobe.undress') {
                 // UN1. What the layer step did, in the words the reply must not contradict.
                 if (w.status === 'completed')
                     now.push(
@@ -1352,6 +1440,32 @@
             now.push(
                 'They asked to go somewhere you cannot take them from here tonight. Say so warmly and stay where you are.'
             );
+        // UN5. What her body and her clothes just did.
+        const body = [...s.log].reverse().find((a) => a.name === 'avatar.pose' && a.turnId === s.turnId);
+        if (body) {
+            const named = String(body.params.pose || '').replace(/-/g, ' ');
+            const result = (body.result && body.result.name) || body.params.pose;
+            if (body.status === 'completed' && result === 'stand') now.push('You are standing again.');
+            else if (body.status === 'completed' && body.params.pose === 'back')
+                now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
+            else if (body.status === 'completed')
+                now.push(`Your body is in that position now (${named}). Stay in it until they ask you to stand.`);
+            else if (body.why === 'pace')
+                now.push(
+                    'They asked for a position the evening is not close enough for yet. Say "not yet", warmly and teasing.'
+                );
+            else now.push('They asked for a position you cannot take here. Say so lightly and stay as you are.');
+        }
+        const back =
+            s.wardrobe && s.wardrobe.turnId === s.turnId && s.wardrobe.name === 'wardrobe.redress' ? s.wardrobe : null;
+        if (back) {
+            if (back.status === 'completed')
+                now.push('You are dressed again, in what you wore before. If they are done, close the evening warmly.');
+            else if (back.status === 'pending')
+                now.push('You are getting dressed again right now — say so in a few words.');
+            else if (back.why === 'already-dressed') now.push('You are already dressed.');
+            else now.push('Getting dressed again did not work just now. Say so once, lightly.');
+        }
         // UN3. Tonight's outline, after what she can do and before what is happening now.
         if (s.story) lines.push(...s.story.lines({ canTravel: Boolean(s.canTravel) }));
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));

@@ -448,6 +448,93 @@
         return null;
     }
 
+    /**
+     * UN5. Her body's positions, in neutral words, nine languages. Plain "sdraiati" / "lie down"
+     * stays the lie-down motion it always was; only "on your back / front / side" is a held pose.
+     * "Alzati" / "stand up" lets go of a held pose — and only when one is held, so it is still the
+     * ordinary stand-up motion otherwise.
+     */
+    const POSE_WORDS = [
+        [
+            // The everyday adult name for the same static position maps to it too (owner
+            // decision): the pose, held, nothing more — and it opens only where all fours does.
+            'all-fours',
+            '(?:mettiti |get |go )?(?:a |on )?(?:quattro zampe|all fours|pecorina)|(?:in )?doggy(?: style)?|a cuatro patas|a lo perrito|en perrito|à quatre pattes|en levrette|auf alle viere|de quatro|de gatas',
+            /四つん這い|四つんばい|네\s?발로|跪趴|趴在床上/u,
+        ],
+        [
+            'kneel',
+            'inginocchiati|in ginocchio|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
+            /跪いて|ひざまずいて|무릎\s?꿇어|跪下/u,
+        ],
+        [
+            'lie-back',
+            'sdraiati sulla schiena|a pancia in su|(?:lie )?on your back|boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
+            /仰向け|똑바로\s?누워|躺平|仰躺/u,
+        ],
+        [
+            'lie-front',
+            'a pancia in giù|sulla pancia|(?:lie )?on your (?:stomach|front|belly)|boca abajo|sur le ventre|auf den bauch|de bruços',
+            /うつ伏せ|엎드려|趴着|趴下/u,
+        ],
+        [
+            'lie-side',
+            '(?:sdraiati )?sul fianco|(?:lie )?on your side|de lado|de costado|sur le côté|auf die seite',
+            /横向き|옆으로\s?누워|侧躺/u,
+        ],
+        [
+            'bend-forward',
+            'piegati(?: in avanti)?|chinati|bend over|bend forward|lean forward|inclínate|inclinate|agáchate|agachate|penche-toi|beug dich vor|bück dich|inclina-te|curva-te',
+            /前かがみ|かがんで|숙여|弯腰|俯身/u,
+        ],
+        [
+            'arch-back',
+            'inarca la schiena|arch your back|arquea la espalda|cambre-toi|mach ein hohlkreuz|arqueia as costas',
+            /背中を反らして|허리를\s?젖혀|弯起背/u,
+        ],
+    ];
+    const STAND_WORDS = new RegExp(
+        `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
+        'iu'
+    );
+    /** "Torna come prima" — the previous position, while one is held. */
+    const AS_BEFORE = new RegExp(
+        `^(?:${word('torna come prima|come prima|come eri prima|as before|like before|as you were|go back to how you were|como antes|vuelve como antes|comme avant|reviens comme avant|wie vorher|wie eben|como estavas')})|元に戻って|아까처럼|像刚才那样`,
+        'iu'
+    );
+    const REDRESS = new RegExp(
+        `^(?:${word(
+            'rivestiti|vestiti di nuovo|rimettiti (?:i vestiti|il vestito|le tue cose)|get dressed(?: again)?|dress again|put (?:your|the) clothes (?:back )?on|put your clothes back on|vuelve a vestirte|vístete de nuevo|vistete de nuevo|ponte la ropa|rhabille-toi|zieh dich wieder an|veste-te de novo|volta a vestir'
+        )})|服を着て|옷\s?입어|옷을\s?입어|穿上衣服|穿好衣服|把衣服穿上`,
+        'iu'
+    );
+
+    /** "Ho finito", "I'm done": a lead before "rivestiti", or alone once something came off. */
+    const DONE = new RegExp(
+        `^(?:${word("ho finito|abbiamo finito|i[’']?m done|i am done|we[’']?re done|he terminado|terminé|j[’']ai fini|ich bin fertig|terminei|acabei")})(?:[\\s,.!]+|$)`,
+        'iu'
+    );
+    const DONE_CJK = /^(?:終わった|終わり|끝났어|다\s?했어|我好了|结束了)/u;
+
+    function bodyFrom(body, context) {
+        const c = context || {};
+        const rest = body.replace(DONE, '').trim();
+        if (REDRESS.test(rest)) return action('wardrobe.redress', {}, 'wardrobe');
+        if (
+            c.undressed &&
+            (DONE.test(body) || DONE_CJK.test(body)) &&
+            rest.split(' ').length <= 3 &&
+            !REDRESS.test(rest)
+        )
+            return action('wardrobe.redress', {}, 'wardrobe');
+        for (const [key, words, cjk] of POSE_WORDS)
+            if (new RegExp(`^(?:${word(words)})`, 'iu').test(body) || cjk.test(body))
+                return action('avatar.pose', { pose: key }, 'avatar');
+        if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
+        if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
+        return null;
+    }
+
     /** "Andiamo!", "volentieri" — a yes to going, in particular. */
     const GO_YES = new RegExp(
         `^(?:${word(
@@ -531,6 +618,9 @@
             !['playing', 'loading', 'searching'].includes(c.musicStatus)
         )
             return action('music.play', { query: '', again: true }, 'music');
+        // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
+        const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
+        if (posed) return posed;
         // UN4. "Possiamo andare altrove?" is a request put as a question; going is never talk.
         const goingFirst = travelFrom(body);
         if (goingFirst && !NEGATED.test(body)) return goingFirst;
@@ -671,6 +761,7 @@
         affirms,
         affirmsGoing,
         travelFrom,
+        bodyFrom,
         queryFrom,
         stylesIn,
         coloursIn,
