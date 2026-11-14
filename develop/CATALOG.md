@@ -22,11 +22,13 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 | `vrma-mit/test.vrma` (three-vrm)            | MIT     | **ok**                                        |
 | `vrma-tk256-candidates/{Blush…Sleepy}.vrma` | MIT     | **ok** ×6 (safe to re-enable in a product PR) |
 
-## Pending (`develop/addons/pending/`) — not playable yet
+## Pending (`develop/addons/pending/`) — development
 
-| Pack                           | License | Status                                                              |
-| ------------------------------ | ------- | ------------------------------------------------------------------- |
-| `quaternius-ual-standard/` GLB | CC0     | Loads but **0** tracks bind to VRM (`DEF-*` bones). Convert → VRMA. |
+| Pack                            | License                    | Status                                          |
+| ------------------------------- | -------------------------- | ----------------------------------------------- |
+| `quaternius-ual-standard/` GLB  | CC0                        | Not playable — convert → VRMA                   |
+| `vrma-booth-vroid/ok/` (6 VRMA) | BOOTH (credit; no extract) | Playback **ok**; Greeting removed (fail)        |
+| `vrma-mocopi-tfuru/` (5 VRMA)   | Unclear (no SPDX)          | Playback **ok** — clarify license before stable |
 
 ## More to fetch (compatible format / license)
 
@@ -36,7 +38,8 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 | **pixiv/ChatVRM** `idle_loop.vrma`   | VRMA               | MIT                                             | Natural breathing idle — **already staged**                                          | https://github.com/pixiv/ChatVRM                        |
 | **pixiv/three-vrm** `test.vrma`      | VRMA               | MIT                                             | Tiny sample — **already staged**                                                     | https://github.com/pixiv/three-vrm                      |
 | **Quaternius UAL / UAL2**            | FBX/GLB → BVH/VRMA | CC0                                             | Locomotion, sit, emotes — convert with [bvh2vrma](https://vrm-c.github.io/bvh2vrma/) | https://quaternius.com                                  |
-| **VRoid Project BOOTH 7-pack**       | VRMA               | Credit required; **no redistributable extract** | Greeting, squat, spin — use as optional download, not git vendor                     | https://vroid.com/en/news/6HozzBIV0KkcKf9dc1fZGW        |
+| **VRoid Project BOOTH pack**         | VRMA               | Credit required; **no redistributable extract** | 6 ok staged in `pending/vrma-booth-vroid/ok/`; Greeting fail removed                 | https://booth.pm/ja/items/5512385                       |
+| **tfuru mocopi samples**             | VRMA               | No SPDX                                         | 5 ok in `pending/vrma-mocopi-tfuru/` — rights TBD                                    | https://github.com/tfuru/vrma-loader-sample             |
 | **BOOTH `#VRMA`**                    | VRMA               | Per item                                        | Prefer creator terms that allow OSS redistribution                                   | booth.pm search VRMA                                    |
 
 ## Do not add to develop/ (failed or incompatible)

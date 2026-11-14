@@ -1,21 +1,20 @@
 # Staging status
 
-## `addons/stable/` — verified working (additive audit)
+## `addons/stable/` — MIT VRMA, additive **ok**
 
-| Pack                        | License | Location                               | Verification        |
-| --------------------------- | ------- | -------------------------------------- | ------------------- |
-| ChatVRM `idle_loop.vrma`    | MIT     | `addons/stable/vrma-mit/`              | **ok** (hips ~0.89) |
-| three-vrm `test.vrma`       | MIT     | `addons/stable/vrma-mit/`              | **ok** (hips ~0.90) |
-| tk256 inactive six (retest) | MIT     | `addons/stable/vrma-tk256-candidates/` | **ok** ×6           |
+| Pack                    | Location                               | Verification |
+| ----------------------- | -------------------------------------- | ------------ |
+| ChatVRM / three-vrm MIT | `addons/stable/vrma-mit/`              | **ok** ×2    |
+| tk256 candidates        | `addons/stable/vrma-tk256-candidates/` | **ok** ×6    |
 
-Latest: `verification/runs/LATEST.json` — **8/8 ok**.
+Stable additive: **8/8 ok**.
 
-## `addons/pending/` — not playable yet
+## `addons/pending/` — development binaries
 
-| Pack                    | License | Why                                                            |
-| ----------------------- | ------- | -------------------------------------------------------------- |
-| Quaternius UAL Standard | CC0     | GLB / `DEF-*` bones; does not drive VRM — convert → VRMA first |
+| Pack                 | Playback                        | License gate                         |
+| -------------------- | ------------------------------- | ------------------------------------ |
+| Quaternius UAL GLB   | not playable                    | CC0 — convert → VRMA                 |
+| BOOTH VRoid (6 kept) | **ok** ×6; Greeting **removed** | Credit; no product `vendor/` extract |
+| mocopi tfuru (5)     | **ok** ×5                       | No SPDX — clarify before stable      |
 
-See `addons/pending/README.md` and `…/NOT_PLAYABLE_YET.md`.
-
-**Removed from staging:** ACCAD / CMU BVH (hips-floating).
+See `addons/pending/README.md`. ACCAD/CMU floaters removed.

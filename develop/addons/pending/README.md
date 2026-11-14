@@ -1,20 +1,18 @@
-# Pending — not playable on the VRM yet
+# Pending — development staging
 
-Assets here are **license-clean** but **not** product-ready. Do not promote into
-`vendor/animations/` or treat as additive-audit **ok**.
+| Pack                       | Status                                                        | In git? |
+| -------------------------- | ------------------------------------------------------------- | ------- |
+| `quaternius-ual-standard/` | GLB — **not playable** on VRM yet                             | Yes     |
+| `vrma-booth-vroid/ok/`     | 6 VRMA **playback ok**; Greeting removed (legs-inverted fail) | Yes\*   |
+| `vrma-mocopi-tfuru/`       | 5 VRMA **playback ok**; SPDX unclear                          | Yes\*   |
 
-| Pack                       | Why pending                                                                                                                       |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `quaternius-ual-standard/` | CC0 AnimationLibrary **GLB** — Blender `DEF-*` bones; **0** tracks bind to AvatarSample_A; ClipLoader only plays `.vrma` / `.bvh` |
+\* Dev staging only — do not promote BOOTH into `vendor/` as extractable files;
+clarify mocopi license before stable.
 
-**Probe evidence:**
-`develop/verification/runs/quaternius-glb-probe/probe.json`  
-**Verdict:** `does-not-drive-vrm` (load OK, name overlap empty).
+## Re-audit pending VRMA
 
-## To graduate into `addons/stable/`
-
-1. Convert clips → VRMA (e.g. [bvh2vrma](https://vrm-c.github.io/bvh2vrma/))
-   with humanoid retarget.
-2. Place `.vrma` under `addons/stable/…` with `PROVENANCE.md`.
-3. `npm start` then `node develop/verification/audit-additive.mjs` → all **ok**.
-4. Move or delete the pending GLB/zip when no longer needed.
+```bash
+node develop/verification/audit-additive.mjs \
+  --dir develop/addons/pending/vrma-booth-vroid/ok \
+  --dir develop/addons/pending/vrma-mocopi-tfuru
+```

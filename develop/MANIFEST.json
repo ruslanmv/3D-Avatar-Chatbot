@@ -1,6 +1,6 @@
 {
-  "schema": 3,
-  "purpose": "Staging: stable=ok-only VRMA; pending=not playable yet.",
+  "schema": 4,
+  "purpose": "Development staging: stable=MIT ok VRMA; pending=dev binaries + conversion.",
   "additive_audit": "node develop/verification/audit-additive.mjs",
   "packs": [
     {
@@ -22,17 +22,33 @@
       "tier": "pending",
       "license": "CC0",
       "status": "not-playable-yet",
-      "path": "develop/addons/pending/quaternius-ual-standard",
-      "note": "GLB DEF-* bones; convert to VRMA before stable"
+      "path": "develop/addons/pending/quaternius-ual-standard"
+    },
+    {
+      "id": "vrma-booth-vroid",
+      "tier": "pending",
+      "license": "BOOTH-credit-no-extract",
+      "status": "playback-ok-dev-only",
+      "removed_failed": [
+        "VRMA_02.vrma"
+      ],
+      "path": "develop/addons/pending/vrma-booth-vroid/ok"
+    },
+    {
+      "id": "vrma-mocopi-tfuru",
+      "tier": "pending",
+      "license": "unclear-no-SPDX",
+      "status": "playback-ok-dev-only",
+      "path": "develop/addons/pending/vrma-mocopi-tfuru"
     }
   ],
   "latest_additive": {
-    "outDir": "develop/verification/runs/additive-2026-11-14T08-50-09",
-    "jobs": 8,
-    "ok": 8,
+    "outDir": "develop/verification/runs/additive-2026-11-14T08-57-51",
+    "jobs": 11,
+    "ok": 11,
     "warn": 0,
     "fail": 0,
-    "at": "2026-11-14T08:50:29.955Z"
+    "at": "2026-11-14T08:58:18.292Z"
   },
   "files": [
     {
@@ -42,23 +58,23 @@
     },
     {
       "path": "develop/CATALOG.md",
-      "bytes": 5884,
-      "sha256": "4b8e66de77533d1e456df5e59d477e5d3b81ce6936514ef9560fa5da8aab9995"
+      "bytes": 6350,
+      "sha256": "4f7be6b396d2b5bfa16d2c116e1ff142d8a501e4a941a48818543a3d47e8ae20"
     },
     {
       "path": "develop/README.md",
-      "bytes": 1233,
-      "sha256": "b0ce1cc8cb3d54ede60bb686e216b3f9714a0404ca4db525297e87b0a1af7584"
+      "bytes": 1235,
+      "sha256": "13fc11bcc470bd4149e89bae6f06892304fc4d1d9807e6e9ade80e2431b764ac"
     },
     {
       "path": "develop/STATUS.md",
-      "bytes": 1184,
-      "sha256": "0784ca3993155219c047fd6c24acee846bcb59c69eb4393716f6661b1c0773e7"
+      "bytes": 1118,
+      "sha256": "2c067b8ed6aca3c437ac02b0002354b910ebbc00089d18b62da870d085e99ec8"
     },
     {
       "path": "develop/addons/pending/README.md",
-      "bytes": 1063,
-      "sha256": "e30ebca299367e2c6f5441f2bfb2945c70363d3c5c9d16f60e4eed314e0163a8"
+      "bytes": 876,
+      "sha256": "d2116a6332cda086e25241fff5b0ad3c1be966864e9c57901d005c9e8e6a5bc9"
     },
     {
       "path": "develop/addons/pending/archives/SHA256SUMS.txt",
@@ -82,13 +98,13 @@
     },
     {
       "path": "develop/addons/pending/quaternius-ual-standard/NOT_PLAYABLE_YET.md",
-      "bytes": 897,
-      "sha256": "3b0589f446b5c6cb9e952881295259f1cb2aef45c29398e0714b34276c6c0074"
+      "bytes": 865,
+      "sha256": "4ec05e3fac9ec667b6707a84ace3d5fe6f84ad0e3419a65582aef1b7de8f1c3a"
     },
     {
       "path": "develop/addons/pending/quaternius-ual-standard/PROVENANCE.md",
-      "bytes": 1208,
-      "sha256": "e25531fba90d77821e9c8e6127ae93977991f8fd39f54b5bf70ef8595bfd4cc4"
+      "bytes": 1248,
+      "sha256": "06f3890177dfff922734dfcebf4421d2253e19f8bc295cd811b83883457b83a5"
     },
     {
       "path": "develop/addons/pending/quaternius-ual-standard/Preview.png",
@@ -111,9 +127,74 @@
       "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
     },
     {
+      "path": "develop/addons/pending/vrma-booth-vroid/PROVENANCE.md",
+      "bytes": 1401,
+      "sha256": "adeb6889df4f20bbcf1dcc3251866d1952c723914450886f3850efc6d7b23d06"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_01.vrma",
+      "bytes": 1348388,
+      "sha256": "f45abc44800c647fa106537a2e31a84cb83b74cf3dd8a0ee71c6915f1555ac57"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_03.vrma",
+      "bytes": 1335704,
+      "sha256": "6f66b6b5c0214a7b825498050380ea43a3f782b5ea24ce46f7096acf15866d75"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_04.vrma",
+      "bytes": 1108548,
+      "sha256": "c40c1a7b0dbcac5aa9582f45498474255e4b0ca5642a71ffaf43878c27bedf70"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_05.vrma",
+      "bytes": 632316,
+      "sha256": "cc508712ca4db8833ffe982d2eecd427e9374a04c005db2a7a45775f0ca45586"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_06.vrma",
+      "bytes": 518364,
+      "sha256": "a2c86633690e911cf935c5b8cae6553aea0445567f88c2861f7597fc1bf08af1"
+    },
+    {
+      "path": "develop/addons/pending/vrma-booth-vroid/ok/VRMA_07.vrma",
+      "bytes": 771944,
+      "sha256": "b0096525231e9f49947a6fad0295575b1c2bfbc33c042d07f125c7c2fbe88995"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154241.vrma",
+      "bytes": 317412,
+      "sha256": "70c22d241586950350f2ac7431383504845025b19576a557f70e55aaac74f611"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154323.vrma",
+      "bytes": 437268,
+      "sha256": "84dccd6f25f0a19cc591aa39d98544a36caf1e30dd23561a3a938795d6928f24"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154402.vrma",
+      "bytes": 429720,
+      "sha256": "de9024c1eee762094b19269efc900857e76a8ae168131d67116f6714e135f2f6"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154429.vrma",
+      "bytes": 523940,
+      "sha256": "32b7162c82d5cfdf73b685031e4e8c20245615e28b8786071eedb11b7c1f344e"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/MCPM_20230806_154455.vrma",
+      "bytes": 546228,
+      "sha256": "7271257be1bb3de422004b684c0f34b6360aeb02837468d373795ad8485d1b2f"
+    },
+    {
+      "path": "develop/addons/pending/vrma-mocopi-tfuru/PROVENANCE.md",
+      "bytes": 710,
+      "sha256": "338411c630aba96650b821d4b3e7fdb211c3476d27ba80a6e844a467995d817f"
+    },
+    {
       "path": "develop/addons/stable/README.md",
       "bytes": 553,
-      "sha256": "cc43d56012aef5490006ba437ed462729f65b0087eae4c13d3812ac262de3eea"
+      "sha256": "2a8d4cb7cb41d67785803e1035c48a979abc6579b9cf77afeca8a4b98ff383a7"
     },
     {
       "path": "develop/addons/stable/vrma-mit/PROVENANCE.md",
@@ -168,7 +249,7 @@
     {
       "path": "develop/verification/AGENT.md",
       "bytes": 1591,
-      "sha256": "2199f5e64a21bd6625ef92e34f1a89cbdbd258f29b267caef315214b16ccdaa4"
+      "sha256": "2588d2f93ae78cdf1c9547337fcb865a1a7d8616dff2b8331c186987d95915c2"
     },
     {
       "path": "develop/verification/CHECKLIST.md",
@@ -182,18 +263,18 @@
     },
     {
       "path": "develop/verification/audit-additive.mjs",
-      "bytes": 10197,
-      "sha256": "892e84e4c5c572e52d11e8da55d0cc4411f15bb27293e31a685e58e02917ab92"
+      "bytes": 10660,
+      "sha256": "74cd6b921bdc83417036c032b60ffbdf101694584e654546824b2fcb465cff43"
     },
     {
       "path": "develop/verification/probe-quaternius-glb.mjs",
-      "bytes": 7353,
-      "sha256": "4df2efa49711e9fa1951d06db61c4fb2600cb88931177fd040b22906b7a9f471"
+      "bytes": 7354,
+      "sha256": "f6eeba659c603173ae836b729c18e2e62285efb33c3612ff24b452dfc449760f"
     },
     {
       "path": "develop/verification/runs/LATEST.json",
-      "bytes": 159,
-      "sha256": "aef98e9f49ebe952304db5423de5753dfd501fb766c8bae85924cbd61cbb4d74"
+      "bytes": 161,
+      "sha256": "c5f309924a3df9a33c7a7417be8fcce68461c49c0b6e8d01141da77018669598"
     },
     {
       "path": "develop/verification/runs/additive-2026-11-14T08-30-57/additive.csv",
@@ -226,6 +307,46 @@
       "sha256": "5635ea9dbffa3cee12270dc6938119872abb72d69d7952f9733d7f402be65c41"
     },
     {
+      "path": "develop/verification/runs/additive-2026-11-14T08-54-41/additive.csv",
+      "bytes": 1836,
+      "sha256": "4f17d39623212ae141a6d5e6011f7d71a0fbdeedc6da9d3bea1296bfcdda19de"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-54-41/summary.json",
+      "bytes": 4455,
+      "sha256": "deb16dc0fd8a70e7f1e33c96f64265aa3523d000582125f8f2202ca6fee42ad9"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-56-40/additive.csv",
+      "bytes": 1690,
+      "sha256": "cbb7ed5ec6387080218cb182a6bb800585f25237c16f609438c21a8c706152a4"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-56-40/summary.json",
+      "bytes": 4086,
+      "sha256": "0fedb9ff06fcc476fb50cbb533fe192118a6ff04fac73e3ed3b44a3fb60c22be"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-57-33/additive.csv",
+      "bytes": 876,
+      "sha256": "126702b656e4828074ca1a70eb7d479f52467d2fc0e58e183585c2e23ab2e060"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-57-33/summary.json",
+      "bytes": 2040,
+      "sha256": "f184df3097501772ff6b41cccf268d664dddb6471c624e1abcc786f008e4b0c8"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-57-51/additive.csv",
+      "bytes": 1643,
+      "sha256": "6aa46b3ef9890dc5493f6b9c80210ab20c78d6e3bc760d1df1198b6f613b6458"
+    },
+    {
+      "path": "develop/verification/runs/additive-2026-11-14T08-57-51/summary.json",
+      "bytes": 4039,
+      "sha256": "0b380ed9650962ff5db756071a859dd43af569a5b2e8ac71c050536a125c7565"
+    },
+    {
       "path": "develop/verification/runs/avatar-sample-a-critical/AvatarSample_A.csv",
       "bytes": 2551,
       "sha256": "61067489f08a110f352367d4b8d78ceefa237e97f55edb0f7ee3036d277e158e"
@@ -239,6 +360,11 @@
       "path": "develop/verification/runs/avatar-sample-a-critical/summary.json",
       "bytes": 4610,
       "sha256": "ef5474c63152798b46bb1505f8f7dc9d384f1252b2fb654ca5d99087707b68d8"
+    },
+    {
+      "path": "develop/verification/runs/download-test-2026-11-14.md",
+      "bytes": 1199,
+      "sha256": "21a5f5a85aed7d55d729f0f2f1d2fc52e50b67db5951412417e1552d1d1338ac"
     },
     {
       "path": "develop/verification/runs/quaternius-glb-probe/probe.json",

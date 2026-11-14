@@ -1,47 +1,34 @@
 # Download + playback test (AvatarSample_A)
 
-Scratch only — binaries under `develop/verification/scratch-candidates/`
-(gitignored).
+Binaries staged under `develop/addons/pending/` for **development**.
 
-## Summary
+## Latest re-check (after removing failed Greeting)
 
-- jobs: 12
-- ok: 11
-- fail: 1
+**11/11 ok** — `runs/additive-2026-11-14T08-57-51/`
 
-## VRoid Project BOOTH 7-pack
+## VRoid Project BOOTH pack → `pending/vrma-booth-vroid/ok/`
 
-| File           | Motion         | Verdict  | Hips Y | Flags         |
-| -------------- | -------------- | -------- | ------ | ------------- |
-| `VRMA_01.vrma` | Show full body | **ok**   | 0.859  | -             |
-| `VRMA_02.vrma` | Greeting       | **fail** | 1.216  | legs-inverted |
-| `VRMA_03.vrma` | Peace sign     | **ok**   | 0.846  | -             |
-| `VRMA_04.vrma` | Shoot          | **ok**   | 0.849  | -             |
-| `VRMA_05.vrma` | Spin           | **ok**   | 0.847  | -             |
-| `VRMA_06.vrma` | Model pose     | **ok**   | 0.88   | -             |
-| `VRMA_07.vrma` | Squat          | **ok**   | 0.903  | -             |
+| File         | Motion         | Verdict                          |
+| ------------ | -------------- | -------------------------------- |
+| VRMA_01.vrma | Show full body | **ok**                           |
+| VRMA_02.vrma | Greeting       | **removed** (legs-inverted fail) |
+| VRMA_03.vrma | Peace sign     | **ok**                           |
+| VRMA_04.vrma | Shoot          | **ok**                           |
+| VRMA_05.vrma | Spin           | **ok**                           |
+| VRMA_06.vrma | Model pose     | **ok**                           |
+| VRMA_07.vrma | Squat          | **ok**                           |
 
-## tfuru mocopi samples
+## tfuru mocopi → `pending/vrma-mocopi-tfuru/`
 
-| File                        | Verdict | Hips Y | Flags |
-| --------------------------- | ------- | ------ | ----- |
-| `MCPM_20230806_154241.vrma` | **ok**  | 0.895  | -     |
-| `MCPM_20230806_154323.vrma` | **ok**  | 0.907  | -     |
-| `MCPM_20230806_154402.vrma` | **ok**  | 0.896  | -     |
-| `MCPM_20230806_154429.vrma` | **ok**  | 0.878  | -     |
-| `MCPM_20230806_154455.vrma` | **ok**  | 0.893  | -     |
+| File                      | Verdict |
+| ------------------------- | ------- |
+| MCPM_20230806_154241.vrma | **ok**  |
+| MCPM_20230806_154323.vrma | **ok**  |
+| MCPM_20230806_154402.vrma | **ok**  |
+| MCPM_20230806_154429.vrma | **ok**  |
+| MCPM_20230806_154455.vrma | **ok**  |
 
-## License notes
+## License
 
-- **BOOTH 7-pack:** free + commercial with credit; **no redistributable
-  extract** in git. Optional runtime download only.
-- **mocopi (tfuru/vrma-loader-sample):** no SPDX on the repo — keep pending / do
-  not promote until clarified.
-
-## Re-run
-
-```bash
-node develop/verification/audit-additive.mjs \
-  --dir develop/verification/scratch-candidates/mocopi \
-  --dir develop/verification/scratch-candidates/booth
-```
+- BOOTH: credit required; no extractable redistrib into product `vendor/`.
+- mocopi: no SPDX — development only until clarified.
