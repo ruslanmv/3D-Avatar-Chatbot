@@ -7,36 +7,31 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 
 ## Already in this repo (highest compatibility)
 
-| Asset                                                                               | Status                | Notes                                                                                         |
-| ----------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| `vendor/animations/vrma/{Angry,Relax,Sad,Surprised,Thinking,waiting-standard}.vrma` | Active, **ok**        | From [tk256ailab/vrm-viewer](https://github.com/tk256ailab/vrm-viewer)                        |
-| `vendor/animations/vrma/{Blush,Clapping,Goodbye,Jump,LookAround,Sleepy}.vrma`       | On disk, **inactive** | Same pack — README said skeleton issues; re-test with AX16 before enabling in `manifest.json` |
-| Pose Navigator presets                                                              | Mostly **ok**         | Built-in poses, not downloadable clips                                                        |
-| `sitting/sit_idle*.bvh`, `kneeling/*`, some idle                                    | Mixed                 | SillyTavern pack — only keep ones that score ok                                               |
+| Asset                                                                               | Status               | Notes                                                                                |
+| ----------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------ |
+| `vendor/animations/vrma/{Angry,Relax,Sad,Surprised,Thinking,waiting-standard}.vrma` | Active, **ok**       | From [tk256ailab/vrm-viewer](https://github.com/tk256ailab/vrm-viewer)               |
+| `vendor/animations/vrma/{Blush,Clapping,Goodbye,Jump,LookAround,Sleepy}.vrma`       | Active, **ok** (MO9) | Re-enabled once MO8 fixed the hips scaling that made them look skeleton-incompatible |
+| Pose Navigator presets                                                              | Mostly **ok**        | Built-in poses, not downloadable clips                                               |
+| `sitting/sit_idle*.bvh`, `kneeling/*`, some idle                                    | Mixed                | SillyTavern pack — only keep ones that score ok                                      |
 
-## New in `develop/addons/stable/` (verified ok)
+## Staged here earlier — where each pack went (2026-11-14)
 
-| Pack                                        | License | Smoke                                         |
-| ------------------------------------------- | ------- | --------------------------------------------- |
-| `vrma-mit/idle_loop.vrma` (ChatVRM)         | MIT     | **ok**                                        |
-| `vrma-mit/test.vrma` (three-vrm)            | MIT     | **ok**                                        |
-| `vrma-tk256-candidates/{Blush…Sleepy}.vrma` | MIT     | **ok** ×6 (safe to re-enable in a product PR) |
-
-## Pending (`develop/addons/pending/`) — development
-
-| Pack                            | License                    | Status                                          |
-| ------------------------------- | -------------------------- | ----------------------------------------------- |
-| `quaternius-ual-standard/` GLB  | CC0                        | Not playable — convert → VRMA                   |
-| `vrma-booth-vroid/ok/` (6 VRMA) | BOOTH (credit; no extract) | Playback **ok**; Greeting removed (fail)        |
-| `vrma-mocopi-tfuru/` (5 VRMA)   | Unclear (no SPDX)          | Playback **ok** — clarify license before stable |
+| Pack                           | Outcome                                                                |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| ChatVRM `idle_loop.vrma` (MIT) | Promoted → `vendor/animations/vrma/idle_loop.vrma` (MO9)               |
+| tk256 six (MIT)                | Already in `vendor/animations/vrma/`; staging copies removed           |
+| three-vrm `test.vrma` (MIT)    | Removed — sanity sample, no product role                               |
+| VRoid BOOTH six                | Promoted → `vendor/animations/vrma/` (MO10); `VRMA_02` Greeting failed |
+| mocopi five (tfuru)            | Promoted → `vendor/animations/vrma/` (MO10)                            |
+| Quaternius UAL Standard (CC0)  | Removed — not playable until converted; re-download to work on it      |
 
 ## More to fetch (compatible format / license)
 
 | Source                               | Format             | License                                         | Fit                                                                                  | Link                                                    |
 | ------------------------------------ | ------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------- |
-| **tk256ailab/vrm-viewer** (full set) | VRMA               | MIT                                             | Same as working emotions; enable inactive six after re-test                          | https://github.com/tk256ailab/vrm-viewer/tree/main/VRMA |
-| **pixiv/ChatVRM** `idle_loop.vrma`   | VRMA               | MIT                                             | Natural breathing idle — **already staged**                                          | https://github.com/pixiv/ChatVRM                        |
-| **pixiv/three-vrm** `test.vrma`      | VRMA               | MIT                                             | Tiny sample — **already staged**                                                     | https://github.com/pixiv/three-vrm                      |
+| **tk256ailab/vrm-viewer** (full set) | VRMA               | MIT                                             | Same as working emotions — all six now active                                        | https://github.com/tk256ailab/vrm-viewer/tree/main/VRMA |
+| **pixiv/ChatVRM** `idle_loop.vrma`   | VRMA               | MIT                                             | Natural breathing idle — **in the app** (`idle_loop.vrma`)                           | https://github.com/pixiv/ChatVRM                        |
+| **pixiv/three-vrm** `test.vrma`      | VRMA               | MIT                                             | Tiny sample — not needed (removed)                                                   | https://github.com/pixiv/three-vrm                      |
 | **Quaternius UAL / UAL2**            | FBX/GLB → BVH/VRMA | CC0                                             | Locomotion, sit, emotes — convert with [bvh2vrma](https://vrm-c.github.io/bvh2vrma/) | https://quaternius.com                                  |
 | **VRoid Project BOOTH pack**         | VRMA               | Credit required; **no redistributable extract** | 6 ok staged in `pending/vrma-booth-vroid/ok/`; Greeting fail removed                 | https://booth.pm/ja/items/5512385                       |
 | **tfuru mocopi samples**             | VRMA               | No SPDX                                         | 5 ok in `pending/vrma-mocopi-tfuru/` — rights TBD                                    | https://github.com/tfuru/vrma-loader-sample             |
@@ -53,12 +48,11 @@ Prefer sources below. Avoid Mixamo redistributions and unscaled academic BVH.
 
 ## Recommended next pulls
 
-1. ~~Re-AX16 the six inactive tk256 VRMA~~ — **done** (all ok in
-   `vrma-tk256-candidates/`). Promote via product PR + `manifest.json`.
-2. Convert pending Quaternius idle/sit/walk → VRMA; graduate only **ok** into
-   `addons/stable/`.
-3. Optionally document VRoid BOOTH 7-pack as an external optional set (credit;
-   do not vendor).
+1. ~~Re-AX16 the six inactive tk256 VRMA~~ — **done**, all six active (MO9).
+2. Quaternius UAL: download again, convert idle/sit/walk → VRMA, stage in
+   `addons/stable/` and audit on three avatar heights before promoting.
+3. Fix or replace the clips tagged in `NEEDS_FIX.md` (17 Mixamo, 8 converted
+   dances).
 
 ## Agent audit (additive only)
 

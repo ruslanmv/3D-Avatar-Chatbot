@@ -280,7 +280,7 @@
     },
     "vendor-vrma": {
       "source": "tk256ailab-vrm-viewer",
-      "license": "Open source"
+      "license": "MIT"
     },
     "addons-actions": {
       "source": "davincidreams-3dchat (mixamo origin)",

@@ -36,3 +36,12 @@ the owner's direction, with credits and licence notes in
 removed from `addons/pending/`.
 
 Clips that failed review are tagged in [`NEEDS_FIX.md`](NEEDS_FIX.md).
+
+## 2026-11-14 — pruned
+
+Removed binaries nothing used: the `addons/stable/` copies of the tk256 six and
+`idle_loop.vrma` (identical copies live in `vendor/animations/vrma/`),
+`test.vrma` (a three-vrm sanity sample with no product role), and the Quaternius
+UAL pack (GLB, glTF mirror, preview, LFS pointers — not playable until
+converted) with its probe script. Audit evidence under `verification/runs/` is
+kept.
