@@ -189,7 +189,78 @@
         return null;
     }
 
-    const api = { STYLE_WORDS, choose, score, keyOf, byName };
+    /**
+     * UN1. The next layer down, from the looks she already has. Pure.
+     *
+     * A look is a whole avatar file (PX decision 7: no layered-garment system), so "taking
+     * something off" is changing into the look that is what she would have on without it. The
+     * try-on haul's own ranking (`TryOnHaulActivity.allureOf`, LT9) already knows the layers:
+     * a complete outfit, then lingerie, where sets and garters rank above single pieces. So:
+     *
+     *   dressed (any band but lingerie)  → her lingerie set, the richest one first
+     *   in lingerie                       → a lingerie look that ranks below the one she has on
+     *   `step: 'all'`                     → the lowest-ranked lingerie look at once
+     *
+     * The colour she has on is kept when a look in that colour exists, so the black dress comes
+     * off over black lingerie and not over champagne. Nothing is invented: with no look below
+     * the one she wears, the answer is `null` and the caller says she is down to her last layer.
+     *
+     * @param {object} o
+     * @param {object[]} o.looks     her looks, as the closet lists them
+     * @param {object|null} o.current  the look she has on (null for her own outfit)
+     * @param {'next'|'all'} [o.step]
+     * @param {function} o.allureOf  `(look) => {band, score}` (TryOnHaulActivity.allureOf)
+     * @returns {object|null} the look to put on
+     */
+    const UNDRESS_COLOURS = [
+        'black',
+        'white',
+        'red',
+        'crimson',
+        'burgundy',
+        'wine',
+        'champagne',
+        'ivory',
+        'nude',
+        'pink',
+        'blue',
+        'beige',
+    ];
+    function colourOf(look) {
+        const words = [look && look.name, look && look.prompt, look && look.description]
+            .filter((v) => typeof v === 'string')
+            .join(' ')
+            .toLowerCase();
+        return UNDRESS_COLOURS.find((c) => new RegExp(`\\b${c}\\b`).test(words)) || null;
+    }
+    function undressStep(o) {
+        const opts = o || {};
+        const rank = typeof opts.allureOf === 'function' ? opts.allureOf : null;
+        if (!rank) return null;
+        const looks = Array.isArray(opts.looks) ? opts.looks : [];
+        const current = opts.current || null;
+        const here = current ? rank(current) : null;
+        const inLingerie = Boolean(here && here.band === 'lingerie');
+        const currentKey = current ? keyOf(current) : null;
+        let pool = looks.filter((l) => l && keyOf(l) !== currentKey && rank(l).band === 'lingerie');
+        if (inLingerie) pool = pool.filter((l) => rank(l).score < here.score);
+        if (!pool.length) return null;
+        const colour = current ? colourOf(current) : null;
+        const sameColour = colour ? pool.filter((l) => colourOf(l) === colour) : [];
+        const from = sameColour.length ? sameColour : pool;
+        const scores = from.map((l) => rank(l).score);
+        // Dressed: the richest lingerie first (a set before a single piece). In lingerie: the next
+        // rank down. All: the lowest rank there is.
+        const target =
+            opts.step === 'all'
+                ? Math.min(...scores)
+                : inLingerie
+                  ? Math.max(...scores.filter((s) => s < here.score))
+                  : Math.max(...scores);
+        return from.find((l) => rank(l).score === target) || null;
+    }
+
+    const api = { STYLE_WORDS, choose, score, keyOf, byName, undressStep, colourOf };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_OUTFIT_DECISION_ENGINE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

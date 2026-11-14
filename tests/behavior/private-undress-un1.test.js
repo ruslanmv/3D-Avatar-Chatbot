@@ -1,0 +1,191 @@
+/**
+ * UN1–UN2. Undressing in Private (at the top of the pace only) and poses asked for in any language.
+ *
+ * The pure halves: what the words mean, whether the evening allows it, which layer comes off,
+ * the tag she writes, and the Japanese / Korean / Chinese poses. The bridge end-to-end lives in
+ * private-actions.test.js, next to the session harness it needs.
+ */
+const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+const Policy = require('../../src/experiences/private/PrivateActionPolicy.js');
+const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+const Bridge = require('../../src/experiences/private/PrivateActionBridge.js');
+const WardrobeTool = require('../../src/wardrobe/WardrobeTool.js');
+const FastPath = require('../../src/xr/IntentFastPath.js');
+const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+
+const look = (name, prompt) => ({
+    lookId: name.toLowerCase().replace(/\W+/g, '-'),
+    name,
+    prompt,
+    vrmUrl: `${name}.vrm`,
+});
+const DRESS = look('Black Cocktail Dress', 'black satin cocktail dress');
+const SET = look('Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs', 'black lace lingerie set');
+const GARTER = look('Black Garter Set', 'black Garter Set');
+const THONG = look('Black Micro Tailored Thong', 'black Tailored Thong');
+const BRIEFS = look('Black Tailored Briefs', 'black Tailored Briefs');
+const CHAMPAGNE = look('Champagne Garter Set', 'champagne Garter Set');
+const LOOKS = [DRESS, CHAMPAGNE, SET, GARTER, THONG, BRIEFS];
+
+describe('UN1. their words', () => {
+    test.each([
+        ['spogliati', 'next'],
+        ['Togliti il vestito', 'next'],
+        ['togliti tutto', 'all'],
+        ['undress', 'next'],
+        ['take everything off', 'all'],
+        ['take your dress off', 'next'],
+        ['undress completely', 'all'],
+        ['desnúdate', 'next'],
+        ['quítate todo', 'all'],
+        ['déshabille-toi', 'next'],
+        ['zieh dich aus', 'next'],
+        ['脱いで', 'next'],
+        ['全部脱いで', 'all'],
+        ['벗어', 'next'],
+        ['脱掉', 'next'],
+    ])('%s → wardrobe.undress (%s)', (said, step) => {
+        const parsed = Intent.parse(said);
+        expect(parsed && parsed.name).toBe('wardrobe.undress');
+        expect(parsed.params.step).toBe(step);
+    });
+
+    test('talk about clothes is still talk', () => {
+        expect(Intent.parse('Ti piace spogliarti?')).toBeNull();
+        expect(Intent.parse("don't undress")).toBeNull();
+    });
+});
+
+describe('UN1. the evening decides: level 4, read and never moved', () => {
+    const facts = (level, more) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', level, ...more });
+    const undress = (source) => ({ name: 'wardrobe.undress', params: { step: 'next' }, source });
+
+    test('the level is 4', () => {
+        expect(Policy.UNDRESS_LEVEL).toBe(4);
+        expect(Bridge.UNDRESS_AT).toBe(Policy.UNDRESS_LEVEL);
+    });
+
+    test('below level 4 nobody undresses her, not even the person', () => {
+        for (const level of [0, 1, 2, 3, undefined]) {
+            expect(Policy.decide(undress('user'), facts(level))).toEqual({ allow: false, why: 'pace' });
+            expect(Policy.decide(undress('model'), facts(level, { autonomy: 'autonomous' }))).toEqual({
+                allow: false,
+                why: 'pace',
+            });
+        }
+    });
+
+    test('at level 4 the person’s words, yes or tap undress her', () => {
+        for (const source of ['user', 'user-approved', 'control'])
+            expect(Policy.decide(undress(source), facts(4))).toEqual({ allow: true });
+    });
+
+    test('at level 4 her own wish follows the outfit-autonomy setting', () => {
+        expect(Policy.decide(undress('model'), facts(4, { autonomy: 'autonomous' }))).toEqual({ allow: true });
+        expect(Policy.decide(undress('model'), facts(4, { autonomy: 'suggest' }))).toMatchObject({
+            allow: false,
+            suggest: true,
+        });
+        expect(Policy.decide(undress('model'), facts(4, { autonomy: 'off' }))).toEqual({
+            allow: false,
+            why: 'autonomy-off',
+        });
+        expect(Policy.decide(undress('model'), facts(4, { asked: { wardrobe: true } }))).toEqual({ allow: true });
+    });
+
+    test('care mode still stops it, and no other action reads the level', () => {
+        expect(Policy.decide(undress('user'), facts(4, { care: true }))).toEqual({ allow: false, why: 'care' });
+        const wear = { name: 'wardrobe.wear', params: { style: 'lingerie' }, source: 'user' };
+        expect(Policy.decide(wear, facts(1))).toEqual({ allow: true });
+        expect(Policy.decide({ name: 'avatar.dance', params: {}, source: 'user' }, facts(1))).toEqual({ allow: true });
+    });
+
+    test('parameters are validated like every other action', () => {
+        expect(Policy.validate('wardrobe.undress', { step: 'all', volume: 11 }).params).toEqual({ step: 'all' });
+        expect(Policy.validate('wardrobe.undress', { step: 'sideways' }).params).toEqual({});
+    });
+});
+
+describe('UN1. which layer comes off, from her own looks', () => {
+    const step = (current, s) => Engine.undressStep({ looks: LOOKS, current, step: s, allureOf });
+
+    test('dressed → her richest lingerie in the colour she has on', () => {
+        const next = step(DRESS, 'next');
+        expect([SET.name, GARTER.name]).toContain(next.name);
+        expect(Engine.colourOf(next)).toBe('black');
+    });
+
+    test('in lingerie → the next layer down, then the next, then nothing more', () => {
+        expect(step(GARTER, 'next').name).toBe(THONG.name);
+        expect(step(THONG, 'next').name).toBe(BRIEFS.name);
+        expect(step(BRIEFS, 'next')).toBeNull();
+    });
+
+    test('"all of it" goes straight to the last layer she has', () => {
+        expect(step(DRESS, 'all').name).toBe(BRIEFS.name);
+    });
+
+    test('a colour she has no lower layer in falls back to any lower layer', () => {
+        expect(step(CHAMPAGNE, 'next').name).toBe(THONG.name);
+    });
+
+    test('with no lingerie looks there is nothing to change into', () => {
+        expect(Engine.undressStep({ looks: [DRESS], current: DRESS, allureOf })).toBeNull();
+        expect(Engine.undressStep({ looks: LOOKS, current: DRESS })).toBeNull();
+    });
+});
+
+describe('UN1. the tag she writes', () => {
+    test('<wardrobe action="undress"/> is one undress call, step next by default', () => {
+        const out = WardrobeTool.extract('Vieni qui. <wardrobe action="undress"/>');
+        expect(out.call).toEqual({ name: 'wardrobe_undress', args: { step: 'next' } });
+        expect(out.clean).toBe('Vieni qui.');
+        expect(WardrobeTool.extract('<wardrobe action="undress" step="all"/>').call.args).toEqual({ step: 'all' });
+        expect(WardrobeTool.extract('<wardrobe action="undress" step="sideways"/>').call).toBeNull();
+    });
+
+    test('outside Private it never runs', async () => {
+        await expect(WardrobeTool.call('wardrobe_undress', { step: 'next' })).resolves.toMatchObject({ ok: false });
+    });
+});
+
+describe('UN2. poses asked for in Japanese, Korean and Chinese', () => {
+    test.each([
+        ['座って', 'sit'],
+        ['앉아', 'sit'],
+        ['坐下', 'sit'],
+        ['横になって', 'lay'],
+        ['누워', 'lay'],
+        ['躺下', 'lay'],
+        ['立って', 'stand'],
+        ['일어나', 'stand'],
+        ['站起来', 'stand'],
+        ['くるっと回って', 'spin'],
+        ['한 바퀴 돌아', 'spin'],
+        ['转个圈', 'spin'],
+        ['振り向いて', 'turn_around'],
+        ['转身', 'turn_around'],
+        ['踊って', 'dance'],
+        ['춤춰', 'dance'],
+        ['跳舞', 'dance'],
+        ['ポーズして', 'model_pose'],
+        ['摆个姿势', 'model_pose'],
+        ['服を見せて', 'show_outfit'],
+    ])('%s → %s', (said, label) => {
+        const hit = FastPath.match(said);
+        expect(hit && hit.label).toBe(label);
+        expect(hit.plan.commands.length).toBeGreaterThan(0);
+    });
+
+    test('every CJK entry points at a motion that exists', () => {
+        const labels = new Set(FastPath.RULES.map((r) => r.label));
+        FastPath.CJK_RULES.forEach((entry) => expect(labels.has(entry.label)).toBe(true));
+    });
+
+    test('a long sentence is left to her, and the existing languages are unchanged', () => {
+        expect(FastPath.match('昨日は友達と一緒に座っていろいろ話をしました')).toBeNull();
+        expect(FastPath.match('sit down').label).toBe('sit');
+        expect(FastPath.match('siediti').label).toBe('sit');
+        expect(FastPath.match('sdraiati').label).toBe('lay');
+    });
+});

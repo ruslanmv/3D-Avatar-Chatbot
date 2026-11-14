@@ -16,7 +16,7 @@
  *
  * ## What it guarantees
  *
- * - **An allowlist.** Twelve names; anything else is refused before a handler is looked up.
+ * - **An allowlist.** Thirteen names; anything else is refused before a handler is looked up.
  * - **Validated parameters.** Each name has a schema; unknown keys are dropped, strings are
  *   bounded and stripped of markup and links. A model's arguments are data, never instructions.
  * - **Her own initiative is narrow.** A model-sourced action runs only when the person asked for
@@ -25,8 +25,11 @@
  * - **Making a new outfit costs something**, so it needs the person: their own request, or their
  *   yes to an offer. Never the model alone, whatever the autonomy level.
  * - **Care mode stops everything but silence.** Only pausing or stopping music is allowed.
- * - **Nothing here knows the consent level.** No action reads it, moves it or is unlocked by it;
- *   `ConsentFlow` stays the only owner (CLAUDE.md, "Adult experience").
+ * - **Only undressing knows the consent level, and only reads it.** UN1, an owner decision:
+ *   `wardrobe.undress` opens at the top of the evening's pace (`UNDRESS_LEVEL`, 4 of 4) and is
+ *   refused below it, whoever asks. The level arrives as a fact read at the moment of the
+ *   decision; nothing here moves it, and no other action reads it. `ConsentFlow` stays its only
+ *   owner, and a ceiling below 4 means undressing never opens (CLAUDE.md, "Adult experience").
  *
  * Exposes: window.NEXUS_PRIVATE_ACTION_POLICY
  */
@@ -108,6 +111,16 @@
             required: ['prompt'],
         },
         'wardrobe.undo': { family: 'wardrobe', params: {} },
+        // UN1. One layer off (`next`), or down to the last layer she has (`all`); `look` is the
+        // look an approved offer already chose, so the yes wears what was offered.
+        'wardrobe.undress': {
+            family: 'wardrobe',
+            params: {
+                step: oneOf(['next', 'all']),
+                look: (v) => text(v, 60) || undefined,
+                words: (v) => text(v, 120) || undefined,
+            },
+        },
         'avatar.dance': { family: 'avatar', params: {} },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
         'scene.change': {
@@ -116,6 +129,9 @@
             required: ['scene'],
         },
     });
+
+    /** UN1. The pace the evening must be at before any layer comes off. */
+    const UNDRESS_LEVEL = 4;
 
     /** Makes a new asset: slow, and on a paid Forge not free. */
     const GENERATES = Object.freeze(['wardrobe.create', 'wardrobe.change']);
@@ -172,6 +188,7 @@
      * @param {object}  facts.asked      `{ music, wardrobe, avatar, scene }` — the person asked for
      *                                   that family in the turn this action belongs to
      * @param {string}  facts.autonomy   `off` | `suggest` | `autonomous`
+     * @param {number}  [facts.level]    ConsentFlow's current level, read now (UN1; undress only)
      * @returns {{allow: boolean, why?: string, suggest?: boolean}}
      */
     function decide(action, facts) {
@@ -181,6 +198,9 @@
         if (!SOURCES.includes(action.source)) return { allow: false, why: 'unknown-source' };
         if (!f.active) return { allow: false, why: 'not-in-private' };
         if (f.care && !QUIETING.includes(action.name)) return { allow: false, why: 'care' };
+        // UN1. Before who asked: the person's own words below the top of the pace are refused too.
+        if (action.name === 'wardrobe.undress' && !(Number(f.level) >= UNDRESS_LEVEL))
+            return { allow: false, why: 'pace' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
@@ -219,6 +239,7 @@
         SOURCES,
         GENERATES,
         QUIETING,
+        UNDRESS_LEVEL,
         validate,
         decide,
         autonomy,

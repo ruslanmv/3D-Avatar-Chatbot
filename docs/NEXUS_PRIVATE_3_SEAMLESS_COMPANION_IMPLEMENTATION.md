@@ -113,8 +113,9 @@ that wants direct requests to generate without the question sets
 ## 5. What was kept exactly as it was
 
 - Private is still silent on entry; music starts only when asked.
-- Consent: no action reads or moves the level or the ceiling (a test holds both still across
-  music, outfits and dancing). `ConsentFlow` remains the only owner.
+- Consent: no action moves the level or the ceiling (a test holds both still across music,
+  outfits, dancing and undressing). `ConsentFlow` remains the only owner. One action reads the
+  level: `wardrobe.undress` opens at level 4 (UN1, §14).
 - "stop", "cozy" and care mode are decided before the bridge runs. In care mode only pausing or
   stopping music is allowed.
 - Adult outfits follow the existing gate: private-rated sets and looks exist only when
@@ -374,4 +375,39 @@ Each line maps every word to one English name, the vocabulary looks are named in
 | --- | --- |
 | jacket | leather jacket, jacket, blazer, giacca, giubbotto, chaqueta, americana |
 | coat | trench coat, coat, cappotto, abrigo, gabardina |
+
+## 14. Undressing at the top of the pace, and poses in any language (UN1–UN2, 2026-11-14)
+
+An owner decision: in Private, undressing is available once the evening is at level 4 of 4,
+and she may choose to do it herself when the moment is right.
+
+- **`wardrobe.undress`** (`step: next | all`) is the thirteenth action. `PrivateActionPolicy`
+  refuses it below `UNDRESS_LEVEL` (4) whoever asks — the person's own words included — and reads
+  the level as a fact at the moment of the decision (`PrivateActionBridge.levelOf`). Nothing moves
+  the level; a ceiling below 4 means it never opens. Care mode still blocks it.
+- **Who may start it at level 4.** The person's words, yes or tap: always. Her own tag
+  (`<wardrobe action="undress"/>`) follows the outfit-autonomy setting: *She chooses* runs it,
+  *She suggests* turns it into an offer whose yes runs it as an undress again (so the level is
+  checked a second time), *Only when I ask* refuses it.
+- **What comes off.** A look is a whole avatar (§3, decision 7), so a layer is the look she would
+  have on without it: `OutfitDecisionEngine.undressStep` reads the haul's own ranking
+  (`TryOnHaulActivity.allureOf`, LT9) — dressed → her richest lingerie, then each lower lingerie
+  rank, `all` straight to the lowest — keeping the colour she has on when a look in it exists. It
+  wears through `InSceneWardrobe.wearLook`, so the swap holds her on screen and a stale result is
+  taken off. With nothing lower, the answer is `last-layer` and she says so; nothing is invented.
+- **Her words follow the body.** At level 4 she is told she may undress (per autonomy); below it,
+  that it is not open yet and never to describe it; after each step, what she now wears. Reaching
+  level 4 lists her looks in the background once, so the layers are ready when asked.
+- **Their words, nine languages.** `PrivateActionIntent` maps the undress phrases it already knew
+  (it, en, es, fr, de, pt, ja, ko, zh) — plus "take … off" and "everything / tutto / todo /
+  全部" for `all` — to `wardrobe.undress`.
+- **Poses (UN2).** Her motion list (`MotionClipMap.USE`, every gesture that can play) was already
+  in Private's prompt and her motion blocks already ran; the prompt now says so. The person's
+  pose requests in Japanese, Korean and Chinese now reach the motion fast path too
+  (`IntentFastPath.CJK_RULES`, matched on the raw text because normalisation splits Hangul and
+  drops kana voicing), each reusing an existing motion's plan.
+- Tests: `tests/behavior/private-undress-un1.test.js` (words, policy, layers, tag, CJK poses) and
+  the `UN1` block of `tests/behavior/private-actions.test.js` (a real session: refused at 2, one
+  layer per request at 4, `last-layer`, the offer's yes re-checked after the level drops, her own
+  step under *She chooses* refused at 3 and run at 4, the level never moved).
 

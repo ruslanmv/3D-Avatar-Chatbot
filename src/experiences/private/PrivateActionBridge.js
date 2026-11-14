@@ -254,7 +254,33 @@
             care: Boolean(s.session._care),
             asked,
             autonomy: Policy ? Policy.autonomy(s.win) : 'suggest',
+            // UN1. Read at the moment of the decision, for undressing only; never written.
+            level: levelOf(s),
         };
+    }
+
+    /** ConsentFlow's current level for this session (UN1), or 0 when there is none. */
+    /** UN1. Kept equal to `PrivateActionPolicy.UNDRESS_LEVEL`; a test holds them together. */
+    const UNDRESS_AT = 4;
+
+    function levelOf(s) {
+        try {
+            const flow = s && s.session && s.session.adult;
+            return flow && flow.active !== false ? Number(flow.level) || 0 : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    /** The haul's layer ranking (LT9), the one the undress step reads its layers from. */
+    function allureOf(s) {
+        const haul = s.win && s.win.NEXUS_TRY_ON_HAUL_ACTIVITY;
+        if (haul && typeof haul.allureOf === 'function') return haul.allureOf;
+        try {
+            return require('../../wardrobe/TryOnHaulActivity.js').allureOf || null;
+        } catch (_) {
+            return null;
+        }
     }
 
     /**
@@ -304,6 +330,9 @@
         const verdict = Policy.decide(action, facts(s, action));
         if (!verdict.allow) {
             if (verdict.suggest) await offerFrom(s, action);
+            // UN1. "Not yet" is this turn's answer about her clothes: the reply is told so, and a
+            // request that never ran cannot be described as having happened.
+            if (action.name === 'wardrobe.undress' && verdict.why === 'pace') s.wardrobe = action;
             return finish(action, 'blocked', verdict.why);
         }
         if (source !== 'control') s.byTurn.set(key, action);
@@ -367,6 +396,8 @@
                     change: action.name === 'wardrobe.change',
                     label: null,
                 });
+            case 'wardrobe.undress':
+                return undress(s, action, alive);
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
                 const out = await s.closet.undo();
@@ -390,6 +421,46 @@
             default:
                 return settle(action, 'blocked', 'unknown-action');
         }
+    }
+
+    /**
+     * UN1. One layer off: the next look down from the one she has on, chosen from her own looks
+     * (`OutfitDecisionEngine.undressStep`), worn the way every look is worn — the controller keeps
+     * her on screen until the new file has loaded, and a stale result is taken off again.
+     */
+    function nextLayer(s, params) {
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const rank = allureOf(s);
+        if (!Engine || typeof Engine.undressStep !== 'function' || !rank) return null;
+        const looks = (s.closet && s.closet.looks) || [];
+        if (params && params.look) {
+            const named = looks.find((l) => String(l.name || '') === params.look);
+            if (named) return named;
+        }
+        return Engine.undressStep({
+            looks,
+            current: s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null,
+            step: (params && params.step) || 'next',
+            allureOf: rank,
+        });
+    }
+
+    async function undress(s, action, alive) {
+        if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
+        const opened = await s.closet.open();
+        if (!alive()) return settle(action, 'blocked', 'stale');
+        if (!opened.ok) return settle(action, 'failed', opened.why);
+        if (!s.closet.privateOpen) return settle(action, 'failed', 'adult-ineligible');
+        const look = nextLayer(s, action.params);
+        if (!look) return settle(action, 'failed', 'last-layer');
+        const out = await s.closet.wearLook(look, alive);
+        if (out.ok) s.offer = null;
+        return settle(
+            action,
+            out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
+            out.ok ? null : out.why,
+            { name: look.name || '' }
+        );
     }
 
     async function wear(s, action, alive) {
@@ -454,7 +525,21 @@
         try {
             const opened = await s.closet.open();
             if (state !== s || !opened.ok) return;
-            if (action.name === 'wardrobe.wear') {
+            if (action.name === 'wardrobe.undress') {
+                // UN1. Her idea, at level 4, under SUGGEST: the layer is resolved now and offered;
+                // the yes runs it as an undress again, so the level is checked a second time.
+                if (!s.closet.privateOpen) return;
+                const look = nextLayer(s, action.params);
+                if (look)
+                    s.offer = {
+                        kind: 'wear',
+                        undress: true,
+                        look,
+                        name: look.name || '',
+                        turnId: s.turnId,
+                        from: action.id,
+                    };
+            } else if (action.name === 'wardrobe.wear') {
                 const planned = s.closet.plan(action.params);
                 if (!planned.ok) return;
                 const c = planned.choice;
@@ -498,7 +583,13 @@
             id: `act-${Date.now().toString(36)}-${seq}`,
             sessionId: s.sessionId,
             turnId: s.turnId,
-            name: offer.kind === 'wear' ? 'wardrobe.wear' : offer.spec.change ? 'wardrobe.change' : 'wardrobe.create',
+            name: offer.undress
+                ? 'wardrobe.undress'
+                : offer.kind === 'wear'
+                  ? 'wardrobe.wear'
+                  : offer.spec.change
+                    ? 'wardrobe.change'
+                    : 'wardrobe.create',
             params: offer.kind === 'wear' ? { look: offer.name } : { prompt: offer.spec.prompt },
             family: 'wardrobe',
             source: source === 'control' ? 'control' : 'user-approved',
@@ -811,6 +902,40 @@
                     '  You may suggest a saved look in words; to offer it, end with <wardrobe action="wear" look="NAME"/> on its own line — they are asked before anything changes. Never say you have changed until told so below.'
                 );
             else lines.push('  Change only when they ask. Talking about clothes is not asking.');
+            // UN1. Undressing: one layer at a time, from her own looks, and only at the top of the
+            // evening's pace. Below it she is told so, and never to describe it as happening.
+            const at = levelOf(s);
+            // UN1. At the top of the pace, her looks are loaded in the background (once) so the
+            // layers are known by the time anybody asks; until they are, she is told what the
+            // level allows and the handler checks her eligibility when it runs.
+            // `_loadedAt` starts at -Infinity: finite means her looks have been listed.
+            const listed = Number.isFinite(closet._loadedAt);
+            if (at >= UNDRESS_AT && !listed && !s.undressWarm && typeof closet.open === 'function') {
+                s.undressWarm = true;
+                Promise.resolve()
+                    .then(() => closet.open())
+                    .then(() => state === s && emit())
+                    .catch(() => {});
+            }
+            if (closet.privateOpen || !listed) {
+                if (at >= UNDRESS_AT) {
+                    lines.push(
+                        '- Undressing: the evening is at its closest, so you may take your clothes off, one layer at a time (the app changes you into what is underneath). When they ask, you do it; when the moment feels right and you want to, you may do it yourself.'
+                    );
+                    if (autonomy === 'autonomous')
+                        lines.push(
+                            '  To take a layer off: one short sentence, then <wardrobe action="undress"/> on its own line. Use step="all" only when they ask for everything at once.'
+                        );
+                    else if (autonomy === 'suggest')
+                        lines.push(
+                            '  To offer it on your own, end with <wardrobe action="undress"/> on its own line — they are asked before anything comes off. When they ask, it simply happens.'
+                        );
+                    else lines.push('  Take something off only when they ask.');
+                } else
+                    lines.push(
+                        `- Undressing is not open yet: the evening is at ${at || 1} of ${UNDRESS_AT}. If they ask, say "not yet" warmly and playfully — it opens when they bring the evening closer. Never describe yourself undressing before then.`
+                    );
+            }
         }
         // PX14. The rule that stops the reported transcript: "Mi tolgo il vestito per te. Ora ho
         // solo mutande e reggiseno." while the avatar wore exactly what she had on. Her clothes are
@@ -819,6 +944,12 @@
             '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
         );
         lines.push('- Dancing: when they ask you to dance, you do.');
+        // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
+        // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
+        // asked for in any language. The motion contract carries the names; this says they apply.
+        lines.push(
+            '- Poses and moves: every gesture in your motion list works here — sit, lie down, stand, turn round, spin, a model pose, showing your outfit, and the rest. When they ask for a pose in any language, take it, and say so in a few words.'
+        );
         lines.push(
             'An executable request is never answered with "tell me more" or a list of options: acknowledge it in one short sentence, as something you are doing.'
         );
@@ -872,7 +1003,31 @@
             const name = (w.result && w.result.name) || '';
             w.told = true;
             if (['failed', 'blocked'].includes(w.status)) w.toldFailure = true;
-            if (w.name === 'wardrobe.undo') {
+            if (w.name === 'wardrobe.undress') {
+                // UN1. What the layer step did, in the words the reply must not contradict.
+                if (w.status === 'completed')
+                    now.push(
+                        `You have just taken a layer off${name ? `: you are now wearing “${name}”` : ''}. Say it in a few words, in the moment.`
+                    );
+                else if (w.status === 'pending')
+                    now.push('You are taking a layer off right now — say so in one short sentence.');
+                else if (w.why === 'pace' && w.source === 'model')
+                    now.push('Undressing is not open yet. Stay as you are and do not describe taking anything off.');
+                else if (w.why === 'pace')
+                    now.push(
+                        'They asked you to undress, but the evening is not that close yet. Say "not yet" warmly, teasing — it opens when they bring the evening closer. Stay dressed and do not describe undressing.'
+                    );
+                else if (w.why === 'needs-approval')
+                    now.push('You offered to take something off; the app is asking them. Wait for their answer.');
+                else if (w.why === 'last-layer')
+                    now.push(
+                        'They asked you to undress, and you are already down to the last layer you have here. Say so playfully; nothing changes.'
+                    );
+                else
+                    now.push(
+                        `They asked you to undress and it did not happen: ${WHY_OUTFIT[w.why] || 'it could not be done'}. Tell them so once, in your own voice, and stay as you are.`
+                    );
+            } else if (w.name === 'wardrobe.undo') {
                 now.push(
                     w.status === 'failed'
                         ? `They asked you to go back to your earlier outfit and it could not be done: ${WHY_OUTFIT[w.why] || 'it did not work'}. Say so once.`
@@ -913,6 +1068,7 @@
     const api = {
         GENERATE_KEY,
         OFFER_TURNS,
+        UNDRESS_AT,
         begin,
         end,
         active,
