@@ -1,6 +1,6 @@
 # Wake Up voice activation (WU)
 
-One microphone owner. The tap on `#listen-btn`, a three-second hold on that
+One microphone owner. The tap on `#listen-btn`, a two-second hold on that
 same button, Companion hands-free, Companion wake standby, VR push-to-talk and
 TTS all ask `NEXUS_VOICE_ACTIVATION` before they open a recognizer. The
 recognizer is still `NEXUS_STT.recognitionClass()` — browser Web Speech,
@@ -12,15 +12,20 @@ an older generation cannot call `start()` again.
 
 ## The button
 
-A short tap records one request (`micTap` → `captureOnce`). Finished speech is
-sent once through `handleUserMessage`. After the spoken reply the microphone
-stays closed. Wake word is not required.
+A short tap records one request (`micTap` → `captureOnce`). A second tap while
+recording cancels it and discards the unsent transcript. Browser interim text
+appears in the chat input as it arrives. The final speech transcript appears
+there before auto-send (350 ms preview by default), then is submitted once
+through `handleUserMessage`. A tap during that preview cancels its timer and
+cannot send later. After the spoken reply the microphone stays closed.
+Wake word is not required.
 
-Holding the button for 3000 ms, while a hands-free session is not open, starts
+Holding the button for 2000 ms, while a hands-free session is not open, starts
 that session (`holdForHandsFree`). It listens again after each reply until a
-tap or another hold. The same button shows a stop mark for the session. Wake
+tap or another hold. Holding while a one-shot recording is open promotes that
+capture to hands-free without acquiring a second microphone. The same button shows a stop mark for the session. Wake
 word stays the Settings checkbox. The hold does not record and does not flip
-that checkbox. Release before 3000 ms is the tap.
+that checkbox. Release before 2000 ms is the tap.
 `pointercancel`, a drag past 16 px, `pagehide` and a disabled control cancel
 and swallow the click. The outline uses `currentColor`. Idle green and
 listening orange are unchanged. `wake-standby` is the visible “microphone is
@@ -44,10 +49,10 @@ failed, been cancelled, or never started, and then only after the echo
 guard. A rejected send releases the microphone instead of staying busy.
 
 The microphone is the only stop. While hands-free is open it shows a square in
-the same place, and a tap ends the session and playback. Wake word is a
+the same place, and a tap ends the session and playback (including non-browser TTS providers). Wake word is a
 different switch and is not cleared by that tap. Orange on the button is the
-person speaking. Cyan is Nexus thinking or speaking. Green is idle, or the
-slow halo while hands-free is waiting. `prefers-reduced-motion` drops the
+person speaking. Cyan is Nexus thinking or speaking. Green is idle. Purple is the hands-free mode ring and slow halo, including
+while the current speech or response changes the button's center color. `prefers-reduced-motion` drops the
 loops and keeps a steady outline.
 
 ## Wake word
@@ -103,7 +108,7 @@ headset, a phone, or a laptop microphone, and it does not claim:
   `continuous: false` if `start()` throws)
 - Quest Browser's built-in recognizer hearing anything (it still does not;
   on-device Whisper remains the recognizer when that provider is selected)
-- a calibrated 800 / 1200 / 1800 / 7000 / 30000 ms on real rooms — those are the
+- a calibrated 800 / 1200 / 1800 / 7000 / 20000 ms on real rooms — those are the
   initial defaults (`DEFAULTS` in `src/stt/VoiceActivation.js`). Whisper's own
   endpointer is already about 900 ms of silence and about 28 s maximum; the
   controller also stops a silent command at 7 s.
