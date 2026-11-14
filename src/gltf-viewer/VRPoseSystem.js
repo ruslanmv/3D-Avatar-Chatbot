@@ -542,6 +542,37 @@ const POSE_PRESETS = {
     // GROUND POSES
     // =====================================================================
 
+    // Experimental grounded hands-and-knees candidate. Unlike allFoursArched and
+    // doggyStyle (which are standing forward bends), the pelvis pitches the trunk
+    // towards horizontal, knees flex beneath the hips and arms extend to the floor.
+    // No fixed hipsPosition: MO5 ground settling measures the loaded avatar's own rig.
+    // Four-point contact must be confirmed by the browser joint-contact audit before
+    // shipping this preset beyond this isolated review branch.
+    handsKnees: {
+        label: 'Hands and Knees (Candidate)',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(-78, 0, 0),
+            spine: eulerDegToQuat(3, 0, 0),
+            chest: eulerDegToQuat(-2, 0, 0),
+            upperChest: eulerDegToQuat(0, 0, 0),
+            neck: eulerDegToQuat(16, 0, 0),
+            head: eulerDegToQuat(12, 0, 0),
+            leftUpperLeg: eulerDegToQuat(72, 0, -9),
+            rightUpperLeg: eulerDegToQuat(72, 0, 9),
+            leftLowerLeg: eulerDegToQuat(-99, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-99, 0, 0),
+            leftFoot: eulerDegToQuat(-12, 0, 0),
+            rightFoot: eulerDegToQuat(-12, 0, 0),
+            leftUpperArm: eulerDegToQuat(0, -85, 0),
+            rightUpperArm: eulerDegToQuat(0, 85, 0),
+            leftLowerArm: eulerDegToQuat(0, -8, 0),
+            rightLowerArm: eulerDegToQuat(0, 8, 0),
+            leftHand: eulerDegToQuat(-5, 0, 0),
+            rightHand: eulerDegToQuat(-5, 0, 0),
+        },
+    },
+
     allFoursArched: {
         label: 'Bent Forward (Arched)',
         adult: true,
@@ -1255,6 +1286,7 @@ const PRESET_ORDER = [
     'lyingSprawl',
     // Adult — Ground poses
     'allFoursArched',
+    'handsKnees',
     // Adult — Core VR Simulation (Spicy Mode only)
     'missionary',
     'doggyStyle',
