@@ -25,3 +25,14 @@ Stable additive: **8/8 ok**.
 | mocopi tfuru (5)     | **ok** ×5                       | No SPDX — clarify before stable      |
 
 See `addons/pending/README.md`. ACCAD/CMU floaters removed.
+
+## 2026-11-14 — promoted to the app (MO10)
+
+BOOTH VRoid six (`show_outfit`, `peace_sign`, `finger_gun`, `spin`,
+`model_pose`, `playful_dip`) and mocopi five (`turn_aside`, `open_arms`,
+`hand_on_heart`, `explain`, `present`) now live in `vendor/animations/vrma/` at
+the owner's direction, with credits and licence notes in
+`vendor/animations/vrma/THIRD_PARTY_LICENSES.md`. Their staging copies were
+removed from `addons/pending/`.
+
+Clips that failed review are tagged in [`NEEDS_FIX.md`](NEEDS_FIX.md).

@@ -175,7 +175,18 @@
         "vrma/Goodbye.vrma",
         "vrma/Jump.vrma",
         "vrma/LookAround.vrma",
-        "vrma/Sleepy.vrma"
+        "vrma/Sleepy.vrma",
+        "vrma/show_outfit.vrma",
+        "vrma/peace_sign.vrma",
+        "vrma/finger_gun.vrma",
+        "vrma/spin.vrma",
+        "vrma/model_pose.vrma",
+        "vrma/playful_dip.vrma",
+        "vrma/turn_aside.vrma",
+        "vrma/open_arms.vrma",
+        "vrma/hand_on_heart.vrma",
+        "vrma/explain.vrma",
+        "vrma/present.vrma"
       ]
     }
   },

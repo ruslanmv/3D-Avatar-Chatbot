@@ -200,6 +200,41 @@ const IntentFastPath = (() => {
             re: /\b(look around|guardati (intorno|attorno)|mira alrededor|regarde autour|schau dich um)\b/,
             plan: () => _plan([{ type: 'gesture', name: 'look_around' }]),
         },
+        // MO10. The BOOTH VRoid gestures people actually ask for. "show me your outfit" pairs with
+        // the wardrobe: after a try-on she shows the look off head to toe. Bare "gira" is left out
+        // — it is how Italian says "turn around", which has its own locomotion rule above.
+        {
+            label: 'peace_sign',
+            re: /\b(peace sign|do a peace sign|v sign|segno della pace|fai la v|signo de paz|haz la v)\b/,
+            plan: () =>
+                _plan([
+                    { type: 'gesture', name: 'peace_sign' },
+                    { type: 'expression', name: 'happy', weight: 0.6 },
+                ]),
+        },
+        {
+            label: 'spin',
+            re: /\b(spin|twirl|spin around|do a spin|fai una giravolta|giravolta|gira su te stessa|da una vuelta|haz un giro)\b/,
+            plan: () =>
+                _plan([
+                    { type: 'gesture', name: 'spin' },
+                    { type: 'expression', name: 'happy', weight: 0.5 },
+                ]),
+        },
+        {
+            label: 'model_pose',
+            re: /\b(strike a pose|pose for me|model pose|do a pose|fai una posa|posa da modella|haz una pose|posa para m[ií])\b/,
+            plan: () => _plan([{ type: 'gesture', name: 'model_pose' }]),
+        },
+        {
+            label: 'show_outfit',
+            re: /\b(show me your (outfit|clothes|look|dress)|show off your (outfit|look)|fammi vedere (il tuo |il |tuo )?(vestito|outfit|look)|mu[eé]strame tu (ropa|outfit|look))\b/,
+            plan: () =>
+                _plan([
+                    { type: 'gesture', name: 'show_outfit' },
+                    { type: 'expression', name: 'happy', weight: 0.5 },
+                ]),
+        },
         {
             label: 'bow',
             re: /\b(bow|take a bow|reverencia|inclinati|inchino|salut|verbeug dich|reverencia)\b/,

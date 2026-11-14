@@ -263,6 +263,43 @@ const ActionRegistry = (() => {
                 it: ['hai sonno', 'sei stanca', 'sbadiglia'],
             },
         },
+        // MO10. BOOTH VRoid gestures with spoken triggers.
+        {
+            id: 'peace_sign',
+            icon: '✌️',
+            phrases: {
+                en: ['peace sign', 'do a peace sign', 'v sign'],
+                es: ['haz la v', 'signo de paz', 'haz el signo de paz'],
+                it: ['fai la v', 'segno della pace', 'fai il segno della pace'],
+            },
+        },
+        {
+            id: 'spin',
+            icon: '🌀',
+            phrases: {
+                en: ['spin', 'twirl', 'do a spin'],
+                es: ['da una vuelta', 'haz un giro', 'gira sobre ti misma'],
+                it: ['fai una giravolta', 'giravolta', 'gira su te stessa'],
+            },
+        },
+        {
+            id: 'model_pose',
+            icon: '📸',
+            phrases: {
+                en: ['strike a pose', 'pose for me', 'model pose'],
+                es: ['haz una pose', 'posa para mí', 'pose de modelo'],
+                it: ['fai una posa', 'posa da modella', 'mettiti in posa'],
+            },
+        },
+        {
+            id: 'show_outfit',
+            icon: '👗',
+            phrases: {
+                en: ['show me your outfit', 'show off your look', 'show me your clothes'],
+                es: ['muéstrame tu ropa', 'muéstrame tu outfit', 'enséñame tu look'],
+                it: ['fammi vedere il vestito', 'fammi vedere il tuo outfit', 'mostrami il tuo look'],
+            },
+        },
         // ── posture ──
         {
             id: 'sit',

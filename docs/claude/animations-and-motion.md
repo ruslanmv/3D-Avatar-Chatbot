@@ -84,3 +84,14 @@ JSON alone.
 - Before adding a VRMA: measure it on more than one avatar height —
   AvatarSample_A's hips (0.89 m) match the authoring rig, so a scaling bug is
   invisible there.
+
+## Library additions (MO10)
+
+- Eleven more VRMA gestures, each with a when-to-use hint the model sees
+  (`MotionClipMap.USE`, rendered by `MotionContract`): show_outfit, peace_sign,
+  finger_gun, spin, model_pose, playful_dip (VRoid BOOTH), turn_aside, open_arms,
+  hand_on_heart, explain, present (mocopi). Spoken: "peace sign", "spin/twirl",
+  "strike a pose", "show me your outfit".
+- The loader converts tracks out of a clip's rest frame and ignores a hips rest
+  at or below the floor (Mixamo FBX2glTF) in favour of the track's median.
+- Failed clips are tagged, not shipped: `develop/NEEDS_FIX.md`.

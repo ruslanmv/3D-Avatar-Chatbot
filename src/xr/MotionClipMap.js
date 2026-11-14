@@ -178,6 +178,25 @@ const MotionClipMap = (() => {
         blush: { candidates: [VEND + 'vrma/Blush.vrma'], loop: false },
         sleepy: { candidates: [VEND + 'vrma/Sleepy.vrma'], loop: false },
         jump: { candidates: [VEND + 'vrma/Jump.vrma', VEND + 'action/action_jump.bvh'], loop: false },
+
+        // MO10. VRoid Project's BOOTH motion pack (credit pixiv Inc.'s VRoid Project) and five
+        // mocopi captures from tfuru/vrma-loader-sample. Spin, Model pose and Squat were authored
+        // with a rotated rest pose and played lying sideways until the loader learned to convert
+        // out of the clip's rest frame (MO10); all eleven are measured upright and grounded on
+        // AvatarSample_A, VRM_Viewer_Sample (0.69 m) and Vita (0.98 m), frames checked by eye.
+        show_outfit: { candidates: [VEND + 'vrma/show_outfit.vrma'], loop: false },
+        peace_sign: { candidates: [VEND + 'vrma/peace_sign.vrma'], loop: false },
+        finger_gun: { candidates: [VEND + 'vrma/finger_gun.vrma'], loop: false },
+        spin: { candidates: [VEND + 'vrma/spin.vrma'], loop: false },
+        model_pose: { candidates: [VEND + 'vrma/model_pose.vrma'], loop: false },
+        // Named for what it is: the pack calls it Squat, but it is a playful dip, and the
+        // exercise coach must never demo it as a squat (it picks clips by intent).
+        playful_dip: { candidates: [VEND + 'vrma/playful_dip.vrma'], loop: false },
+        turn_aside: { candidates: [VEND + 'vrma/turn_aside.vrma'], loop: false },
+        open_arms: { candidates: [VEND + 'vrma/open_arms.vrma'], loop: false },
+        hand_on_heart: { candidates: [VEND + 'vrma/hand_on_heart.vrma'], loop: false },
+        explain: { candidates: [VEND + 'vrma/explain.vrma'], loop: false },
+        present: { candidates: [VEND + 'vrma/present.vrma'], loop: false },
         jumping_jacks: {
             candidates: [ACT + 'jumpingJacks.vrma', VEND + 'exercise/exercise_jumping_jacks.bvh'],
             loop: false,
@@ -318,7 +337,72 @@ const MotionClipMap = (() => {
         tired: 'sleepy',
         yawn: 'sleepy',
         hop: 'jump',
+        show_full_body: 'show_outfit',
+        show_off: 'show_outfit',
+        peace: 'peace_sign',
+        v_sign: 'peace_sign',
+        bang: 'finger_gun',
+        twirl: 'spin',
+        pose: 'model_pose',
+        strike_a_pose: 'model_pose',
+        dip: 'playful_dip',
+        welcome: 'open_arms',
+        heart: 'hand_on_heart',
+        sincere: 'hand_on_heart',
+        explaining: 'explain',
+        presenting: 'present',
+        over_there: 'present',
     };
+
+    /**
+     * MO10. When to use each gesture, in a few words, for the model. A bare list of names told it
+     * nothing about `present` or `turn_aside`, so it either never used them or used them at
+     * random. Rendered by MotionContract next to the names; only names that can actually play are
+     * ever shown (availableNames()). Keep each line short — it is paid for on every turn.
+     */
+    const USE = {
+        sit: 'sit down',
+        stand: 'stand up',
+        lay: 'lie down',
+        talking: 'idle talking stance',
+        wave: 'hello',
+        greeting: 'a warm hello',
+        goodbye: 'bye / see you',
+        bow: 'thanks, respect, a formal hello',
+        nod: 'yes, agreeing',
+        headshake: 'no, disagreeing',
+        clap: 'applause, well done',
+        victory: 'arms up, we did it',
+        shrug: "I don't know",
+        sing: 'while singing',
+        dance: 'dancing',
+        jump: 'excited hop',
+        jumping_jacks: 'exercise',
+        look_around: 'curious, looking about',
+        blush: 'shy, flattered',
+        sleepy: 'tired, yawning',
+        point: 'pointing at something',
+        offer_hand: 'offering a hand',
+        high_five: 'high five',
+        handshake: 'shaking hands',
+        raise_hand: 'hand up, me / a question',
+        show_outfit: 'showing off her outfit, head to toe',
+        peace_sign: 'playful V sign, photos, fun',
+        finger_gun: 'cheeky "gotcha" point',
+        spin: 'twirl, show the outfit from all sides',
+        model_pose: 'confident fashion pose',
+        playful_dip: 'playful dip, cute moment',
+        turn_aside: 'turn and gesture to the side',
+        open_arms: 'welcome, a big open hello',
+        hand_on_heart: 'sincere, grateful, touched',
+        explain: 'explaining, talking with her hands',
+        present: '"look at this", presenting something',
+    };
+
+    /** "name = when to use" pairs for the names given (unknown names are left out). */
+    function gestureGuide(names) {
+        return (names || []).filter((n) => USE[n]).map((n) => n + ' = ' + USE[n]);
+    }
 
     /** Paths that failed to load once are skipped next time (missing pack). */
     const _unavailable = Object.create(null);
@@ -503,6 +587,8 @@ const MotionClipMap = (() => {
      *           "I say dance and she disappears into the ground"). The BVH originals pass.
      *   float — Mixamo-origin VRMA whose root rides 2.3–3.0 m up, out of frame.
      */
+    // Every path here is also tagged, with its measured failure and the next step, in
+    // develop/NEEDS_FIX.md (develop/needs-fix.json).
     const QUARANTINE = {
         'addons/vrma-dance/dance_1.vrma': 'sink',
         'addons/vrma-dance/dance_2.vrma': 'sink',
@@ -1108,6 +1194,8 @@ const MotionClipMap = (() => {
         play,
         stop,
         availableNames,
+        gestureGuide,
+        USE,
         catalogLine,
         _setManifest,
         _setLibraryOnly,

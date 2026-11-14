@@ -10,7 +10,7 @@
         "avatars": 17,
         "avatarsMissing": 0,
         "poses": 26,
-        "clips": 152,
+        "clips": 163,
         "clipsMissing": 0,
         "categories": 9,
         "experimentalClips": 19,
@@ -18,7 +18,7 @@
         "intents": 7,
         "fails": 0,
         "warns": 8,
-        "matrixCells": 3026
+        "matrixCells": 3213
     },
     "categories": [
         {
@@ -73,7 +73,7 @@
             "id": "vrma",
             "label": "VRM Animations",
             "experimental": false,
-            "count": 13
+            "count": 24
         }
     ],
     "avatars": [
@@ -1739,6 +1739,24 @@
             "label": "Clapping"
         },
         {
+            "id": "vrma_explain.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/explain.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "explain"
+        },
+        {
+            "id": "vrma_finger_gun.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/finger_gun.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "finger_gun"
+        },
+        {
             "id": "vrma_Goodbye.vrma",
             "kind": "vrma",
             "category": "vrma",
@@ -1746,6 +1764,15 @@
             "exists": true,
             "experimental": false,
             "label": "Goodbye"
+        },
+        {
+            "id": "vrma_hand_on_heart.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/hand_on_heart.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "hand_on_heart"
         },
         {
             "id": "vrma_idle_loop.vrma",
@@ -1775,6 +1802,51 @@
             "label": "LookAround"
         },
         {
+            "id": "vrma_model_pose.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/model_pose.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "model_pose"
+        },
+        {
+            "id": "vrma_open_arms.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/open_arms.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "open_arms"
+        },
+        {
+            "id": "vrma_peace_sign.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/peace_sign.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "peace_sign"
+        },
+        {
+            "id": "vrma_playful_dip.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/playful_dip.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "playful_dip"
+        },
+        {
+            "id": "vrma_present.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/present.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "present"
+        },
+        {
             "id": "vrma_Relax.vrma",
             "kind": "vrma",
             "category": "vrma",
@@ -1793,6 +1865,15 @@
             "label": "Sad"
         },
         {
+            "id": "vrma_show_outfit.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/show_outfit.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "show_outfit"
+        },
+        {
             "id": "vrma_Sleepy.vrma",
             "kind": "vrma",
             "category": "vrma",
@@ -1800,6 +1881,15 @@
             "exists": true,
             "experimental": false,
             "label": "Sleepy"
+        },
+        {
+            "id": "vrma_spin.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/spin.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "spin"
         },
         {
             "id": "vrma_Surprised.vrma",
@@ -1818,6 +1908,15 @@
             "exists": true,
             "experimental": false,
             "label": "Thinking"
+        },
+        {
+            "id": "vrma_turn_aside.vrma",
+            "kind": "vrma",
+            "category": "vrma",
+            "path": "vendor/animations/vrma/turn_aside.vrma",
+            "exists": true,
+            "experimental": false,
+            "label": "turn_aside"
         },
         {
             "id": "vrma_waiting-standard.vrma",

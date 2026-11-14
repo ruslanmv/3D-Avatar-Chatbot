@@ -124,3 +124,69 @@ describe('MO8: VRMA hips track is scaled to the avatar', () => {
         expect(first).toBeLessThan(0.9);
     });
 });
+
+describe('MO10: a clip authored with a rotated rest pose plays upright', () => {
+    // VRoid BOOTH Spin / Model pose / Squat: hips under a `root` node with a ~120° rest rotation.
+    const R = [0.4984401713968066, 0.5015536503969726, 0.4984414954255465, 0.5015549752492916];
+    const qMul = (a, b) => [
+        a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+        a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+        a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+        a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+    ];
+
+    function rotatedRestClip() {
+        const gltf = {
+            parser: {
+                json: {
+                    nodes: [
+                        { name: 'root', children: [1] },
+                        { name: 'J_Bip_C_Hips', rotation: R, translation: [0, 0.9, 0] },
+                    ],
+                    extensions: { VRMC_vrm_animation: { humanoid: { humanBones: { hips: { node: 1 } } } } },
+                },
+            },
+        };
+        // The track AT REST equals the rest rotation: she should simply stand.
+        const clip = {
+            name: 'ModelPose',
+            tracks: [{ name: 'J_Bip_C_Hips.quaternion', times: [0], values: R.slice() }],
+        };
+        return { gltf, clip };
+    }
+
+    test('the rest rotation is removed, so standing at rest reads as identity', () => {
+        const { S, L } = load();
+        avatar(S, { restY: 0.89, liveY: 0.89 });
+        const { gltf, clip } = rotatedRestClip();
+        const out = L.retargetVRMAClip(clip, gltf).tracks.find((t) => /hips\.quaternion$/.test(t.name));
+        const q = Array.from(out.values);
+        expect(Math.abs(q[3])).toBeGreaterThan(0.9999); // ~identity: upright, not tipped 120°
+    });
+
+    test('motion on top of the rest survives the conversion', () => {
+        const { S, L } = load();
+        avatar(S, { restY: 0.89, liveY: 0.89 });
+        const { gltf, clip } = rotatedRestClip();
+        const yaw90 = [0, Math.SQRT1_2, 0, Math.SQRT1_2]; // a quarter turn in world space
+        clip.tracks[0].values = qMul(yaw90, R); // the clip's local value for "turned 90° from rest"
+        const q = Array.from(
+            L.retargetVRMAClip(clip, gltf).tracks.find((t) => /hips\.quaternion$/.test(t.name)).values
+        );
+        expect(Math.abs(q[1])).toBeCloseTo(Math.SQRT1_2, 4);
+        expect(Math.abs(q[3])).toBeCloseTo(Math.SQRT1_2, 4);
+    });
+
+    test('identity-rest clips (every tk256 / ChatVRM clip) are untouched', () => {
+        const { S, L } = load();
+        avatar(S, { restY: 0.89, liveY: 0.89 });
+        const { gltf } = rotatedRestClip();
+        delete gltf.parser.json.nodes[1].rotation;
+        const v = [0.1, 0.2, 0.3, 0.927];
+        const clip = { name: 'X', tracks: [{ name: 'J_Bip_C_Hips.quaternion', times: [0], values: v.slice() }] };
+        const q = Array.from(
+            L.retargetVRMAClip(clip, gltf).tracks.find((t) => /hips\.quaternion$/.test(t.name)).values
+        );
+        q.forEach((x, i) => expect(x).toBeCloseTo(v[i], 6));
+    });
+});
