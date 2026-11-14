@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Animation library for NEXUS 3D Avatar — BVH clips from SillyTavern VRM Pack; VRMA clips from tk256 vrm-viewer, pixiv ChatVRM, VRoid Project (BOOTH) and mocopi samples (see vrma/THIRD_PARTY_LICENSES.md)",
+  "description": "Animation library for NEXUS 3D Avatar — BVH clips from SillyTavern VRM Pack; VRMA clips from tk256 vrm-viewer, pixiv ChatVRM, VRoid Project (BOOTH) and mocopi samples (see credits)",
   "basePath": "vendor/animations",
   "categories": {
     "dance": {
