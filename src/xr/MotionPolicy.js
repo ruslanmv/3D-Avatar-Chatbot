@@ -60,9 +60,17 @@ const MotionPolicy = (() => {
      * translation is the part still waiting on the locomotion revision. VR
      * users can move it to 'vr'.
      */
+    //
+    // MO1. Both flipped on: master `true`, movement `'all'`. Opt-in meant that for everyone who never
+    // found Settings → EXPERIMENTAL, "sit down" reached onUserUtterance, which returned at its first
+    // line, while the model — told nothing about her body when the stack is off — answered "Mi siedo
+    // qui vicino." Measured in the browser: hips 0.894 m before and after. With the stack on, the
+    // same sentence lowers them to 0.529 m. Movement is 'all' because desktop point-walks now run
+    // (AvatarLocomotionSystem MO1), so "come with me" walks her toward the viewer on every surface.
+    // A choice the person stored in Settings still wins over both defaults.
     const DEFAULTS = {
-        enabled: false,
-        movement: 'off',
+        enabled: true,
+        movement: 'all',
     };
 
     /**

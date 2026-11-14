@@ -63,6 +63,10 @@ const MotionIntegration = (() => {
         // honestly ("I'd love to, but I can't walk yet") instead of repeating
         // a command that silently went nowhere.
         lastAction: null, // { type, result } | null
+        // MO2. What her body is observably doing, for the model, the UI and debugMotion() alike:
+        // { action, status: requested|playing|started|failed, clip, reason, at }. Set when a clip
+        // is asked for, and settled only when the loader answers — never from the request alone.
+        execution: null,
     };
 
     let _viewer = null;
@@ -536,7 +540,21 @@ const MotionIntegration = (() => {
                 if (!st || !st.isPlaying || ambient) _capturePoseSnapshot(pr);
             }
         }
+        const asked = { action: key, status: 'requested', clip: null, reason: null, at: _now() };
+        state.execution = asked;
         clips.play(key).then((res) => {
+            // A later request superseded this one: its answer must not overwrite the newer record.
+            if (state.execution === asked) {
+                if (res && res.ok) {
+                    asked.status = res.loop ? 'playing' : 'started';
+                    asked.clip = res.resolved || null;
+                } else {
+                    asked.status = 'failed';
+                    asked.reason = (res && (res.reason || res.procedural)) || 'did_not_play';
+                    // A procedural stand-in still moves her (nod, reach): say so rather than "failed".
+                    if (res && res.procedural) asked.status = 'started';
+                }
+            }
             if (res.ok) {
                 state.lastActivity = key;
                 if (res.then && !res.loop) {
@@ -560,6 +578,19 @@ const MotionIntegration = (() => {
                 // it to promise something the body never did — and substitute a
                 // talking idle so she is not frozen mid-sentence.
                 state.lastAction = { type: 'gesture:' + key, result: res.reason };
+                // MO2. A posture that never played is not a posture she is in. The sit handler sets
+                // state.sitting before the clip loads (the world snapshot must be settled before
+                // any await), so a failed load left her standing while every later turn told the
+                // model she was seated — "Mi siedo qui accanto" with nothing on screen. Undo the
+                // flag the failure contradicts, so the next prompt reports what her body did.
+                if ((key === 'sit' || key === 'sit_idle') && state.sitting) {
+                    state.sitting = false;
+                    state.lastAction = { type: 'sit', result: res.reason };
+                }
+                if ((key === 'lay' || key === 'lay_idle') && state.laying) {
+                    state.laying = false;
+                    state.lastAction = { type: 'lay', result: res.reason };
+                }
                 if (typeof console !== 'undefined' && console.warn) {
                     console.warn(
                         '[Motion] gesture "' +
@@ -1155,11 +1186,26 @@ const MotionIntegration = (() => {
                 .filter((k) => _anchors[k])
                 .map((k) => ({ type: k })),
             last_action: state.lastAction,
+            body: state.execution
+                ? { action: state.execution.action, status: state.execution.status, reason: state.execution.reason }
+                : null,
         };
     }
 
+    /**
+     * MO2. What the model is told when her body cannot act at all. It used to be nothing, and
+     * with nothing the model narrated physical actions freely ("Mi siedo qui vicino") while the
+     * avatar stood still. One line, so a disabled stack still keeps the conversation truthful.
+     */
+    const BODY_OFF_LINE =
+        '\n\nYOUR BODY: body control is switched off in this session, so you cannot sit, stand up, ' +
+        'dance, walk, follow, wave or change pose right now. Never say or imply that you are doing ' +
+        'any of these; if asked, say warmly that you cannot move just now.';
+
     function systemPromptSuffix() {
-        if (!_enabled() || typeof window === 'undefined' || !window.NEXUS_MOTION_CONTRACT) return '';
+        if (typeof window === 'undefined') return '';
+        if (!_enabled()) return BODY_OFF_LINE;
+        if (!window.NEXUS_MOTION_CONTRACT) return '';
         const clips = _clips() ? _clips().availableNames() : [];
 
         // SEAM 1 — the vocabulary. Telling the model only about commands that

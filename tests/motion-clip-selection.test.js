@@ -14,6 +14,11 @@
 /* global describe, test, expect, beforeAll, afterAll */
 
 const Clips = require('../src/xr/MotionClipMap');
+
+// MO4. These tests exercise selection mechanics with clips (wave, victory, talking) that the
+// runtime audit quarantined for floating; the quarantine has its own test in motion-runtime-mo.
+beforeAll(() => Clips._setQuarantine(false));
+afterAll(() => Clips._setQuarantine(true));
 const manifest = require('../vendor/animations/manifest.json');
 
 // These tests characterise the FULL resolver. Library-only mode (the new

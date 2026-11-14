@@ -1,0 +1,4426 @@
+{
+  "generated": "2026-11-14T04:53:09.877Z",
+  "url": "http://127.0.0.1:8080/",
+  "avatar": {
+    "name": "AvatarRoot:/vendor/avatars/AvatarSample_A.vrm",
+    "vrmVersion": "0"
+  },
+  "method": "tools/qa/animation-runtime-audit.mjs",
+  "summary": {
+    "total": 145,
+    "pass": 120,
+    "quarantined": 25,
+    "vendorManifest": {
+      "total": 113,
+      "pass": 113
+    },
+    "addons": {
+      "total": 32,
+      "pass": 7,
+      "quarantined": 25
+    },
+    "unquarantinedFailures": []
+  },
+  "clips": [
+    {
+      "id": "dance_1",
+      "path": "vendor/animations/dance/dance_1.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 905535,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 22.1,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.963,
+        "hipsRest": 0.894,
+        "hipsMin": 0.672,
+        "hipsMax": 0.869
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_2",
+      "path": "vendor/animations/dance/dance_2.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 838263,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 20.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.846,
+        "hipsRest": 0.918,
+        "hipsMin": 0.878,
+        "hipsMax": 0.935
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_backup",
+      "path": "vendor/animations/dance/dance_backup.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1039639,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 25.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.189,
+        "hipsRest": 0.894,
+        "hipsMin": 0.878,
+        "hipsMax": 0.921
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_backup.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_dab",
+      "path": "vendor/animations/dance/dance_dab.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 325353,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 7.7,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.142,
+        "hipsRest": 0.894,
+        "hipsMin": 0.849,
+        "hipsMax": 1.003
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_dab.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_gangnam_style",
+      "path": "vendor/animations/dance/dance_gangnam_style.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1120070,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 12.37,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.661,
+        "hipsRest": 0.894,
+        "hipsMin": 0.78,
+        "hipsMax": 0.882
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_gangnam_style.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_headdrop",
+      "path": "vendor/animations/dance/dance_headdrop.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 647381,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 15.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.588,
+        "hipsRest": 0.894,
+        "hipsMin": 0.747,
+        "hipsMax": 0.888
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_headdrop.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_marachinostep",
+      "path": "vendor/animations/dance/dance_marachinostep.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 303747,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.23,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.125,
+        "hipsRest": 0.851,
+        "hipsMin": 0.671,
+        "hipsMax": 0.803
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_marachinostep.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_northern_soul_spin",
+      "path": "vendor/animations/dance/dance_northern_soul_spin.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 813409,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 8.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.838,
+        "hipsRest": 0.894,
+        "hipsMin": 0.564,
+        "hipsMax": 1.05
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_northern_soul_spin.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_ontop",
+      "path": "vendor/animations/dance/dance_ontop.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 996395,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 24.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.1,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 0.956
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_ontop.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_pushback",
+      "path": "vendor/animations/dance/dance_pushback.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 733586,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 17.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.268,
+        "hipsRest": 0.894,
+        "hipsMin": 0.872,
+        "hipsMax": 0.899
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_pushback.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_rumba",
+      "path": "vendor/animations/dance/dance_rumba.bvh",
+      "category": "dance",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 224164,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.118,
+        "hipsRest": 0.894,
+        "hipsMin": 0.858,
+        "hipsMax": 0.922
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/dance--dance_rumba.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "admiration",
+      "path": "vendor/animations/emotion/admiration.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1222968,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 13.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.108,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.897
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--admiration.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "admiration2",
+      "path": "vendor/animations/emotion/admiration2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 124331,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.13,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.187,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--admiration2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "admiration3",
+      "path": "vendor/animations/emotion/admiration3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 174134,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.938,
+        "hipsRest": 0.894,
+        "hipsMin": 0.798,
+        "hipsMax": 1.112
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--admiration3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "amusement",
+      "path": "vendor/animations/emotion/amusement.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 254579,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.63,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.122,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--amusement.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "amusement2",
+      "path": "vendor/animations/emotion/amusement2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 124331,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.13,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.28,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--amusement2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "amusement3",
+      "path": "vendor/animations/emotion/amusement3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 174134,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.07,
+        "hipsRest": 0.894,
+        "hipsMin": 0.787,
+        "hipsMax": 1.112
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--amusement3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "anger",
+      "path": "vendor/animations/emotion/anger.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1742777,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 19.17,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.734,
+        "hipsRest": 0.894,
+        "hipsMin": 0.89,
+        "hipsMax": 0.9
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--anger.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "anger2",
+      "path": "vendor/animations/emotion/anger2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1906264,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 20.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.933,
+        "hipsRest": 0.894,
+        "hipsMin": 0.91,
+        "hipsMax": 0.916
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--anger2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "anger3",
+      "path": "vendor/animations/emotion/anger3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 2008518,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 28.13,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.428,
+        "hipsRest": 0.894,
+        "hipsMin": 0.784,
+        "hipsMax": 0.883
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--anger3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "annoyance",
+      "path": "vendor/animations/emotion/annoyance.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 282596,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.184,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--annoyance.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "annoyance1",
+      "path": "vendor/animations/emotion/annoyance1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 268277,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.268,
+        "hipsRest": 0.894,
+        "hipsMin": 0.77,
+        "hipsMax": 0.795
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--annoyance1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "approval",
+      "path": "vendor/animations/emotion/approval.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 443869,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4.7,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.541,
+        "hipsRest": 0.894,
+        "hipsMin": 0.887,
+        "hipsMax": 0.904
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--approval.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "approval2",
+      "path": "vendor/animations/emotion/approval2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 124331,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.13,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.148,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--approval2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "approval3",
+      "path": "vendor/animations/emotion/approval3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 174134,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.407,
+        "hipsRest": 0.894,
+        "hipsMin": 0.795,
+        "hipsMax": 1.097
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--approval3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "caring",
+      "path": "vendor/animations/emotion/caring.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 924177,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 10,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.152,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.897
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--caring.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "caring1",
+      "path": "vendor/animations/emotion/caring1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1604556,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 22.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.279,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--caring1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "confusion",
+      "path": "vendor/animations/emotion/confusion.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1220085,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 13.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.314,
+        "hipsRest": 0.894,
+        "hipsMin": 0.888,
+        "hipsMax": 0.906
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--confusion.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "confusion2",
+      "path": "vendor/animations/emotion/confusion2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 468328,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.529,
+        "hipsRest": 0.894,
+        "hipsMin": 0.889,
+        "hipsMax": 0.899
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--confusion2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "confusion3",
+      "path": "vendor/animations/emotion/confusion3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 435095,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.47,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.592,
+        "hipsRest": 0.894,
+        "hipsMin": 0.878,
+        "hipsMax": 0.91
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--confusion3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "curiosity",
+      "path": "vendor/animations/emotion/curiosity.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 397206,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4.23,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.312,
+        "hipsRest": 0.894,
+        "hipsMin": 0.884,
+        "hipsMax": 0.904
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--curiosity.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "curiosity2",
+      "path": "vendor/animations/emotion/curiosity2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 544426,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 5.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.087,
+        "hipsRest": 0.884,
+        "hipsMin": 0.879,
+        "hipsMax": 0.892
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--curiosity2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "curiosity3",
+      "path": "vendor/animations/emotion/curiosity3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 590211,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.549,
+        "hipsRest": 0.894,
+        "hipsMin": 0.901,
+        "hipsMax": 0.907
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--curiosity3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "desire",
+      "path": "vendor/animations/emotion/desire.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 353501,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.73,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.963,
+        "hipsRest": 0.894,
+        "hipsMin": 0.858,
+        "hipsMax": 0.93
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--desire.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "desire1",
+      "path": "vendor/animations/emotion/desire1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1407698,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 15.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.78,
+        "hipsRest": 0.894,
+        "hipsMin": 0.596,
+        "hipsMax": 0.868
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--desire1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "desire2",
+      "path": "vendor/animations/emotion/desire2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1979933,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 21.87,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.385,
+        "hipsRest": 0.894,
+        "hipsMin": 0.8,
+        "hipsMax": 0.874
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--desire2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disappointment",
+      "path": "vendor/animations/emotion/disappointment.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 394754,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4.2,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.238,
+        "hipsRest": 0.894,
+        "hipsMin": 0.89,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disappointment.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disappointment2",
+      "path": "vendor/animations/emotion/disappointment2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 524549,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 5.5,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.551,
+        "hipsRest": 0.894,
+        "hipsMin": 0.879,
+        "hipsMax": 0.908
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disappointment2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disapproval",
+      "path": "vendor/animations/emotion/disapproval.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1897000,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 20.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.25,
+        "hipsRest": 0.894,
+        "hipsMin": 0.89,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disapproval.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disaproval1",
+      "path": "vendor/animations/emotion/disaproval1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 791293,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 8.6,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.048,
+        "hipsRest": 0.894,
+        "hipsMin": 0.857,
+        "hipsMax": 0.93
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disaproval1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disgust",
+      "path": "vendor/animations/emotion/disgust.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 409440,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4.37,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.019,
+        "hipsRest": 0.894,
+        "hipsMin": 0.89,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disgust.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disgust1",
+      "path": "vendor/animations/emotion/disgust1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 309772,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.281,
+        "hipsRest": 0.894,
+        "hipsMin": 0.876,
+        "hipsMax": 0.911
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disgust1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "disgust2",
+      "path": "vendor/animations/emotion/disgust2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 3512754,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 38.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.902,
+        "hipsRest": 0.894,
+        "hipsMin": 0.88,
+        "hipsMax": 0.9
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--disgust2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "embarrassment",
+      "path": "vendor/animations/emotion/embarrassment.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1008221,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 11,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.188,
+        "hipsRest": 0.894,
+        "hipsMin": 0.886,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--embarrassment.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "excitement",
+      "path": "vendor/animations/emotion/excitement.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 600277,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 6.57,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.877,
+        "hipsRest": 0.894,
+        "hipsMin": 0.859,
+        "hipsMax": 0.934
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--excitement.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "excitement2",
+      "path": "vendor/animations/emotion/excitement2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 494102,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 5.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.504,
+        "hipsRest": 0.894,
+        "hipsMin": 0.781,
+        "hipsMax": 0.853
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--excitement2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "excitement3",
+      "path": "vendor/animations/emotion/excitement3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 274318,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.9,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.887,
+        "hipsRest": 0.894,
+        "hipsMin": 0.877,
+        "hipsMax": 0.91
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--excitement3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "fear",
+      "path": "vendor/animations/emotion/fear.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1807545,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 20,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.367,
+        "hipsRest": 0.894,
+        "hipsMin": 0.764,
+        "hipsMax": 0.871
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--fear.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "fear2",
+      "path": "vendor/animations/emotion/fear2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 379473,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.87,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.782,
+        "hipsRest": 0.894,
+        "hipsMin": 0.75,
+        "hipsMax": 0.813
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--fear2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "fear3",
+      "path": "vendor/animations/emotion/fear3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 371453,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.962,
+        "hipsRest": 0.894,
+        "hipsMin": 0.778,
+        "hipsMax": 0.848
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--fear3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "gratitude",
+      "path": "vendor/animations/emotion/gratitude.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 287055,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.279,
+        "hipsRest": 0.894,
+        "hipsMin": 0.892,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--gratitude.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "grief",
+      "path": "vendor/animations/emotion/grief.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 628572,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 6.73,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.9,
+        "hipsRest": 0.894,
+        "hipsMin": 0.876,
+        "hipsMax": 0.913
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--grief.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "joy",
+      "path": "vendor/animations/emotion/joy.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 775222,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 8.43,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.62,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--joy.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "joy2",
+      "path": "vendor/animations/emotion/joy2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 765581,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 8.2,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.372,
+        "hipsRest": 0.894,
+        "hipsMin": 0.784,
+        "hipsMax": 0.846
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--joy2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "joy3",
+      "path": "vendor/animations/emotion/joy3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 353601,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.159,
+        "hipsRest": 0.894,
+        "hipsMin": 0.741,
+        "hipsMax": 0.842
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--joy3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "love",
+      "path": "vendor/animations/emotion/love.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 431265,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4.57,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.728,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.897
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--love.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "love2",
+      "path": "vendor/animations/emotion/love2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1004220,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 10.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.635,
+        "hipsRest": 0.897,
+        "hipsMin": 0.895,
+        "hipsMax": 0.899
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--love2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "love3",
+      "path": "vendor/animations/emotion/love3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 311135,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.17,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.883,
+        "hipsRest": 0.894,
+        "hipsMin": 0.883,
+        "hipsMax": 0.907
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--love3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "nervousness",
+      "path": "vendor/animations/emotion/nervousness.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 598678,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 6.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.701,
+        "hipsRest": 0.894,
+        "hipsMin": 0.874,
+        "hipsMax": 0.903
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--nervousness.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "nervousness2",
+      "path": "vendor/animations/emotion/nervousness2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 379473,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.87,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.265,
+        "hipsRest": 0.894,
+        "hipsMin": 0.746,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--nervousness2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "nervousnes3",
+      "path": "vendor/animations/emotion/nervousnes3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 371453,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.977,
+        "hipsRest": 0.894,
+        "hipsMin": 0.8,
+        "hipsMax": 0.846
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--nervousnes3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "optimism",
+      "path": "vendor/animations/emotion/optimism.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 271032,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 2.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.239,
+        "hipsRest": 0.894,
+        "hipsMin": 0.893,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--optimism.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "pride",
+      "path": "vendor/animations/emotion/pride.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 228128,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 2.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.096,
+        "hipsRest": 0.894,
+        "hipsMin": 0.893,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--pride.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "pride2",
+      "path": "vendor/animations/emotion/pride2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 280217,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.9,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.989,
+        "hipsRest": 0.894,
+        "hipsMin": 0.869,
+        "hipsMax": 0.919
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--pride2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "realization",
+      "path": "vendor/animations/emotion/realization.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 542610,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 5.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.536,
+        "hipsRest": 0.894,
+        "hipsMin": 0.775,
+        "hipsMax": 0.872
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--realization.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "relief",
+      "path": "vendor/animations/emotion/relief.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 289582,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.61,
+        "hipsRest": 0.894,
+        "hipsMin": 0.887,
+        "hipsMax": 0.902
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--relief.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "relief1",
+      "path": "vendor/animations/emotion/relief1.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 969645,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 10.5,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.911,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--relief1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "remorse",
+      "path": "vendor/animations/emotion/remorse.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 236266,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.02,
+        "hipsRest": 0.894,
+        "hipsMin": 0.468,
+        "hipsMax": 0.469
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--remorse.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "remorse2",
+      "path": "vendor/animations/emotion/remorse2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 649430,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.043,
+        "hipsRest": 0.894,
+        "hipsMin": 0.469,
+        "hipsMax": 0.471
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--remorse2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "remorse3",
+      "path": "vendor/animations/emotion/remorse3.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 302862,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 9.63,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.648,
+        "hipsRest": 0.894,
+        "hipsMin": 0.395,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--remorse3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sadness",
+      "path": "vendor/animations/emotion/sadness.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 296008,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.1,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.104,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.897
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--sadness.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sadness2",
+      "path": "vendor/animations/emotion/sadness2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 148600,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.47,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.803,
+        "hipsRest": 0.894,
+        "hipsMin": 0.881,
+        "hipsMax": 0.909
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--sadness2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "surprise",
+      "path": "vendor/animations/emotion/surprise.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 377068,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.471,
+        "hipsRest": 0.894,
+        "hipsMin": 0.759,
+        "hipsMax": 0.823
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--surprise.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "surprise2",
+      "path": "vendor/animations/emotion/surprise2.bvh",
+      "category": "emotion",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 367178,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.743,
+        "hipsRest": 0.894,
+        "hipsMin": 0.878,
+        "hipsMax": 0.91
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/emotion--surprise2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral",
+      "path": "vendor/animations/idle/neutral.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 769779,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 8.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.174,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral2",
+      "path": "vendor/animations/idle/neutral2.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1603731,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 17.47,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.116,
+        "hipsRest": 0.894,
+        "hipsMin": 0.888,
+        "hipsMax": 0.889
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral3",
+      "path": "vendor/animations/idle/neutral3.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 553593,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.551,
+        "hipsRest": 0.894,
+        "hipsMin": 0.888,
+        "hipsMax": 0.9
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral4",
+      "path": "vendor/animations/idle/neutral4.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 569623,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6.13,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.084,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.894
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral4.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral_idle",
+      "path": "vendor/animations/idle/neutral_idle.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 813657,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 8.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.184,
+        "hipsRest": 0.894,
+        "hipsMin": 0.893,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral_idle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "neutral_idle2",
+      "path": "vendor/animations/idle/neutral_idle2.bvh",
+      "category": "idle",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1818169,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 19.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.186,
+        "hipsRest": 0.894,
+        "hipsMin": 0.882,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/idle--neutral_idle2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sit_idle",
+      "path": "vendor/animations/sitting/sit_idle.bvh",
+      "category": "sitting",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 639995,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 19.9,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.695,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/sitting--sit_idle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sit_idle2",
+      "path": "vendor/animations/sitting/sit_idle2.bvh",
+      "category": "sitting",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 761700,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 19.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.751,
+        "hipsRest": 0.894,
+        "hipsMin": 0.569,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/sitting--sit_idle2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sit_idle3",
+      "path": "vendor/animations/sitting/sit_idle3.bvh",
+      "category": "sitting",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 386732,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 9.9,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.918,
+        "hipsRest": 0.894,
+        "hipsMin": 0.569,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/sitting--sit_idle3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "sit_idle4",
+      "path": "vendor/animations/sitting/sit_idle4.bvh",
+      "category": "sitting",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 595490,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.133,
+        "hipsRest": 0.894,
+        "hipsMin": 0.529,
+        "hipsMax": 0.529
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/sitting--sit_idle4.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "laying_idle",
+      "path": "vendor/animations/laying/laying_idle.bvh",
+      "category": "laying",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 948593,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 10.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.058,
+        "hipsRest": 0.894,
+        "hipsMin": 0.116,
+        "hipsMax": 0.116
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/laying--laying_idle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "laying_idle2",
+      "path": "vendor/animations/laying/laying_idle2.bvh",
+      "category": "laying",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 88237,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 0.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.182,
+        "hipsRest": 0.116,
+        "hipsMin": 0.115,
+        "hipsMax": 0.116
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/laying--laying_idle2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "laying_idle3",
+      "path": "vendor/animations/laying/laying_idle3.bvh",
+      "category": "laying",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 724912,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 19.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.192,
+        "hipsRest": 0.894,
+        "hipsMin": 0.116,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/laying--laying_idle3.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "kneel_idle",
+      "path": "vendor/animations/kneeling/kneel_idle.bvh",
+      "category": "kneeling",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 138095,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.014,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/kneeling--kneel_idle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "kneel_idle2",
+      "path": "vendor/animations/kneeling/kneel_idle2.bvh",
+      "category": "kneeling",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 128096,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.192,
+        "hipsRest": 0.894,
+        "hipsMin": 0.391,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/kneeling--kneel_idle2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_attention_seeking",
+      "path": "vendor/animations/action/action_attention_seeking.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1450873,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 20.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.729,
+        "hipsRest": 0.894,
+        "hipsMin": 0.891,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_attention_seeking.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_crawling",
+      "path": "vendor/animations/action/action_crawling.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 183858,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.87,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.445,
+        "hipsRest": 0.894,
+        "hipsMin": 0.346,
+        "hipsMax": 0.39
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_crawling.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_crouch",
+      "path": "vendor/animations/action/action_crouch.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 398994,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.07,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.259,
+        "hipsRest": 0.894,
+        "hipsMin": 0.38,
+        "hipsMax": 0.884
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_crouch.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_gaming",
+      "path": "vendor/animations/action/action_gaming.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 608486,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 6.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.054,
+        "hipsRest": 0.894,
+        "hipsMin": 0.494,
+        "hipsMax": 0.497
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_gaming.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_greeting",
+      "path": "vendor/animations/action/action_greeting.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 511723,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 5.43,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.533,
+        "hipsRest": 0.894,
+        "hipsMin": 0.88,
+        "hipsMax": 0.908
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_greeting.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_greeting1",
+      "path": "vendor/animations/action/action_greeting1.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 446477,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.73,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.768,
+        "hipsRest": 0.894,
+        "hipsMin": 0.893,
+        "hipsMax": 0.895
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_greeting1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_jog",
+      "path": "vendor/animations/action/action_jog.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 261057,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.77,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.028,
+        "hipsRest": 0.894,
+        "hipsMin": 0.803,
+        "hipsMax": 0.899
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_jog.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_jump",
+      "path": "vendor/animations/action/action_jump.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 311274,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.27,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.318,
+        "hipsRest": 0.894,
+        "hipsMin": 0.53,
+        "hipsMax": 1.23
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_jump.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_laydown",
+      "path": "vendor/animations/action/action_laydown.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 535790,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 5.73,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.167,
+        "hipsRest": 0.894,
+        "hipsMin": 0.707,
+        "hipsMax": 0.752
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_laydown.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_pat",
+      "path": "vendor/animations/action/action_pat.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 322369,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.973,
+        "hipsRest": 0.894,
+        "hipsMin": 0.882,
+        "hipsMax": 0.901
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_pat.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_pickingup",
+      "path": "vendor/animations/action/action_pickingup.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 459229,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 4.7,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.753,
+        "hipsRest": 0.894,
+        "hipsMin": 0.778,
+        "hipsMax": 0.888
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_pickingup.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_run",
+      "path": "vendor/animations/action/action_run.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 78285,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 0.7,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.604,
+        "hipsRest": 0.894,
+        "hipsMin": 0.791,
+        "hipsMax": 0.863
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_run.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_standup",
+      "path": "vendor/animations/action/action_standup.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 333561,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 3.43,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.33,
+        "hipsRest": 0.894,
+        "hipsMin": 0.386,
+        "hipsMax": 0.886
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_standup.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "action_walk",
+      "path": "vendor/animations/action/action_walk.bvh",
+      "category": "action",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 149722,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.37,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.979,
+        "hipsRest": 0.894,
+        "hipsMin": 0.874,
+        "hipsMax": 0.908
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/action--action_walk.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "exercise_crunch",
+      "path": "vendor/animations/exercise/exercise_crunch.bvh",
+      "category": "exercise",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 227664,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.6,
+        "hipsRest": 0.894,
+        "hipsMin": 0.113,
+        "hipsMax": 0.136
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/exercise--exercise_crunch.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "exercise_crunches",
+      "path": "vendor/animations/exercise/exercise_crunches.bvh",
+      "category": "exercise",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 114934,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.1,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.628,
+        "hipsRest": 0.894,
+        "hipsMin": 0.152,
+        "hipsMax": 0.166
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/exercise--exercise_crunches.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "exercise_jogging",
+      "path": "vendor/animations/exercise/exercise_jogging.bvh",
+      "category": "exercise",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 240654,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 2.53,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.831,
+        "hipsRest": 0.894,
+        "hipsMin": 0.792,
+        "hipsMax": 0.897
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/exercise--exercise_jogging.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "exercise_jumping_jacks",
+      "path": "vendor/animations/exercise/exercise_jumping_jacks.bvh",
+      "category": "exercise",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 112615,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 53,
+      "started": true,
+      "durationS": 1.07,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.112,
+        "hipsRest": 0.894,
+        "hipsMin": 0.764,
+        "hipsMax": 1.018
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/exercise--exercise_jumping_jacks.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "waiting-standard",
+      "path": "vendor/animations/vrma/waiting-standard.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 152516,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 11.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.403,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 0.898
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--waiting-standard.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "Angry",
+      "path": "vendor/animations/vrma/Angry.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 118448,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.717,
+        "hipsRest": 0.896,
+        "hipsMin": 0.851,
+        "hipsMax": 0.865
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--Angry.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "Sad",
+      "path": "vendor/animations/vrma/Sad.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 118448,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 0.147,
+        "hipsRest": 0.854,
+        "hipsMin": 0.872,
+        "hipsMax": 0.876
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--Sad.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "Thinking",
+      "path": "vendor/animations/vrma/Thinking.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 118448,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.468,
+        "hipsRest": 0.874,
+        "hipsMin": 0.851,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--Thinking.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "Surprised",
+      "path": "vendor/animations/vrma/Surprised.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 118448,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.225,
+        "hipsRest": 0.855,
+        "hipsMin": 0.836,
+        "hipsMax": 0.877
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--Surprised.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "Relax",
+      "path": "vendor/animations/vrma/Relax.vrma",
+      "category": "vrma",
+      "source": "vendor-manifest",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 118448,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 52,
+      "started": true,
+      "durationS": 3.93,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.675,
+        "hipsRest": 0.876,
+        "hipsMin": 0.875,
+        "hipsMax": 0.888
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma--Relax.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "backflip",
+      "path": "addons/vrma-actions/backflip.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 799735,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 4.08,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.137,
+        "hipsRest": 0.887,
+        "hipsMin": 1.671,
+        "hipsMax": 3.297
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 3.297 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--backflip.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "bowing",
+      "path": "addons/vrma-actions/bowing.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 2644948,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 2.25,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.086,
+        "hipsRest": 0.894,
+        "hipsMin": 0.735,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "body folds visibly wrong (see screenshot); numbers alone pass"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--bowing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "contorted"
+    },
+    {
+      "id": "happyIdle",
+      "path": "addons/vrma-actions/happyIdle.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 831476,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 2.92,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.035,
+        "hipsRest": 0.765,
+        "hipsMin": 2.991,
+        "hipsMax": 3.098
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 3.098 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--happyIdle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "jumpingJacks",
+      "path": "addons/vrma-actions/jumpingJacks.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 745170,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 1.04,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.09,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.788
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.788 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--jumpingJacks.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "sadIdle",
+      "path": "addons/vrma-actions/sadIdle.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 774341,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 2.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.054,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.367
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.367 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--sadIdle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "shrugging",
+      "path": "addons/vrma-actions/shrugging.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 759307,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 21,
+      "started": true,
+      "durationS": 2,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.946,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.381
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.381 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--shrugging.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "singing",
+      "path": "addons/vrma-actions/singing.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1029403,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 13.96,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.124,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.912
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.912 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--singing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "standingClap",
+      "path": "addons/vrma-actions/standingClap.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 805744,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 4.42,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 2.352
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.352 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--standingClap.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "standingGreeting",
+      "path": "addons/vrma-actions/standingGreeting.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 817692,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 5.08,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.111,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.363
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.363 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--standingGreeting.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "talking",
+      "path": "addons/vrma-actions/talking.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 793711,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 3.75,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.105,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.352
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.352 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--talking.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "victory",
+      "path": "addons/vrma-actions/victory.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 878871,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 8.5,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.109,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.279
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.279 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--victory.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "victoryIdle",
+      "path": "addons/vrma-actions/victoryIdle.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 755845,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 21,
+      "started": true,
+      "durationS": 1.79,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.082,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.086
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--victoryIdle.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "waving",
+      "path": "addons/vrma-actions/waving.vrma",
+      "category": "vrma-actions",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 810972,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 4.71,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.758,
+        "hipsRest": 2.07,
+        "hipsMin": 2.388,
+        "hipsMax": 2.389
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.389 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-actions--waving.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "breakdanceUprock",
+      "path": "addons/vrma-dance/breakdanceUprock.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 72151,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 2.08,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.129,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.986
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.986 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--breakdanceUprock.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "dance_1",
+      "path": "addons/vrma-dance/dance_1.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 762312,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 22.1,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.537,
+        "hipsRest": 0.894,
+        "hipsMin": -0.207,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.207 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_1.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_2",
+      "path": "addons/vrma-dance/dance_2.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 706404,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 20.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.888,
+        "hipsRest": 0.894,
+        "hipsMin": -0.046,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.046 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_2.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_backup",
+      "path": "addons/vrma-dance/dance_backup.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 870856,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 25.4,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.135,
+        "hipsRest": 0.894,
+        "hipsMin": -0.016,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.016 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_backup.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_dab",
+      "path": "addons/vrma-dance/dance_dab.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 288628,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 7.7,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.961,
+        "hipsRest": 0.894,
+        "hipsMin": -0.061,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.061 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_dab.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_gangnam_style",
+      "path": "addons/vrma-dance/dance_gangnam_style.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 447024,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 12.37,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.721,
+        "hipsRest": 0.894,
+        "hipsMin": 0.813,
+        "hipsMax": 0.905
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_gangnam_style.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_headdrop",
+      "path": "addons/vrma-dance/dance_headdrop.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 550764,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 15.67,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.657,
+        "hipsRest": 0.839,
+        "hipsMin": -0.084,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.084 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_headdrop.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_marachinostep",
+      "path": "addons/vrma-dance/dance_marachinostep.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 146524,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 3.23,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.018,
+        "hipsRest": 0.894,
+        "hipsMin": 0.722,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_marachinostep.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_northern_soul_spin",
+      "path": "addons/vrma-dance/dance_northern_soul_spin.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 330560,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 8.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.727,
+        "hipsRest": 0.808,
+        "hipsMin": 0.789,
+        "hipsMax": 0.95
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_northern_soul_spin.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dance_ontop",
+      "path": "addons/vrma-dance/dance_ontop.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 834664,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 24.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.075,
+        "hipsRest": 0.836,
+        "hipsMin": 0.002,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 0.002 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_ontop.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_pushback",
+      "path": "addons/vrma-dance/dance_pushback.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 620828,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 17.8,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.117,
+        "hipsRest": 0.894,
+        "hipsMin": -0.024,
+        "hipsMax": 0.896
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach -0.024 m: sinks into the floor"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_pushback.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "sink"
+    },
+    {
+      "id": "dance_rumba",
+      "path": "addons/vrma-dance/dance_rumba.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 115816,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 55,
+      "started": true,
+      "durationS": 2.3,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 1.814,
+        "hipsRest": 0.894,
+        "hipsMin": 0.809,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dance_rumba.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "dancingTwerk",
+      "path": "addons/vrma-dance/dancingTwerk.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 998408,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 15.17,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.004,
+        "hipsRest": 0.873,
+        "hipsMin": 0.896,
+        "hipsMax": 2.332
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.332 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--dancingTwerk.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "hipHopDance",
+      "path": "addons/vrma-dance/hipHopDance.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 2957173,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 13.75,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.136,
+        "hipsRest": 0.894,
+        "hipsMin": 0.785,
+        "hipsMax": 0.896
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--hipHopDance.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    },
+    {
+      "id": "hipHopDancing",
+      "path": "addons/vrma-dance/hipHopDancing.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 852786,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 7.04,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.179,
+        "hipsRest": 0.661,
+        "hipsMin": 2.072,
+        "hipsMax": 2.315
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.315 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--hipHopDancing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "rumbaDancing",
+      "path": "addons/vrma-dance/rumbaDancing.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 768333,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 2.33,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.091,
+        "hipsRest": 0.894,
+        "hipsMin": 0.894,
+        "hipsMax": 2.335
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.335 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--rumbaDancing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "sambaDancing",
+      "path": "addons/vrma-dance/sambaDancing.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 1225439,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 27.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.115,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.29
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.29 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--sambaDancing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "sillyDancing",
+      "path": "addons/vrma-dance/sillyDancing.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 847905,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 3.83,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 2.981,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.766
+      },
+      "status": "quarantined",
+      "problems": [
+        "hips reach 2.766 m: floats"
+      ],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--sillyDancing.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": "float"
+    },
+    {
+      "id": "twistDance",
+      "path": "addons/vrma-dance/twistDance.vrma",
+      "category": "vrma-dance",
+      "source": "addon",
+      "file": {
+        "ok": true,
+        "status": 200,
+        "bytes": 895355,
+        "contentType": "application/octet-stream"
+      },
+      "loaded": true,
+      "retargetedTracks": 23,
+      "started": true,
+      "durationS": 9.42,
+      "loops": true,
+      "motion": {
+        "maxBoneChangeRad": 3.141,
+        "hipsRest": 0.894,
+        "hipsMin": 0.896,
+        "hipsMax": 2.108
+      },
+      "status": "pass",
+      "problems": [],
+      "evidence": "docs/audits/animation-runtime/vrma-dance--twistDance.jpg",
+      "visual": "not verified by numbers \u2014 see the contact sheet",
+      "vrm": "VRM 0.x avatar tested",
+      "platform": "desktop Chromium (SwiftShader); mobile and XR not run",
+      "quarantined": null
+    }
+  ]
+}

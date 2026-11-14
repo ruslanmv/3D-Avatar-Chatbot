@@ -15,6 +15,11 @@
 
 const ClipMap = require('../src/xr/MotionClipMap');
 
+// MO4. These tests exercise selection mechanics with clips (wave, victory, talking) that the
+// runtime audit quarantined for floating; the quarantine has its own test in motion-runtime-mo.
+beforeAll(() => ClipMap._setQuarantine(false));
+afterAll(() => ClipMap._setQuarantine(true));
+
 const MANIFEST = {
     categories: {
         dance: { experimental: true, files: ['dance/dance_1.bvh', 'dance/dance_2.bvh'] },
@@ -77,6 +82,7 @@ describe('library mode restricts to the proven set', () => {
         // converted with the official bvh2vrma. Both must be reachable. Which
         // one ranks first is an index detail (exact-name match vs addon
         // ordering) that neither of these tests is about, so it is not pinned.
+        // (The quarantine is off in this file; motion-runtime-mo pins it.)
         expect(entry.candidates).toContain('vendor/animations/dance/dance_1.bvh');
         expect(entry.candidates).toContain('addons/vrma-dance/dance_1.vrma');
     });

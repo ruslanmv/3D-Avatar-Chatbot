@@ -84,6 +84,16 @@ Out of the box the system uses `addons/vrma-actions` (13 action clips),
 `addons/vrma-dance` (19 dances) and the `vendor/animations` BVH library
 (~110 clips), with procedural fallbacks for nod, point and hand-offering.
 
+**MO4 — quarantine.** Not every shipped clip plays correctly on a VRM. The
+runtime audit (`node tools/qa/animation-runtime-audit.mjs`, report in
+`docs/audits/animation-runtime-audit.md`) plays each clip on the avatar and
+measures it. 24 VRMA files sink her into the floor or float her out of frame
+(7 converted dances, 6 Mixamo dances, 11 Mixamo actions) and `bowing.vrma`
+folds her body; they are listed in `MotionClipMap.QUARANTINE` and no path —
+"dance", a fuzzy match, the model — can draw them. "wave" falls through to
+`action_greeting.bvh`, the talking idle to `neutral_idle.bvh`. Fix a clip,
+re-run the audit, then take it off the list.
+
 Both formats retarget onto the VRM normalized rig, so a clip plays the same
 on any avatar — see [Clip Retargeting](animation-system.md#clip-retargeting-bvh--vrma)
 for the pipeline and the defects that were fixed to get there. Settings →
@@ -98,8 +108,15 @@ its name. For the optional 8-clip locomotion pack in
 ## Troubleshooting
 
 - **Avatar answers but doesn't move** — check `NEXUS_MOTION.state.booted`
-  and that `NEXUS_MOTION.config.enabled` is true; open the console for
-  `[Motion] booted — living NPC online`.
+  and that Settings → Living NPC is on (MO1: on by default since issue #150;
+  before that it was opt-in and "sit down" did nothing for anyone who had not
+  found the switch). `NEXUS_MOTION.state.execution` says what her body is
+  actually doing — `requested`, then `playing` / `started` / `failed` with a
+  reason — and the same record reaches the model as `body` in the world
+  snapshot, so it cannot claim a sit that failed.
+- **"Come with me" does nothing on desktop** — fixed in MO1: the locomotion
+  update used to return outside VR for every state, so point-walks never ran.
+  She now walks toward the camera and stops 1.5 m from it.
 - **No walking, avatar glides** — the walk state machine failed to preload
   clips; verify `vendor/animations/action/action_walk.bvh` is served.
 - **A gesture is announced but nothing moves** — open the console. A clip
