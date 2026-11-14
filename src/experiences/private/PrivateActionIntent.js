@@ -393,6 +393,75 @@
     const YES =
         /^(?:yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|volentieri|oui|d[’']accord|vas-y|ja|klar|gern|mach das|sim|claro|pode|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行)(?:[\s,]+(?:please|per favore|por favor|bitte|grazie|thanks))?[\s.!]*$/iu;
 
+    /**
+     * UN4. Going somewhere else, in their words. A verb of going (or "take me") must start the
+     * message; the destination is a keyword the bridge resolves against the places this device
+     * can show — never a world id typed by anybody. With no destination named it is `elsewhere`:
+     * the bridge turns that into her invitation to tonight's destination, which their yes takes.
+     */
+    const GO_VERB = new RegExp(
+        `^(?:${word(
+            "let[’']?s go|let us go|shall we go|can we go|could we go|take me|bring me|go to|we could go|andiamo|andiamocene|portami|possiamo andare|potremmo andare|podemos ir|on peut aller|können wir (?:gehen|nach|zu)|podemos ir|vamos|vámonos|vamonos|llévame|llevame|allons|on va|emmène-moi|emmene-moi|lass uns gehen|lass uns|gehen wir|bring mich|bora|leva-me|me leva|vamos para"
+        )})`,
+        'iu'
+    );
+    const GO_CJK = /行こう|に行きたい|連れて行って|가자|데려가|我们去|带我去|走吧/u;
+    const PLACE_WORDS = [
+        ['hotel', 'hotel|hôtel|albergo|suite|ホテル|호텔|酒店|宾馆'],
+        [
+            'apartment',
+            'apartment|flat|appartamento|apartamento|appartement|wohnung|casa tua|casa mia|da te|da me|chez toi|chez moi|zu dir|zu mir|tua casa|your place|my place|部屋|아파트|집|公寓',
+        ],
+        [
+            'bedroom',
+            'bedroom|camera da letto|in camera|dormitorio|habitación|chambre|schlafzimmer|quarto|寝室|침실|卧室',
+        ],
+        ['motel', 'motel'],
+        ['discoteca', 'discoteca|disco|nightclub|club|boîte|ディスコ|클럽|夜店'],
+        ['cabaret', 'cabaret|cabaré|カバレー'],
+        ['rooftop', 'rooftop|terrazza|tetto|azotea|toit|dachterrasse|屋上|옥상|天台'],
+        ['street', 'street|strada|calle|rue|straße|strasse|rua|街|거리'],
+    ];
+    const ELSEWHERE = new RegExp(
+        `${word(
+            "somewhere(?: else| quieter)?|elsewhere|another place|out of here|altrove|da un[’']?altra parte|un altro posto|un posto più tranquillo|via di qui|a otro sitio|a otro lugar|ailleurs|autre part|woanders(?:hin)?|outro lugar"
+        )}|どこか|다른 곳|别的地方`,
+        'iu'
+    );
+
+    function travelFrom(body) {
+        if (!GO_VERB.test(body) && !GO_CJK.test(body)) return null;
+        for (const [key, words] of PLACE_WORDS)
+            if (
+                new RegExp(
+                    `${word(words)}|${
+                        words
+                            .split('|')
+                            .filter((w) => /[\u3040-\u9fff\uac00-\ud7af]/u.test(w))
+                            .join('|') || '(?!)'
+                    }`,
+                    'iu'
+                ).test(body)
+            )
+                return action('world.travel', { world: key }, 'world');
+        if (ELSEWHERE.test(body)) return action('world.travel', { world: 'elsewhere' }, 'world');
+        return null;
+    }
+
+    /** "Andiamo!", "volentieri" — a yes to going, in particular. */
+    const GO_YES = new RegExp(
+        `^(?:${word(
+            "andiamo|volentieri|let[’']?s go|let[’']?s|vamos|vámonos|vamonos|allons-y|on y va|gehen wir|los geht[’']?s|bora|vamos lá"
+        )}|行こう|가자|走吧)`,
+        'iu'
+    );
+    const GO_YES_ANYWHERE = new RegExp(GO_YES.source.replace(/^\^/, ''), 'iu');
+    function affirmsGoing(text) {
+        const said = clean(text);
+        if (!said || said.split(' ').length > 6 || NEGATED.test(said)) return affirms(text);
+        return GO_YES_ANYWHERE.test(said) || affirms(text);
+    }
+
     function affirms(text) {
         return YES.test(clean(text));
     }
@@ -462,6 +531,9 @@
             !['playing', 'loading', 'searching'].includes(c.musicStatus)
         )
             return action('music.play', { query: '', again: true }, 'music');
+        // UN4. "Possiamo andare altrove?" is a request put as a question; going is never talk.
+        const goingFirst = travelFrom(body);
+        if (goingFirst && !NEGATED.test(body)) return goingFirst;
         // A question is talk, unless it was put as "can you …?".
         const question = /[?？]\s*$/u.test(said);
         if (question && !askedPolitely) return null;
@@ -593,7 +665,20 @@
         return null;
     }
 
-    const api = { parse, topic, affirms, queryFrom, stylesIn, coloursIn, garmentsIn, GARMENTS, STYLES, COLOURS };
+    const api = {
+        parse,
+        topic,
+        affirms,
+        affirmsGoing,
+        travelFrom,
+        queryFrom,
+        stylesIn,
+        coloursIn,
+        garmentsIn,
+        GARMENTS,
+        STYLES,
+        COLOURS,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTION_INTENT = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

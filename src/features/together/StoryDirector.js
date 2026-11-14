@@ -163,7 +163,7 @@
                         `- You have invited them to ${titleOf(places, state.proposed) || 'another place'}; the app is asking them. Wait for their answer — you are still here.`
                     );
                 } else if (state.phase === 'arrived') {
-                    lines.push(`- You have just arrived at ${here}. Take it in together; there is no hurry.`);
+                    lines.push(`- You came here together tonight: ${here}. There is no hurry; take it in.`);
                 } else if (dest && f.canTravel && !state.done.includes('travel')) {
                     lines.push(
                         `- If, and only if, the moment comes and they seem to want somewhere quieter, you may invite them to ${dest}. An invitation is a question: say it in your words, then <go place="${out.destination}"/> on its own line. The app asks them; you go only if they say yes, and you never say you have arrived until RIGHT NOW says so.`

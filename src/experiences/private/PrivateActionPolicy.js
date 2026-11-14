@@ -16,7 +16,7 @@
  *
  * ## What it guarantees
  *
- * - **An allowlist.** Thirteen names; anything else is refused before a handler is looked up.
+ * - **An allowlist.** Fourteen names; anything else is refused before a handler is looked up.
  * - **Validated parameters.** Each name has a schema; unknown keys are dropped, strings are
  *   bounded and stripped of markup and links. A model's arguments are data, never instructions.
  * - **Her own initiative is narrow.** A model-sourced action runs only when the person asked for
@@ -123,6 +123,13 @@
         },
         'avatar.dance': { family: 'avatar', params: {} },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
+        // UN4. A different room for the evening: one of the places this device can show, and
+        // only ever because the person said so (their words, their yes, their tap).
+        'world.travel': {
+            family: 'world',
+            params: { world: (v) => (ID.test(String(v || '').toLowerCase()) ? String(v).toLowerCase() : null) },
+            required: ['world'],
+        },
         'scene.change': {
             family: 'scene',
             params: { scene: (v) => (ID.test(String(v || '').toLowerCase()) ? String(v).toLowerCase() : null) },
@@ -225,6 +232,10 @@
                 // A reaction is an expression; a dance is a thing she does to the room.
                 if (action.name === 'avatar.react') return { allow: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
+            case 'world':
+                // UN4. Her invitation is a question for them, never a trip: it becomes an offer
+                // their yes takes (the bridge re-asks this file then, as `user-approved`).
+                return { allow: false, why: 'needs-approval', suggest: true };
             default:
                 // The place is theirs: only their own words move it.
                 return { allow: false, why: 'user-only' };

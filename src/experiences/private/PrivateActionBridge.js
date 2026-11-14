@@ -180,6 +180,8 @@
             }
         }
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
+        if (s.travel) clearTimeout(s.travel.timer);
+        s.travel = null;
         if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
@@ -242,6 +244,10 @@
             });
             Weaver.remember(outline.fingerprint, s.win);
             s.places = places;
+            s.canTravel =
+                injected && injected.canTravel !== undefined
+                    ? Boolean(injected.canTravel)
+                    : places.length > 1 && Boolean(s.win && s.win.NEXUS_VIEWER && s.win.CustomEvent);
             s.story = Director.create(outline, { places, current, weaver: Weaver });
             emit();
         };
@@ -264,9 +270,154 @@
         }
     }
 
-    /** Placeholder until UN4 wires travel; a confirmed world simply becomes where she is. */
+    // ------------------------------------------------------------------ UN4. going somewhere else
+    /** How long a trip may take before the room she was in is asked for again (as WorldPresence). */
+    const TRAVEL_MS = 45 * 1000;
+    const PLACE_KEYS = {
+        hotel: /hotel|suite/,
+        apartment: /apartment|flat|home/,
+        bedroom: /bedroom/,
+        motel: /motel/,
+        discoteca: /discoteca|club/,
+        cabaret: /cabaret/,
+        rooftop: /rooftop/,
+        street: /street/,
+    };
+
+    /**
+     * A keyword or a catalogue id → one of the places this device can show, or null. "elsewhere"
+     * is tonight's destination. Never a world that is not in `s.places`: the outline and the
+     * catalogue are the only sources, so nobody can type their way into a room.
+     */
+    function resolvePlace(s, key) {
+        const places = s.places || [];
+        const here = s.story ? s.story.snapshot().shown : null;
+        const outline = s.story ? s.story.outline : null;
+        const id = String(key || '').toLowerCase();
+        if (id === 'elsewhere') {
+            const dest = outline && outline.destination;
+            return places.find((p) => p.id === dest && p.id !== here) || null;
+        }
+        const exact = places.find((p) => p.id === id || p.world === id);
+        if (exact) return exact;
+        const re = PLACE_KEYS[id];
+        if (!re) return null;
+        const matches = places.filter(
+            (p) => re.test(`${p.id} ${String(p.title || '').toLowerCase()}`) && p.id !== here
+        );
+        if (!matches.length) return null;
+        return (outline && matches.find((p) => p.id === outline.destination)) || matches[0];
+    }
+
+    /** Her invitation, or "somewhere else": one question for the person, nothing moves. */
+    function travelOffer(s, place, action) {
+        s.offer = {
+            kind: 'travel',
+            world: place.id,
+            name: String(place.title || place.id),
+            turnId: s.turnId,
+            from: action ? action.id : null,
+        };
+        if (s.story) s.story.propose(place.id);
+        emit();
+    }
+
+    function requestWorld(s, id) {
+        try {
+            s.win.dispatchEvent(
+                new s.win.CustomEvent('nexus-world-request', { detail: { id: id || null, owner: 'intimate' } })
+            );
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * The person agreed (their words naming the place, their yes, their tap): ask the renderer
+     * for the room through the Private experience's own channel (`nexus-world-request`, owner
+     * `intimate` — the request the setup screen's choice makes), and wait for its word. Nothing
+     * here says she has arrived: `arrive` does, when `nexus-world-shown` names this room. A trip
+     * that does not land in TRAVEL_MS asks for the room she was in, and says it did not happen.
+     */
+    function travel(s, action) {
+        if (!s.canTravel) return settle(action, 'failed', 'no-travel');
+        const place = resolvePlace(s, action.params.world);
+        if (!place) {
+            if (action.params.world === 'elsewhere') return settle(action, 'failed', 'no-destination');
+            return settle(action, 'failed', 'not-a-place');
+        }
+        const here = s.story ? s.story.snapshot().shown : null;
+        if (place.id === here)
+            return settle(action, 'completed', null, { name: place.title || place.id, already: true });
+        // "Somewhere else", or her invitation: the place is the evening's idea, so it is asked.
+        if (action.params.world === 'elsewhere' && action.source === 'user') {
+            travelOffer(s, place, action);
+            return settle(action, 'blocked', 'needs-approval', { name: place.title || place.id });
+        }
+        if (s.travel) clearTimeout(s.travel.timer);
+        const from = here;
+        s.travel = { action, world: place.id, from, timer: null };
+        s.offer = null;
+        if (s.story) s.story.travelling(place.id);
+        action.result = { name: String(place.title || place.id) };
+        if (!requestWorld(s, place.id)) {
+            s.travel = null;
+            if (s.story) s.story.failed('no-renderer');
+            return settle(action, 'failed', 'no-renderer');
+        }
+        const trip = s.travel;
+        trip.timer = setTimeout(() => {
+            if (state !== s || s.travel !== trip) return;
+            s.travel = null;
+            if (s.story) s.story.failed('timeout');
+            s.travelNews = { name: (action.result && action.result.name) || trip.world };
+            finish(action, 'failed', 'timeout');
+            requestWorld(s, from);
+            emit();
+        }, TRAVEL_MS);
+        emit();
+        // Stays `pending` until the renderer answers; the prompt says "on your way" meanwhile.
+        return action;
+    }
+
+    /** The renderer confirmed a world. Only the trip in progress arrives. */
     function arrive(s, id) {
-        if (s.story) s.story.shown(id);
+        const trip = s.travel;
+        if (!trip) return s.story && s.story.shown(id);
+        clearTimeout(trip.timer);
+        s.travel = null;
+        if (s.story) s.story.arrived(trip.world);
+        s.arrivedNews = { world: trip.world, name: (trip.action.result && trip.action.result.name) || trip.world };
+        finish(trip.action, 'completed');
+        return true;
+    }
+
+    /** UN4. Her `<go place="…"/>` inside Private: an invitation, never a trip. Strips every <go>. */
+    const GO_TAG = /<\s*go\b([^>]*?)\/?>(?:\s*<\s*\/\s*go\s*>)?/gi;
+    function consumeTravel(text) {
+        const raw = String(text == null ? '' : text);
+        const s = state;
+        if (!s || s.session._stopped) return raw;
+        let first = null;
+        const clean = raw.replace(GO_TAG, (whole, attrs) => {
+            if (!first) {
+                const m = /place\s*=\s*["']([a-z0-9-]{1,40})["']/i.exec(attrs || '');
+                if (m) first = m[1].toLowerCase();
+            }
+            return ' ';
+        });
+        if (first) {
+            try {
+                Promise.resolve(fromModel('world.travel', { world: first })).catch(() => null);
+            } catch (_) {
+                /* an invitation that cannot be made must not take her reply down */
+            }
+        }
+        return clean
+            .replace(/[ \t]{2,}/g, ' ')
+            .replace(/[ \t]+\n/g, '\n')
+            .trim();
     }
 
     function active() {
@@ -487,6 +638,8 @@
                 return dance(s, action);
             case 'avatar.react':
                 return react(s, action);
+            case 'world.travel':
+                return travel(s, action);
             case 'scene.change': {
                 const controller = s.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
                 if (!controller || typeof controller.apply !== 'function') return settle(action, 'failed', 'no-scenes');
@@ -601,6 +754,14 @@
 
     /** SUGGEST: her idea becomes a question for the person, with the look already resolved. */
     async function offerFrom(s, action) {
+        if (action.family === 'world') {
+            // UN4. Her invitation: the place she named, if it is one of tonight's places.
+            if (!s.canTravel || s.travel) return;
+            const place = resolvePlace(s, action.params.world);
+            const here = s.story ? s.story.snapshot().shown : null;
+            if (place && place.id !== here) travelOffer(s, place, action);
+            return;
+        }
         if (!s.closet || action.family !== 'wardrobe') return;
         try {
             const opened = await s.closet.open();
@@ -658,6 +819,17 @@
         if (!s || !s.offer) return null;
         const offer = s.offer;
         s.offer = null;
+        if (offer.kind === 'travel') {
+            // UN4. Their yes is the trip: asked again of the policy, as `user-approved`.
+            return request(
+                'world.travel',
+                { world: offer.world },
+                {
+                    source: source === 'control' ? 'control' : 'user-approved',
+                    turnId: s.turnId,
+                }
+            );
+        }
         seq += 1;
         const action = {
             id: `act-${Date.now().toString(36)}-${seq}`,
@@ -712,6 +884,7 @@
 
     function declineOffer() {
         if (!state || !state.offer) return false;
+        if (state.offer.kind === 'travel' && state.story) state.story.decline();
         state.offer = null;
         emit();
         return true;
@@ -800,10 +973,20 @@
 
         // An offer waits two turns for an answer, then stops waiting.
         if (s.offer && s.turnId - s.offer.turnId > OFFER_TURNS) s.offer = null;
-        const yes = intent === 'affirmation' || (typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
+        const travelling = s.offer && s.offer.kind === 'travel';
+        const yes =
+            intent === 'affirmation' ||
+            (travelling && typeof Intent.affirmsGoing === 'function'
+                ? Intent.affirmsGoing(s.turnText)
+                : typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
         if (s.offer && yes && !s.session._care) {
-            s.asked.wardrobe = s.turnId;
+            s.asked[travelling ? 'world' : 'wardrobe'] = s.turnId;
             return approveOffer('user');
+        }
+        // UN4. A trip not taken: the next turn that is not a yes closes the invitation.
+        if (travelling && s.turnId > s.offer.turnId) {
+            s.offer = null;
+            if (s.story) s.story.decline();
         }
 
         const media = s.media ? s.media.status() : { status: 'idle' };
@@ -1141,6 +1324,34 @@
                     ? 'They asked you to dance, and you are dancing now.'
                     : 'They asked you to dance and you cannot right now. Say so lightly.'
             );
+        // UN4. Where she is going, in the words the renderer allows. Arrival and a failed trip
+        // land between turns, so they are news told once, on the next prompt.
+        const trip = [...s.log].reverse().find((a) => a.name === 'world.travel' && a.turnId === s.turnId);
+        const tripName = trip && trip.result && trip.result.name;
+        if (s.arrivedNews) {
+            now.push(
+                `You have just arrived at ${s.arrivedNews.name} together, as they agreed — it is around you now. Welcome them there in your own words.`
+            );
+            s.arrivedNews = null;
+        } else if (s.travelNews) {
+            now.push(
+                `The trip to ${s.travelNews.name} did not happen; you are still where you were. Say so once, lightly, and stay.`
+            );
+            s.travelNews = null;
+        } else if (trip && trip.status === 'pending')
+            now.push(
+                `They said yes: you are on your way to ${tripName || 'the other place'} right now. Say so in one short sentence; do not describe arriving yet.`
+            );
+        else if (trip && trip.status === 'completed' && trip.result && trip.result.already)
+            now.push(`You are already at ${tripName}.`);
+        else if (trip && trip.why === 'needs-approval')
+            now.push(
+                `Going to ${(s.offer && s.offer.name) || tripName || 'another place'} has been suggested; the app is asking them. Wait for their answer — you are still here.`
+            );
+        else if (trip && ['not-a-place', 'no-destination', 'no-travel'].includes(trip.why))
+            now.push(
+                'They asked to go somewhere you cannot take them from here tonight. Say so warmly and stay where you are.'
+            );
         // UN3. Tonight's outline, after what she can do and before what is happening now.
         if (s.story) lines.push(...s.story.lines({ canTravel: Boolean(s.canTravel) }));
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
@@ -1152,12 +1363,14 @@
         GENERATE_KEY,
         OFFER_TURNS,
         UNDRESS_AT,
+        TRAVEL_MS,
         begin,
         end,
         active,
         request,
         onUserTurn,
         fromModel,
+        consumeTravel,
         approveOffer,
         declineOffer,
         snapshot,

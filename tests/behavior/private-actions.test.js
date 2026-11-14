@@ -296,10 +296,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the thirteen names exist, and parameters are cleaned, bounded and typed', () => {
-        // UN1 added wardrobe.undress (an owner decision); nothing else joined the list.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(13);
+    test('only the fourteen names exist, and parameters are cleaned, bounded and typed', () => {
+        // UN1 added wardrobe.undress and UN4 world.travel (owner decisions); nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(14);
         expect(Policy.ACTIONS['wardrobe.undress']).toBeTruthy();
+        expect(Policy.ACTIONS['world.travel']).toBeTruthy();
         expect(Policy.validate('system.shell', { cmd: 'x' })).toEqual({ ok: false, why: 'unknown-action' });
         const cleaned = Policy.validate('music.play', {
             query: '<b>Daft</b> Punk https://example.invalid/x `rm`',

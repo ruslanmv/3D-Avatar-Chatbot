@@ -250,3 +250,124 @@ describe('UN3. the bridge deals one story per Private session and follows the re
         expect(Actions.snapshot().story.phase).toBe('opening');
     });
 });
+
+describe('UN4. a real two-place evening: asked, agreed, and arrived only on the renderer’s word', () => {
+    const session = () => ({ _stopped: false, _care: false, adult: { level: 1, active: true } });
+    let requests;
+    const onRequest = (e) => requests.push(e.detail);
+    const prompt = () => Actions.promptLines().join('\n');
+    const shown = (id) =>
+        window.dispatchEvent(new window.CustomEvent('nexus-world-shown', { detail: { id, base: id } }));
+
+    function evening(seed) {
+        const s = session();
+        Actions.begin(s, {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(seed || 21), canTravel: true } },
+        });
+        return { s, outline: Actions.snapshot().story };
+    }
+
+    beforeEach(() => {
+        requests = [];
+        window.addEventListener('nexus-world-request', onRequest);
+    });
+    afterEach(() => {
+        window.removeEventListener('nexus-world-request', onRequest);
+        jest.useRealTimers();
+        Actions.end();
+    });
+
+    const destination = () => {
+        const id = Actions.snapshot().story && Actions.snapshot().story.storyId;
+        return id ? PLACES.find((p) => prompt().includes(`<go place="${p.id}"/>`)) : null;
+    };
+
+    test('"Possiamo andare altrove?" is a question to them about tonight’s place; "no" changes nothing', async () => {
+        evening();
+        const dest = destination();
+        await Actions.onUserTurn('Possiamo andare altrove?');
+        expect(Actions.snapshot().offer).toEqual({ kind: 'travel', name: dest.title });
+        expect(Actions.snapshot().story.phase).toBe('travel-proposed');
+        expect(prompt()).toMatch(/the app is asking them/);
+        await Actions.onUserTurn('No, restiamo qui');
+        expect(Actions.snapshot().offer).toBeNull();
+        expect(Actions.snapshot().story).toMatchObject({ phase: 'opening', shown: 'neon-discoteca' });
+        expect(requests).toEqual([]);
+    });
+
+    test('"Volentieri" takes the trip; "arrived" waits for the renderer, and only for that room', async () => {
+        evening();
+        const dest = destination();
+        await Actions.onUserTurn("Andiamo da un'altra parte");
+        await Actions.onUserTurn('Volentieri');
+        expect(requests).toEqual([{ id: dest.id, owner: 'intimate' }]);
+        expect(Actions.snapshot().story.phase).toBe('travelling');
+        expect(prompt()).toMatch(/on your way to .*do not describe arriving yet/s);
+        shown('meadow-sunset'); // another world is not this trip
+        expect(Actions.snapshot().story.phase).toBe('travelling');
+        shown(dest.id);
+        expect(Actions.snapshot().story).toMatchObject({ phase: 'arrived', shown: dest.id });
+        expect(prompt()).toMatch(/You have just arrived at .* as they agreed/);
+        const again = prompt();
+        expect(again).not.toMatch(/You have just arrived/); // the news is told once
+        expect(again).toMatch(/You came here together tonight/);
+    });
+
+    test('her <go place/> is only an invitation: stripped from her words, asked, never travelled alone', async () => {
+        evening();
+        const clean = Actions.consumeTravel('Conosco un posto più tranquillo. <go place="apartment"/>');
+        await Promise.resolve();
+        expect(clean).toBe('Conosco un posto più tranquillo.');
+        expect(Actions.snapshot().offer).toEqual({ kind: 'travel', name: 'Apartment' });
+        expect(requests).toEqual([]);
+        await Actions.onUserTurn('Sì, andiamo');
+        expect(requests).toEqual([{ id: 'apartment', owner: 'intimate' }]);
+    });
+
+    test('a trip that does not land goes back to the room she was in, and says so once', async () => {
+        jest.useFakeTimers();
+        evening();
+        await Actions.onUserTurn('andiamo in hotel');
+        expect(requests).toEqual([{ id: 'hotel-suite', owner: 'intimate' }]);
+        jest.advanceTimersByTime(Actions.TRAVEL_MS + 10);
+        expect(requests[1]).toEqual({ id: 'neon-discoteca', owner: 'intimate' });
+        expect(Actions.snapshot().story).toMatchObject({
+            phase: 'opening',
+            shown: 'neon-discoteca',
+            failed: 'timeout',
+        });
+        expect(prompt()).toMatch(/did not happen; you are still where you were/);
+    });
+
+    test('a place this device cannot show is never requested, and she says so', async () => {
+        evening();
+        await Actions.onUserTurn('andiamo al motel');
+        expect(requests).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'world.travel', status: 'failed', why: 'not-a-place' });
+        expect(prompt()).toMatch(/cannot take them from here tonight/);
+        expect(Actions.snapshot().story.shown).toBe('neon-discoteca');
+    });
+
+    test('care mode blocks a trip, and ending the evening mid-trip leaves nothing behind', async () => {
+        const { s } = evening();
+        s._care = true;
+        await Actions.onUserTurn('andiamo in hotel');
+        expect(requests).toEqual([]);
+        s._care = false;
+        await Actions.onUserTurn('andiamo in hotel');
+        expect(requests).toHaveLength(1);
+        Actions.end(s);
+        shown('hotel-suite');
+        expect(Actions.snapshot().story).toBeUndefined();
+        expect(Actions.active()).toBe(false);
+    });
+
+    test('nothing moves on its own: ten quiet turns in the opening stay in the opening', async () => {
+        evening();
+        for (const t of ['Ciao', 'Che bella musica', 'Mi piace qui', 'Raccontami di te', 'Sei bellissima'])
+            await Actions.onUserTurn(t);
+        expect(requests).toEqual([]);
+        expect(Actions.snapshot().story).toMatchObject({ phase: 'opening', shown: 'neon-discoteca' });
+    });
+});
