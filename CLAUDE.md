@@ -230,9 +230,10 @@ first four commits say `V5:` by mistake), `DX` for desktop control layout and
 adult experience configuration
 (`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md`) and `PX` for Private
 3.0's in-session actions
-(`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`) and `MO` for the
+(`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`), `MO` for the
 motion runtime fixes (the body doing what the conversation says;
-`docs/audits/animation-runtime-audit.md`). Commit subjects match:
+`docs/audits/animation-runtime-audit.md`) and `WU` for Wake Up voice activation
+(`docs/claude/wake-up-voice.md`). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 
@@ -311,6 +312,7 @@ feature, and fix it there if it is wrong.
 | World engine docs                                 | Start at `docs/engine/AI_CODER_START_HERE.md`; change a cited function or path and update the doc in the same commit                                                                                                                                                          | `docs/claude/world-engine-docs.md`                          |
 | Wardrobe / Try-On (W, LT, WF, FC, SW)             | `vendor/wardrobe/` changes only via `npm run wardrobe:import`; the controller is the only avatar swapper; the thirty-two `<script>` tags stay at the end of `<body>` (parity harness); never rebuild the service to switch Forge                                              | `docs/claude/wardrobe.md`                                   |
 | Speech-to-text (ST)                               | Construct recognizers only through `NEXUS_STT.recognitionClass()`; on-device chosen but impossible is an error, never a cloud fallback                                                                                                                                        | `docs/claude/speech-to-text.md`                             |
+| Wake Up voice (WU)                                | One mic owner in `NEXUS_VOICE_ACTIVATION`; hold is 3000 ms and the tap stays a tap; wake is off until Settings → Wake Up; do not copy `overlay_wakeword` into that switch; Porcupine is not shipped                                                                           | `docs/claude/wake-up-voice.md`                              |
 | SonicAgent voice (HV)                             | Never a silent fallback; consent only from the person's tick; a failure is session-only, never written to storage                                                                                                                                                             | `docs/claude/sonicagent-voice.md`                           |
 | Speech engines, Quest voice (Q1–Q7)               | Stored vs active engine; the Quest switch is off by default and never writes `tts_engine`; Piper never synthesizes on the main thread                                                                                                                                         | `docs/claude/speech-engines-quest-voice.md`                 |
 | Page in Quest Browser (Q8–Q9)                     | Looks exactly like desktop Chrome; edit the icon SVGs, never the PNGs                                                                                                                                                                                                         | `docs/claude/quest-browser-page.md`                         |

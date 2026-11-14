@@ -64,3 +64,6 @@ procedure.
   Chromium's fake microphone). English is gated; Italian is reported (29–57% WER
   on Tiny, 14–36% on Base with Piper's synthetic voice). That is this machine's
   CPU — Quest timings come from `stt-check.html` on the headset.
+- **Wake Up (WU)** holds the same mic button and still constructs recognizers
+  only through `recognitionClass()`. It does not add an engine. See
+  `docs/claude/wake-up-voice.md`.

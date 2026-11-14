@@ -1429,6 +1429,108 @@
                         </div>
                     </div>
 
+                    <div class="config-section" id="wake-up-section">
+                        <h3 class="config-title" data-wake-key="wakeTitle">WAKE UP</h3>
+                        <p class="voice-status" data-wake-key="wakeDisclosure" style="margin-top: 0">
+                            While this tab is open and visible, NEXUS can listen for the wake phrase. An on-device
+                            detector keeps that audio on this device. If this browser has none, one short check uses the
+                            speech recognizer you already chose — browser speech recognition can send that clip to the
+                            browser’s speech service. Nothing listens while this tab is hidden, the browser is closed,
+                            or the phone is locked. Off until you turn it on.
+                        </p>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-enabled">
+                                <input type="checkbox" id="wake-enabled" />
+                                <span data-wake-key="wakeToggle" style="margin-left: 8px">Wake word</span>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-phrase" data-wake-key="wakePhrase"
+                                >Activation phrase</label
+                            >
+                            <select id="wake-phrase" class="select-input">
+                                <option value="hey nexus">Hey Nexus</option>
+                                <option value="ehi nexus">Ehi Nexus</option>
+                                <option value="nexus">Nexus</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input
+                                id="wake-phrase-custom"
+                                class="text-input"
+                                type="text"
+                                hidden
+                                autocomplete="off"
+                                placeholder="Custom phrase"
+                                style="margin-top: 8px"
+                            />
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-autosend">
+                                <input type="checkbox" id="wake-autosend" checked />
+                                <span data-wake-key="wakeAutosend" style="margin-left: 8px"
+                                    >Auto-send completed speech</span
+                                >
+                            </label>
+                            <p
+                                class="voice-status"
+                                data-wake-key="wakeAutosendHelp"
+                                style="margin-top: 8px; opacity: 0.8"
+                            >
+                                A three-second hold, Speak and send, or a wake phrase sends the finished sentence. A
+                                normal tap still follows Speech-to-text auto-send.
+                            </p>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="wake-continuous">
+                                <input type="checkbox" id="wake-continuous" />
+                                <span data-wake-key="wakeContinuous" style="margin-left: 8px"
+                                    >Continuous conversation</span
+                                >
+                            </label>
+                            <p
+                                class="voice-status"
+                                data-wake-key="wakeContinuousHelp"
+                                style="margin-top: 8px; opacity: 0.8"
+                            >
+                                After a reply, listen for one more sentence. Off by default.
+                            </p>
+                        </div>
+                        <div class="input-group">
+                            <div class="input-label" data-wake-key="wakeMic">Microphone</div>
+                            <p class="voice-status" id="wake-mic-status" style="margin-top: 8px; opacity: 0.8">
+                                Microphone not requested yet
+                            </p>
+                        </div>
+                        <p class="voice-status" data-wake-key="wakeCompanion" style="opacity: 0.8">
+                            Companion’s own wake word still runs only inside Companion. Leaving it on does not listen in
+                            the main chat.
+                        </p>
+                        <p class="voice-status" data-wake-key="wakeClosed" style="opacity: 0.8">
+                            Wake listening does not run while the browser is closed or the phone is locked.
+                        </p>
+                        <p class="voice-status" id="wake-feedback" aria-live="polite"></p>
+                        <div
+                            class="modal-footer"
+                            style="justify-content: flex-start; gap: 10px; padding: 0; flex-wrap: wrap"
+                        >
+                            <button class="secondary-btn" id="wake-speak" type="button" data-wake-key="wakeSpeak">
+                                Speak and send
+                            </button>
+                            <button class="secondary-btn" id="wake-test" type="button" data-wake-key="wakeTest">
+                                Test wake word
+                            </button>
+                            <button class="secondary-btn" id="wake-pause" type="button" data-wake-key="wakePause">
+                                Pause listening
+                            </button>
+                            <button class="secondary-btn" id="wake-stop" type="button" data-wake-key="wakeStop">
+                                Stop listening
+                            </button>
+                        </div>
+                        <p class="voice-status" data-wake-key="wakeSpeakHelp" style="margin-top: 8px; opacity: 0.8">
+                            Keyboard and switch alternative to holding the microphone for three seconds.
+                        </p>
+                    </div>
+
                     <div class="config-section">
                         <h3 class="config-title">
                             SPICY MODE
@@ -3918,6 +4020,8 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script src="src/stt/RemoteSttEvents.js"></script>
         <script src="src/stt/RemoteSonicAgentSTT.js"></script>
         <script src="src/stt/SonicAgentVoiceSettings.js"></script>
+        <!-- WU. Wake Up. Classic, so it exists before deferred main.js wires the mic button. -->
+        <script src="src/stt/VoiceActivation.js"></script>
         <!-- HV4/HV5: streamed SonicAgent Piper. Deferred, so it registers after TTSProvider. -->
         <script defer src="src/tts/AudioJitterBuffer.js"></script>
         <script defer src="src/tts/StreamingAudioPlayer.js"></script>

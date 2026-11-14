@@ -407,6 +407,11 @@
 
         async activate(mode) {
             if (this.active) return;
+            // WU. Companion's standby is the wake listener while it is open.
+            // Drop the page monitor first so the two never share the mic.
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.onCompanionActive?.(true);
+            } catch (_) {}
             const strategy = this._chooseStrategy(mode);
             try {
                 if (strategy === 'document') await this._activateDocumentPiP();
@@ -419,6 +424,11 @@
                 if (this.strategy === 'document-pip') this._restore();
                 else if (this.strategy === 'inpage-overlay') this._restoreInPage();
                 else this._teardownVideoPiP();
+                // The page monitor was stopped on the way in. A failed open has
+                // to hand it back, or Wake Up stays silent until reload.
+                try {
+                    window.NEXUS_VOICE_ACTIVATION?.onCompanionActive?.(false);
+                } catch (_) {}
                 throw err;
             }
         }
@@ -426,6 +436,9 @@
         async deactivate() {
             if (!this.active) return;
             this.stopStandby(); // wake word lives and dies with the companion
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.onCompanionActive?.(false);
+            } catch (_) {}
             if (this.strategy === 'document-pip') this._pipWindow?.close();
             else if (this.strategy === 'inpage-overlay') this._restoreInPage();
             else this._teardownVideoPiP();
@@ -1281,6 +1294,13 @@
 
         _startLive() {
             if (this._live) return;
+            try {
+                const VA = window.NEXUS_VOICE_ACTIVATION;
+                if (VA && VA.busy && VA.busy() && VA.owner && VA.owner() !== 'companion') {
+                    this._toast((VA.label && VA.label('wakeBusy')) || 'Microphone is in use');
+                    return;
+                }
+            } catch (_) {}
             this.stopStandby(); // one SpeechRecognition owner at a time
             const SR = CompanionMode._SR();
             if (!SR) {
@@ -1293,6 +1313,9 @@
                 return;
             }
             this._live = true;
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.adopt?.('companion', 'LISTENING');
+            } catch (_) {}
             this._muted = false; // a new call always starts unmuted
             this._ui?.mic?.classList.remove('muted');
             if (this._ui?.mic) this._ui.mic.textContent = '🎤';
@@ -1333,8 +1356,11 @@
             this._micConfirmed = false;
             this._setConvState('idle');
             clearTimeout(this._wakeIdleTimer);
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.release?.('companion');
+            } catch (_) {}
             // Wake-word mode: ending a conversation returns to standby.
-            if (CompanionMode.getSettings().wakeWord) {
+            if (CompanionMode.getSettings().wakeWord || CompanionMode.pageWakeOn()) {
                 setTimeout(() => this.startStandby(), 300);
             }
         }
@@ -1424,12 +1450,27 @@
 
         startStandby() {
             const cfg = CompanionMode.getSettings();
-            // COMPANION-ONLY: the wake word is a companion feature. In the
-            // default chat the mic belongs to the app's own controls.
+            // COMPANION-ONLY for the overlay switch. Page-level Wake Up can
+            // also ask this standby to run, but only while the companion is
+            // actually open — otherwise the main chat's own monitor is the
+            // one listener, never both.
             if (!this.active) return;
-            if (!cfg.wakeWord || this._standby || this._live) return;
+            let pageWake = false;
+            try {
+                pageWake = !!(window.NEXUS_VOICE_ACTIVATION && window.NEXUS_VOICE_ACTIVATION.wakeEnabled());
+            } catch (_) {}
+            if ((!cfg.wakeWord && !pageWake) || this._standby || this._live) return;
+            try {
+                const VA = window.NEXUS_VOICE_ACTIVATION;
+                if (VA && VA.claim && !VA.claim('companion')) return;
+            } catch (_) {}
             const SR = CompanionMode._SR();
-            if (!SR) return;
+            if (!SR) {
+                try {
+                    window.NEXUS_VOICE_ACTIVATION?.release?.('companion');
+                } catch (_) {}
+                return;
+            }
             this._standby = true;
             this._standbyFails = 0;
             this._standbyVAD();
@@ -1448,6 +1489,9 @@
                 this._standbySr = null;
             }
             if (this._convState === 'standby') this._setConvState('idle');
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.release?.('companion');
+            } catch (_) {}
         }
 
         /* Silent standby front-end (industry pattern, like Alexa/Google):
@@ -1578,6 +1622,39 @@
          * slides over the words, and accepts small mishearings via edit
          * distance ("hey ava" ≈ "hey aver" / "hey. Eva").
          */
+        /** WU. Page-level Wake Up, read without starting a listener. */
+        static pageWakeOn() {
+            try {
+                return !!(window.NEXUS_VOICE_ACTIVATION && window.NEXUS_VOICE_ACTIVATION.wakeEnabled());
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /**
+         * Phrases this standby may accept. Overlay phrase only when that
+         * checkbox is on; the page phrase only when Wake Up is on. Both can
+         * be true while the companion is open, and they share this one listener.
+         */
+        static _wakePhrases() {
+            const norm = (s) =>
+                String(s || '')
+                    .toLowerCase()
+                    .replace(/[^\p{L}\p{N}\s]/gu, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            const out = [];
+            const cfg = CompanionMode.getSettings();
+            if (cfg.wakeWord && cfg.wakePhrase) out.push(norm(cfg.wakePhrase));
+            try {
+                const page = window.NEXUS_VOICE_ACTIVATION && window.NEXUS_VOICE_ACTIVATION.settings();
+                if (page && page.wakeEnabled && page.phrase) out.push(norm(page.phrase));
+            } catch (_) {}
+            return out.filter(function (p, i, all) {
+                return p && all.indexOf(p) === i;
+            });
+        }
+
         static _matchesWake(heardNorm, phraseNorm) {
             if (!heardNorm || !phraseNorm) return -1;
             // NOTE: no raw substring shortcut — "hey ava" must not fire inside
@@ -1645,20 +1722,25 @@
                         .replace(/[^\p{L}\p{N}\s]/gu, '')
                         .replace(/\s+/g, ' ')
                         .trim();
-                const phrase = norm(CompanionMode.getSettings().wakePhrase);
+                const phrases = CompanionMode._wakePhrases();
 
                 sr.onresult = (event) => {
                     this._standbyFails = 0;
                     const result = event.results[event.results.length - 1];
-                    if (!phrase) return;
+                    if (!phrases.length) return;
                     // Check every alternative — tolerant matching, like Google.
+                    // Her own voice is not a wake: the activation controller
+                    // remembers what she just said and that she is still speaking.
                     for (let a = 0; a < result.length; a++) {
                         const heard = norm(result[a]?.transcript);
-                        const end = CompanionMode._matchesWake(heard, phrase);
-                        if (end === -1) continue;
-                        const command = heard.slice(end).trim();
-                        this._onWake(command);
-                        return;
+                        if (window.NEXUS_VOICE_ACTIVATION?.isEcho?.(heard)) continue;
+                        for (let p = 0; p < phrases.length; p++) {
+                            const end = CompanionMode._matchesWake(heard, phrases[p]);
+                            if (end === -1) continue;
+                            const command = heard.slice(end).trim();
+                            this._onWake(command);
+                            return;
+                        }
                     }
                 };
                 sr.onerror = (e) => {

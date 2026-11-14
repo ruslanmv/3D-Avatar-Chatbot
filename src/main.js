@@ -488,6 +488,11 @@ function setStatus(mode, text) {
         if (mode === 'speaking') indicator.classList.add('speaking');
         if (mode === 'listening') indicator.classList.add('listening');
     }
+    // WU. Wake standby has to know when the avatar is audible, or her own
+    // "Hey Nexus" line is a wake hit. The flag drops again on the next idle.
+    try {
+        window.NEXUS_VOICE_ACTIVATION?.noteSpeaking?.(mode === 'speaking');
+    } catch (_) {}
 }
 
 /* =========================================================
@@ -2207,7 +2212,32 @@ function setupEventListeners() {
     }
 
     const listenBtn = $('listen-btn');
-    if (listenBtn) listenBtn.addEventListener('click', toggleVoiceInput);
+    if (listenBtn) {
+        // WU. The tap stays a tap. The hold tracker swallows only the click that
+        // follows a three-second press, and it is the only click listener so a
+        // hold cannot toggle the tap recognizer afterwards.
+        const voiceActivation = window.NEXUS_VOICE_ACTIVATION;
+        if (voiceActivation && voiceActivation.attachHold && voiceActivation.configure) {
+            voiceActivation.configure({
+                send: (text) => handleUserMessage(text),
+                language: () => (window.AppLanguage && window.AppLanguage.code) || SpeechSettings.lang || 'en-US',
+                recognitionClass: micRecognizerClass,
+                stopTap: () => {
+                    if (isListening) stopVoiceInput();
+                },
+                isSpeaking: () => {
+                    const ind = $('status-indicator');
+                    return (
+                        !!(ind && ind.classList.contains('speaking')) ||
+                        !!(window.speechSynthesis && window.speechSynthesis.speaking)
+                    );
+                },
+            });
+            voiceActivation.attachHold(listenBtn, { onTap: () => toggleVoiceInput() });
+        } else {
+            listenBtn.addEventListener('click', toggleVoiceInput);
+        }
+    }
 
     document.querySelectorAll('.emotion-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -3039,6 +3069,9 @@ function openSettings() {
     // Load config + speech settings into UI whenever settings opens
     loadConfigIntoUI();
     loadSpeechSettingsIntoUI();
+    try {
+        window.NEXUS_VOICE_ACTIVATION?.refreshPanel?.();
+    } catch (_) {}
 
     // Wire TTS engine selector to toggle Piper voice controls live
     const ttsEngineEl = document.getElementById('tts-engine');
@@ -4787,6 +4820,11 @@ function speakText(rawText) {
         console.warn('[Speech] Markdown normalisation skipped:', e);
     }
 
+    // WU. Remember what she is about to say so a wake hit that is just her
+    // own line is ignored. The speaking flag itself is set with the status.
+    try {
+        window.NEXUS_VOICE_ACTIVATION?.noteSpoken?.(text);
+    } catch (_) {}
     setStatus('speaking', 'SPEAKING...');
 
     /* NEXUS_PATCH_LIFE_ENGINE_TALK_MODE */
@@ -5285,6 +5323,7 @@ function toggleVoiceInput() {
 }
 
 function startVoiceInput() {
+    if (window.NEXUS_VOICE_ACTIVATION?.claim?.('tap') === false) return showMessage('Microphone is in use', 'info');
     listenForSlowStt();
     // ST4. The provider may have changed in Settings since the recognizer was made.
     const SR = micRecognizerClass();
@@ -5334,6 +5373,9 @@ function stopVoiceInput() {
             recognition.stop();
         } catch (_) {}
     }
+    try {
+        window.NEXUS_VOICE_ACTIVATION?.release?.('tap');
+    } catch (_) {}
 }
 
 /* ============================

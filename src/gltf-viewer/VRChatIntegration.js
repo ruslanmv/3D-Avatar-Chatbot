@@ -177,6 +177,13 @@ export class VRChatIntegration {
                 // outlive the hold (a permission prompt, the microphone opening); a start that
                 // resumes after the release must not begin a recording nobody is holding.
                 this._pttHeld = true;
+                // WU. VR push-to-talk is one of the mic owners. If a hold or a
+                // wake command already has the recognizer, don't open a second.
+                if (window.NEXUS_VOICE_ACTIVATION?.claim && !window.NEXUS_VOICE_ACTIVATION.claim('vr')) {
+                    this._pttHeld = false;
+                    this.vrChatPanel.appendMessage('bot', 'Microphone is in use.');
+                    return;
+                }
                 this.speechService._syncRecognizer?.();
                 const local = !!this.speechService.isLocalRecognizer?.();
 
@@ -196,6 +203,10 @@ export class VRChatIntegration {
                     this.vrChatPanel.appendMessage('bot', 'Requesting microphone permission...');
                     const granted = await this.speechService.requestMicrophonePermission();
                     if (!granted) {
+                        this._pttHeld = false;
+                        try {
+                            window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+                        } catch (_) {}
                         this.vrChatPanel.appendMessage('bot', 'Microphone permission denied.');
                         return;
                     }
@@ -298,6 +309,9 @@ export class VRChatIntegration {
             // On PTT end (button released)
             () => {
                 this._pttHeld = false;
+                try {
+                    window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+                } catch (_) {}
                 if (!this.speechService.isRecognitionAvailable()) {
                     if (this.speechService.isRecognizing) this.speechService.stopVRFallbackRecording();
                 } else {
@@ -441,6 +455,9 @@ export class VRChatIntegration {
 
         // Toggle off if already listening
         if (this.speechService.isRecognizing) {
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+            } catch (_) {}
             // Stop either standard STT or VR fallback
             if (typeof this.speechService.stopSTT === 'function') {
                 this.speechService.stopSTT();
@@ -456,6 +473,11 @@ export class VRChatIntegration {
             return;
         }
 
+        if (window.NEXUS_VOICE_ACTIVATION?.claim && !window.NEXUS_VOICE_ACTIVATION.claim('vr')) {
+            this.vrChatPanel.appendMessage('bot', 'Microphone is in use.');
+            return;
+        }
+
         // Request microphone permission first (critical for VR)
         if (
             typeof this.speechService.hasMicrophonePermission === 'function' &&
@@ -467,6 +489,9 @@ export class VRChatIntegration {
             const granted = await this.speechService.requestMicrophonePermission();
             if (!granted) {
                 this.vrChatPanel.setStatus('idle');
+                try {
+                    window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+                } catch (_) {}
                 this.vrChatPanel.appendMessage(
                     'bot',
                     'Microphone permission denied. Please allow mic access in browser settings.'
@@ -475,6 +500,9 @@ export class VRChatIntegration {
             }
             this.vrChatPanel.appendMessage('bot', 'Microphone ready! Tap mic again to speak.');
             this.vrChatPanel.setStatus('idle');
+            try {
+                window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+            } catch (_) {}
             return;
         }
 
@@ -498,6 +526,9 @@ export class VRChatIntegration {
             },
             onEnd: () => {
                 this.vrChatPanel.setStatus('idle');
+                try {
+                    window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+                } catch (_) {}
                 console.log('[VRChatIntegration] Listening ended');
                 if (!heard) this._questSttHint();
             },
@@ -549,6 +580,9 @@ export class VRChatIntegration {
             return;
         }
 
+        try {
+            window.NEXUS_VOICE_ACTIVATION?.release?.('vr');
+        } catch (_) {}
         this.vrChatPanel.appendMessage(
             'bot',
             'No speech recognition available. Check browser settings or configure an API key in Settings.'

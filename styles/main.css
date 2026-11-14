@@ -808,6 +808,28 @@ body {
     animation: micPulse 0.5s ease-in-out infinite;
 }
 
+/* WU. The three-second hold announces itself with the button's own color.
+   Listening still uses .active above — no new bar color. */
+.voice-btn-compact.hold-arming,
+.voice-btn-compact.hold-armed {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.voice-btn-compact.hold-arming {
+    animation: wakeHoldPulse 1s ease-in-out infinite;
+}
+
+@keyframes wakeHoldPulse {
+    0%,
+    100% {
+        outline-offset: 1px;
+    }
+    50% {
+        outline-offset: 3px;
+    }
+}
+
 .chat-input {
     width: 100%;
     min-width: 0;
