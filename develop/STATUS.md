@@ -1,16 +1,13 @@
-# Staging status
+# Staging status (stable only)
 
-| Pack                    | License                  | Files        | Verification                                | Integration             |
-| ----------------------- | ------------------------ | ------------ | ------------------------------------------- | ----------------------- |
-| Quaternius UAL Standard | CC0                      | 1 GLB + glTF | pending (multi-clip GLB, not in BVH smoke)  | not started             |
-| ACCAD Female1           | CC BY 3.0                | 81 BVH       | smoked 6 clips — play OK, all hips-floating | blocked on scale/ground |
-| ACCAD Male1             | CC BY 3.0                | 69 BVH       | not smoked yet                              | not started             |
-| ACCAD Male2             | CC BY 3.0                | 149 BVH      | not smoked yet                              | not started             |
-| CMU curated             | CMU free (commercial OK) | 26 BVH       | smoked 6 clips — play OK, hips ~16 m        | blocked on retarget     |
+| Pack                        | License | Location                                 | Verification               |
+| --------------------------- | ------- | ---------------------------------------- | -------------------------- |
+| ChatVRM `idle_loop.vrma`    | MIT     | `addons/stable/vrma-mit/`                | **ok** (hips 0.894)        |
+| three-vrm `test.vrma`       | MIT     | `addons/stable/vrma-mit/`                | **ok** (hips 0.896)        |
+| tk256 inactive six (retest) | MIT     | `addons/stable/vrma-tk256-candidates/`   | **ok** ×6 (Blush…Sleepy)   |
+| Quaternius UAL Standard     | CC0     | `addons/stable/quaternius-ual-standard/` | Convert → VRMA, then audit |
 
-**Product inventory** (vendor + Pose Navigator) verified locally 2026-11-14 —
-see `verification/REPORT.md`. Pose Navigator 24/26 ok; shipped VRMA ok; most
-vendor BVH float until PR #152 hip/quarantine work.
+**Additive audit (latest):** 8/8 ok — see `verification/runs/LATEST.json`.
 
-**Intentionally not staged:** Bandai Namco (NC), SFU (research-only), Mixamo,
-pixiv free VRMA (redistribution of extractable motions restricted).
+**Removed:** ACCAD / CMU BVH (hips-floating). See `CATALOG.md` for more
+compatible internet sources.

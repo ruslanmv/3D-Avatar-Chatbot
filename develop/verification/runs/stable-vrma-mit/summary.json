@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "jobs": 2,
+    "ok": 2,
+    "warn": 0,
+    "fail": 0
+  },
+  "rows": [
+    {
+      "id": "idle_loop.vrma",
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.061,
+      "hipsY": 0.894,
+      "played": true
+    },
+    {
+      "id": "test.vrma",
+      "verdict": "ok",
+      "flags": [],
+      "motion": 0.224,
+      "hipsY": 0.896,
+      "played": true
+    }
+  ]
+}
