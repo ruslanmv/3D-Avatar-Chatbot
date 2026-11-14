@@ -327,8 +327,9 @@ describe('W17: a shared Forge wardrobe', () => {
         };
         const identity = { kind: 'library', slug: 'avatar-sample-a' };
         const looks = await TryOn.loadLooks({ library, identity });
-        expect(looks.map((l) => l.id)).toEqual(['a', 'd']);
-        expect(looks[0].vrmUrl).toBe('https://forge.test/v1/assets/looks/a/look.vrm');
+        // Which looks survive is W17's; the order they are shown in is LT9's.
+        expect(looks.map((l) => l.id).sort()).toEqual(['a', 'd']);
+        expect(looks.find((l) => l.id === 'a').vrmUrl).toBe('https://forge.test/v1/assets/looks/a/look.vrm');
     });
 });
 

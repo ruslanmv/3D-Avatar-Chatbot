@@ -252,7 +252,103 @@ const TryOnHaulActivity = (() => {
             const key = keyOf(look);
             if (key && !byKey.has(key)) byKey.set(key, look);
         });
-        return [...byKey.values()];
+        return allureOrder([...byKey.values()]);
+    }
+
+    // LT9. The order her looks are shown in. Sources arrive in the order they answered — the
+    // shipped pack first — so the rail opened on crop top & jeans, a yellow maxi sundress and
+    // an evening column gown, and the sensual looks that are most of her wardrobe sat a long
+    // scroll below. This app is for adults, and the first looks a person sees are what keeps
+    // them. Three bands, as the owner set them:
+    //   1. complete sexy outfits  — corset and mini skirt, stockings with a mini dress, a
+    //      catsuit, a bikini: a whole look, and the most attractive one;
+    //   2. lingerie               — garter sets and guêpières first, then thongs, bras, briefs;
+    //   3. long clothes last      — maxi, gowns, jeans, trousers, coats.
+    // Anything matching none sits between lingerie and the long clothes. Nothing is hidden or
+    // gated here — visibility was decided above; this only sorts what is already hers. Ties
+    // keep their source order (stable), and within one rank the garment families take turns,
+    // so the opening is not seven colours of the same suspender belt in a row.
+    // "evening" is an occasion, not a length (a bodycon mini is tagged evening too): a gown is
+    // what is long. Denim is not long either — denim shorts are shorts; jeans are what is.
+    const LONG =
+        /\bmaxi\b|gown|jeans|trousers|pants\b|wide-leg|sundress|cardigan|coat|jacket|sweater|hoodie|turtleneck|blazer|leggings|skirted|maxi-skirt/;
+    const COMPLETE =
+        /\bmini\b|dress|skirt|catsuit|bodycon|hot pants|\bshorts|bikini|swimsuit|one-piece|jumpsuit|playsuit|discoteca/;
+    // Higher inside the band first; the first pattern that matches names the family. A whole
+    // outfit that matches none of these (a shirt dress, blouse and pencil skirt) is not what
+    // leads the rail: it goes to the band after lingerie, ahead of the long clothes.
+    const COMPLETE_RANK = [
+        [3, /corset|stocking|fishnet|latex|bodycon|cut-?out|backless|catsuit|sheer/],
+        [2, /\bmini\b|slip[- ]dress|hot pants|micro|discoteca|little-black|little black/],
+        [1, /cocktail|bikini|swimsuit|one-piece|crop|leather|halter|denim/],
+    ];
+    const LINGERIE =
+        /gu[eê]pi[eè]re|garter|suspender|stocking|waspie|lingerie|teddy|babydoll|negligee|chemise|thong|g-string|tanga|v-string|brief|brazilian|cheeky|\bbra\b|bralette|balconette|bodysuit|corset|boyshorts/;
+    const LINGERIE_RANK = [
+        [2, /gu[eê]pi[eè]re|garter|suspender|waspie|lingerie set|lace set|teddy|babydoll|bralette \+/],
+        [1, /thong|g-string|tanga|v-string|brazilian|chemise|plunge|cut-?out|negligee/],
+        [0, /bodysuit|bralette|balconette|\bbra\b|brief|cheeky|boyshorts|corset|stocking|lingerie/],
+    ];
+    const BAND = { complete: 20, lingerie: 10, other: 5, long: 0 };
+
+    function rankIn(text, ranks) {
+        for (const [rank, pattern] of ranks) {
+            const hit = text.match(pattern);
+            if (hit) return { rank, family: hit[0] };
+        }
+        return { rank: 0, family: 'other' };
+    }
+
+    function allureOf(look) {
+        // Forge keeps "lingerie set" in the prompt, not the name; the outfit dictionary has a
+        // title and a group ("discoteca", "lingerie"), and tags.
+        const text = ['name', 'title', 'description', 'prompt', 'group', 'slug', 'id']
+            .map((k) => look && look[k])
+            .concat((look && Array.isArray(look.tags) && look.tags) || [])
+            .filter((v) => typeof v === 'string' && v)
+            .join(' ')
+            .toLowerCase();
+        if (LONG.test(text)) return { band: 'long', score: BAND.long, family: 'long' };
+        if (COMPLETE.test(text)) {
+            const hit = COMPLETE_RANK.find(([, pattern]) => pattern.test(text));
+            if (hit) {
+                const { rank, family } = rankIn(text, COMPLETE_RANK);
+                return { band: 'complete', score: BAND.complete + rank, family };
+            }
+            if (!LINGERIE.test(text)) return { band: 'other', score: BAND.other + 1, family: 'outfit' };
+        }
+        if (LINGERIE.test(text)) {
+            const { rank, family } = rankIn(text, LINGERIE_RANK);
+            return { band: 'lingerie', score: BAND.lingerie + rank, family };
+        }
+        return { band: 'other', score: BAND.other, family: 'other' };
+    }
+
+    function allureOrder(looks) {
+        const ranked = (looks || []).map((look, at) => ({ look, at, ...allureOf(look) }));
+        const tiers = new Map();
+        ranked.forEach((item) => {
+            if (!tiers.has(item.score)) tiers.set(item.score, []);
+            tiers.get(item.score).push(item);
+        });
+        const out = [];
+        [...tiers.keys()]
+            .sort((a, b) => b - a)
+            .forEach((score) => {
+                // Round-robin over families, each family in its source order.
+                const families = new Map();
+                tiers.get(score).forEach((item) => {
+                    if (!families.has(item.family)) families.set(item.family, []);
+                    families.get(item.family).push(item);
+                });
+                const queues = [...families.values()];
+                for (let round = 0; queues.some((q) => q.length); round++) {
+                    queues.forEach((q) => {
+                        if (q.length) out.push(q.shift().look);
+                    });
+                }
+            });
+        return out;
     }
 
     /**
@@ -708,7 +804,7 @@ const TryOnHaulActivity = (() => {
         return activity;
     }
 
-    return { ID, UI, create, loadLooks, ownedBy, makeTurner };
+    return { ID, UI, create, loadLooks, ownedBy, makeTurner, allureOrder, allureOf };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_TRY_ON_HAUL_ACTIVITY = TryOnHaulActivity;
