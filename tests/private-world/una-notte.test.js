@@ -396,3 +396,75 @@ describe('UN6. a yes to going is a yes, and "let\'s stay" is not', () => {
         'Allons-y',
     ])('%s → yes', (said) => expect(Intent.affirmsGoing(said)).toBe(true));
 });
+
+describe('UN9. the person closes the evening, or asks her to forget past evenings', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    const session = () => ({ _stopped: false, _care: false, adult: { level: 1, active: true } });
+    let requests;
+    const onRequest = (e) => requests.push(e.detail);
+    const prompt = () => Actions.promptLines().join('\n');
+    const shown = (id) =>
+        window.dispatchEvent(new window.CustomEvent('nexus-world-shown', { detail: { id, base: id } }));
+    const evening = () =>
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(21), canTravel: true } },
+        });
+
+    beforeEach(() => {
+        requests = [];
+        window.addEventListener('nexus-world-request', onRequest);
+    });
+    afterEach(() => {
+        window.removeEventListener('nexus-world-request', onRequest);
+        Actions.end();
+    });
+
+    test.each([
+        ['Si è fatto tardi', 'epilogue'],
+        ["It's getting late", 'epilogue'],
+        ['Ultimo ballo?', 'epilogue'],
+        ['Se hace tarde', 'epilogue'],
+        ['Il se fait tard', 'epilogue'],
+        ['Dimentica le nostre serate', 'forget'],
+        ['Forget our evenings', 'forget'],
+        ['Non è tardi', null],
+        ['Ciao, che bella musica', null],
+        ['Ricordi le nostre serate?', null],
+    ])('%s → %s', (said, cue) => expect(Intent.storyCue(said)).toBe(cue));
+
+    test('"it\'s getting late" closes gently: no new invitation, her <go/> refused, nothing ends', async () => {
+        evening();
+        expect(prompt()).toMatch(/you may invite them to/);
+        await Actions.onUserTurn('Si è fatto tardi');
+        expect(Actions.snapshot().story.phase).toBe('epilogue');
+        expect(Actions.active()).toBe(true);
+        expect(prompt()).toMatch(/drawing to a close.*Propose nothing new.*do not end it yourself/s);
+        expect(prompt()).not.toMatch(/you may invite them to/);
+        const clean = Actions.consumeTravel('Un ultimo posto? <go place="apartment"/>');
+        await Promise.resolve();
+        expect(clean).toBe('Un ultimo posto?');
+        expect(Actions.snapshot().offer).toBeNull();
+        expect(requests).toEqual([]);
+    });
+
+    test('they can still ask to go in the epilogue; the trip lands and the evening stays closing', async () => {
+        evening();
+        await Actions.onUserTurn("It's getting late");
+        await Actions.onUserTurn('andiamo in hotel');
+        expect(requests).toEqual([{ id: 'hotel-suite', owner: 'intimate' }]);
+        shown('hotel-suite');
+        expect(Actions.snapshot().story).toMatchObject({ shown: 'hotel-suite', phase: 'epilogue' });
+    });
+
+    test('"forget our evenings" erases the between-evenings history and says so once', async () => {
+        evening();
+        expect(Weaver.history(window).length).toBeGreaterThan(0);
+        await Actions.onUserTurn('Dimentica le nostre serate');
+        expect(Weaver.history(window)).toEqual([]);
+        expect(prompt()).toMatch(/forget your past evenings together, and it is done/);
+        await Actions.onUserTurn('Grazie');
+        expect(prompt()).not.toMatch(/forget your past evenings/);
+        expect(Actions.snapshot().story.phase).toBe('opening'); // tonight goes on
+    });
+});

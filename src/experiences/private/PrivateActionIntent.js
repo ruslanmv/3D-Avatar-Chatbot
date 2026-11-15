@@ -603,6 +603,42 @@
         return GO_YES_ANYWHERE.test(said) || affirms(text);
     }
 
+    /**
+     * UN9. The evening's own cues, which move no world, outfit or music: "si è fatto tardi" asks
+     * for the epilogue (she winds down, proposes nothing new — the person still decides when it
+     * ends), and "dimentica le nostre serate" asks her to forget past evenings (StoryWeaver's
+     * between-evenings history: catalogue ids, never words). Returns 'epilogue', 'forget' or null.
+     */
+    const EPILOGUE = new RegExp(
+        [
+            'si (?:è|e) fatto tardi|(?:è|e) tardi|si sta facendo tardi|ultimo ballo|ultimo bicchiere|chiudiamo (?:in bellezza|la serata)|la serata (?:sta )?(?:finendo|per finire)',
+            "it[’']?s (?:getting )?late|getting late|last dance|last drink|wind (?:it )?down|wrap (?:it )?up|the night is (?:almost )?over",
+            'se (?:está )?hac(?:e|iendo) tarde|es tarde|último baile|última copa',
+            'il se fait tard|il est tard|dernière danse|dernier verre',
+            'es wird spät|es ist spät|letzter tanz',
+            'está ficando tarde|(?:já )?é tarde|última dança',
+        ].join('|'),
+        'iu'
+    );
+    const FORGET_STORIES = new RegExp(
+        [
+            'dimentica (?:le nostre |le )?(?:serate|storie|notti)',
+            'forget (?:our |the |my |all our )?(?:evenings|nights|stories)',
+            'olvida (?:nuestras |las )?(?:noches|historias|veladas)',
+            'oublie (?:nos |les )?(?:soirées|nuits|histoires)',
+            'vergiss (?:unsere |die )?(?:abende|nächte|geschichten)',
+            'esquece (?:as nossas |as )?(?:noites|histórias|serões)',
+        ].join('|'),
+        'iu'
+    );
+    function storyCue(text) {
+        const said = clean(text);
+        if (!said || NEGATED.test(said)) return null;
+        if (FORGET_STORIES.test(said)) return 'forget';
+        if (EPILOGUE.test(said)) return 'epilogue';
+        return null;
+    }
+
     function affirms(text) {
         return YES.test(clean(text));
     }
@@ -817,6 +853,7 @@
         topic,
         affirms,
         affirmsGoing,
+        storyCue,
         travelFrom,
         bodyFrom,
         queryFrom,

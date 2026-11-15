@@ -881,6 +881,9 @@
         if (action.family === 'world') {
             // UN4. Her invitation: the place she named, if it is one of tonight's places.
             if (!s.canTravel || s.travel) return;
+            // UN9. Once they said the evening is drawing to a close she proposes nothing new;
+            // the person can still ask to go, which is their request, not her invitation.
+            if (s.story && s.story.phase === 'epilogue') return;
             const place = resolvePlace(s, action.params.world);
             const here = s.story ? s.story.snapshot().shown : null;
             if (place && place.id !== here) travelOffer(s, place, action);
@@ -1097,6 +1100,28 @@
         if (intent === 'end' || intent === 'pace-down') return null;
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
         if (!Intent) return null;
+
+        // UN9. The evening's own cues move nothing in the world: the epilogue changes how she
+        // speaks, and forgetting erases only the between-evenings outline history.
+        const cue = typeof Intent.storyCue === 'function' ? Intent.storyCue(s.turnText) : null;
+        if (cue === 'epilogue' && s.story && s.story.epilogue()) {
+            s.offer = null;
+            s.storyNews = { kind: 'epilogue', turnId: s.turnId };
+            emit();
+            return null;
+        }
+        if (cue === 'forget') {
+            const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
+            let done = false;
+            try {
+                done = Boolean(Weaver && typeof Weaver.forget === 'function' && (Weaver.forget(s.win), true));
+            } catch (_) {
+                done = false;
+            }
+            s.storyNews = { kind: done ? 'forgotten' : 'not-forgotten', turnId: s.turnId };
+            emit();
+            return null;
+        }
 
         // An offer waits two turns for an answer, then stops waiting.
         if (s.offer && s.turnId - s.offer.turnId > OFFER_TURNS) s.offer = null;
@@ -1575,6 +1600,16 @@
         }
         // UN3. Tonight's outline, after what she can do and before what is happening now.
         if (s.story) lines.push(...s.story.lines({ canTravel: Boolean(s.canTravel) }));
+        // UN9. This turn's answer about the evening itself.
+        const news = s.storyNews && s.storyNews.turnId === s.turnId ? s.storyNews.kind : null;
+        if (news === 'forgotten')
+            lines.push(
+                'RIGHT NOW: they asked you to forget your past evenings together, and it is done — this evening goes on. Say so in a few warm words.'
+            );
+        else if (news === 'not-forgotten')
+            lines.push(
+                'RIGHT NOW: they asked you to forget your past evenings, and this device would not let it be erased. Say so once.'
+            );
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

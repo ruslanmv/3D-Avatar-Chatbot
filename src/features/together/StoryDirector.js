@@ -44,6 +44,7 @@
             arrivedAt: null,
             failed: null,
             done: [],
+            closing: false, // UN9: the person said the evening is drawing to a close
         };
 
         const api = {
@@ -83,7 +84,7 @@
             decline() {
                 if (!state.proposed) return false;
                 state.proposed = null;
-                state.phase = state.arrivedAt ? 'arrived' : 'opening';
+                state.phase = state.closing ? 'epilogue' : state.arrivedAt ? 'arrived' : 'opening';
                 return true;
             },
             /** They said yes and the trip began. */
@@ -101,7 +102,8 @@
                 state.shown = id;
                 state.arrivedAt = id;
                 state.travelling = null;
-                state.phase = 'arrived';
+                // UN9. A trip they asked for after "it's getting late" lands in the epilogue still.
+                state.phase = state.closing ? 'epilogue' : 'arrived';
                 if (!state.done.includes('travel')) state.done.push('travel');
                 return true;
             },
@@ -110,13 +112,17 @@
                 if (!state.travelling) return false;
                 state.travelling = null;
                 state.failed = String(why || 'failed');
-                state.phase = state.arrivedAt ? 'arrived' : 'opening';
+                state.phase = state.closing ? 'epilogue' : state.arrivedAt ? 'arrived' : 'opening';
                 return true;
             },
             /** The person chose to close the evening gently (never forced). */
             epilogue() {
                 if (state.phase === 'ended') return false;
-                state.phase = 'epilogue';
+                // UN9. A pending invitation lapses; a trip already under way still arrives (the
+                // renderer decides that), and the evening stays closing once it does.
+                state.closing = true;
+                state.proposed = null;
+                if (!state.travelling) state.phase = 'epilogue';
                 return true;
             },
             end() {
@@ -164,6 +170,11 @@
                     );
                 } else if (state.phase === 'arrived') {
                     lines.push(`- You came here together tonight: ${here}. There is no hurry; take it in.`);
+                } else if (state.phase === 'epilogue') {
+                    // UN9. The person said the night is getting late: a close, not an ending.
+                    lines.push(
+                        `- The evening is drawing to a close, as they said${here ? `, here in ${here}` : ''}. Slow down: a last look, a last word about tonight, warmth. Propose nothing new — no other place, no outfit, no music — and do not end it yourself: they decide when it ends.`
+                    );
                 } else if (dest && f.canTravel && !state.done.includes('travel')) {
                     lines.push(
                         `- If, and only if, the moment comes and they seem to want somewhere quieter, you may invite them to ${dest}. An invitation is a question: say it in your words, then <go place="${out.destination}"/> on its own line. The app asks them; you go only if they say yes, and you never say you have arrived until RIGHT NOW says so.`
