@@ -33,7 +33,12 @@ const jsonType = raw.readUInt32LE(16);
 if (jsonType !== 0x4e4f534a || 20 + jsonLength > raw.length) {
     throw new Error('Missing or truncated GLB JSON chunk');
 }
-const gltf = JSON.parse(raw.subarray(20, 20 + jsonLength).toString('utf8').trim());
+const gltf = JSON.parse(
+    raw
+        .subarray(20, 20 + jsonLength)
+        .toString('utf8')
+        .trim()
+);
 const animations = (gltf.animations || []).map((anim, i) => ({
     index: i,
     name: anim.name || '',
@@ -42,12 +47,9 @@ const animations = (gltf.animations || []).map((anim, i) => ({
 }));
 const nodes = (gltf.nodes || []).map((n) => n.name || '');
 const crawlClips = animations.filter((a) => /crawl|all.fours|hands?.knees|on.fours/i.test(a.name));
-const hasHumanoidBones = [
-    /hip|pelvis|hips/i,
-    /spine/i,
-    /arm|shoulder/i,
-    /leg|thigh/i,
-].every((pattern) => nodes.some((n) => pattern.test(n)));
+const hasHumanoidBones = [/hip|pelvis|hips/i, /spine/i, /arm|shoulder/i, /leg|thigh/i].every((pattern) =>
+    nodes.some((n) => pattern.test(n))
+);
 const result = {
     file: path.resolve(filename),
     bytes: raw.length,
