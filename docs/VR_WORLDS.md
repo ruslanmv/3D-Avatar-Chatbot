@@ -229,3 +229,24 @@ and a robe hook. Romantic rating. It is assembled, not cut: the pack's own en-su
 across, with no room for her and a camera, and on its own it was a shower cubicle in a void.
 Everything is at least 1.7 m from her, so the comfort rule has nothing to drop. Nothing runs
 (no water, no steam) and nothing is claimed about a shower or a bath: it is a room to be in.
+
+## The restaurant and the cocktail bar (VW7)
+
+One CC0 scene (3dassets.dev, "Restaurant Kitchen and Dining", the 40-cover dining room), three
+worlds, all general, listed in Visit a place.
+
+**Restaurant** (`restaurant`, desktop, 105 232 triangles with its walls: the whole dining room,
+laid tables, booths, banquettes, the bar at the back; `restaurant-light`, phones and VR,
+28 636: the nine tables nearest her and three banquette benches, recipe `restaurant-light`).
+She stands by the entrance with the tables behind her.
+
+**Cocktail bar** (`cocktail-bar`, every tier, 19 268): the same file's bar corner cut out by
+recipe `cocktail-bar` (the counter, four stools, the back-bar shelving, the wine cabinet), in
+its own darker light. The shelves are as the pack made them: empty, no bottles.
+
+The source has no walls and no floor, so each world adds partition walls as props behind the
+scene (computed from the scene's `at`/`turn`, so they sit on its own grid) and a ground disk.
+A first set of bar walls put one between the camera and the bar; the pictures caught it.
+Spots are computed by `tools/vr/clear-spot.mjs`; there are no measured spots (no floor mesh),
+so she does not move within these places. Nothing is served, nobody else is there, and she
+does not sit.

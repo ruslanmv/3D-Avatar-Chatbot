@@ -66,6 +66,18 @@
       "out": "assets/vr-worlds/scenes/hotel-lobby-light.glb",
       "keep": ["0-19", "21-26", "33-39", "44", "46"],
       "budget": 30000
+    },
+    "restaurant-light": {
+      "src": "assets/vr-worlds/scenes/restaurant-dining-room.glb",
+      "out": "assets/vr-worlds/scenes/restaurant-dining-room-light.glb",
+      "keep": ["1-3", "17-46"],
+      "budget": 30000
+    },
+    "cocktail-bar": {
+      "src": "assets/vr-worlds/scenes/restaurant-dining-room.glb",
+      "out": "assets/vr-worlds/scenes/cocktail-bar.glb",
+      "keep": ["49-59"],
+      "budget": 30000
     }
   }
 }

@@ -60,7 +60,10 @@
             "cinema-light",
             "hotel-lobby",
             "hotel-lobby-light",
-            "hotel-bathroom"
+            "hotel-bathroom",
+            "restaurant",
+            "restaurant-light",
+            "cocktail-bar"
         ]
     },
     "zones": [

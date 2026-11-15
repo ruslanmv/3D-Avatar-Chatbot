@@ -2348,6 +2348,434 @@
       },
       "preview": "previews/hotel-bathroom.webp",
       "category": "Romantic"
+    },
+    {
+      "id": "restaurant",
+      "title": "Restaurant",
+      "note": "A dining room laid for dinner: tables, banquettes and a bar at the back.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 105232,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c16",
+        "horizon": "#553a2a",
+        "bottom": "#1c1410"
+      },
+      "fog": {
+        "color": "#3a281e",
+        "near": 9,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe2c0",
+        "ground": "#3a2a20",
+        "hemi": 0.8,
+        "key": "#ffcf9a",
+        "keyIntensity": 1.0,
+        "fill": "#ffe6d0",
+        "fillIntensity": 0.5,
+        "rim": "#ffb070",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.746, 0, -1.621],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.246, 0, -2.487],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.746, 0, -3.353],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.246, 0, -4.219],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.746, 0, -5.085],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.246, 0, -5.951],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.746, 0, -6.817],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.246, 0, -7.683],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.746, 0, -8.549],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.246, 0, -9.415],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.746, 0, -10.281],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.613, 0, -0.851],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.747, 0, -0.351],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.881, 0, 0.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.015, 0, 0.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.149, 0, 1.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.283, 0, 1.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.417, 0, 2.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.551, 0, 2.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.013, 0, -10.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.147, 0, -10.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.281, 0, -9.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.415, 0, -9.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.451, 0, -8.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.317, 0, -8.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.183, 0, -7.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.049, 0, -7.051],
+          "turn": 150
+        }
+      ],
+      "scene": {
+        "src": "scenes/restaurant-dining-room.glb",
+        "at": [-2.176, 0, -3.601],
+        "turn": 60
+      },
+      "ground": {
+        "color": "#4a3628",
+        "radius": 11
+      },
+      "preview": "previews/restaurant.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "restaurant-light",
+      "title": "Restaurant",
+      "note": "The front tables and the banquettes, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28636,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c16",
+        "horizon": "#553a2a",
+        "bottom": "#1c1410"
+      },
+      "fog": {
+        "color": "#3a281e",
+        "near": 9,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe2c0",
+        "ground": "#3a2a20",
+        "hemi": 0.8,
+        "key": "#ffcf9a",
+        "keyIntensity": 1.0,
+        "fill": "#ffe6d0",
+        "fillIntensity": 0.5,
+        "rim": "#ffb070",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.746, 0, -1.621],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.246, 0, -2.487],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.746, 0, -3.353],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.246, 0, -4.219],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.746, 0, -5.085],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.246, 0, -5.951],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.746, 0, -6.817],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.246, 0, -7.683],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.746, 0, -8.549],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.246, 0, -9.415],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.746, 0, -10.281],
+          "turn": 60
+        }
+      ],
+      "scene": {
+        "src": "scenes/restaurant-dining-room-light.glb",
+        "at": [-2.176, 0, -3.601],
+        "turn": 60
+      },
+      "ground": {
+        "color": "#4a3628",
+        "radius": 11
+      },
+      "lightFor": "restaurant"
+    },
+    {
+      "id": "cocktail-bar",
+      "title": "Cocktail bar",
+      "note": "A bar counter with stools, bottles on the back bar and a wine cabinet.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 19268,
+      "activities": [],
+      "sky": {
+        "top": "#120f1c",
+        "horizon": "#2a2034",
+        "bottom": "#0a0810"
+      },
+      "fog": {
+        "color": "#1a1424",
+        "near": 8,
+        "far": 26
+      },
+      "light": {
+        "sky": "#c9b8ff",
+        "ground": "#1a1420",
+        "hemi": 0.6,
+        "key": "#ffb86b",
+        "keyIntensity": 0.95,
+        "fill": "#5fd0d8",
+        "fillIntensity": 0.5,
+        "rim": "#ff7aa8",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.709, 0, -1.814],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.002, 0, -2.521],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.295, 0, -3.228],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.588, 0, -3.935],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.881, 0, -4.642],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.174, 0, -5.349],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.533, 0, -6.056],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.362, 0, -3.935],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.655, 0, -4.642],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.948, 0, -5.349],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.241, 0, -6.056],
+          "turn": 135
+        }
+      ],
+      "scene": {
+        "src": "scenes/cocktail-bar.glb",
+        "at": [2.973, 0, -0.647],
+        "turn": 135
+      },
+      "ground": {
+        "color": "#241c2c",
+        "radius": 8
+      },
+      "preview": "previews/cocktail-bar.webp",
+      "category": "Nightlife"
     }
   ]
 }

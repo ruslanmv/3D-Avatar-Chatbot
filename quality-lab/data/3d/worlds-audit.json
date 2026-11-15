@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 43,
-        "places": 17,
-        "standIns": 10,
+        "worlds": 46,
+        "places": 19,
+        "standIns": 11,
         "withSpots": 7,
         "fails": 0,
-        "warns": 21,
+        "warns": 23,
         "offered": {
-            "desktop": 33,
-            "mobile": 31,
-            "vr": 32
+            "desktop": 35,
+            "mobile": 33,
+            "vr": 34
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2211,6 +2211,147 @@
                 }
             },
             "issues": []
+        },
+        {
+            "id": "restaurant",
+            "title": "Restaurant",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "restaurant-light",
+            "triangles": 105232,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/restaurant-dining-room.glb",
+                "exists": true,
+                "bytes": 1857716
+            },
+            "preview": {
+                "src": "previews/restaurant.webp",
+                "exists": true,
+                "bytes": 11270
+            },
+            "props": 27,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "restaurant",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "loads its light stand-in restaurant-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "loads its light stand-in restaurant-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "restaurant-light",
+            "title": "Restaurant",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "restaurant",
+            "standIn": null,
+            "triangles": 28636,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/restaurant-dining-room-light.glb",
+                "exists": true,
+                "bytes": 239072
+            },
+            "preview": null,
+            "props": 11,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "stand-in for restaurant"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "stand-in for restaurant"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "cocktail-bar",
+            "title": "Cocktail bar",
+            "kind": "place",
+            "rating": "general",
+            "category": "Nightlife",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 19268,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cocktail-bar.glb",
+                "exists": true,
+                "bytes": 508676
+            },
+            "preview": {
+                "src": "previews/cocktail-bar.webp",
+                "exists": true,
+                "bytes": 10700
+            },
+            "props": 11,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
         }
     ]
 }
