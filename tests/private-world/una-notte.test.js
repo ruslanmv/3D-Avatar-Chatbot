@@ -598,3 +598,61 @@ describe('UN13. one evening is one history entry, and a late opening never repla
         expect(Weaver.history(window)).toEqual([]);
     });
 });
+
+describe("UN17. tonight's outfit theme suggests one of her real looks, once, and never changes her", () => {
+    const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+    const shelf = [
+        { lookId: 'l1', name: 'Black Garter Set', vrmUrl: '1.vrm' },
+        { lookId: 'l2', name: 'Black Cocktail Dress', vrmUrl: '2.vrm' },
+        { lookId: 'l3', name: 'Red Bodycon Mini Dress', vrmUrl: '3.vrm' },
+        { lookId: 'l4', name: 'Black Slip Dress', vrmUrl: '4.vrm' },
+        { lookId: 'l5', name: 'Sparkly Party Thing', vrmUrl: '5.vrm' }, // not a Forge name: unverified
+    ];
+
+    test('themes pick verified eveningwear by Forge category, colour and template — never lingerie', () => {
+        expect(Engine.themeLook('evening-black', shelf, { venue: 'private-cabaret' }).name).toBe(
+            'Black Cocktail Dress'
+        );
+        expect(Engine.themeLook('red-night', shelf, { venue: 'neon-discoteca' }).name).toBe('Red Bodycon Mini Dress');
+        expect(Engine.themeLook('club-mini', shelf, { venue: 'rooftop' }).name).toBe('Black Cocktail Dress');
+        expect(Engine.themeLook('satin-slip', shelf, { venue: 'private-cabaret' }).name).toBe('Black Slip Dress');
+        expect(Engine.themeLook('soft-champagne', shelf, { venue: 'private-cabaret' })).toBeNull(); // she has none
+    });
+
+    test('a hotel keeps what she has on; what she wears now is not suggested again', () => {
+        expect(Engine.themeLook('evening-black', shelf, { venue: 'hotel-suite Hotel suite' })).toBeNull();
+        expect(Engine.themeLook('evening-black', shelf, { venue: 'cabaret', current: shelf[1] })).toBeNull();
+    });
+
+    test('her prompt carries the suggestion until anything about her clothes happens', async () => {
+        const closet = {
+            looks: shelf,
+            availability: () => ({ ok: true }),
+            snapshot: () => ({ status: 'idle', wearing: false }),
+            names: () => shelf.map((l) => l.name),
+            current: () => null,
+            open: async () => ({ ok: true }),
+            privateOpen: false,
+            plan: () => ({ ok: false, why: 'no-match' }),
+        };
+        Actions.begin(
+            { _stopped: false, _care: false, adult: { level: 1, active: true } },
+            {
+                win: window,
+                deps: {
+                    wardrobe: closet,
+                    story: { places: PLACES, current: 'private-cabaret', rng: seeded(2), canTravel: true },
+                },
+            }
+        );
+        const theme = Actions.snapshot().story && Actions.promptLines().join('\n');
+        const suggested = /Tonight suits “([^”]+)”/.exec(theme);
+        if (suggested) {
+            expect(shelf.map((l) => l.name)).toContain(suggested[1]);
+            expect(theme).toMatch(/a suggestion, never a change: they decide/);
+        }
+        await Actions.onUserTurn('Mettiti il vestito rosso');
+        expect(Actions.promptLines().join('\n')).not.toMatch(/Tonight suits/);
+        Actions.end();
+    });
+});

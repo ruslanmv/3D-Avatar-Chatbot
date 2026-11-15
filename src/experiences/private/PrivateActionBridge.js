@@ -875,6 +875,29 @@
         );
     }
 
+    /**
+     * UN17. The one look the evening's outfit theme suggests, while nothing about her clothes has
+     * happened yet this session — no request, no offer, no change. Once anything has, it is the
+     * person's evening and the theme is quiet. Never a change on its own: a line in her prompt.
+     */
+    function themeSuggestion(s) {
+        if (!s.story || !s.story.outline || !s.closet || s.story.phase === 'epilogue') return null;
+        if (s.log.some((a) => a.family === 'wardrobe') || (s.offer && s.offer.kind !== 'travel')) return null;
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        if (!Engine || typeof Engine.themeLook !== 'function') return null;
+        try {
+            const here = s.story.snapshot().shown || '';
+            const place = (s.places || []).find((p) => p.id === here);
+            const look = Engine.themeLook(s.story.outline.outfitTheme, s.closet.looks || [], {
+                venue: `${here} ${(place && place.title) || ''}`,
+                current: typeof s.closet.current === 'function' ? s.closet.current() : null,
+            });
+            return look ? String(look.name || '') || null : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     /** UN14. The regions a look covers, from Forge's templates (WardrobeCoverage); [] when unknown. */
     function coveredBy(s, look) {
         const Coverage = pick(s.win, 'NEXUS_WARDROBE_COVERAGE', './WardrobeCoverage.js');
@@ -1443,6 +1466,11 @@
                     '  You may suggest a saved look in words; to offer it, end with <wardrobe action="wear" look="NAME"/> on its own line — they are asked before anything changes. Never say you have changed until told so below.'
                 );
             else lines.push('  Change only when they ask. Talking about clothes is not asking.');
+            const themed = themeSuggestion(s);
+            if (themed && autonomy !== 'off')
+                lines.push(
+                    `  Tonight suits “${themed}” (saved, ready now). If the moment invites it you may suggest it once, in your own words — a suggestion, never a change: they decide.`
+                );
             // UN1. Undressing: one layer at a time, from her own looks, and only at the top of the
             // evening's pace. Below it she is told so, and never to describe it as happening.
             const at = levelOf(s);

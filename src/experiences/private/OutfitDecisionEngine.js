@@ -409,7 +409,51 @@
         return tagged;
     }
 
+    /**
+     * UN17. Tonight's outfit theme (StoryWeaver's `outfitTheme`) → one of her saved looks that
+     * fits it and the place she is in, or null. Only verified looks: what a look is comes from
+     * Forge's templates (`look.coverage` / WardrobeCoverage — its categories and template ids),
+     * its colour from Forge's own name; nothing is invented and nothing is generated. Eveningwear
+     * only — a theme never proposes lingerie. A hotel keeps what she has on (null); the
+     * apartment suggests only something comfortable, if she has it.
+     */
+    const THEMES = {
+        'evening-black': { colours: ['black'], categories: ['dress', 'jumpsuit'] },
+        'red-night': { colours: ['red', 'crimson', 'wine', 'burgundy'], categories: ['dress', 'jumpsuit', 'skirt'] },
+        'soft-champagne': {
+            colours: ['champagne', 'ivory', 'cream', 'nude', 'beige', 'blush'],
+            categories: ['dress', 'jumpsuit', 'skirt'],
+        },
+        'club-mini': { categories: ['dress'], regions: { has: ['upperLegs'], not: ['lowerLegs'] } },
+        'satin-slip': { categories: ['dress'], templates: /slip/ },
+    };
+    const COMFORT = { categories: ['nightwear'] };
+    const EVENINGWEAR = new Set(['dress', 'jumpsuit', 'skirt', 'top', 'trousers', 'jacket', 'nightwear']);
+
+    function themeLook(theme, looks, options) {
+        const o = options || {};
+        const venue = String(o.venue || '').toLowerCase();
+        if (/hotel|suite/.test(venue)) return null;
+        const want = /apartment|bedroom|home/.test(venue) ? COMFORT : THEMES[theme];
+        if (!want) return null;
+        const wornKey = o.current ? keyOf(o.current) : null;
+        const fits = (look) => {
+            if (!look || isBare(look) || (wornKey && keyOf(look) === wornKey)) return false;
+            const facts = coverageFacts(look);
+            if (!facts || !facts.categories.every((c) => EVENINGWEAR.has(c))) return false;
+            if (want.categories && !facts.categories.some((c) => want.categories.includes(c))) return false;
+            if (want.templates && !facts.templates.some((t) => want.templates.test(t))) return false;
+            if (want.regions && want.regions.has.some((r) => !facts.regions.includes(r))) return false;
+            if (want.regions && want.regions.not.some((r) => facts.regions.includes(r))) return false;
+            if (want.colours && !want.colours.includes(colourOf(look))) return false;
+            return true;
+        };
+        return (Array.isArray(looks) ? looks : []).find(fits) || null;
+    }
+
     const api = {
+        THEMES,
+        themeLook,
         STYLE_WORDS,
         choose,
         score,
