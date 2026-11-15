@@ -37,15 +37,29 @@ const server = await D.ensureServer(arg('--url', 'http://127.0.0.1:8080').replac
 const YES = lang.startsWith('it') ? 'Sì, andiamo' : "Yes, let's go";
 const NOT_YES = lang.startsWith('it') ? 'Restiamo ancora un po’ qui' : "Let's stay here a little longer";
 const ELSEWHERE = lang.startsWith('it') ? 'Possiamo andare altrove?' : 'Can we go somewhere else?';
+// M3. With --outfit, the evening changes her clothes before the trip and checks that the outfit
+// travels with her: the person taps Closer to level 4 (ConsentFlow's own control, as a person
+// does — nothing here sets a level), asks her to undress, travels, then asks her to dress again.
+const OUTFIT = process.argv.includes('--outfit');
+const UNDRESS = lang.startsWith('it') ? 'Spogliati per me' : 'Undress for me';
+const REDRESS = lang.startsWith('it') ? 'Rivestiti' : 'Get dressed again';
+const FORGE = arg('--forge', 'http://127.0.0.1:8092');
+// Undressing opens at level 4, which only the `mature` style reaches (its ceiling); the others stop below.
+const PRESET = arg('--preset', OUTFIT ? 'mature' : 'romantic');
 
 const report = { size, lang, steps: [], failures: [], errors: [] };
 const fail = (step, what) => report.failures.push(`${step}: ${what}`);
 const browser = await playwright.chromium.launch({ args: D.SWIFTSHADER });
 try {
     const ctx = await browser.newContext(
-        size === 'phone'
-            ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }
-            : { viewport: { width: 1440, height: 900 } }
+        // `phone` is 390 px; `w320`, `w375`, `w430` … any phone width (M5).
+        size === 'desktop'
+            ? { viewport: { width: 1440, height: 900 } }
+            : {
+                  viewport: { width: size === 'phone' ? 390 : Number(size.slice(1)) || 390, height: 844 },
+                  isMobile: true,
+                  hasTouch: true,
+              }
     );
     await ctx.addInitScript((code) => {
         localStorage.setItem('app_lang', code);
@@ -54,8 +68,19 @@ try {
         localStorage.setItem('nexus_spicy_verified', 'true');
         localStorage.setItem('npc_enabled', 'false');
     }, lang);
+    if (OUTFIT)
+        await ctx.addInitScript((url) => {
+            localStorage.setItem('wardrobe_forge_mode', 'custom');
+            localStorage.setItem('wardrobe_forge_url', url);
+        }, FORGE);
     const page = await ctx.newPage();
     page.on('pageerror', (e) => report.errors.push(String(e.message).slice(0, 240)));
+    report.console = [];
+    page.on('console', (m) => {
+        const text = m.text();
+        if (/wardrobe|private|in-?scene|closet|forge/i.test(text)) report.console.push(text.slice(0, 300));
+    });
+    page.on('requestfailed', (r) => report.console.push(`request failed: ${r.url().slice(0, 160)}`));
     await page.goto(server.base + '/', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(
         () =>
@@ -76,15 +101,13 @@ try {
             window.__travelLog.push({ t: Date.now(), kind: 'shown', ...(e.detail || {}) })
         );
     });
-    await page.evaluate(async () => {
+    await page.evaluate(async (preset) => {
         const panel = window.NEXUS_BD.togetherPanel;
         const a = panel.activities.get('intimate');
         if (a.setAtmosphere) a.setAtmosphere({ world: 'private-cabaret' });
-        const opt = (panel.contractFor('intimate')?.inputs() || []).find((x) => x.id === 'romantic') || {
-            id: 'romantic',
-        };
+        const opt = (panel.contractFor('intimate')?.inputs() || []).find((x) => x.id === preset) || { id: preset };
         await panel.startActivity('intimate', opt);
-    });
+    }, PRESET);
     await page
         .waitForFunction(() => /private-cabaret/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, {
             timeout: 120000,
@@ -106,6 +129,22 @@ try {
                 chip: (document.querySelector('.nexus-private-offer, [data-private-offer]') || {}).textContent || null,
                 saysArrived: /You came here together tonight/.test(lines),
                 saysOnTheWay: /You are on your way to/.test(lines),
+                // M5. Nothing wider than the screen: no sideways scroll at any width.
+                overflowX: document.documentElement.scrollWidth - window.innerWidth,
+                outfit: (() => {
+                    const A = window.NEXUS_PRIVATE_ACTIONS;
+                    const w =
+                        A.log()
+                            .filter((a) => a.family === 'wardrobe')
+                            .pop() || null;
+                    const closet = snap.outfit || {};
+                    const root = window.NEXUS_VIEWER.avatarManager && window.NEXUS_VIEWER.avatarManager.currentRoot;
+                    return {
+                        wardrobe: w ? { name: w.name, status: w.status, why: w.why, result: w.result || null } : null,
+                        wearing: closet.wearing ? closet.name || 'a look' : 'her own outfit',
+                        root: root ? root.uuid : null,
+                    };
+                })(),
                 log: window.__travelLog.slice(),
             };
         }, label);
@@ -151,6 +190,37 @@ try {
     if (s2.offer) fail('decline', 'the offer stayed open after a non-yes');
     if (s2.shown !== shownBefore) fail('decline', 'the world changed after a non-yes');
 
+    // M3. Before the trip: the person steps up to level 4 and asks her to undress.
+    if (OUTFIT) {
+        for (let i = 0; i < 3; i += 1) {
+            await page.waitForTimeout(4600); // ConsentFlow's floor under a deliberate tap
+            await page
+                .click('[data-private-action="closer"]')
+                .catch(() => fail('outfit', `Closer tap ${i + 1} failed`));
+        }
+        await page.waitForTimeout(1000);
+        await page.evaluate((t) => window.NEXUS_CONVERSATION_SURFACE.renderUser(t), UNDRESS);
+        await page
+            .waitForFunction(
+                () => {
+                    const w = window.NEXUS_PRIVATE_ACTIONS.log()
+                        .filter((a) => a.family === 'wardrobe')
+                        .pop();
+                    return w && w.status !== 'pending';
+                },
+                null,
+                { timeout: 180000 }
+            )
+            .catch(() => fail('outfit', 'the undress action never settled'));
+        await page.waitForTimeout(2500);
+        const u = await state('03a-undressed');
+        report.steps.push(u);
+        report.undressed = u.outfit;
+        if (!u.outfit.wardrobe || u.outfit.wardrobe.status !== 'completed')
+            fail('outfit', `undress did not complete: ${JSON.stringify(u.outfit.wardrobe)}`);
+        await shoot('03a-undressed');
+    }
+
     // 4. Invited again, and yes.
     await page.evaluate(
         (d) => window.NEXUS_PRIVATE_ACTIONS.consumeTravel(`Allora vieni con me.\n<go place="${d}"/>`),
@@ -183,6 +253,33 @@ try {
     if (s4.last && s4.last.name === 'world.travel' && s4.last.status !== 'completed')
         fail('arrive', `travel action is ${s4.last.status}`);
     await shoot('04-arrived');
+    if (OUTFIT && report.undressed) {
+        // The trip changes the room, never her: the same avatar root, the same look.
+        if (s4.outfit.root !== report.undressed.root) fail('outfit', 'the avatar was reloaded by the trip');
+        report.wornAfterTrip = s4.outfit.wearing;
+        if (s4.outfit.wearing !== report.undressed.wearing)
+            fail('outfit', `she wore ${report.undressed.wearing} before the trip and ${s4.outfit.wearing} after`);
+        await page.evaluate((t) => window.NEXUS_CONVERSATION_SURFACE.renderUser(t), REDRESS);
+        await page
+            .waitForFunction(
+                () => {
+                    const w = window.NEXUS_PRIVATE_ACTIONS.log()
+                        .filter((a) => a.family === 'wardrobe')
+                        .pop();
+                    return w && w.name === 'wardrobe.redress' && w.status !== 'pending';
+                },
+                null,
+                { timeout: 180000 }
+            )
+            .catch(() => fail('outfit', 'redress never settled'));
+        await page.waitForTimeout(2500);
+        const r = await state('04a-redressed');
+        report.steps.push(r);
+        if (!r.outfit.wardrobe || r.outfit.wardrobe.status !== 'completed')
+            fail('outfit', `redress after the trip did not complete: ${JSON.stringify(r.outfit.wardrobe)}`);
+        if (r.shown !== dest) fail('outfit', 'redressing moved the world');
+        await shoot('04a-redressed');
+    }
 
     // 6. "Somewhere else?" from the person: an offer, never the room she is in; declined.
     await page.evaluate((t) => window.NEXUS_CONVERSATION_SURFACE.renderUser(t), ELSEWHERE);
@@ -204,18 +301,21 @@ try {
     report.crash = String(e && e.stack ? e.stack : e).slice(0, 1200);
     fail('audit', 'crashed');
 } finally {
-    for (const s of report.steps) delete s.log;
+    for (const s of report.steps) {
+        delete s.log;
+        if (s.overflowX > 1) fail(s.label, `page is ${s.overflowX}px wider than the screen`);
+    }
     fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
     const md = [
-        `# Una Notte travel audit — ${size}, ${lang}`,
+        `# Una Notte travel audit — ${size}, ${lang}, ${PRESET}${OUTFIT ? ', outfit' : ''}`,
         '',
         `Destination from the outline: \`${report.destination}\`. ${report.failures.length} failed checks, ${report.errors.length} page errors.`,
         '',
-        '| step | world shown | phase | offer | last action | prompt |',
-        '| --- | --- | --- | --- | --- | --- |',
+        '| step | world shown | phase | offer | last action | prompt | outfit |',
+        '| --- | --- | --- | --- | --- | --- | --- |',
         ...report.steps.map(
             (s) =>
-                `| ${s.label} | ${s.shown} | ${s.phase} | ${s.offer ? s.offer.kind + ' → ' + (s.offer.name || s.offer.world) : ''} | ${s.last ? `${s.last.name} ${s.last.status}${s.last.why ? ' / ' + s.last.why : ''}` : ''} | ${s.saysArrived ? 'came here together' : s.saysOnTheWay ? 'on the way' : ''}${s.travelSeconds ? ` (${s.travelSeconds} s)` : ''} |`
+                `| ${s.label} | ${s.shown} | ${s.phase} | ${s.offer ? s.offer.kind + ' → ' + (s.offer.name || s.offer.world) : ''} | ${s.last ? `${s.last.name} ${s.last.status}${s.last.why ? ' / ' + s.last.why : ''}` : ''} | ${s.saysArrived ? 'came here together' : s.saysOnTheWay ? 'on the way' : ''}${s.travelSeconds ? ` (${s.travelSeconds} s)` : ''} | ${s.outfit ? s.outfit.wearing : ''}${s.outfit && s.outfit.wardrobe ? ` (last: ${s.outfit.wardrobe.name} ${s.outfit.wardrobe.status}${s.outfit.wardrobe.why ? ' / ' + s.outfit.wardrobe.why : ''})` : ''} |`
         ),
         '',
         ...(report.failures.length ? ['## Failed checks', '', ...report.failures.map((f) => `- ${f}`)] : []),

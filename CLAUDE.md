@@ -196,7 +196,8 @@ exits 2. Install deps first (`npm ci`) so the pinned ESLint 8 is used.
 `tests/fixtures/protocol/` (those fixture bytes are a cross-repo contract —
 never reformat them), `docs/` and `.pytest_cache/` — pytest writes a
 `.gitignore` inside its own cache, so git never sees it while `format:check`,
-which walks the filesystem, finds its README and fails the gate.
+which walks the filesystem, finds its README and fails the gate. The same holds
+for audit run output (`audits/*/runs/`, gitignored), also excluded.
 
 Prettier settings that change how you write: 4-space indent, single quotes,
 `printWidth` 120 for code — but **Markdown is `printWidth` 80 with

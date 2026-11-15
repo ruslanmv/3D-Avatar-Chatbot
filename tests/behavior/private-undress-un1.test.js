@@ -21,10 +21,10 @@ const look = (name, prompt) => ({
 });
 const DRESS = look('Black Cocktail Dress', 'black satin cocktail dress');
 const SET = look('Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs', 'black lace lingerie set');
-const GARTER = look('Black Garter Set', 'black Garter Set');
+const GARTER = look('Black Lingerie Set', 'black Lingerie Set');
 const THONG = look('Black Bralette + Black Micro Tailored Thong', 'black Tailored Thong');
 const BRIEFS = look('Black Tailored Bralette + Black Tailored Briefs', 'black Tailored Briefs');
-const CHAMPAGNE = look('Champagne Garter Set', 'champagne Garter Set');
+const CHAMPAGNE = look('Champagne Lingerie Set', 'champagne Lingerie Set');
 const LOOKS = [DRESS, CHAMPAGNE, SET, GARTER, THONG, BRIEFS];
 
 describe('UN1. their words', () => {

@@ -252,8 +252,12 @@
      */
     const UPPER = /\bbra\b|bralette|top\b|bustier|corset|gu[eê]pi[eè]re|cami|balconette/i;
     const LOWER = /brief|thong|string|panty|panties|knicker|short|tanga|perizoma/i;
+    // UN11. By what Forge's templates actually cover (`coverage` in assets/garment_templates):
+    // a lingerie set is a bra and briefs, so it is whole; a waspie or guêpière covers chest to hips.
+    // A garter set is NOT — `under-garter-set-v1` covers waist, hips and upper legs only, so on the
+    // real avatar her own top stayed on over it while "undressed" was reported (M3 browser run).
     const ONE_PIECE =
-        /bodysuit|bodystocking|catsuit|teddy|babydoll|chemise|garter set|lingerie set|lingerie-set|garter-set/i;
+        /bodysuit|bodystocking|catsuit|teddy|babydoll|chemise|lingerie set|lingerie-set|waspie|gu[eê]pi[eè]re/i;
     function isComplete(look) {
         if (!look) return false;
         if (isBare(look)) return true;

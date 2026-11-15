@@ -1249,7 +1249,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
     const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
     const UNDRESS_LOOKS = [
         { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
-        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
         {
             lookId: 't',
             name: 'Black Bralette + Black Micro Tailored Thong',
@@ -1285,8 +1285,8 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         expect(worn(w)).toEqual(['Black Cocktail Dress']);
         await say('spogliati');
         await flush();
-        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Garter Set']);
-        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed', name: 'Black Garter Set' });
+        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Lingerie Set']);
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed', name: 'Black Lingerie Set' });
         expect(Actions.promptLines().join('\n')).toMatch(/taken a layer off/);
         await say('togliti ancora qualcosa');
         await flush();
@@ -1313,7 +1313,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         await say('Sei bellissima');
         WardrobeTool.consume('Vuoi che…? <wardrobe action="undress"/>');
         await flush();
-        expect(Actions.snapshot().offer).toEqual({ kind: 'wear', name: 'Black Garter Set' });
+        expect(Actions.snapshot().offer).toEqual({ kind: 'wear', name: 'Black Lingerie Set' });
         w.adult.level = 1; // "cozy" came first
         await Actions.approveOffer('control');
         await flush();
@@ -1330,7 +1330,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         w.adult.level = 4;
         WardrobeTool.consume('Ora sì. <wardrobe action="undress"/>');
         await flush();
-        expect(worn(w)).toEqual(['Black Garter Set']);
+        expect(worn(w)).toEqual(['Black Lingerie Set']);
     });
 });
 
@@ -1338,7 +1338,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
     const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
     const LOOKS_UN5 = [
         { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
-        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
         {
             lookId: 't',
             name: 'Black Bralette + Black Micro Tailored Thong',
@@ -1384,7 +1384,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         await flush();
         await say('spogliati');
         await flush();
-        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Garter Set']);
+        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Lingerie Set']);
         await say('Piegati in avanti');
         await flush();
         expect(w.pose.calls).toEqual(['claim', 'apply:standingBendForward']);
@@ -1475,7 +1475,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'failed', why: 'already-dressed' });
         await say('spogliati');
         await flush();
-        expect(worn(w)).toEqual(['Black Garter Set']);
+        expect(worn(w)).toEqual(['Black Lingerie Set']);
         await say('get dressed');
         await flush();
         expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed' });
@@ -1633,7 +1633,7 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         vrmUrl: 'dress.vrm',
     };
     const LINGERIE = [
-        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
         {
             lookId: 't',
             name: 'Black Bralette + Black Micro Tailored Thong',
@@ -1671,7 +1671,7 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         await say('Undress please.');
         await flush();
         expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'completed' });
-        expect(worn(w).slice(-1)).toEqual(['Black Garter Set']);
+        expect(worn(w).slice(-1)).toEqual(['Black Lingerie Set']);
         await say('Please, I wanna see you naked.');
         await flush();
         expect(Actions.snapshot().last).toMatchObject({
@@ -1721,7 +1721,11 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         await say('spogliati');
         await say('spogliati');
         await flush();
-        expect(worn(w).slice(-3)).toEqual(['Black Garter Set', 'Black Bralette + Black Micro Tailored Thong', 'Bare']);
+        expect(worn(w).slice(-3)).toEqual([
+            'Black Lingerie Set',
+            'Black Bralette + Black Micro Tailored Thong',
+            'Bare',
+        ]);
     });
 
     test('a look that cannot be loaded: she stays as she was, and "I\'m undressing" is not said', async () => {
@@ -1775,7 +1779,7 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         await flush();
         expect(worn(w)).toEqual([
             'Black Cocktail Dress',
-            'Black Garter Set',
+            'Black Lingerie Set',
             'Black Bralette + Black Micro Tailored Thong',
         ]);
         await say('spogliati'); // the last layer she has: nothing changes, and she says so
@@ -1790,7 +1794,7 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
         await say('spogliati'); // not locked: the evening can go again
         await flush();
-        expect(worn(w).slice(-1)).toEqual(['Black Garter Set']);
+        expect(worn(w).slice(-1)).toEqual(['Black Lingerie Set']);
         w.activity.stop('user');
         await flush();
         expect(w.controller.restore).toHaveBeenCalled();
@@ -1817,4 +1821,27 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
             expect(got && got.name).not.toBe('wardrobe.undress');
         }
     );
+});
+
+describe('UN11. only a look that covers her top and bottom counts as undressed-to (Forge coverage)', () => {
+    const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+    // Found in the real browser: "spogliati" chose Black Garter Set and her cardigan stayed on —
+    // Forge's under-garter-set-v1 covers waist, hips and upper legs, never the chest.
+    test.each([
+        ['Black Garter Set', false],
+        ['Wine Suspender Belt', false],
+        ['Black Lingerie Set', true],
+        ['Ivory Waspie', true],
+        ['Red Guêpière', true],
+        ['Black Bralette + Black Thong', true],
+    ])('%s → complete %s', (name, complete) => expect(Engine.isComplete({ name })).toBe(complete));
+
+    test('dressed, with only a garter set and a full set to choose from, she takes the full set', () => {
+        const looks = [
+            { lookId: 'g', name: 'Black Garter Set' },
+            { lookId: 'l', name: 'Black Lingerie Set' },
+        ];
+        const allureOf = (l) => ({ band: 'lingerie', score: /garter/i.test(l.name) ? 9 : 5 });
+        expect(Engine.undressStep({ looks, current: null, step: 'next', allureOf }).name).toBe('Black Lingerie Set');
+    });
 });
