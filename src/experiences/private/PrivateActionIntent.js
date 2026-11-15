@@ -572,14 +572,34 @@
     /** "Andiamo!", "volentieri" — a yes to going, in particular. */
     const GO_YES = new RegExp(
         `^(?:${word(
-            "andiamo|volentieri|let[’']?s go|let[’']?s|vamos|vámonos|vamonos|allons-y|on y va|gehen wir|los geht[’']?s|bora|vamos lá"
+            "andiamo|volentieri|let[’']?s go|let[’']?s do it|vamos|vámonos|vamonos|allons-y|on y va|gehen wir|los geht[’']?s|bora|vamos lá"
         )}|行こう|가자|走吧)`,
         'iu'
     );
     const GO_YES_ANYWHERE = new RegExp(GO_YES.source.replace(/^\^/, ''), 'iu');
+    /**
+     * UN6. A refusal or a delay anywhere in the answer: not a yes to going, whatever else it says.
+     * Found in the real browser: "Let's stay here a little longer" took her to the bedroom (a bare
+     * "let's" counted as yes), and "No, non andiamo", "Aspetta, andiamo dopo" and "Not yet, let's
+     * wait" would have too. "Why not" / "perché no" are yeses, and are taken out before the check.
+     */
+    const GO_NOT_NOW = new RegExp(
+        word(
+            "no|non|not|don[’']?t|never|stay|wait|later|yet|restiamo|rimaniamo|resta|aspetta|dopo|più tardi|ancora no|quedemos|quedémonos|espera|luego|todavía no|restons|attends|plus tard|pas encore|bleiben|bleib|warte|später|noch nicht|ficamos|fiquemos|depois|ainda não|nicht|pas"
+        ),
+        'iu'
+    );
+    const WHY_NOT = new RegExp(
+        word('why not|perché no|perchè no|por qué no|porque no|pourquoi pas|warum nicht|por que não'),
+        'giu'
+    );
     function affirmsGoing(text) {
         const said = clean(text);
-        if (!said || said.split(' ').length > 6 || NEGATED.test(said)) return affirms(text);
+        if (!said) return false;
+        if (GO_NOT_NOW.test(said.replace(WHY_NOT, ' '))) return false;
+        WHY_NOT.lastIndex = 0;
+        if (WHY_NOT.test(said)) return true;
+        if (said.split(' ').length > 6 || NEGATED.test(said)) return affirms(text);
         return GO_YES_ANYWHERE.test(said) || affirms(text);
     }
 

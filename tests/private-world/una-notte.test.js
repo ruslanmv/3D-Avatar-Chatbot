@@ -371,3 +371,28 @@ describe('UN4. a real two-place evening: asked, agreed, and arrived only on the 
         expect(Actions.snapshot().story).toMatchObject({ phase: 'opening', shown: 'neon-discoteca' });
     });
 });
+
+describe('UN6. a yes to going is a yes, and "let\'s stay" is not', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    // Found in the real browser: "Let's stay here a little longer" took her to the bedroom.
+    test.each([
+        "Let's stay here a little longer",
+        'No, non andiamo',
+        'Aspetta, andiamo dopo',
+        "Not yet, let's wait",
+        'Restiamo qui',
+        "Why not, let's stay",
+        'No',
+    ])('%s → not a yes', (said) => expect(Intent.affirmsGoing(said)).toBe(false));
+    test.each([
+        'Sì, andiamo',
+        "Yes, let's go",
+        'Andiamo!',
+        'Vamos',
+        'Volentieri',
+        "let's do it",
+        'Why not!',
+        'Perché no?',
+        'Allons-y',
+    ])('%s → yes', (said) => expect(Intent.affirmsGoing(said)).toBe(true));
+});
