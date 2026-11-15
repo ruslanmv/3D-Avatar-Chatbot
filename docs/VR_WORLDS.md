@@ -250,3 +250,27 @@ A first set of bar walls put one between the camera and the bar; the pictures ca
 Spots are computed by `tools/vr/clear-spot.mjs`; there are no measured spots (no floor mesh),
 so she does not move within these places. Nothing is served, nobody else is there, and she
 does not sit.
+
+## The sports club: pool, hall and soccer ground (VW8)
+
+Three general places under the category "Sport", framed as an adult sports club. All from
+3dassets.dev CC0 packs.
+
+| Place         | Desktop                         | Phones                  | VR      |
+| ------------- | ------------------------------- | ----------------------- | ------- |
+| Swimming pool | 67 112 (`pool`)                 | 28 484 (`pool-light`)   | light   |
+| Sports hall   | 34 524 (`sports-hall`)          | 25 248 (`…-hall-light`) | full    |
+| Soccer ground | 14 020, whole                   | the same                | the same |
+
+The pool and the hall drop their changing rooms and foyers; the pool also drops its spectator
+gallery, and its phone and VR version has no tank under the water. Her spots are computed by
+`tools/vr/clear-spot.mjs`, which learned three things here: a floor thinner than a step is
+floor, not an obstacle (the pitch and the pool deck blocked every point); `--keepout` for a
+footprint nothing marks as solid (the first "clear" point was in the water); and with
+`--margin` at or below zero the camera must be inside the building too (the pool's first spot
+looked at the hall from outside).
+
+Nothing is played or swum: there is no ball, no water motion and no sport animation. The
+pool's wall has a gap behind her spot that shows the backdrop. A Japanese school campus was
+asked for alongside these and was not built: this app's stories lead to undressing, and a
+school setting for that is not something to make.

@@ -38,8 +38,26 @@ const min = Number(opt('--min', 1));
 const VIEW = Number(opt('--view', 3.2));
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const full = path.isAbsolute(file) ? file : path.join(root, 'assets/vr-worlds', file);
-const nodes = inspect(full, null).filter((n) => n.box && n.box[1][1] > 0.05 && n.box[0][1] < 1.8);
-const want = behind ? nodes.filter((n) => new RegExp(behind).test(n.name)) : [];
+// Lower than a step is floor, not an obstacle: a pitch, a pool deck and its drain channel are
+// 0.1 to 0.2 m thick and covered every point when 5 cm counted as solid.
+const STEP = 0.25;
+const all = inspect(full, null).filter((n) => n.box);
+const nodes = all.filter((n) => n.box[1][1] > STEP && n.box[0][1] < 1.8);
+// What she stands in front of may be overhead (a basketball hoop) or flat (a lane rope): it is
+// looked for among every node, not only the ones that can be walked into.
+const want = behind ? all.filter((n) => new RegExp(behind).test(n.name)) : [];
+// --keepout x0,z0,x1,z1: a footprint nothing marks as solid but she must not stand in (a pool:
+// its water is a flat panel below the deck, and the best "clear" point was in the middle of it).
+const keepout = (opt('--keepout', '') || '').split(',').map(Number);
+if (keepout.length === 4 && keepout.every(Number.isFinite)) {
+    nodes.push({
+        name: 'keepout',
+        box: [
+            [keepout[0], 0, keepout[1]],
+            [keepout[2], 1, keepout[3]],
+        ],
+    });
+}
 if (behind && !want.length) {
     console.error(`no node matches ${behind}`);
     process.exit(1);
@@ -71,7 +89,7 @@ const zs = nodes.flatMap((n) => [n.box[0][2], n.box[1][2]]);
 let best = null;
 // A small room (a bathroom) has no clear point inside it: she stands just outside, looking in,
 // so the search reaches MARGIN beyond the scene's own extent.
-const MARGIN = 2.5;
+const MARGIN = Number(opt('--margin', 2.5));
 for (let x = Math.min(...xs) - MARGIN; x <= Math.max(...xs) + MARGIN; x += 0.1) {
     for (let z = Math.min(...zs) - MARGIN; z <= Math.max(...zs) + MARGIN; z += 0.1) {
         const here = clear(x, z);
@@ -82,6 +100,14 @@ for (let x = Math.min(...xs) - MARGIN; x <= Math.max(...xs) + MARGIN; x += 0.1) 
             if (person < 0.5) continue;
             // The camera looks at her from in front, further back than the person stands: a sofa
             // on that line hid her legs in the hotel lobby. Nothing may cross it out to VIEW metres.
+            // With no margin the search is "inside the building": the camera must be inside too. The
+            // pool's first spot was a corner, and the camera looked at the hall from outside it.
+            if (MARGIN <= 0) {
+                const cx = x + f[0] * VIEW;
+                const cz = z + f[1] * VIEW;
+                if (cx < Math.min(...xs) || cx > Math.max(...xs) || cz < Math.min(...zs) || cz > Math.max(...zs))
+                    continue;
+            }
             if (nodes.some((o) => crosses(o.box, x, z, x + f[0] * VIEW, z + f[1] * VIEW))) continue;
             let seen = 0;
             if (want.length) {

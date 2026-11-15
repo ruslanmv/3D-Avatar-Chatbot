@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 46,
-        "places": 19,
-        "standIns": 11,
+        "worlds": 51,
+        "places": 22,
+        "standIns": 13,
         "withSpots": 7,
         "fails": 0,
-        "warns": 23,
+        "warns": 28,
         "offered": {
-            "desktop": 35,
-            "mobile": 33,
-            "vr": 34
+            "desktop": 38,
+            "mobile": 36,
+            "vr": 37
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2347,6 +2347,260 @@
                 }
             },
             "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "swimming-pool",
+            "title": "Swimming pool",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "swimming-pool-light",
+            "triangles": 67112,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/swimming-pool.glb",
+                "exists": true,
+                "bytes": 1203280
+            },
+            "preview": {
+                "src": "previews/swimming-pool.webp",
+                "exists": true,
+                "bytes": 17846
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "swimming-pool",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "loads its light stand-in swimming-pool-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "loads its light stand-in swimming-pool-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "swimming-pool-light",
+            "title": "Swimming pool",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "swimming-pool",
+            "standIn": null,
+            "triangles": 28484,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/swimming-pool-light.glb",
+                "exists": true,
+                "bytes": 484516
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "stand-in for swimming-pool"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "stand-in for swimming-pool"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "sports-hall",
+            "title": "Sports hall",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "sports-hall-light",
+            "triangles": 34524,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/sports-hall-court.glb",
+                "exists": true,
+                "bytes": 515120
+            },
+            "preview": {
+                "src": "previews/sports-hall.webp",
+                "exists": true,
+                "bytes": 17210
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "097-gym-bench",
+                    "metres": 0.8
+                },
+                {
+                    "node": "077-retractable-basketball-unit",
+                    "metres": 0.83
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "sports-hall",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "sports-hall-light",
+                    "why": "loads its light stand-in sports-hall-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "sports-hall",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (097-gym-bench 0.8 m, 077-retractable-basketball-unit 0.83 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "sports-hall-light",
+            "title": "Sports hall",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "sports-hall",
+            "standIn": null,
+            "triangles": 25248,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/sports-hall-court-light.glb",
+                "exists": true,
+                "bytes": 357540
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "sports-hall-light",
+                    "why": "stand-in for sports-hall"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "soccer-ground",
+            "title": "Soccer ground",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 14020,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/soccer-ground.glb",
+                "exists": true,
+                "bytes": 274456
+            },
+            "preview": {
+                "src": "previews/soccer-ground.webp",
+                "exists": true,
+                "bytes": 13786
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "001-full-size-goal",
+                    "metres": 0
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (001-full-size-goal 0 m) — check in a headset or leave out of the VR version"
+                },
                 {
                     "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"

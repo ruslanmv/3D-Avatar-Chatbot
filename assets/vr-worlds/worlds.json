@@ -2776,6 +2776,208 @@
       },
       "preview": "previews/cocktail-bar.webp",
       "category": "Nightlife"
+    },
+    {
+      "id": "swimming-pool",
+      "title": "Swimming pool",
+      "note": "An indoor pool: lanes, starting blocks, a diving board and a lifeguard chair.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 67112,
+      "activities": [],
+      "sky": {
+        "top": "#cfe8f2",
+        "horizon": "#e8f4f8",
+        "bottom": "#c4d6dc"
+      },
+      "fog": {
+        "color": "#dceef4",
+        "near": 14,
+        "far": 48
+      },
+      "light": {
+        "sky": "#f2fbff",
+        "ground": "#6aa8bf",
+        "hemi": 1.0,
+        "key": "#fff8ea",
+        "keyIntensity": 1.05,
+        "fill": "#d8f0ff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/swimming-pool.glb",
+        "at": [-5.3, 0, 4.4],
+        "turn": -90
+      },
+      "preview": "previews/swimming-pool.webp",
+      "category": "Sport"
+    },
+    {
+      "id": "swimming-pool-light",
+      "title": "Swimming pool",
+      "note": "The pool, its deck and the starting blocks, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28484,
+      "activities": [],
+      "sky": {
+        "top": "#cfe8f2",
+        "horizon": "#e8f4f8",
+        "bottom": "#c4d6dc"
+      },
+      "fog": {
+        "color": "#dceef4",
+        "near": 14,
+        "far": 48
+      },
+      "light": {
+        "sky": "#f2fbff",
+        "ground": "#6aa8bf",
+        "hemi": 1.0,
+        "key": "#fff8ea",
+        "keyIntensity": 1.05,
+        "fill": "#d8f0ff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/swimming-pool-light.glb",
+        "at": [-5.3, 0, 4.4],
+        "turn": -90
+      },
+      "lightFor": "swimming-pool"
+    },
+    {
+      "id": "sports-hall",
+      "title": "Sports hall",
+      "note": "An indoor court with basketball hoops, wall bars and a scoreboard.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 34524,
+      "activities": [],
+      "sky": {
+        "top": "#d9d4c8",
+        "horizon": "#efe9dc",
+        "bottom": "#8a7f6c"
+      },
+      "fog": {
+        "color": "#e6e0d2",
+        "near": 16,
+        "far": 52
+      },
+      "light": {
+        "sky": "#fff6e2",
+        "ground": "#8a7a5c",
+        "hemi": 0.95,
+        "key": "#fff1d0",
+        "keyIntensity": 1.05,
+        "fill": "#e8f0ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/sports-hall-court.glb",
+        "at": [2.828, 0, 8.457],
+        "turn": -45
+      },
+      "preview": "previews/sports-hall.webp",
+      "category": "Sport"
+    },
+    {
+      "id": "sports-hall-light",
+      "title": "Sports hall",
+      "note": "The court and its hoops, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 25248,
+      "activities": [],
+      "sky": {
+        "top": "#d9d4c8",
+        "horizon": "#efe9dc",
+        "bottom": "#8a7f6c"
+      },
+      "fog": {
+        "color": "#e6e0d2",
+        "near": 16,
+        "far": 52
+      },
+      "light": {
+        "sky": "#fff6e2",
+        "ground": "#8a7a5c",
+        "hemi": 0.95,
+        "key": "#fff1d0",
+        "keyIntensity": 1.05,
+        "fill": "#e8f0ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/sports-hall-court-light.glb",
+        "at": [2.828, 0, 8.457],
+        "turn": -45
+      },
+      "lightFor": "sports-hall"
+    },
+    {
+      "id": "soccer-ground",
+      "title": "Soccer ground",
+      "note": "A full pitch with goals, a covered stand and floodlights.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 14020,
+      "activities": [],
+      "sky": {
+        "top": "#6fb1e8",
+        "horizon": "#cfe6f7",
+        "bottom": "#4f8a3c"
+      },
+      "fog": {
+        "color": "#cfe6f7",
+        "near": 60,
+        "far": 220
+      },
+      "light": {
+        "sky": "#eaf5ff",
+        "ground": "#5a8a48",
+        "hemi": 1.0,
+        "key": "#fff6dc",
+        "keyIntensity": 1.15,
+        "fill": "#dcecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/soccer-ground.glb",
+        "at": [35.999, 0, 35.999],
+        "turn": 45
+      },
+      "ground": {
+        "color": "#4f8a3c",
+        "radius": 90
+      },
+      "preview": "previews/soccer-ground.webp",
+      "category": "Sport"
     }
   ]
 }

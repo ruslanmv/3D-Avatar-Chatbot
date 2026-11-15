@@ -63,7 +63,12 @@
             "hotel-bathroom",
             "restaurant",
             "restaurant-light",
-            "cocktail-bar"
+            "cocktail-bar",
+            "swimming-pool",
+            "swimming-pool-light",
+            "sports-hall",
+            "sports-hall-light",
+            "soccer-ground"
         ]
     },
     "zones": [

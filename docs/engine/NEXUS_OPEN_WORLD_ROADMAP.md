@@ -14,12 +14,12 @@ its code merges.
 
 | Figure | Value | Source |
 | --- | --- | --- |
-| Worlds in the catalogue | 46 (19 places, 11 phone stand-ins) | 3D audit |
+| Worlds in the catalogue | 51 (22 places, 13 phone stand-ins) | 3D audit |
 | Zones on the map | 30 in 5 regions, 26 public | atlas audit |
-| Offered on desktop / mobile / VR | 35 / 33 / 34 worlds | 3D audit |
+| Offered on desktop / mobile / VR | 38 / 36 / 37 worlds | 3D audit |
 | Walkable from home on desktop / mobile / VR | 26 / 12 / 12 of 26 public zones | atlas audit |
 | First gateway cutting a device off | `walled-town` (mobile, vr) | atlas audit |
-| 3D failures / warnings | 0 / 23 | 3D audit |
+| 3D failures / warnings | 0 / 28 | 3D audit |
 | Avatars / clips / poses (animation audit) | 17 / 163 / 26 · intents 7/7 · 0 fail / 8 warn | animations audit |
 
 Live figures and the ranked next actions: `quality-lab/data/hub.json`.
