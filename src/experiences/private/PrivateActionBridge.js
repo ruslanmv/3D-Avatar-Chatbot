@@ -849,7 +849,11 @@
         const looks = (s.closet && s.closet.looks) || [];
         if (params && params.look) {
             const named = looks.find((l) => String(l.name || '') === params.look);
-            if (named) return { look: named, state: Engine.isBare(named) ? 'bare' : 'lingerie', why: null };
+            if (named) {
+                if ((params.naked || params.step === 'all') && !Engine.isBare(named))
+                    return { look: null, state: null, why: 'no-bare-look' };
+                return { look: named, state: Engine.isBare(named) ? 'bare' : 'lingerie', why: null };
+            }
         }
         return Engine.undressPlan({
             looks,

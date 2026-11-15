@@ -57,10 +57,17 @@
             // W11. A look whose pack names its SHA-256 is downloaded and checked before the
             // loader sees it. Off only when a deployment says so (`verifyLooks: false`).
             var Validator = global.NEXUS_WARDROBE_PACK_VALIDATOR;
+            var service = this;
             var verifyLook =
                 Validator && this.config.verifyLooks !== false
                     ? function (look) {
-                          return Validator.fetchVerified(look);
+                          var client = service.controller.forge;
+                          return Validator.fetchVerified(
+                              look,
+                              look.private && typeof client.fetchAsset === 'function'
+                                  ? { fetchImpl: (url) => client.fetchAsset(url, { private: true }) }
+                                  : undefined
+                          );
                       }
                     : null;
 

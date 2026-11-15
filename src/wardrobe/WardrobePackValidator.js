@@ -338,7 +338,40 @@
             var actual = await sha256Hex(buffer, options.digest);
             if (actual !== look.sha256) return { ok: false, reason: 'the file does not match its pack (SHA-256)' };
         }
-        return inspectVrm(buffer);
+        var verdict = inspectVrm(buffer);
+        if (!verdict.ok || !(look.bare === true || look.templateId === 'body-bare-v1')) return verdict;
+        if (!/^[a-f0-9]{64}$/i.test(look.sha256 || '')) return { ok: false, reason: 'bare look has no pinned hash' };
+        var bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+        var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        var Decoder = typeof TextDecoder !== 'undefined' ? TextDecoder : require('util').TextDecoder;
+        var json = JSON.parse(new Decoder('utf-8').decode(bytes.subarray(20, 20 + view.getUint32(12, true))));
+        var tag = (json.extras || {}).wardrobeForge || {};
+        if (tag.bare !== true || tag.templateId !== 'body-bare-v1')
+            return { ok: false, reason: 'downloaded asset is not a tagged bare body' };
+        var nodes = json.nodes || [],
+            meshes = json.meshes || [],
+            materials = json.materials || [];
+        var anatomy = /genital|vulva|penis|scrot|nipple|areola|anatom/i;
+        var cloth = /_(Tops|Bottoms|Onepiece|Shoes)_\d+_CLOTH\b|\[Forge_(Tops|Bottoms|Onepiece|Shoes)_/i;
+        for (var node of nodes) {
+            if (node.mesh === undefined) continue;
+            var mesh = meshes[node.mesh] || {};
+            var nodeTag = (node.extras || {}).wardrobeForge || {};
+            var meshTag = (mesh.extras || {}).wardrobeForge || {};
+            if (nodeTag.kind === 'garment' || meshTag.kind === 'garment')
+                return { ok: false, reason: 'bare asset still draws a tagged garment' };
+            for (var primitive of mesh.primitives || []) {
+                var material = materials[primitive.material] || {};
+                var primitiveTag = (primitive.extras || {}).wardrobeForge || {};
+                var materialTag = (material.extras || {}).wardrobeForge || {};
+                if (primitiveTag.kind === 'garment' || materialTag.kind === 'garment')
+                    return { ok: false, reason: 'bare asset still draws a tagged garment' };
+                var protectedPart = (material.extras || {}).authoredAnatomy || anatomy.test(material.name || '');
+                if (!protectedPart && cloth.test(material.name || ''))
+                    return { ok: false, reason: 'bare asset still draws clothing' };
+            }
+        }
+        return { ...verdict, bare: true };
     }
 
     /**
@@ -362,6 +395,7 @@
         var objectUrl = URLImpl.createObjectURL(new Blob([buffer], { type: 'model/gltf-binary' }));
         return {
             url: objectUrl + '#look.vrm',
+            ...(verdict.bare === true ? { bare: true, sha256: look.sha256 } : {}),
             revoke: function () {
                 URLImpl.revokeObjectURL(objectUrl);
             },

@@ -66,10 +66,43 @@
                 verified = await this.verifyLook(look);
                 url = verified.url;
             }
+            var bare = look && (look.bare === true || look.templateId === 'body-bare-v1');
+            if (
+                bare &&
+                (!verified || verified.bare !== true || verified.sha256 !== look.sha256 || look.private !== true)
+            ) {
+                if (verified) verified.revoke();
+                throw new WardrobeForgeError('Bare look could not be verified; the current outfit was kept', {
+                    reason: 'look_failed_verification',
+                });
+            }
+            var previous = manager.getCurrent ? manager.getCurrent() : manager.current;
             var hold = this._holdCamera();
             try {
                 await this._load(manager, url, look.name || 'Generated look', -1);
+                if (bare) {
+                    // Wait for the previous clothed root to leave the scene, not a fixed delay.
+                    var until = Date.now() + 2000;
+                    while (manager._outgoing && Date.now() < until)
+                        await new Promise((resolve) => setTimeout(resolve, 20));
+                    var current = manager.getCurrent ? manager.getCurrent() : manager.current;
+                    var root = manager.currentRoot;
+                    var tag = root && root.userData && root.userData.wardrobeForge;
+                    if (!current || current.url !== url || !tag || tag.bare !== true || manager._outgoing)
+                        throw new WardrobeForgeError('The bare asset did not reach the renderer', {
+                            reason: 'not-rendered',
+                        });
+                }
             } catch (error) {
+                // A verification failure after loading must put the previous visible look back.
+                var failedCurrent = manager.getCurrent ? manager.getCurrent() : manager.current;
+                if (bare && previous && previous.url && failedCurrent && failedCurrent.url === url) {
+                    try {
+                        await this._load(manager, previous.url, previous.name || '', previous.index);
+                    } catch (_) {
+                        /* preserve the original failure for the transaction owner */
+                    }
+                }
                 if (verified) verified.revoke();
                 if (hold) hold();
                 throw error;

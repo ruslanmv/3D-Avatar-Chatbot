@@ -45,6 +45,7 @@
             options = options || {};
             this.baseUrl = String(options.baseUrl || '').replace(/\/$/, '');
             this.token = options.token || '';
+            this._adminSessionToken = options.adminSessionToken || '';
             this.fetchImpl = options.fetchImpl || global.fetch.bind(global);
             this.pollIntervalMs = options.pollIntervalMs || 700;
             this.timeoutMs = options.timeoutMs || 15 * 60 * 1000;
@@ -58,7 +59,9 @@
                 headers['Content-Type'] = 'application/json';
             }
 
-            var response = await this.fetchImpl(this.baseUrl + path, Object.assign({}, options, { headers: headers }));
+            var init = Object.assign({}, options, { headers: headers });
+            if (headers['X-Wardrobe-Admin']) init.redirect = 'error';
+            var response = await this.fetchImpl(this.baseUrl + path, init);
             if (!response.ok) {
                 var payload = null;
                 try {
@@ -201,8 +204,39 @@
             });
         }
 
-        getWardrobe(avatarId) {
-            return this.request('/v1/wardrobes/' + encodeURIComponent(avatarId));
+        getWardrobe(avatarId, options) {
+            // The existing Forge admin session must still authorize private inventory.
+            return this.request(
+                '/v1/wardrobes/' + encodeURIComponent(avatarId),
+                options && options.includePrivate ? { headers: this._privateHeaders() } : undefined
+            );
+        }
+
+        // An operator's authenticated Forge session, in memory only; never a deployment secret.
+        setAdminSession(token) {
+            this._adminSessionToken = typeof token === 'string' ? token : '';
+        }
+
+        _privateHeaders() {
+            return this._adminSessionToken ? { 'X-Wardrobe-Admin': this._adminSessionToken } : {};
+        }
+
+        fetchAsset(url, options) {
+            var resolved = /^(https?:|blob:|data:)/i.test(url || '') ? url : this.resolveUrl(url);
+            var headers = {};
+            // Never forward a Forge bearer token to an imported look's unrelated host.
+            try {
+                var base = global.location && global.location.href;
+                var target = new URL(resolved, base);
+                if (/^https?:$/.test(target.protocol) && target.origin === new URL(this.baseUrl, base).origin) {
+                    if (this.token) headers.Authorization = 'Bearer ' + this.token;
+                    if (options && options.private) Object.assign(headers, this._privateHeaders());
+                }
+            } catch (_) {
+                /* relative/local sources use the browser's own session */
+            }
+            // A redirect must not forward an operator header to another origin.
+            return this.fetchImpl(resolved, { headers: headers, redirect: 'error' });
         }
 
         resolveUrl(url) {

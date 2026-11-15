@@ -734,6 +734,10 @@ export class AvatarManager {
             // Store VRM flag on root for downstream systems (VRIntimacySystem
             // facing calculation needs to know whether to add Math.PI offset).
             root.userData.isVRM = isVRM;
+            const forgeTag = gltf.parser?.json?.extras?.wardrobeForge;
+            if (forgeTag?.bare === true && forgeTag.templateId === 'body-bare-v1') {
+                root.userData.wardrobeForge = { bare: true, templateId: 'body-bare-v1' };
+            }
 
             // Optimize VRM if utilities available
             if (vrm && window.THREE_VRM?.VRMUtils) {

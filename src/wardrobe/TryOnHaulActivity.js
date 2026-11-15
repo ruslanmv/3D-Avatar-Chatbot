@@ -211,7 +211,7 @@ const TryOnHaulActivity = (() => {
         }
         if (library && library.available && identity && identity.kind === 'library') {
             try {
-                const wardrobe = await library.client.getWardrobe(identity.slug);
+                const wardrobe = await library.client.getWardrobe(identity.slug, { includePrivate: privateOpen });
                 // W17. A Forge keeps one wardrobe per library avatar, and the public Space is
                 // shared: every visitor who asked for "Yellow sundress" left one there. Listed
                 // whole, her strip held the same name five times, and the host was told about
@@ -219,6 +219,21 @@ const TryOnHaulActivity = (() => {
                 const named = new Set();
                 ((wardrobe && wardrobe.looks) || [])
                     .filter((look) => look && look.vrmUrl && look.type !== 'source')
+                    .filter((look) => {
+                        const bare = look.bare === true || look.templateId === 'body-bare-v1';
+                        if (!bare) return true;
+                        // Bare products belong to exact source bytes, not merely an avatar name.
+                        return (
+                            privateOpen &&
+                            look.private === true &&
+                            /^[a-f0-9]{64}$/i.test(look.sha256 || '') &&
+                            Boolean(
+                                identity.sha256 &&
+                                    look.sourceAvatarHash &&
+                                    identity.sha256.toLowerCase() === look.sourceAvatarHash.toLowerCase()
+                            )
+                        );
+                    })
                     .filter((look) => {
                         const name = String(look.name || '')
                             .trim()
