@@ -2117,6 +2117,237 @@
         "radius": 9
       },
       "lightFor": "cinema"
+    },
+    {
+      "id": "hotel-lobby",
+      "title": "Hotel lobby",
+      "note": "The reception desk, the fireplace and the lounge by the revolving door.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 52298,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c22",
+        "horizon": "#6b5340",
+        "bottom": "#2a2019"
+      },
+      "fog": {
+        "color": "#4a3a2c",
+        "near": 12,
+        "far": 36
+      },
+      "light": {
+        "sky": "#ffe8cc",
+        "ground": "#4a382a",
+        "hemi": 0.85,
+        "key": "#ffd9a8",
+        "keyIntensity": 1.0,
+        "fill": "#ffe9d6",
+        "fillIntensity": 0.55,
+        "rim": "#ffc890",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/hotel-lobby.glb",
+        "at": [-0.206, 0, 0.291],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#6e5a48",
+        "radius": 11
+      },
+      "preview": "previews/hotel-lobby.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "hotel-lobby-light",
+      "title": "Hotel lobby",
+      "note": "The reception desk and one lounge, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29752,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c22",
+        "horizon": "#6b5340",
+        "bottom": "#2a2019"
+      },
+      "fog": {
+        "color": "#4a3a2c",
+        "near": 12,
+        "far": 36
+      },
+      "light": {
+        "sky": "#ffe8cc",
+        "ground": "#4a382a",
+        "hemi": 0.85,
+        "key": "#ffd9a8",
+        "keyIntensity": 1.0,
+        "fill": "#ffe9d6",
+        "fillIntensity": 0.55,
+        "rim": "#ffc890",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/hotel-lobby-light.glb",
+        "at": [-0.206, 0, 0.291],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#6e5a48",
+        "radius": 11
+      },
+      "lightFor": "hotel-lobby"
+    },
+    {
+      "id": "hotel-bathroom",
+      "title": "Hotel bathroom",
+      "note": "The suite's bathroom: a walk-in shower, a lit mirror and warm towels.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 11728,
+      "activities": [],
+      "sky": {
+        "top": "#dfe6ea",
+        "horizon": "#f2f4f5",
+        "bottom": "#9aa3a8"
+      },
+      "fog": {
+        "color": "#e9eef0",
+        "near": 10,
+        "far": 30
+      },
+      "light": {
+        "sky": "#f6fbff",
+        "ground": "#8a9499",
+        "hemi": 0.95,
+        "key": "#fff4e6",
+        "keyIntensity": 1.05,
+        "fill": "#e6f2ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, -1.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, -1.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, -0.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, -0.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, 0.1],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, 0.1],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/bath-with-screen.glb",
+          "width": 1.71,
+          "at": [-1.95, 0, -1.95]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/hotel-vanity-unit.glb",
+          "width": 1.13,
+          "at": [0, 0, -2.05]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/vanity-mirror-lit.glb",
+          "width": 0.9,
+          "at": [0, 1.2, -2.3]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/walk-in-shower-enclosure.glb",
+          "width": 1.2,
+          "at": [2.25, 0, -1.85]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/heated-towel-rail.glb",
+          "width": 0.52,
+          "at": [2.9, 0.45, -0.7],
+          "turn": -90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/towel-shelf-and-rail.glb",
+          "width": 0.7,
+          "at": [-2.85, 1.25, -0.7],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/robe-hook-rail.glb",
+          "width": 0.34,
+          "at": [-2.92, 1.6, 0.3],
+          "turn": 90
+        }
+      ],
+      "ground": {
+        "color": "#c9cfd2",
+        "radius": 7
+      },
+      "preview": "previews/hotel-bathroom.webp",
+      "category": "Romantic"
     }
   ]
 }

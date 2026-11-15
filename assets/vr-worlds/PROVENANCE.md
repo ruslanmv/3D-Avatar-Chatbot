@@ -40,6 +40,7 @@ file is beside it as `License.txt`.
 | `quaternius-medieval-village` | Medieval Village MegaKit, Standard (176)      | Quaternius   | <https://quaternius.com/packs/medievalvillagemegakit.html> | glTF                             |
 | `quaternius-modular-scifi`    | Modular Sci-Fi MegaKit, Standard (190)        | Quaternius   | <https://quaternius.com/packs/modularscifimegakit.html>    | glTF, see below                  |
 | `3dassets-cozy-home`          | Cozy Home Interiors, starter scene            | 3dassets.dev | <https://3dassets.dev/packs/cozy-home-interiors>           | one GLB; not used by a world yet |
+| `3dassets-hotel-resort`       | Hotel and Resort Operations (9 of 140)        | 3dassets.dev | <https://3dassets.dev/packs/hotel-and-resort-operations>   | GLB; the bathroom's pieces       |
 
 **One repair.** The Sci-Fi MegaKit's glTF files name their textures as if they
 sat beside them, but the zip ships them in a separate `Textures/` folder, so as
@@ -118,6 +119,8 @@ larger on disk than their triangle count suggests.
 | `airship-dock-light.glb`      | `airship-dock.glb` above, recipe `airship-light`  | as above (VW3 table)                                                                          | 29 140    |
 | `cinema-auditorium.glb`       | Cinema Multiplex and Foyer, recipe `cinema`       | <https://3dassets.dev/packs/cinema-multiplex-and-foyer> (starter scene)                       | 98 472    |
 | `cinema-auditorium-light.glb` | the same, recipe `cinema-light`                   | as above                                                                                      | 27 168    |
+| `hotel-lobby.glb`             | Hotel lobby (Hotel and Resort Operations), whole  | <https://3dassets.dev/packs/hotel-and-resort-operations>                                      | 52 298    |
+| `hotel-lobby-light.glb`       | the same, recipe `lobby-light`                    | as above                                                                                      | 29 752    |
 
 `sources/cinema-multiplex.glb` (176 506 triangles, SHA-256 `94ba5463…62a347`,
 downloaded 2026-11-15, CC0 1.0 as stated on the pack page, reported there as
@@ -128,6 +131,13 @@ aisle, the acoustic walls, light strips and speakers) and drops the foyer and
 the two front rows; the phone and VR stand-in keeps the screen, two rows, the
 floor in front and the walls behind and beside it. Both were looked at in the
 app on desktop and at phone size before shipping (`lab_screenshot`).
+
+The hotel lobby (downloaded 2026-11-15, CC0 1.0 as stated on the pack page,
+reported there as AI-assisted, SHA-256 `2063ec0d…4b3073b`) is shipped whole; its
+stand-in drops the trolleys, the luggage rack, the second lounge group and a few
+small things. Neither file has a floor mesh (the world's ground disk is the
+floor), so `measure-spots.mjs` has nothing to cast onto: her spot was computed
+from the scene's node boxes by `tools/vr/clear-spot.mjs`, not typed.
 
 `sources/playhouse-stage.glb` (202 994 triangles) and
 `sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret

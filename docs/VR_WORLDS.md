@@ -209,3 +209,23 @@ Experiences ▸ Visit a place under "Going out", general rating, no template of 
 film playing on the screen and no sitting — a seat-aligned pose does not exist yet, so nothing
 claims one. Known: in the VR stand-in the screen is 0.4 m behind her spot (the audit's comfort
 warning); it has not been checked in a headset.
+
+## The hotel lobby and the hotel bathroom (VW6)
+
+Both from 3dassets.dev's CC0 "Hotel and Resort Operations" pack.
+
+**Hotel lobby** (`hotel-lobby`, desktop, 52 298 triangles, shipped whole; `hotel-lobby-light`,
+phones and VR, 29 752, recipe `lobby-light`): the check-in desk with the world clocks behind
+it, the fireplace lounge, the revolving door. General rating, "Going out". The scene has no
+floor mesh, so there are no measured spots (the audit says so) and she cannot move within it;
+where she stands was computed by `node tools/vr/clear-spot.mjs scenes/hotel-lobby.glb --behind
+check-in-desk`: the point most clear of every node box, with the desk behind her and nothing
+on the camera's line (the first placement had a sofa across her legs).
+
+**Hotel bathroom** (`hotel-bathroom`, every tier, 11 728 triangles): nine models of the pack
+placed as props (`kits/3dassets-hotel-resort/`): a back wall and two side walls, a bath with
+its screen, a vanity under a lit mirror, a walk-in shower, a heated towel rail, a towel shelf
+and a robe hook. Romantic rating. It is assembled, not cut: the pack's own en-suite is 1.8 m
+across, with no room for her and a camera, and on its own it was a shower cubicle in a void.
+Everything is at least 1.7 m from her, so the comfort rule has nothing to drop. Nothing runs
+(no water, no steam) and nothing is claimed about a shower or a bath: it is a room to be in.

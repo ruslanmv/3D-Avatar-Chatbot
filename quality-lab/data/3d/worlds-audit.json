@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 40,
-        "places": 15,
-        "standIns": 9,
+        "worlds": 43,
+        "places": 17,
+        "standIns": 10,
         "withSpots": 7,
         "fails": 0,
-        "warns": 20,
+        "warns": 21,
         "offered": {
-            "desktop": 31,
-            "mobile": 29,
-            "vr": 30
+            "desktop": 33,
+            "mobile": 31,
+            "vr": 32
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2079,6 +2079,138 @@
                     "text": "VR comfort: 2 scene parts within 1 m of her spot (018-cinema-screen-and-masking 0 m, 113-acoustic-wall-panel-module 0.92 m) — check in a headset or leave out of the VR version"
                 }
             ]
+        },
+        {
+            "id": "hotel-lobby",
+            "title": "Hotel lobby",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "hotel-lobby-light",
+            "triangles": 52298,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/hotel-lobby.glb",
+                "exists": true,
+                "bytes": 1261344
+            },
+            "preview": {
+                "src": "previews/hotel-lobby.webp",
+                "exists": true,
+                "bytes": 13516
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "hotel-lobby",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "loads its light stand-in hotel-lobby-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "loads its light stand-in hotel-lobby-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "hotel-lobby-light",
+            "title": "Hotel lobby",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "hotel-lobby",
+            "standIn": null,
+            "triangles": 29752,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/hotel-lobby-light.glb",
+                "exists": true,
+                "bytes": 1132596
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "stand-in for hotel-lobby"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "stand-in for hotel-lobby"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "hotel-bathroom",
+            "title": "Hotel bathroom",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 11728,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/hotel-bathroom.webp",
+                "exists": true,
+                "bytes": 13656
+            },
+            "props": 19,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
         }
     ]
 }

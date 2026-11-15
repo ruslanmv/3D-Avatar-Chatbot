@@ -57,7 +57,10 @@
         "fails": 0,
         "unzoned": [
             "cinema",
-            "cinema-light"
+            "cinema-light",
+            "hotel-lobby",
+            "hotel-lobby-light",
+            "hotel-bathroom"
         ]
     },
     "zones": [

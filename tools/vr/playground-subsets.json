@@ -60,6 +60,12 @@
       "out": "assets/vr-worlds/scenes/cinema-auditorium-light.glb",
       "keep": ["3-5", "18", "66-69", "71-74", "111-116", "129-130"],
       "budget": 30000
+    },
+    "lobby-light": {
+      "src": "assets/vr-worlds/scenes/hotel-lobby.glb",
+      "out": "assets/vr-worlds/scenes/hotel-lobby-light.glb",
+      "keep": ["0-19", "21-26", "33-39", "44", "46"],
+      "budget": 30000
     }
   }
 }
