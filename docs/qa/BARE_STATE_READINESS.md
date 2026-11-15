@@ -15,7 +15,7 @@ and the Forge Space still runs Forge `49788ec` (before the bare-body merge).
 | Bare state rendered **inside the app** | **Not verified: blocked** (no eligible character with a bare look) |
 | Detailed genital anatomy | **Not available**: no source asset contains it |
 | Merge readiness, chatbot `ultimate` → `master` | **Ready for review** (gate green, 6688 tests) |
-| Merge readiness, Forge `ultimate` → `main` | **Ready for review once the last merged-tree suites finish green** |
+| Merge readiness, Forge `ultimate` → `main` | **Ready for review** (merged-tree suites green: 151 + 229) |
 | The bare feature as a product capability | **NOT READY** (see blockers) |
 
 ## What the app does now (chatbot `55c4a7d`, real Grok via OllaBridge, deployed Space)
@@ -80,8 +80,9 @@ Chatbot: `npm run validate` exit 0, 6688 tests (includes UN19).
 Forge merged tree (`ultimate`): reuse and plan keys, cache-key stability against
 `tests/fixtures/prebuilt_key_baseline.json`, publishing, outfit dictionary, the bare-bypass
 proof: 151 passed. Bare prebuild, body surface, bare body, prebuilt API, catalogue API:
-113 passed. The gate jobs, intimate policy, haul library, anatomy reference and studio API
-suites were re-run last; see the commit that updates this line for their result.
+113 passed. The full merged-tree list (prebuilt, bare prebuild, body surface, intimate
+policy, haul library, anatomy reference, bare body, body-surface jobs, prebuilt API, catalogue
+API, studio API) was then run to completion: 229 passed, exit 0.
 
 The first combined run failed because the disk was full (0 MB), not on an assertion; it was
 not counted as a pass. Recovery freed 15.1 GB of local look folders whose every file path
