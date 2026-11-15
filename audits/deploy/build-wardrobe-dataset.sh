@@ -10,6 +10,7 @@
 #   PLAN_ONLY=1 ...                      # list what would be built, build nothing
 #   ONLY=leather SLUGS=fem-vroid,avatar-sample-a ...   # a subset (prebuild.py's own filters)
 #   OUTFITS=0 ...                        # garments only, no dictionary outfits
+#   OUTFITS_ONLY=1 ...                   # dictionary outfits only, no single garments
 #
 # What it does, in order:
 #   1. uses the Forge checkout at FORGE_DIR as it stands (check out the branch you mean first;
@@ -108,7 +109,11 @@ open(sys.argv[2], "w").write(json.load(urllib.request.urlopen(req, timeout=60))[
 PY
 
 set -- --forge "$FORGE_URL" --admin-token-file "$TOKEN_FILE" --workers "$WORKERS"
-[ "${OUTFITS:-1}" = "1" ] && set -- "$@" --outfits
+if [ "${OUTFITS_ONLY:-0}" = "1" ]; then
+    set -- "$@" --outfits-only
+elif [ "${OUTFITS:-1}" = "1" ]; then
+    set -- "$@" --outfits
+fi
 [ -n "${ONLY:-}" ] && set -- "$@" --only "$ONLY"
 [ -n "${SLUGS:-}" ] && set -- "$@" --slugs "$SLUGS"
 if [ "${PLAN_ONLY:-0}" = "1" ]; then
