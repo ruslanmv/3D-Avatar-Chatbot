@@ -312,11 +312,37 @@ no floor mesh and no measured spot: she does not walk the street, the shops cann
 nobody else is there. The first layout put the laundrette's machines behind her and the place card
 read as a laundrette; the pictures caught it and the row was re-spaced.
 
-**Not done, by decision.** The same pack's school rooms (gate, shoe lockers, classroom, corridor,
-gym shell) were not added. Private sessions can travel to every general place (see
-`docs/claude/adding-a-place.md` ▸ Ratings), and a school must not be reachable from an intimate
-story; adding them first needs a way to keep a general place out of Private.
+The pack's school is its own place, below (VW11).
 
 Not checked: a headset, frame rate on a real phone or Quest, and the road sections' kerbs at
 eye level (the pictures show them from the standing camera only).
+
+## The school (VW11)
+
+A general place under "School": the pack's own starter scene (`school`, desktop, 88 606
+triangles) and its phone and VR cut (`school-light`, 26 466, recipe `school-light`). The courtyard
+with the covered walkway, the shoe lockers, a classroom front, the gate, a bicycle shelter and
+cherry trees. Every character in it is the companion; there is nobody else. It is in Experiences ▸
+Visit a place and in Private's destination list, and her story outline may suggest it.
+
+**Always General** (`generalOnly: true` on the world, inherited by its light cut;
+`src/features/together/GeneralOnlyPlaces.js`, boot list after `places.js`, test
+`tests/general-only-places.test.js`). One hand-off serves every route into it: the room card in
+Private's setup, her invitation once the person says yes, a link, a saved visit, and Private
+started while she is there. It cancels a wear still on its way (the wardrobe controller's
+`cancel`), stops Private through its own path (pending actions go stale, her body is released, the
+story ends and is remembered as an evening, her outfit goes back to hers, the consent flow exits,
+the room request is withdrawn), and only then visits the school as an ordinary place. A
+"General" badge stays on screen while it is shown, with a Back button: it remembers the place she
+was in and visits it again if an ordinary visit can show it (a general or romantic place); a
+private room comes back through Private's own controls. Nothing about the school is filtered: it
+is the General experience, whole. Going to any other place leaves Private as it is; the rule is
+scoped to the school and its light cut and adds no restriction anywhere else.
+
+Spot: `node tools/vr/clear-spot.mjs scenes/japanese-school-grounds.glb --behind 060-shoe-locker-bank
+--view 7`, used for both cuts. The first spot (cherry tree behind her) put a fence post across
+the picture; the second (`--view 5`, tree) was fine from the front but the phone showed her half
+hidden by a perimeter fence. Not checked: a headset, frame rate on a real phone or Quest, walking
+the school (no floor mesh, so no measured spots, no stairs, no doors), a live Private evening
+carried through to the school with a real model's reply.
 

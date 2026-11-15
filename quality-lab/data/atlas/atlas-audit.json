@@ -74,7 +74,9 @@
             "dungeon",
             "jungle-ruins",
             "jungle-ruins-light",
-            "shopping-street"
+            "shopping-street",
+            "school",
+            "school-light"
         ]
     },
     "zones": [

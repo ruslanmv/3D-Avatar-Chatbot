@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 57,
-        "places": 26,
-        "standIns": 15,
+        "worlds": 59,
+        "places": 27,
+        "standIns": 16,
         "withSpots": 7,
         "fails": 0,
-        "warns": 33,
+        "warns": 35,
         "offered": {
-            "desktop": 42,
-            "mobile": 40,
-            "vr": 41
+            "desktop": 43,
+            "mobile": 41,
+            "vr": 42
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2902,6 +2902,107 @@
                 }
             },
             "issues": []
+        },
+        {
+            "id": "school",
+            "title": "School",
+            "kind": "place",
+            "rating": "general",
+            "category": "School",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "school-light",
+            "triangles": 88606,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/japanese-school-grounds.glb",
+                "exists": true,
+                "bytes": 2337352
+            },
+            "preview": {
+                "src": "previews/school.webp",
+                "exists": true,
+                "bytes": 26122
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "school",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "school-light",
+                    "why": "loads its light stand-in school-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "school-light",
+                    "why": "loads its light stand-in school-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "school-light",
+            "title": "School",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "school",
+            "standIn": null,
+            "triangles": 26466,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/japanese-school-grounds-light.glb",
+                "exists": true,
+                "bytes": 2310752
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "060-shoe-locker-bank",
+                    "metres": 0.8
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "school-light",
+                    "why": "stand-in for school"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "school-light",
+                    "why": "stand-in for school"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (060-shoe-locker-bank 0.8 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         }
     ]
 }

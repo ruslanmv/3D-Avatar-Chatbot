@@ -219,6 +219,22 @@ machine 1 732, cherry tree 2 294, bicycle rack 640; the world places one of
 each, 17 734 in all. The pack's school rooms (classroom, lockers, gate, gym
 shell) were not taken: see `docs/VR_WORLDS.md` ▸ The shopping street.
 
+## The school (`scenes/japanese-school-grounds*.glb`, VW11)
+
+The "Japanese School and City Street" pack's own starter scene, CC0 1.0
+Universal as the pack page states, downloaded 2026-11-15 from
+<https://3dassets.dev/download/japanese-school-and-city-street-school-g-b3013a62-starter-scene>
+(2.3 MB). `japanese-school-grounds.glb` is the file as downloaded: 88 606
+triangles, 81 top-level nodes (the grounds, the lockers, one classroom, the
+covered walkway, the gate, the street and shopfronts, cherry trees).
+`japanese-school-grounds-light.glb` is cut from it by the recipe `school-light`
+in `tools/vr/playground-subsets.json`
+(`node tools/vr/subset-scene.mjs school-light`): 26 466 triangles, 24 nodes (the
+courtyard and its floor, the covered walkway, the shoe lockers, the classroom
+front, the gate, the bicycle shelter, the cherry trees and fountain). The pack
+is listed by 3dassets.dev as AI-assisted; the scene was reviewed visually in the
+app.
+
 ## Asked for and not included
 
 - **Quiet Grove** (polyhangar, CC0) and **Low Poly Nature Pack** (svartskogen,

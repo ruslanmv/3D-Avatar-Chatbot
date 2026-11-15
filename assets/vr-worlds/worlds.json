@@ -3279,6 +3279,95 @@
       },
       "preview": "previews/shopping-street.webp",
       "category": "Going out"
+    },
+    {
+      "id": "school",
+      "title": "School",
+      "note": "A Japanese school's grounds: the gate, the shoe lockers, a classroom, the covered walkway and cherry trees. Always General.",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["desktop"],
+      "triangles": 88606,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/japanese-school-grounds.glb",
+        "at": [6.996, 0, -0.863],
+        "turn": 120
+      },
+      "ground": {
+        "color": "#a39c8c",
+        "radius": 16
+      },
+      "preview": "previews/school.webp",
+      "category": "School"
+    },
+    {
+      "id": "school-light",
+      "title": "School",
+      "note": "A Japanese school's grounds: the gate, the shoe lockers, a classroom, the covered walkway and cherry trees. Always General.",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "vr"],
+      "triangles": 26466,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/japanese-school-grounds-light.glb",
+        "at": [6.996, 0, -0.863],
+        "turn": 120
+      },
+      "ground": {
+        "color": "#a39c8c",
+        "radius": 16
+      },
+      "lightFor": "school"
     }
   ]
 }
