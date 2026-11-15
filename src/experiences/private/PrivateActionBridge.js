@@ -1363,6 +1363,8 @@
         'forge-unavailable': 'new outfits cannot be made right now',
         'create-failed': 'the new outfit could not be made',
         'load-failed': 'the outfit could not be put on, so you are still in what you had',
+        // UN15. A change that did not finish in time is given up and she is put back.
+        timeout: 'it was taking far too long, so it was stopped and you are still in what you had — they can ask again',
         'nothing-to-undo': 'there is no earlier outfit to go back to',
         busy: 'an outfit is already being made',
     };

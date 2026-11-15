@@ -42,6 +42,11 @@
     'use strict';
 
     const LOOKS_FRESH_MS = 60000;
+    // UN15. A look's file (12–20 MB) loads in seconds from Forge or the dataset; a minute means
+    // something is wrong. Making a new look takes about a minute on a warm Forge.
+    const SLOW_MS = 8 * 1000;
+    const WEAR_MS = 60 * 1000;
+    const CREATE_MS = 4 * 60 * 1000;
 
     function keyOf(look) {
         return look ? String(look.lookId || look.id || look.vrmUrl || look.vrm_url || look.name || '') : '';
@@ -123,6 +128,17 @@
                 wearing: Boolean(wearing),
                 canUndo: Boolean(this.session && this.session.history && this.session.history.length > 1 && head),
             };
+        }
+
+        /** UN15. How long a change may take before the strip says so, and before it is given up. */
+        get slowMs() {
+            return this._slowMs || SLOW_MS;
+        }
+        get wearMs() {
+            return this._wearMs || WEAR_MS;
+        }
+        get createMs() {
+            return this._createMs || CREATE_MS;
         }
 
         _set(status, why, progress) {
@@ -307,17 +323,66 @@
             return { ok: false, why: 'no-match' };
         }
 
-        /** Put a saved look on. Her previous outfit stays until this one has loaded. */
-        async wearLook(look, alive) {
+        /**
+         * Put a saved look on. Her previous outfit stays until this one has loaded.
+         *
+         * UN15. Every change ends — in her new look, or back in the one she had, with the reason.
+         * A report found a first change pending for more than three minutes against a cold Forge
+         * store, with nothing on screen saying why and nothing that would ever end it. Now:
+         * after SLOW_MS the strip says it is still changing; at WEAR_MS the change is given up
+         * and the session is asked for the look she had (`undo` replaces the pending head, and the
+         * session's own loop loads it as soon as the slow file lands — the controller stays the
+         * only thing that swaps her avatar); and the same look asked for again while it is on its
+         * way joins the change already running instead of starting a second one.
+         */
+        wearLook(look, alive) {
+            const key = keyOf(look);
+            if (this._wearing && key && this._wearing.key === key) return this._wearing.promise;
+            const promise = this._wearLook(look, alive).finally(() => {
+                if (this._wearing && this._wearing.promise === promise) this._wearing = null;
+            });
+            this._wearing = { key, promise };
+            return promise;
+        }
+
+        async _wearLook(look, alive) {
             const stillMine = typeof alive === 'function' ? alive : () => true;
             if (!this.session || this.closed) return { ok: false, why: 'wardrobe-not-ready' };
             if (isPrivate(look) && !this.privateOpen) return { ok: false, why: 'adult-ineligible' };
             this._set('changing');
+            const timers = [];
+            const slow = setTimeout(() => {
+                if (this.state.status === 'changing') this._set('changing', 'slow');
+            }, this.slowMs);
+            timers.push(slow);
             let landed = false;
+            let timedOut = false;
             try {
-                landed = await this.session.wear(look);
+                landed = await Promise.race([
+                    this.session.wear(look),
+                    new Promise((resolve) => {
+                        timers.push(
+                            setTimeout(() => {
+                                timedOut = true;
+                                resolve(false);
+                            }, this.wearMs)
+                        );
+                    }),
+                ]);
             } catch (_) {
                 landed = false;
+            } finally {
+                timers.forEach(clearTimeout);
+            }
+            if (timedOut) {
+                try {
+                    // Back to the look she had: the slow one, when it lands, is replaced at once.
+                    Promise.resolve(this.session.undo()).catch(() => null);
+                } catch (_) {
+                    /* the session's own end restores her */
+                }
+                this._set('failed', 'timeout');
+                return { ok: false, why: 'timeout' };
             }
             if (!landed) {
                 this._set('failed', (this.session && this.session.error) || 'load-failed');
@@ -379,6 +444,18 @@
             this._abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
             this._set('creating');
             let look = null;
+            // UN15. A new look that is not made in createMs is cancelled (its job aborted): the
+            // generator's own poll would otherwise wait fifteen minutes.
+            let late = false;
+            const abort = this._abort;
+            const deadline = setTimeout(() => {
+                late = true;
+                try {
+                    if (abort) abort.abort();
+                } catch (_) {
+                    /* already finished */
+                }
+            }, this.createMs);
             try {
                 look = await this.generator.create(r.prompt, {
                     baseLookId: r.baseLookId || undefined,
@@ -389,11 +466,17 @@
                     },
                 });
             } catch (error) {
+                clearTimeout(deadline);
                 this._abort = null;
+                if (late) {
+                    this._set('failed', 'timeout');
+                    return { ok: false, why: 'timeout' };
+                }
                 const aborted = error && error.name === 'AbortError';
                 this._set(aborted ? 'idle' : 'failed', aborted ? null : (error && error.message) || 'create-failed');
                 return { ok: false, why: aborted ? 'stale' : 'create-failed', message: error && error.message };
             }
+            clearTimeout(deadline);
             this._abort = null;
             if (!look) {
                 this._set('failed', 'create-failed');
@@ -461,7 +544,7 @@
         }
     }
 
-    const api = { InSceneWardrobe, keyOf, isPrivate };
+    const api = { InSceneWardrobe, keyOf, isPrivate, SLOW_MS, WEAR_MS, CREATE_MS };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_IN_SCENE_WARDROBE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
