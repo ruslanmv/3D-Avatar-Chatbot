@@ -1668,44 +1668,45 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
     const prompt = () => Actions.promptLines().join('\n');
     const truthful = (reply) => Capability.outfitTruthful(reply, Actions.outfitTruth(), 'en');
 
-    test('the reported session: both requests change what she wears, and her words follow the avatar', async () => {
+    test('the reported session: "undress" is lingerie; "naked" without a bare look changes nothing', async () => {
         const w = await at(4);
         await say('Mettiti il vestito da cocktail nero');
         await say('Undress please.');
         await flush();
-        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'completed' });
-        expect(worn(w).slice(-1)).toEqual(['Black Lingerie Set']);
-        await say('Please, I wanna see you naked.');
-        await flush();
         expect(Actions.snapshot().last).toMatchObject({
             name: 'wardrobe.undress',
             status: 'completed',
+            result: { state: 'lingerie', bare: false },
+        });
+        expect(worn(w).slice(-1)).toEqual(['Black Lingerie Set']);
+        expect(Actions.snapshot().outfitState).toBe('lingerie');
+        expect(prompt()).toMatch(/You are in lingerie, not naked/);
+        await say('Please, I wanna see you naked.');
+        await flush();
+        // UN19. No bare look: the request is refused, she keeps what she has on, and no other
+        // lingerie is put on in its place.
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'wardrobe.undress',
+            status: 'failed',
+            why: 'no-bare-look',
             params: { step: 'all', naked: true },
         });
-        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
-        // No bare look in her wardrobe: she says what is true, and "naked" is never claimed.
-        expect(prompt()).toMatch(/Being fully bare is not in your wardrobe yet/);
+        expect(worn(w).slice(-1)).toEqual(['Black Lingerie Set']);
+        expect(Actions.snapshot().outfitState).toBe('lingerie');
+        expect(prompt()).toMatch(/Being fully bare is not available for this body[\s\S]*nothing was changed/);
+        expect(prompt()).toMatch(/still wearing “Black Lingerie Set”/);
         expect(truthful("I'm naked now, just for you. Do you like it?")).not.toMatch(/naked/i);
         expect(w.adult.level).toBe(4);
     });
 
-    test('the real run: after a bralette and briefs, "naked" never picks a bodysuit', async () => {
-        const SET = {
-            lookId: 's',
-            name: 'Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs',
-            templateId: 'under-lingerie-set-v1',
-            vrmUrl: 'set.vrm',
-            private: true,
-        };
-        const BODY = { lookId: 'y', name: 'Black Bodysuit', templateId: 'under-bodysuit-v1', vrmUrl: 'body.vrm' };
-        const w = await at(4, { looks: [DRESS, SET, BODY, ...LINGERIE] });
+    test('"take everything off" is a bare request too: never the least lingerie instead', async () => {
+        const w = await at(4);
         await say('Mettiti il vestito da cocktail nero');
-        await say('Undress please.');
+        await say('Togliti tutto');
         await flush();
-        await say('Please, I wanna see you naked.');
-        await flush();
-        expect(worn(w)).not.toContain('Black Bodysuit');
-        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
+        expect(Actions.snapshot().last).toMatchObject({ status: 'failed', why: 'no-bare-look' });
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        expect(Actions.snapshot().outfitState).not.toBe('bare');
     });
 
     test('with her bare look in the wardrobe, "naked" is exactly that, and she may say so', async () => {
@@ -1715,6 +1716,10 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         await flush();
         expect(worn(w).slice(-1)).toEqual(['Bare']);
         expect(Actions.outfitTruth()).toMatchObject({ state: 'changed', bare: true });
+        // UN19. dressed → bare, with no lingerie in between, and the state says so.
+        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Bare']);
+        expect(Actions.snapshot().last).toMatchObject({ status: 'completed', result: { state: 'bare', bare: true } });
+        expect(Actions.snapshot().outfitState).toBe('bare');
         expect(prompt()).toMatch(/you are naked now/);
         expect(truthful("I'm naked now, just for you.")).toMatch(/naked/);
         // One step at a time ends there too: after the last lingerie, the next layer is the bare look.
@@ -1729,6 +1734,27 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
             'Black Bralette + Black Micro Tailored Thong',
             'Bare',
         ]);
+        // … and dressing again goes back to what she wore before the first change.
+        await say('rivestiti');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        expect(Actions.snapshot().outfitState).toBe('look');
+    });
+
+    test('UN19. the plan keeps bare and lingerie apart', () => {
+        const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const plan = (extra) => Engine.undressPlan({ looks: [DRESS, ...LINGERIE], current: DRESS, allureOf, ...extra });
+        expect(plan({ step: 'next' })).toMatchObject({ state: 'lingerie', why: null });
+        expect(plan({ step: 'all' })).toEqual({ look: null, state: null, why: 'no-bare-look' });
+        expect(plan({ naked: true })).toEqual({ look: null, state: null, why: 'no-bare-look' });
+        const withBare = (extra) =>
+            Engine.undressPlan({ looks: [DRESS, ...LINGERIE, BARE], current: DRESS, allureOf, ...extra });
+        expect(withBare({ naked: true })).toMatchObject({ state: 'bare', look: { name: 'Bare' } });
+        expect(withBare({ step: 'next' })).toMatchObject({ state: 'lingerie' });
+        expect(Engine.undressPlan({ looks: [BARE], current: BARE, allureOf, naked: true }).why).toBe('already-bare');
+        expect(Engine.outfitState(null, allureOf)).toBe('original');
+        expect(Engine.outfitState(BARE, allureOf)).toBe('bare');
     });
 
     test('a look that cannot be loaded: she stays as she was, and "I\'m undressing" is not said', async () => {

@@ -835,16 +835,23 @@
         });
     }
 
+    /**
+     * UN19. Which look answers this undress request, and which state it is: `bare` (her authored
+     * body, nothing on) or `lingerie`. A request for everything is answered only by her bare
+     * look; without one the plan has no look and says `no-bare-look` — lingerie is never
+     * substituted for complete removal.
+     */
     function nextLayer(s, params) {
         const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
         const rank = allureOf(s);
-        if (!Engine || typeof Engine.undressStep !== 'function' || !rank) return null;
+        if (!Engine || typeof Engine.undressPlan !== 'function' || !rank)
+            return { look: null, state: null, why: 'last-layer' };
         const looks = (s.closet && s.closet.looks) || [];
         if (params && params.look) {
             const named = looks.find((l) => String(l.name || '') === params.look);
-            if (named) return named;
+            if (named) return { look: named, state: Engine.isBare(named) ? 'bare' : 'lingerie', why: null };
         }
-        return Engine.undressStep({
+        return Engine.undressPlan({
             looks,
             current: s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null,
             step: (params && params.step) || 'next',
@@ -859,19 +866,32 @@
         if (!alive()) return settle(action, 'blocked', 'stale');
         if (!opened.ok) return settle(action, 'failed', opened.why);
         if (!s.closet.privateOpen) return settle(action, 'failed', 'adult-ineligible');
-        const look = nextLayer(s, action.params);
-        if (!look) return settle(action, 'failed', 'last-layer');
+        const plan = nextLayer(s, action.params);
+        const look = plan.look;
+        // Nothing changes: what she has on stays, and the reason is told (no-bare-look, last-layer).
+        if (!look) return settle(action, 'failed', plan.why || 'last-layer');
         const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
-        const bare = Boolean(Engine && typeof Engine.isBare === 'function' && Engine.isBare(look));
+        const bare = plan.state === 'bare';
         // UN5. What she wore before the first layer came off is what "rivestiti" puts back.
         if (!s.dressedLook) s.dressedLook = s.closet.current() || ORIGINAL;
         const out = await keepingPose(s, () => s.closet.wearLook(look, alive));
+        // UN19. The renderer's answer before anything is announced: the look the wardrobe now
+        // reports on her is the one asked for, and for bare it is her bare look.
+        let worn = null;
+        try {
+            worn = typeof s.closet.current === 'function' ? s.closet.current() : null;
+        } catch (_) {
+            worn = null;
+        }
+        const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+        const rendered = Boolean(out.ok && worn && keyOf(worn) === keyOf(look) && (!bare || Engine.isBare(worn)));
+        if (out.ok && !rendered) return settle(action, 'failed', 'not-rendered', { name: look.name || '' });
         if (out.ok) s.offer = null;
         return settle(
             action,
             out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
             out.ok ? null : out.why,
-            { name: look.name || '', bare, covers: coveredBy(s, look) }
+            { name: look.name || '', bare, state: plan.state, covers: coveredBy(s, look) }
         );
     }
 
@@ -895,6 +915,26 @@
             return look ? String(look.name || '') || null : null;
         } catch (_) {
             return null;
+        }
+    }
+
+    function wardrobeState(s) {
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        try {
+            const worn = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            return Engine && typeof Engine.outfitState === 'function' ? Engine.outfitState(worn, allureOf(s)) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** UN19. What the wardrobe reports on her right now, for a line that must not be wrong. */
+    function currentName(s) {
+        try {
+            const worn = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            return worn && worn.name ? `“${worn.name}”` : 'your own outfit';
+        } catch (_) {
+            return 'what you had on';
         }
     }
 
@@ -1002,7 +1042,7 @@
                 // UN1. Her idea, at level 4, under SUGGEST: the layer is resolved now and offered;
                 // the yes runs it as an undress again, so the level is checked a second time.
                 if (!s.closet.privateOpen) return;
-                const look = nextLayer(s, action.params);
+                const look = nextLayer(s, action.params).look;
                 if (look)
                     s.offer = {
                         kind: 'wear',
@@ -1344,6 +1384,8 @@
                 ? { status: s.music.status, why: s.music.why, query: s.music.params.query || '' }
                 : null,
             outfit: s.closet ? s.closet.snapshot() : null,
+            // UN19. original | look | lingerie | bare — what is on her, never what was asked for.
+            outfitState: wardrobeState(s),
             outfitAction: s.wardrobe
                 ? {
                       status: s.wardrobe.status,
@@ -1387,6 +1429,10 @@
         'create-failed': 'the new outfit could not be made',
         'load-failed': 'the outfit could not be put on, so you are still in what you had',
         // UN15. A change that did not finish in time is given up and she is put back.
+        // UN19. Bare is its own state: no bare look, no change, and no lingerie in its place.
+        'no-bare-look':
+            'this body has no bare look in your wardrobe, so nothing was taken off and you are still wearing what you had',
+        'not-rendered': 'the change did not show on you, so you are still as you were',
         timeout: 'it was taking far too long, so it was stopped and you are still in what you had — they can ask again',
         'nothing-to-undo': 'there is no earlier outfit to go back to',
         busy: 'an outfit is already being made',
@@ -1594,9 +1640,11 @@
                     now.push(
                         'You have just taken everything off: you are naked now, as they asked. Say it in a few words, in the moment.'
                     );
-                else if (w.status === 'completed' && askedNaked)
+                else if (w.why === 'no-bare-look')
+                    // UN19. Everything was asked for and this body has no bare look: nothing was
+                    // changed and no lingerie was put on in its place. She says exactly that.
                     now.push(
-                        `They asked to see you naked. You changed into the least you have here: you are now wearing only “${name}”. Being fully bare is not in your wardrobe yet — say so once, warmly and honestly, and never say you are naked.`
+                        `They asked you to take everything off. Being fully bare is not available for this body in your wardrobe, so nothing was changed: you are still wearing ${currentName(s)}. Say so once, warmly and honestly, and never say you are naked or that you took anything off. You may ask whether they would like you in lingerie instead — a question, not a change.`
                     );
                 else if (w.status === 'completed') {
                     // UN14. Forge swaps her whole look in one change; it does not peel garments off
@@ -1604,7 +1652,7 @@
                     // and never narrates removing a piece the renderer never showed coming off.
                     const covers = regionText(w.result && w.result.covers);
                     now.push(
-                        `You have just changed into something lighter${name ? `: you are now wearing “${name}”` : ''}${covers ? ` (it covers your ${covers}; nothing of your earlier outfit shows)` : ''}. It was one change, all at once: say what you wear now, in a few words, in the moment — not a piece-by-piece undressing.`
+                        `You have just changed into lingerie${name ? `: you are now wearing “${name}”` : ''}${covers ? ` (it covers your ${covers}; nothing of your earlier outfit shows)` : ''}. You are in lingerie, not naked. It was one change, all at once: say what you wear now, in a few words, in the moment — not a piece-by-piece undressing.`
                     );
                 } else if (w.status === 'pending')
                     now.push('You are changing into something lighter right now — say so in one short sentence.');

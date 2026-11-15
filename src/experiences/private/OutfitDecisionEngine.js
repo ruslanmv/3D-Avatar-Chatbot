@@ -327,6 +327,45 @@
         return 2;
     }
 
+    /**
+     * UN19. BARE and LINGERIE are two different states, and one never stands in for the other.
+     *
+     * Before, "naked" / "take everything off" with no bare look in her wardrobe fell through to
+     * her least-covering lingerie: the transition was original → lingerie → original while the
+     * request was for original → bare → original. Changing into underwear is not complete
+     * removal. So a request for everything (`naked`, or step `all`) is answered only by her bare
+     * look; without one nothing changes and the reason is `no-bare-look`. One step at a time
+     * (`next`) is lingerie, down to her last layer, and then bare if she has it.
+     *
+     * @returns {{look: object|null, state: 'bare'|'lingerie'|null, why: string|null}}
+     */
+    function undressPlan(o) {
+        const opts = o || {};
+        const looks = Array.isArray(opts.looks) ? opts.looks : [];
+        const current = opts.current || null;
+        if (current && isBare(current)) return { look: null, state: null, why: 'already-bare' };
+        const currentKey = current ? keyOf(current) : null;
+        const bare = looks.find((l) => l && keyOf(l) !== currentKey && isBare(l)) || null;
+        if (opts.naked || opts.step === 'all')
+            return bare ? { look: bare, state: 'bare', why: null } : { look: null, state: null, why: 'no-bare-look' };
+        const look = undressStep({ ...opts, step: 'next', naked: false });
+        if (!look) return { look: null, state: null, why: 'last-layer' };
+        return { look, state: isBare(look) ? 'bare' : 'lingerie', why: null };
+    }
+
+    /** What she has on, as a wardrobe state: her own outfit, a look, lingerie, or bare. */
+    function outfitState(current, allureOf) {
+        if (!current) return 'original';
+        if (isBare(current)) return 'bare';
+        try {
+            const rank = typeof allureOf === 'function' ? allureOf(current) : null;
+            if (rank && rank.band === 'lingerie') return 'lingerie';
+        } catch (_) {
+            /* an unranked look is just a look */
+        }
+        return 'look';
+    }
+
     function undressStep(o) {
         const opts = o || {};
         const rank = typeof opts.allureOf === 'function' ? opts.allureOf : null;
@@ -460,6 +499,8 @@
         keyOf,
         byName,
         undressStep,
+        undressPlan,
+        outfitState,
         colourOf,
         isBare,
         coverageOf,
