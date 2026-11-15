@@ -192,3 +192,106 @@ showed bare sand.
   are not in the repository, so no world names one.
 - New materials compile on the first frame a world is shown; that frame is
   under the black of the fade.
+
+## The cinema (VW5)
+
+A place to go on a date: `cinema` (desktop, 98 472 triangles: the auditorium with its screen,
+six tiered rows, the recliner rows, the aisle and the acoustic walls) and its stand-in
+`cinema-light` (phones and VR, 27 168: the screen, two rows, the floor in front of them and the
+walls behind and beside). Both are cut by recipe from one CC0 starter scene
+(`sources/cinema-multiplex.glb`, 3dassets.dev "Cinema Multiplex and Foyer"; recipes `cinema`
+and `cinema-light` in `tools/vr/playground-subsets.json`); the foyer and its concessions are
+not used yet.
+
+She stands on a measured spot, in front of the screen (`spots/cinema-auditorium*.json`: `screen`
+and `seats`, both verified by `tools/vr/measure-spots.mjs`). It is a place only: listed in
+Experiences ▸ Visit a place under "Going out", general rating, no template of things to do, no
+film playing on the screen and no sitting — a seat-aligned pose does not exist yet, so nothing
+claims one. Known: in the VR stand-in the screen is 0.4 m behind her spot (the audit's comfort
+warning); it has not been checked in a headset.
+
+## The hotel lobby and the hotel bathroom (VW6)
+
+Both from 3dassets.dev's CC0 "Hotel and Resort Operations" pack.
+
+**Hotel lobby** (`hotel-lobby`, desktop, 52 298 triangles, shipped whole; `hotel-lobby-light`,
+phones and VR, 29 752, recipe `lobby-light`): the check-in desk with the world clocks behind
+it, the fireplace lounge, the revolving door. General rating, "Going out". The scene has no
+floor mesh, so there are no measured spots (the audit says so) and she cannot move within it;
+where she stands was computed by `node tools/vr/clear-spot.mjs scenes/hotel-lobby.glb --behind
+check-in-desk`: the point most clear of every node box, with the desk behind her and nothing
+on the camera's line (the first placement had a sofa across her legs).
+
+**Hotel bathroom** (`hotel-bathroom`, every tier, 11 728 triangles): nine models of the pack
+placed as props (`kits/3dassets-hotel-resort/`): a back wall and two side walls, a bath with
+its screen, a vanity under a lit mirror, a walk-in shower, a heated towel rail, a towel shelf
+and a robe hook. Romantic rating. It is assembled, not cut: the pack's own en-suite is 1.8 m
+across, with no room for her and a camera, and on its own it was a shower cubicle in a void.
+Everything is at least 1.7 m from her, so the comfort rule has nothing to drop. Nothing runs
+(no water, no steam) and nothing is claimed about a shower or a bath: it is a room to be in.
+
+## The restaurant and the cocktail bar (VW7)
+
+One CC0 scene (3dassets.dev, "Restaurant Kitchen and Dining", the 40-cover dining room), three
+worlds, all general, listed in Visit a place.
+
+**Restaurant** (`restaurant`, desktop, 105 232 triangles with its walls: the whole dining room,
+laid tables, booths, banquettes, the bar at the back; `restaurant-light`, phones and VR,
+28 636: the nine tables nearest her and three banquette benches, recipe `restaurant-light`).
+She stands by the entrance with the tables behind her.
+
+**Cocktail bar** (`cocktail-bar`, every tier, 19 268): the same file's bar corner cut out by
+recipe `cocktail-bar` (the counter, four stools, the back-bar shelving, the wine cabinet), in
+its own darker light. The shelves are as the pack made them: empty, no bottles.
+
+The source has no walls and no floor, so each world adds partition walls as props behind the
+scene (computed from the scene's `at`/`turn`, so they sit on its own grid) and a ground disk.
+A first set of bar walls put one between the camera and the bar; the pictures caught it.
+Spots are computed by `tools/vr/clear-spot.mjs`; there are no measured spots (no floor mesh),
+so she does not move within these places. Nothing is served, nobody else is there, and she
+does not sit.
+
+## The sports club: pool, hall and soccer ground (VW8)
+
+Three general places under the category "Sport", framed as an adult sports club. All from
+3dassets.dev CC0 packs.
+
+| Place         | Desktop                         | Phones                  | VR      |
+| ------------- | ------------------------------- | ----------------------- | ------- |
+| Swimming pool | 67 112 (`pool`)                 | 28 484 (`pool-light`)   | light   |
+| Sports hall   | 34 524 (`sports-hall`)          | 25 248 (`…-hall-light`) | full    |
+| Soccer ground | 14 020, whole                   | the same                | the same |
+
+The pool and the hall drop their changing rooms and foyers; the pool also drops its spectator
+gallery, and its phone and VR version has no tank under the water. Her spots are computed by
+`tools/vr/clear-spot.mjs`, which learned three things here: a floor thinner than a step is
+floor, not an obstacle (the pitch and the pool deck blocked every point); `--keepout` for a
+footprint nothing marks as solid (the first "clear" point was in the water); and with
+`--margin` at or below zero the camera must be inside the building too (the pool's first spot
+looked at the hall from outside).
+
+Nothing is played or swum: there is no ball, no water motion and no sport animation. The
+pool's wall has a gap behind her spot that shows the backdrop. A Japanese school campus was
+asked for alongside these and was not built: this app's stories lead to undressing, and a
+school setting for that is not something to make.
+
+## Fantasy places: guild tavern, dungeon, jungle ruins (VW9)
+
+Three general places under "Fantasy", from 3dassets.dev CC0 starter scenes.
+
+| Place        | Desktop                 | Phones                     | VR       |
+| ------------ | ----------------------- | -------------------------- | -------- |
+| Guild tavern | 58 604, whole           | 29 344 (`tavern-light`)    | light    |
+| Dungeon      | 10 268, whole           | the same                   | the same |
+| Jungle ruins | 70 924 (`ruins`)        | 28 032 (`ruins-light`)     | light    |
+
+The tavern is one timbered hall (fireplace, bar, quest board, a gallery upstairs). The dungeon
+is three connected stone rooms in one file; she stands in the first, the store room. The ruins
+are one walled compound cut out of a 680 598-triangle lost city. Spots are computed by
+`tools/vr/clear-spot.mjs`. The dungeon's first spot left the app's camera inside a wall and the
+preview renderer refused the frame as one colour: its spot now needs 5 m of clear view
+(`--view 5`), and a floor up to 0.3 m thick counts as floor.
+
+She does not walk between the dungeon's rooms (no measured spots), there are no doors to open,
+nothing to fight and nobody else there: these are places to be in, not a game yet. Walking
+from town to tavern to dungeon needs Living Worlds travel between them, which is not wired.

@@ -21,14 +21,14 @@
             "humanReviews": 0
         },
         "3d": {
-            "worlds": 38,
+            "worlds": 56,
             "offered": {
-                "desktop": 30,
-                "mobile": 28,
-                "vr": 29
+                "desktop": 41,
+                "mobile": 39,
+                "vr": 40
             },
             "fails": 0,
-            "warns": 19,
+            "warns": 33,
             "animations": {
                 "avatars": 17,
                 "clips": 163,
@@ -127,8 +127,8 @@
             "id": "3d-spots",
             "area": "3d",
             "priority": 2,
-            "title": "Measure spots in 8 places",
-            "why": "She cannot move within lagoon-beach, office, airship-dock, neon-street, roadside-motel, irish-pub, neon-discoteca, creative-academy (LW2).",
+            "title": "Measure spots in 17 places",
+            "why": "She cannot move within lagoon-beach, office, airship-dock, neon-street, roadside-motel, irish-pub, neon-discoteca, creative-academy, hotel-lobby, restaurant, cocktail-bar, swimming-pool, sports-hall, soccer-ground, guild-tavern, dungeon, jungle-ruins (LW2).",
             "command": "add targets to tools/vr/spot-targets.json, then node tools/vr/measure-spots.mjs <scene>",
             "files": [
                 "tools/vr/spot-targets.json",
@@ -165,8 +165,8 @@
             "id": "3d-vr-comfort",
             "area": "3d",
             "priority": 3,
-            "title": "Check VR comfort near her spot in 11 worlds",
-            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy.",
+            "title": "Check VR comfort near her spot in 16 worlds",
+            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy, cinema-light, sports-hall, soccer-ground, dungeon, jungle-ruins-light.",
             "command": "node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset",
             "files": [
                 "assets/vr-worlds/worlds.json",

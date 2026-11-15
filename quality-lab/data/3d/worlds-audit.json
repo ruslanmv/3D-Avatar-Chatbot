@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 38,
-        "places": 14,
-        "standIns": 8,
-        "withSpots": 5,
+        "worlds": 56,
+        "places": 25,
+        "standIns": 15,
+        "withSpots": 7,
         "fails": 0,
-        "warns": 19,
+        "warns": 33,
         "offered": {
-            "desktop": 30,
-            "mobile": 28,
-            "vr": 29
+            "desktop": 41,
+            "mobile": 39,
+            "vr": 40
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -1961,6 +1961,906 @@
                 }
             },
             "issues": []
+        },
+        {
+            "id": "cinema",
+            "title": "Cinema",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "cinema-light",
+            "triangles": 98472,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cinema-auditorium.glb",
+                "exists": true,
+                "bytes": 1083792
+            },
+            "preview": {
+                "src": "previews/cinema.webp",
+                "exists": true,
+                "bytes": 19986
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/cinema-auditorium.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "seats",
+                    "screen"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "cinema",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "cinema-light",
+                    "why": "loads its light stand-in cinema-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "cinema-light",
+                    "why": "loads its light stand-in cinema-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "cinema-light",
+            "title": "Cinema",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "cinema",
+            "standIn": null,
+            "triangles": 27168,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cinema-auditorium-light.glb",
+                "exists": true,
+                "bytes": 575432
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "018-cinema-screen-and-masking",
+                    "metres": 0
+                },
+                {
+                    "node": "113-acoustic-wall-panel-module",
+                    "metres": 0.92
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/cinema-auditorium-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "seats",
+                    "screen"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "cinema-light",
+                    "why": "stand-in for cinema"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "cinema-light",
+                    "why": "stand-in for cinema"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (018-cinema-screen-and-masking 0 m, 113-acoustic-wall-panel-module 0.92 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "hotel-lobby",
+            "title": "Hotel lobby",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "hotel-lobby-light",
+            "triangles": 52298,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/hotel-lobby.glb",
+                "exists": true,
+                "bytes": 1261344
+            },
+            "preview": {
+                "src": "previews/hotel-lobby.webp",
+                "exists": true,
+                "bytes": 13516
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "hotel-lobby",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "loads its light stand-in hotel-lobby-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "loads its light stand-in hotel-lobby-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "hotel-lobby-light",
+            "title": "Hotel lobby",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "hotel-lobby",
+            "standIn": null,
+            "triangles": 29752,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/hotel-lobby-light.glb",
+                "exists": true,
+                "bytes": 1132596
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "stand-in for hotel-lobby"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-lobby-light",
+                    "why": "stand-in for hotel-lobby"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "hotel-bathroom",
+            "title": "Hotel bathroom",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 11728,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/hotel-bathroom.webp",
+                "exists": true,
+                "bytes": 13656
+            },
+            "props": 19,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-bathroom",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "restaurant",
+            "title": "Restaurant",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "restaurant-light",
+            "triangles": 105232,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/restaurant-dining-room.glb",
+                "exists": true,
+                "bytes": 1857716
+            },
+            "preview": {
+                "src": "previews/restaurant.webp",
+                "exists": true,
+                "bytes": 11270
+            },
+            "props": 27,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "restaurant",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "loads its light stand-in restaurant-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "loads its light stand-in restaurant-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "restaurant-light",
+            "title": "Restaurant",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "restaurant",
+            "standIn": null,
+            "triangles": 28636,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/restaurant-dining-room-light.glb",
+                "exists": true,
+                "bytes": 239072
+            },
+            "preview": null,
+            "props": 11,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "stand-in for restaurant"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "restaurant-light",
+                    "why": "stand-in for restaurant"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "cocktail-bar",
+            "title": "Cocktail bar",
+            "kind": "place",
+            "rating": "general",
+            "category": "Nightlife",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 19268,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cocktail-bar.glb",
+                "exists": true,
+                "bytes": 508676
+            },
+            "preview": {
+                "src": "previews/cocktail-bar.webp",
+                "exists": true,
+                "bytes": 10700
+            },
+            "props": 11,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "cocktail-bar",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "swimming-pool",
+            "title": "Swimming pool",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "swimming-pool-light",
+            "triangles": 67112,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/swimming-pool.glb",
+                "exists": true,
+                "bytes": 1203280
+            },
+            "preview": {
+                "src": "previews/swimming-pool.webp",
+                "exists": true,
+                "bytes": 17846
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "swimming-pool",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "loads its light stand-in swimming-pool-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "loads its light stand-in swimming-pool-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "swimming-pool-light",
+            "title": "Swimming pool",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "swimming-pool",
+            "standIn": null,
+            "triangles": 28484,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/swimming-pool-light.glb",
+                "exists": true,
+                "bytes": 484516
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "stand-in for swimming-pool"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "swimming-pool-light",
+                    "why": "stand-in for swimming-pool"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "sports-hall",
+            "title": "Sports hall",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "sports-hall-light",
+            "triangles": 34524,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/sports-hall-court.glb",
+                "exists": true,
+                "bytes": 515120
+            },
+            "preview": {
+                "src": "previews/sports-hall.webp",
+                "exists": true,
+                "bytes": 17210
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "097-gym-bench",
+                    "metres": 0.8
+                },
+                {
+                    "node": "077-retractable-basketball-unit",
+                    "metres": 0.83
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "sports-hall",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "sports-hall-light",
+                    "why": "loads its light stand-in sports-hall-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "sports-hall",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (097-gym-bench 0.8 m, 077-retractable-basketball-unit 0.83 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "sports-hall-light",
+            "title": "Sports hall",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "sports-hall",
+            "standIn": null,
+            "triangles": 25248,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/sports-hall-court-light.glb",
+                "exists": true,
+                "bytes": 357540
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "sports-hall-light",
+                    "why": "stand-in for sports-hall"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "soccer-ground",
+            "title": "Soccer ground",
+            "kind": "place",
+            "rating": "general",
+            "category": "Sport",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 14020,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/soccer-ground.glb",
+                "exists": true,
+                "bytes": 274456
+            },
+            "preview": {
+                "src": "previews/soccer-ground.webp",
+                "exists": true,
+                "bytes": 13786
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "001-full-size-goal",
+                    "metres": 0
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "soccer-ground",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (001-full-size-goal 0 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "guild-tavern",
+            "title": "Guild tavern",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "guild-tavern-light",
+            "triangles": 58604,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/guild-tavern.glb",
+                "exists": true,
+                "bytes": 571132
+            },
+            "preview": {
+                "src": "previews/guild-tavern.webp",
+                "exists": true,
+                "bytes": 14868
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "guild-tavern",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "loads its light stand-in guild-tavern-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "loads its light stand-in guild-tavern-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "guild-tavern-light",
+            "title": "Guild tavern",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "guild-tavern",
+            "standIn": null,
+            "triangles": 29344,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/guild-tavern-light.glb",
+                "exists": true,
+                "bytes": 890996
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "stand-in for guild-tavern"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "stand-in for guild-tavern"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "dungeon",
+            "title": "Dungeon",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 10268,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/dungeon-rooms.glb",
+                "exists": true,
+                "bytes": 192580
+            },
+            "preview": {
+                "src": "previews/dungeon.webp",
+                "exists": true,
+                "bytes": 12806
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "004-wall-plain",
+                    "metres": 0
+                },
+                {
+                    "node": "052-torch-stand",
+                    "metres": 0.97
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (004-wall-plain 0 m, 052-torch-stand 0.97 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "jungle-ruins",
+            "title": "Jungle ruins",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "jungle-ruins-light",
+            "triangles": 70924,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/jungle-ruins.glb",
+                "exists": true,
+                "bytes": 2241100
+            },
+            "preview": {
+                "src": "previews/jungle-ruins.webp",
+                "exists": true,
+                "bytes": 15310
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "jungle-ruins",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "loads its light stand-in jungle-ruins-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "loads its light stand-in jungle-ruins-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "jungle-ruins-light",
+            "title": "Jungle ruins",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "jungle-ruins",
+            "standIn": null,
+            "triangles": 28032,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/jungle-ruins-light.glb",
+                "exists": true,
+                "bytes": 1411496
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "184-corbel-arch-doorway",
+                    "metres": 0.5
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "stand-in for jungle-ruins"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "stand-in for jungle-ruins"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (184-corbel-arch-doorway 0.5 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         }
     ]
 }

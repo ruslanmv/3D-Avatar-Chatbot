@@ -55,7 +55,26 @@
             ]
         },
         "fails": 0,
-        "unzoned": []
+        "unzoned": [
+            "cinema",
+            "cinema-light",
+            "hotel-lobby",
+            "hotel-lobby-light",
+            "hotel-bathroom",
+            "restaurant",
+            "restaurant-light",
+            "cocktail-bar",
+            "swimming-pool",
+            "swimming-pool-light",
+            "sports-hall",
+            "sports-hall-light",
+            "soccer-ground",
+            "guild-tavern",
+            "guild-tavern-light",
+            "dungeon",
+            "jungle-ruins",
+            "jungle-ruins-light"
+        ]
     },
     "zones": [
         {

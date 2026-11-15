@@ -48,6 +48,97 @@
       "out": "assets/vr-worlds/scenes/airship-dock-light.glb",
       "keep": ["31-32", "37-40", "45-47", "65-73", "110", "115", "123", "132-134"],
       "budget": 30000
+    },
+    "cinema": {
+      "src": "assets/vr-worlds/sources/cinema-multiplex.glb",
+      "out": "assets/vr-worlds/scenes/cinema-auditorium.glb",
+      "keep": ["3-18", "20-23", "65-89", "110-124", "129-136"],
+      "budget": 100000
+    },
+    "cinema-light": {
+      "src": "assets/vr-worlds/sources/cinema-multiplex.glb",
+      "out": "assets/vr-worlds/scenes/cinema-auditorium-light.glb",
+      "keep": ["3-5", "18", "66-69", "71-74", "111-116", "129-130"],
+      "budget": 30000
+    },
+    "lobby-light": {
+      "src": "assets/vr-worlds/scenes/hotel-lobby.glb",
+      "out": "assets/vr-worlds/scenes/hotel-lobby-light.glb",
+      "keep": ["0-19", "21-26", "33-39", "44", "46"],
+      "budget": 30000
+    },
+    "restaurant-light": {
+      "src": "assets/vr-worlds/scenes/restaurant-dining-room.glb",
+      "out": "assets/vr-worlds/scenes/restaurant-dining-room-light.glb",
+      "keep": ["1-3", "17-46"],
+      "budget": 30000
+    },
+    "cocktail-bar": {
+      "src": "assets/vr-worlds/scenes/restaurant-dining-room.glb",
+      "out": "assets/vr-worlds/scenes/cocktail-bar.glb",
+      "keep": ["49-59"],
+      "budget": 30000
+    },
+    "pool": {
+      "src": "assets/vr-worlds/sources/swimming-baths.glb",
+      "out": "assets/vr-worlds/scenes/swimming-pool.glb",
+      "keep": ["0-56", "72-120", "144-155", "159-161", "165-170"],
+      "budget": 90000
+    },
+    "pool-light": {
+      "src": "assets/vr-worlds/sources/swimming-baths.glb",
+      "out": "assets/vr-worlds/scenes/swimming-pool-light.glb",
+      "keep": [
+        "1",
+        "3",
+        "5",
+        "7",
+        "9",
+        "11",
+        "13",
+        "15",
+        "17",
+        "19",
+        "21",
+        "23",
+        "25",
+        "27",
+        "29-56",
+        "88-120",
+        "148-154",
+        "159"
+      ],
+      "budget": 30000
+    },
+    "sports-hall": {
+      "src": "assets/vr-worlds/sources/sports-hall.glb",
+      "out": "assets/vr-worlds/scenes/sports-hall-court.glb",
+      "keep": ["0-27", "44-50", "55-58", "63-78", "84-87", "95-97", "101"],
+      "budget": 40000
+    },
+    "sports-hall-light": {
+      "src": "assets/vr-worlds/sources/sports-hall.glb",
+      "out": "assets/vr-worlds/scenes/sports-hall-court-light.glb",
+      "keep": ["0-27", "44-50", "55-58", "63-66", "72-78", "87", "95-97", "101"],
+      "budget": 30000
+    },
+    "tavern-light": {
+      "src": "assets/vr-worlds/scenes/guild-tavern.glb",
+      "out": "assets/vr-worlds/scenes/guild-tavern-light.glb",
+      "keep": ["16-32", "34"],
+      "budget": 30000
+    },
+    "ruins": {
+      "src": "assets/vr-worlds/sources/lost-city.glb",
+      "out": "assets/vr-worlds/scenes/jungle-ruins.glb",
+      "keep": ["134-135", "138-139", "170-193", "205"],
+      "budget": 75000
+    },
+    "ruins-light": {
+      "src": "assets/vr-worlds/sources/lost-city.glb",
+      "out": "assets/vr-worlds/scenes/jungle-ruins-light.glb",
+      "keep": ["177-187", "190-191"],
+      "budget": 30000
     }
   }
 }
