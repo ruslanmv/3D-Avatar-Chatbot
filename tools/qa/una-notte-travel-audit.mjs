@@ -59,6 +59,10 @@ try {
                   viewport: { width: size === 'phone' ? 390 : Number(size.slice(1)) || 390, height: 844 },
                   isMobile: true,
                   hasTouch: true,
+                  // A phone's own user agent: with desktop Chrome's, DeviceDetector does not call it
+                  // a phone and the page draws its desktop columns into 390 px (M5).
+                  userAgent: playwright.devices['Pixel 7'].userAgent,
+                  deviceScaleFactor: 1,
               }
     );
     await ctx.addInitScript((code) => {
