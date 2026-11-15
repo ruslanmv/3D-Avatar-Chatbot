@@ -491,3 +491,110 @@ describe('UN12. an outline dealt before the opening room is shown never leads to
         if (next) expect(next[1]).not.toBe(dest);
     });
 });
+
+describe('UN13. one evening is one history entry, and a late opening never replaces it', () => {
+    const session = () => ({ _stopped: false, _care: false, adult: { level: 1, active: true } });
+    const shown = (id) =>
+        window.dispatchEvent(new window.CustomEvent('nexus-world-shown', { detail: { id, base: id } }));
+    const goTo = () =>
+        (Actions.promptLines()
+            .join('\n')
+            .match(/<go place="([a-z0-9-]+)"\/>/) || [])[1];
+    // No room known when the outline is dealt: the setup screen's world is still loading.
+    const unsure = (seed) =>
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: null, rng: seeded(seed || 5), canTravel: true } },
+        });
+    afterEach(() => {
+        Actions.end();
+        delete window.NEXUS_VR_WORLDS;
+    });
+
+    test('an outline dealt without a room is provisional and not yet in the history', () => {
+        unsure();
+        expect(Actions.snapshot().story).toMatchObject({ provisional: true, committed: false });
+        expect(Weaver.history(window)).toHaveLength(0);
+    });
+
+    test('a UN12 re-deal keeps one fingerprint for the evening, not two', () => {
+        unsure();
+        const first = Actions.snapshot().story.storyId;
+        shown(goTo()); // the room it was going to lead to turns out to be the opening
+        expect(Actions.snapshot().story.storyId).not.toBe(first);
+        expect(Actions.snapshot().story).toMatchObject({ provisional: false, committed: true });
+        expect(Weaver.history(window)).toHaveLength(1);
+        Actions.end();
+        expect(Weaver.history(window)).toHaveLength(1);
+    });
+
+    test('a provisional outline is dealt again from the opening the renderer reports', () => {
+        unsure();
+        const before = Actions.snapshot().story;
+        const opening = PLACES.find((p) => p.id !== before.shown && p.category === 'Nightlife' && p.id !== goTo());
+        shown(opening.id);
+        expect(Actions.snapshot().story).toMatchObject({ shown: opening.id, committed: true });
+        expect(Weaver.history(window)).toHaveLength(1);
+        expect(goTo()).not.toBe(opening.id);
+    });
+
+    test('the same announcement twice changes nothing the second time', () => {
+        unsure();
+        shown('neon-discoteca');
+        const after = Actions.snapshot().story;
+        shown('neon-discoteca');
+        expect(Actions.snapshot().story.storyId).toBe(after.storyId);
+        expect(Weaver.history(window)).toHaveLength(1);
+    });
+
+    test('after the person has spoken, a late opening says where she is and keeps their evening', async () => {
+        unsure();
+        await Actions.onUserTurn('Ciao, che bel posto');
+        const evening = Actions.snapshot().story;
+        expect(evening.committed).toBe(true); // their first turn made it theirs
+        shown(goTo()); // late: even the destination, which UN12 alone would have re-dealt
+        expect(Actions.snapshot().story.storyId).toBe(evening.storyId);
+        expect(Weaver.history(window)).toHaveLength(1);
+    });
+
+    test('an evening that ends before its opening is confirmed is still kept once; later events do nothing', () => {
+        unsure();
+        Actions.end();
+        expect(Weaver.history(window)).toHaveLength(1);
+        shown('neon-discoteca');
+        expect(Actions.snapshot().story).toBeUndefined();
+        expect(Weaver.history(window)).toHaveLength(1);
+    });
+
+    test('a catalogue that resolves after its session ended cannot deal into the next one', async () => {
+        let release;
+        window.NEXUS_VR_WORLDS = {
+            loadCatalogue: () => new Promise((resolve) => (release = () => resolve({ worlds: [] }))),
+            placesFor: () => PLACES,
+            tierFor: () => 'desktop',
+        };
+        Actions.begin(session(), { win: window, deps: { story: {} } }); // dealt from the slow catalogue
+        Actions.end();
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(9), canTravel: true } },
+        });
+        const second = Actions.snapshot().story.storyId;
+        release();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(Actions.snapshot().story.storyId).toBe(second);
+        expect(Weaver.history(window)).toHaveLength(1);
+    });
+
+    test('a known opening is committed at once, and forgetting is not undone by the end', async () => {
+        Actions.begin(session(), {
+            win: window,
+            deps: { story: { places: PLACES, current: 'neon-discoteca', rng: seeded(3), canTravel: true } },
+        });
+        expect(Actions.snapshot().story).toMatchObject({ provisional: false, committed: true });
+        await Actions.onUserTurn('Dimentica le nostre serate');
+        expect(Weaver.history(window)).toEqual([]);
+        Actions.end();
+        expect(Weaver.history(window)).toEqual([]);
+    });
+});

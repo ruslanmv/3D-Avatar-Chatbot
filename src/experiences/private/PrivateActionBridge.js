@@ -192,6 +192,8 @@
             /* the pose system restores itself on its own reset */
         }
         faceFront(s);
+        // UN13. An evening that ended before its opening was confirmed is still one evening.
+        commitStory(s);
         if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
@@ -235,62 +237,100 @@
     }
 
     /**
-     * Deal this session's outline (once), and follow the renderer. Nothing here moves anything:
-     * the outline is guidance for her prompt, and `nexus-world-shown` — the renderer's own
+     * Deal this session's outline, and follow the renderer. Nothing here moves anything: the
+     * outline is guidance for her prompt, and `nexus-world-shown` — the renderer's own
      * announcement — is the only thing that says where she is.
+     *
+     * UN13. An outline is *provisional* until the opening room is authoritative: the renderer's
+     * `activeId` when it is dealt, or its first `nexus-world-shown`. While provisional and before
+     * the person has done anything, the renderer's opening may re-deal it from the room she is
+     * really in (UN12 did this only when the room was the destination). It is remembered in the
+     * between-evenings history exactly once — `commitStory` — at the first of: the opening is
+     * confirmed, the person's first turn or action, a trip, or the end of the session. Before,
+     * every deal called `remember`, so a UN12 re-deal stored two fingerprints for one evening.
+     * After the person has interacted, a late opening announcement only says where she is: it
+     * never replaces the evening they are already in. Every deal carries a generation, so a
+     * catalogue that resolves late, or after the session ended, cannot overwrite a newer one.
      */
     function startStory(s, injected) {
         const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
         const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
         if (!Weaver || !Director) return;
-        const deal = (places, shownNow) => {
-            if (state !== s || (s.story && !shownNow)) return;
-            const current = shownNow || (injected && injected.current) || shownWorld(s.win);
+        s.storyGen = 0;
+        s.storyCommitted = false;
+        s.storyWeaver = Weaver;
+        const deal = (places, shownNow, gen) => {
+            if (state !== s || s.session._stopped) return;
+            if (gen !== undefined && gen !== s.storyGen) return; // a newer deal already happened
+            if (s.story && !shownNow) return;
+            s.storyGen += 1;
+            const known = (injected && injected.current) || shownWorld(s.win);
+            const current = shownNow || known;
             const outline = Weaver.weave({
                 places,
                 current,
                 history: Weaver.history(s.win),
                 rng: injected && injected.rng,
             });
-            Weaver.remember(outline.fingerprint, s.win);
             s.places = places;
             s.canTravel =
                 injected && injected.canTravel !== undefined
                     ? Boolean(injected.canTravel)
                     : places.length > 1 && Boolean(s.win && s.win.NEXUS_VIEWER && s.win.CustomEvent);
             s.story = Director.create(outline, { places, current, weaver: Weaver });
+            s.storyProvisional = !current;
+            if (current) commitStory(s);
             emit();
         };
-        if (injected && Array.isArray(injected.places)) deal(injected.places);
+        const first = s.storyGen;
+        if (injected && Array.isArray(injected.places)) deal(injected.places, undefined, first);
         else
             storyPlaces(s.win)
-                .then(deal)
-                .catch(() => deal([]));
+                .then((places) => deal(places, undefined, first))
+                .catch(() => deal([], undefined, first));
         if (s.win && typeof s.win.addEventListener === 'function') {
             const onShown = (event) => {
-                if (state !== s || !s.story) return;
+                if (state !== s || !s.story || s.session._stopped) return;
                 const d = (event && event.detail) || {};
                 const id = d.base || d.id || null;
                 if (s.travel && (id === s.travel.world || d.id === s.travel.world)) arrive(s, id);
-                else if (
-                    // UN12. The outline can be dealt before the renderer has shown the opening room
-                    // (the setup screen's world is still loading), and then name that very room as
-                    // where the evening leads — found at 430 px: "elsewhere" was the cabaret she
-                    // stood in. Before any trip, the room the renderer reports is the opening, so
-                    // the evening is dealt again from where she really is.
-                    id &&
-                    !s.travel &&
-                    s.story.phase === 'opening' &&
-                    s.story.outline &&
-                    s.story.outline.destination === id
-                )
-                    deal(s.places || [], id);
-                else s.story.shown(id);
+                else if (id && !s.travel && !s.interacted && s.story.phase === 'opening' && s.story.outline) {
+                    const outline = s.story.outline;
+                    // UN12/UN13. Before anything has happened, the room the renderer reports is the
+                    // opening: an outline guessed without it, or one that leads to this very room,
+                    // is dealt again from here. Otherwise the outline stands and is now confirmed.
+                    if (outline.destination === id || (s.storyProvisional && outline.openingVenue !== id))
+                        deal(s.places || [], id);
+                    else {
+                        s.story.shown(id);
+                        s.storyProvisional = false;
+                        commitStory(s);
+                    }
+                } else s.story.shown(id);
                 emit();
             };
             s.win.addEventListener('nexus-world-shown', onShown);
             s.unwatch.push(() => s.win.removeEventListener('nexus-world-shown', onShown));
         }
+    }
+
+    /** UN13. Keep tonight's outline in the between-evenings history — once per Private session. */
+    function commitStory(s) {
+        if (!s || s.storyCommitted || !s.story || !s.story.outline || !s.storyWeaver) return;
+        s.storyCommitted = true;
+        s.storyProvisional = false;
+        try {
+            s.storyWeaver.remember(s.story.outline.fingerprint, s.win);
+        } catch (_) {
+            /* a history that cannot be written only makes the next evening less different */
+        }
+    }
+
+    /** UN13. The person did something: the evening is theirs now, and late openings cannot replace it. */
+    function touched(s) {
+        if (!s || s.interacted) return;
+        s.interacted = true;
+        commitStory(s);
     }
 
     // ------------------------------------------------------------------ UN4. going somewhere else
@@ -563,6 +603,8 @@
             at: Date.now(),
         };
         if (!s) return (settle(action, 'blocked', 'not-in-private'), action);
+        // UN13. Their words or their tap; her own tags follow a turn of theirs and do not count.
+        if (source !== 'model') touched(s);
         const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
         if (!Policy) return (settle(action, 'blocked', 'no-policy'), action);
 
@@ -957,6 +999,7 @@
     async function approveOffer(source) {
         const s = state;
         if (!s || !s.offer) return null;
+        touched(s);
         const offer = s.offer;
         s.offer = null;
         if (offer.kind === 'travel') {
@@ -1109,6 +1152,7 @@
         if (!s || s.session._stopped) return null;
         s.turnId += 1;
         s.turnText = String(text == null ? '' : text);
+        touched(s);
         const intent = turn && turn.intent;
         if (intent === 'end' || intent === 'pace-down') return null;
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
@@ -1259,7 +1303,14 @@
                 : null,
             offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
-            story: s.story ? s.story.snapshot() : null,
+            // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.
+            story: s.story
+                ? {
+                      ...s.story.snapshot(),
+                      provisional: Boolean(s.storyProvisional),
+                      committed: Boolean(s.storyCommitted),
+                  }
+                : null,
         };
     }
 
