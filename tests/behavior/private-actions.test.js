@@ -1968,3 +1968,25 @@ describe("UN14. what a look covers comes from Forge's templates, not its name", 
         for (const name of real) expect(Coverage.describe({ name })).not.toBeNull();
     });
 });
+
+describe('UN18. the reported session: "Togliete vestiti" moved nothing and she said "li tolgo"', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    const Capability = require('../../src/features/together/TogetherCapability.js');
+
+    test.each(['Togliete vestiti', 'Toglietevi i vestiti', 'Togli i vestiti', 'Spogliatevi', 'Svestitevi'])(
+        '%s is a request to undress',
+        (said) => expect(Intent.parse(said, {}).name).toBe('wardrobe.undress')
+    );
+
+    test('a sentence about something else is not undressing', () => {
+        expect(Intent.parse('Togli la musica', {}).name).toBe('music.stop');
+    });
+
+    test('"li tolgo" / "le tolgo tutte" with nothing changed on her is taken out of her reply', () => {
+        const said = (text, state) => Capability.outfitTruthful(text, { state }, 'it-IT');
+        for (const claim of ['Va bene, li tolgo.', 'Le tolgo tutte. Come vuoi.', 'Tolgo tutto per te.'])
+            expect(said(claim, 'none')).not.toMatch(/tolgo/i);
+        // Once the wardrobe confirmed the change, the same words stand.
+        expect(said('Va bene, li tolgo.', 'changed')).toMatch(/li tolgo/);
+    });
+});

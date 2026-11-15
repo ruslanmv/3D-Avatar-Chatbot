@@ -44,29 +44,34 @@ fs.mkdirSync(out, { recursive: true, mode: 0o700 });
 const IT = lang.startsWith('it');
 // The journey: chat, a change of clothes, the person bringing the evening closer, undressing,
 // the request from the reported session, dressing again, the end.
-const TURNS = IT
-    ? [
-          ['chat', 'Ciao. Che posto è questo? Cosa ti porta qui stasera?'],
-          ['chat', 'Mi piace come mi guardi. Raccontami di te.'],
-          ['wear', 'Mettiti qualcosa di elegante per me'],
-          ['closer', null],
-          ['undress', 'Fammi vedere di più'],
-          ['undress', 'Spogliati per me'],
-          ['undress', 'Togliti le mutandine'],
-          ['redress', 'Rivestiti'],
-          ['chat', 'È stata una bella serata.'],
-      ]
-    : [
-          ['chat', 'Hi. What is this place? What brings you here tonight?'],
-          ['chat', 'I like the way you look at me. Tell me about yourself.'],
-          ['wear', 'Put on something elegant for me'],
-          ['closer', null],
-          ['undress', 'Show me more'],
-          ['undress', 'Undress for me'],
-          ['undress', 'Take your panties off'],
-          ['redress', 'Get dressed again'],
-          ['chat', 'It was a lovely evening.'],
-      ];
+// --turns <file.json>: a reported conversation replayed as is, [[kind, text], …]; kind is chat,
+// wear, undress, redress, travel, or closer (text null: the person taps Più vicino ×3).
+const turnsFile = arg('--turns');
+const TURNS = turnsFile
+    ? JSON.parse(fs.readFileSync(turnsFile, 'utf8'))
+    : IT
+      ? [
+            ['chat', 'Ciao. Che posto è questo? Cosa ti porta qui stasera?'],
+            ['chat', 'Mi piace come mi guardi. Raccontami di te.'],
+            ['wear', 'Mettiti qualcosa di elegante per me'],
+            ['closer', null],
+            ['undress', 'Fammi vedere di più'],
+            ['undress', 'Spogliati per me'],
+            ['undress', 'Togliti le mutandine'],
+            ['redress', 'Rivestiti'],
+            ['chat', 'È stata una bella serata.'],
+        ]
+      : [
+            ['chat', 'Hi. What is this place? What brings you here tonight?'],
+            ['chat', 'I like the way you look at me. Tell me about yourself.'],
+            ['wear', 'Put on something elegant for me'],
+            ['closer', null],
+            ['undress', 'Show me more'],
+            ['undress', 'Undress for me'],
+            ['undress', 'Take your panties off'],
+            ['redress', 'Get dressed again'],
+            ['chat', 'It was a lovely evening.'],
+        ];
 // Her words claiming a change of clothes. Checked against what the wardrobe did that turn.
 const CLAIM =
     /\b(?:mi tolgo|me l[ae] tolgo|le tolgo|lo tolgo|tolgo|mi spoglio|mi sono spogliat|ti mostro di più|mi metto|indosso ora|ecco(?:mi)? (?:con|in)|I(?:'m| am) taking (?:off|it off)|I take (?:it|them) off|I(?:'ve| have) taken|slipping (?:off|out of|into)|I(?:'m| am) (?:now )?wearing|I put on)\b/i;

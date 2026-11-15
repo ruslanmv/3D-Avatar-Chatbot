@@ -1099,6 +1099,9 @@
             '\\bmi (?:sono )?(?:tolt[ao]|cambiat[ao]|spogliat[ao]|svestit[ao]|mess[ao])\\b',
             '\\bmi (?:tolgo|spoglio|svesto)\\b',
             '\\btolgo (?:il|la|i|le|lo)\\b',
+            // UN18. "Va bene, li tolgo." / "Le tolgo tutte." with nothing changed on her.
+            '\\b(?:te |ve )?(?:li|le|lo|la|gli) tolgo\\b',
+            '\\btolgo tutto\\b',
             '\\bsono (?:in|rimasta in) (?:mutande|intimo|lingerie|reggiseno)',
             // en
             "\\bi(?:'m| am) (?:now )?(?:wearing|in (?:just |only |my )?(?:underwear|lingerie|bra|panties))",

@@ -316,7 +316,10 @@
      */
     const UNDRESS = new RegExp(
         `^(?:${word(
-            'togliti|toglierti|levati|spogliati|svestiti|take off|take (?:\\S+ ){0,3}?\\S+ off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
+            // UN18. The reported session: "Togliete vestiti" (plural imperative, no article) moved
+            // nothing and she said "li tolgo". Clothes named, so "togli la musica" stays music.
+            'togliete(?:vi)? (?:(?:i |tutti i )?(?:vestiti|abiti))|toglietevi|togli (?:i |tutti i )?(?:vestiti|abiti)|spogliatevi|svestitevi|levatevi (?:i )?(?:vestiti|abiti)|' +
+                'togliti|toglierti|levati|spogliati|svestiti|take off|take (?:\\S+ ){0,3}?\\S+ off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
         )})`,
         'iu'
     );
