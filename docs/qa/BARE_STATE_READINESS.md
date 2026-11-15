@@ -4,6 +4,11 @@
 `feat/bare-base-body` @ `4a77eed`). Nothing is merged to `master` / `main`, no PR is open,
 and the Forge Space still runs Forge `49788ec` (before the bare-body merge).
 
+> **Corrected by `BARE_ELIGIBILITY_MATRIX.md`:** all eight characters are declared adult by the
+> operator and their own licences allow sexual expression; AvatarSample A and B build since the
+> AF5 fix; the open items are the design review (empty), AvatarSample O's missing mid-chest, a
+> Model Girl skin-restore question, and the absence of any prebuilt bare look.
+
 ## Verdict
 
 | Area | Status |
@@ -41,9 +46,9 @@ in Forge); anatomy from `docs/qa/ANATOMY_SOURCE_INVENTORY.md`.
 
 | Character | Garment removal | Authored body complete | Genital / nipple anatomy in the source | Bare look in the dataset | In-app bare |
 |---|---|---|---|---|---|
-| AvatarSample A | refused | no (`body-incomplete-for-bare`) | none | no | honest refusal |
-| AvatarSample B | refused | no | none | no | honest refusal |
-| AvatarSample O | refused | no (deleted under clothes) | none | no | honest refusal |
+| AvatarSample A | builds since AF5 (was refused) | yes | none | no | honest refusal |
+| AvatarSample B | builds since AF5 (was refused) | yes | none | no | honest refusal |
+| AvatarSample O | refused | no: mid-chest missing | none | no | honest refusal |
 | AvatarSample C | builds | yes | none | no | honest refusal |
 | VRoid Female / Male | builds (clothing is painted; skin restored) | yes | none | no | honest refusal |
 | Model Girl | builds | yes | none | no | honest refusal |
