@@ -55,6 +55,7 @@ const STAND_INS = [
     'NEXUS_BD_SAY',
     'NEXUS_PRIVATE_TIMING_SCALE',
     'AppLanguage',
+    'vrPoseSystem',
 ];
 
 /** The page a Private session runs on: a search provider, a player, a wardrobe. */
@@ -296,8 +297,14 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the twelve names exist, and parameters are cleaned, bounded and typed', () => {
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(12);
+    test('only the sixteen names exist, and parameters are cleaned, bounded and typed', () => {
+        // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
+        // wardrobe.redress; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(16);
+        expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
+        expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
+        expect(Policy.ACTIONS['wardrobe.undress']).toBeTruthy();
+        expect(Policy.ACTIONS['world.travel']).toBeTruthy();
         expect(Policy.validate('system.shell', { cmd: 'x' })).toEqual({ ok: false, why: 'unknown-action' });
         const cleaned = Policy.validate('music.play', {
             query: '<b>Daft</b> Punk https://example.invalid/x `rm`',
@@ -1086,11 +1093,9 @@ describe('PX14–PX15. several outfits in one evening, in her words and on her b
         ['Poi indossaare solo mutande e reggiseno', { style: 'lingerie' }],
         ['Mettiti le calze a rete e i tacchi', { garment: 'fishnets' }],
         ['Indossa la minigonna', { garment: 'miniskirt' }],
-        ['Togliti il vestito', { style: 'lingerie' }],
         // Spanish
         ['Ponte el sujetador negro', { garment: 'bra', style: 'lingerie', colour: 'black' }],
         ['Ponte un vestido de noche rojo', { garment: 'evening gown', colour: 'red' }],
-        ['Quítate la falda', { style: 'lingerie' }],
         // English
         ['Put on the black lace bodysuit', { garment: 'bodysuit', style: 'lingerie' }],
         ['wear stockings and heels', { garment: 'stockings' }],
@@ -1098,6 +1103,13 @@ describe('PX14–PX15. several outfits in one evening, in her words and on her b
         const got = Intent.parse(text);
         expect(got && got.name).toBe('wardrobe.wear');
         expect(got.params).toMatchObject(params);
+    });
+
+    // UN1. Taking clothes off is its own step now (one layer, level 4 only), not "wear lingerie".
+    test.each(['Togliti il vestito', 'Quítate la falda'])('%s → wardrobe.undress', (text) => {
+        const got = Intent.parse(text);
+        expect(got && got.name).toBe('wardrobe.undress');
+        expect(got.params.step).toBe('next');
     });
 
     test.each([
@@ -1231,4 +1243,383 @@ describe('PB5 — a kind she has ready is never denied', () => {
         const all = Array.from({ length: 12 }, (_, i) => `Look ${i + 1}`);
         expect(Bridge.closetSummary(all, Intent)).toEqual({ names: all.slice(0, 10), kinds: [] });
     });
+});
+
+describe('UN1. undressing in a real Private session — at the top of the pace only', () => {
+    const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+    const UNDRESS_LOOKS = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        {
+            lookId: 't',
+            name: 'Black Micro Tailored Thong',
+            prompt: 'black Tailored Thong',
+            vrmUrl: 'thong.vrm',
+            private: true,
+        },
+    ];
+
+    /** A session at `level`, the way "Più vicino" would have left it. Nothing below moves it. */
+    async function at(level, options) {
+        const w = await begin({ adult: true, looks: UNDRESS_LOOKS, ...(options || {}) });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = level;
+        return w;
+    }
+    const worn = (w) => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+
+    test('below level 4 "spogliati" changes nothing, and she is told it is not yet', async () => {
+        const w = await at(2);
+        await say('spogliati');
+        await flush();
+        expect(worn(w)).toEqual([]);
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'blocked', why: 'pace' });
+        expect(Actions.promptLines().join('\n')).toMatch(/not yet/i);
+        expect(w.adult.level).toBe(2);
+    });
+
+    test('at level 4 each "spogliati" takes one layer off, from her own looks, and the level stays', async () => {
+        const w = await at(4);
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        expect(worn(w)).toEqual(['Black Cocktail Dress']);
+        await say('spogliati');
+        await flush();
+        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Garter Set']);
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed', name: 'Black Garter Set' });
+        expect(Actions.promptLines().join('\n')).toMatch(/taken a layer off/);
+        await say('togliti ancora qualcosa');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Micro Tailored Thong']);
+        await say('spogliati');
+        await flush();
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'failed', why: 'last-layer' });
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('at level 4 she is told she may undress, and below it that she may not yet', async () => {
+        const first = await at(4);
+        expect(Actions.promptLines().join('\n')).toMatch(/Undressing: the evening is at its closest/);
+        first.activity.stop('user'); // a whole session ends, not only the bridge
+        await flush();
+        await at(3);
+        expect(Actions.promptLines().join('\n')).toMatch(/Undressing is not open yet: the evening is at 3 of 4/);
+    });
+
+    test('her own wish under SUGGEST is an offer, and the yes re-checks the level', async () => {
+        const w = await at(4);
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('Sei bellissima');
+        WardrobeTool.consume('Vuoi che…? <wardrobe action="undress"/>');
+        await flush();
+        expect(Actions.snapshot().offer).toEqual({ kind: 'wear', name: 'Black Garter Set' });
+        w.adult.level = 1; // "cozy" came first
+        await Actions.approveOffer('control');
+        await flush();
+        expect(worn(w)).toEqual(['Black Cocktail Dress']);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'blocked', why: 'pace' });
+    });
+
+    test('her own wish under SHE CHOOSES runs at level 4, and never below', async () => {
+        localStorage.setItem('nexus_private_wardrobe_autonomy', 'autonomous');
+        const w = await at(3);
+        WardrobeTool.consume('Mmh. <wardrobe action="undress"/>');
+        await flush();
+        expect(worn(w)).toEqual([]);
+        w.adult.level = 4;
+        WardrobeTool.consume('Ora sì. <wardrobe action="undress"/>');
+        await flush();
+        expect(worn(w)).toEqual(['Black Garter Set']);
+    });
+});
+
+describe('UN5. positions and dressing again, in a real Private session', () => {
+    const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+    const LOOKS_UN5 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        {
+            lookId: 't',
+            name: 'Black Micro Tailored Thong',
+            prompt: 'black Tailored Thong',
+            vrmUrl: 'thong.vrm',
+            private: true,
+        },
+    ];
+    /** Pose Studio's system as the page has it; `spicy` decides whether the adult presets are listed. */
+    function poseSystem(spicy = true) {
+        const calls = [];
+        const presets = ['kneeling', 'lyingBack', 'lyingFront', 'lyingSide', 'standingBendForward'];
+        if (spicy) presets.push('allFoursArched', 'handsKnees');
+        let current = 'standing';
+        return {
+            calls,
+            lastSupport: null,
+            claimBones: () => calls.push('claim'),
+            releaseBones: () => calls.push('release') && true,
+            applyPreset: (name) => {
+                calls.push(`apply:${name}`);
+                if (presets.includes(name)) current = name;
+            },
+            getCurrentPreset: () => current,
+            getPresetList: () => presets.map((name) => ({ name })),
+        };
+    }
+    async function at(level, options) {
+        const pose = poseSystem(!(options && options.spicyOff));
+        window.vrPoseSystem = pose;
+        const w = await begin({ adult: true, looks: LOOKS_UN5 });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = level;
+        w.pose = pose;
+        return w;
+    }
+    const worn = (w) => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+    const prompt = () => Actions.promptLines().join('\n');
+
+    test('the evening’s arc: dressed, a layer off, a position, another layer kept in it, dressed again', async () => {
+        const w = await at(4);
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('spogliati');
+        await flush();
+        expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Garter Set']);
+        await say('Piegati in avanti');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:standingBendForward']);
+        expect(prompt()).toMatch(/Your body is in that position now \(bend forward\)/);
+        await say('spogliati');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Micro Tailored Thong']);
+        // Let go before the swap, the same position again on the new outfit.
+        expect(w.pose.calls.slice(2)).toEqual(['release', 'claim', 'apply:standingBendForward']);
+        await say('Ho finito, rivestiti');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        expect(w.pose.calls.slice(-1)).toEqual(['release']);
+        expect(prompt()).toMatch(/dressed again, in what you wore before/);
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('below level 4 she kneels when asked, the gated position waits; nothing moves the level', async () => {
+        const w = await at(2);
+        await say('inginocchiati');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+        await say('mettiti a quattro zampe');
+        await flush();
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:') && c !== 'apply:kneeling')).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'blocked', why: 'pace' });
+        expect(prompt()).toMatch(/not close enough for yet/);
+        await say('alzati');
+        await flush();
+        expect(w.pose.calls.slice(-1)).toEqual(['release']);
+        expect(w.adult.level).toBe(2);
+    });
+
+    test('on all fours at level 4 is the distinct hands-and-knees preset, never a standing bend', async () => {
+        const w = await at(4);
+        await say('mettiti a quattro zampe');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:handsKnees']);
+        expect(w.pose.calls).not.toContain('apply:allFoursArched');
+        expect(w.pose.calls).not.toContain('apply:doggyStyle');
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('UN6: a hands-and-knees whose palms did not reach the floor is a failure, and she goes back', async () => {
+        const w = await at(4);
+        await say('inginocchiati');
+        await flush();
+        const apply = w.pose.applyPreset;
+        w.pose.applyPreset = (name) => {
+            apply(name);
+            if (name === 'handsKnees')
+                w.pose.lastSupport = {
+                    preset: 'handsKnees',
+                    hands: { leftHand: { palmAfterMm: 45 }, rightHand: { palmAfterMm: 39 } },
+                };
+        };
+        await say('mettiti a quattro zampe');
+        await flush();
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'not-rendered' });
+        // Back in the position she held: kneeling, not standing and not half on all fours.
+        expect(w.pose.calls.slice(-1)).toEqual(['apply:kneeling']);
+        expect(w.pose.getCurrentPreset()).toBe('kneeling');
+    });
+
+    test('with the adult presets unlisted (Spicy off) all fours is refused, never substituted', async () => {
+        const w = await at(4, { spicyOff: true });
+        await say('mettiti a quattro zampe');
+        await flush();
+        expect(w.pose.calls).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'unknown-pose' });
+    });
+
+    test('a preset this build does not list is refused, never substituted', async () => {
+        const w = await at(4);
+        w.pose.getPresetList = () => [{ name: 'lyingBack' }];
+        await say('inginocchiati');
+        await flush();
+        expect(w.pose.calls).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'unknown-pose' });
+    });
+
+    test('"rivestiti" with nothing taken off changes nothing; from her own outfit it goes back to it', async () => {
+        const w = await at(4);
+        await say('rivestiti');
+        await flush();
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'failed', why: 'already-dressed' });
+        await say('spogliati');
+        await flush();
+        expect(worn(w)).toEqual(['Black Garter Set']);
+        await say('get dressed');
+        await flush();
+        expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed' });
+        expect(w.controller.avatarManager.getCurrent().url).toBe('base.vrm');
+    });
+
+    test('ending the evening in a position gives her body back', async () => {
+        const w = await at(4);
+        await say('sdraiati sulla schiena');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:lyingBack']);
+        w.activity.stop('user');
+        await flush();
+        expect(w.pose.calls.slice(-1)).toEqual(['release']);
+    });
+
+    test.each([
+        ['inginocchiati', 'kneel'],
+        ['get on your knees', 'kneel'],
+        ['à genoux', 'kneel'],
+        ['跪下', 'kneel'],
+        ['sdraiati sulla schiena', 'lie-back'],
+        ['lie on your side', 'lie-side'],
+        ['うつ伏せになって', 'lie-front'],
+        ['piegati in avanti', 'bend-forward'],
+        ['mettiti a quattro zampe', 'all-fours'],
+        ['à quatre pattes', 'all-fours'],
+    ])('%s → avatar.pose %s', (said, key) => {
+        expect(Intent.parse(said)).toMatchObject({ name: 'avatar.pose', params: { pose: key } });
+    });
+
+    test('plain "sdraiati" stays the lie-down motion, and "alzati" is a pose only while one is held', () => {
+        expect(Intent.parse('sdraiati')).toBeNull();
+        expect(Intent.parse('alzati')).toBeNull();
+        expect(Intent.parse('alzati', { poseHeld: true })).toMatchObject({
+            name: 'avatar.pose',
+            params: { pose: 'stand' },
+        });
+        expect(Intent.parse('rivestiti')).toMatchObject({ name: 'wardrobe.redress' });
+        expect(Intent.parse('vestiti di rosso')).not.toMatchObject({ name: 'wardrobe.redress' });
+    });
+});
+
+describe('UN5. "I am done" in their words', () => {
+    test.each(['Ho finito, rivestiti', "I'm done, get dressed", 'He terminado, vuelve a vestirte'])('%s', (said) =>
+        expect(Intent.parse(said)).toMatchObject({ name: 'wardrobe.redress' })
+    );
+    test('"ho finito" alone dresses her only once something came off', () => {
+        expect(Intent.parse('Ho finito')).toBeNull();
+        expect(Intent.parse('Ho finito', { undressed: true })).toMatchObject({ name: 'wardrobe.redress' });
+        expect(Intent.parse('終わった', { undressed: true })).toMatchObject({ name: 'wardrobe.redress' });
+        expect((Intent.parse('Ho finito il libro ieri sera', { undressed: true }) || {}).name).not.toBe(
+            'wardrobe.redress'
+        );
+    });
+});
+
+describe('UN5. one position after another, and back again', () => {
+    test('kneel, then on the back, then "torna come prima" returns to kneeling, then standing', async () => {
+        const pose = { calls: [], current: 'standing' };
+        Object.assign(pose, {
+            claimBones: () => pose.calls.push('claim'),
+            releaseBones: () => pose.calls.push('release') && true,
+            applyPreset: (name) => {
+                pose.calls.push(`apply:${name}`);
+                pose.current = name;
+            },
+            getCurrentPreset: () => pose.current,
+            getPresetList: () => ['kneeling', 'lyingBack'].map((name) => ({ name })),
+        });
+        window.vrPoseSystem = pose;
+        const w = await begin({ adult: true });
+        w.adult.level = 4;
+        await say('inginocchiati');
+        await flush();
+        await say('sdraiati sulla schiena');
+        await flush();
+        await say('torna come prima');
+        await flush();
+        expect(pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([
+            'apply:kneeling',
+            'apply:lyingBack',
+            'apply:kneeling',
+        ]);
+        expect(Actions.promptLines().join('\n')).toMatch(/back in the position you had before \(kneel\)/);
+        await say('torna come prima');
+        await flush();
+        expect(pose.calls.slice(-1)).toEqual(['release']);
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('a preset the pose system does not confirm is a failure, and she is let go', async () => {
+        const pose = {
+            calls: [],
+            claimBones: () => pose.calls.push('claim'),
+            releaseBones: () => pose.calls.push('release') && true,
+            applyPreset: (name) => pose.calls.push(`apply:${name}`), // never takes
+            getCurrentPreset: () => 'standing',
+            getPresetList: () => [{ name: 'kneeling' }],
+        };
+        window.vrPoseSystem = pose;
+        await begin({ adult: true });
+        await say('inginocchiati');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'not-applied' });
+        expect(pose.calls.slice(-1)).toEqual(['release']);
+    });
+
+    test.each(['a pecorina', 'mettiti a pecorina', 'doggy style', 'en levrette', 'a lo perrito'])(
+        '"%s" is the all-fours position, gated exactly like it',
+        (said) => {
+            expect(Intent.parse(said)).toMatchObject({ name: 'avatar.pose', params: { pose: 'all-fours' } });
+            expect(
+                Policy.decide(
+                    { name: 'avatar.pose', params: { pose: 'all-fours' }, source: 'user' },
+                    { active: true, care: false, asked: {}, level: 3 }
+                )
+            ).toEqual({ allow: false, why: 'pace' });
+        }
+    );
+
+    test('"fammi vedere la schiena" turns her through the one owner of turning, in every script', () => {
+        const FastPath = require('../../src/xr/IntentFastPath.js');
+        for (const said of [
+            'girati',
+            'fammi vedere la schiena',
+            'show me your back',
+            '背中を見せて',
+            '등 보여줘',
+            '让我看看你的背',
+        ])
+            expect(FastPath.match(said)).toMatchObject({ label: 'turn_around' });
+    });
+});
+
+describe('UN5. lying positions in their words', () => {
+    test.each([
+        ['Sdraiati sulla pancia', 'lie-front'],
+        ['stenditi a pancia in giù', 'lie-front'],
+        ['sdraiati sulla schiena', 'lie-back'],
+        ['mettiti sul fianco', 'lie-side'],
+        ['lie on your stomach', 'lie-front'],
+        ['túmbate boca abajo', 'lie-front'],
+    ])('%s → %s', (said, key) =>
+        expect(Intent.parse(said)).toMatchObject({ name: 'avatar.pose', params: { pose: key } })
+    );
 });

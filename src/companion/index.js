@@ -210,10 +210,20 @@
             live && live.privateWorld && typeof live.privateWorld.consumeReply === 'function'
                 ? live.privateWorld.consumeReply(afterGesture)
                 : String(afterGesture).replace(/<\s*act\b[^>]*\/?>(?:\s*<\s*\/\s*act\s*>)?/gi, '');
+        // UN4. Inside a Private evening her <go place/> is Private's: an invitation its bridge
+        // turns into one question for the person. The public presence never sees it.
+        const actions = global.NEXUS_PRIVATE_ACTIONS;
+        let afterTrip = afterPrivate;
+        try {
+            if (actions && typeof actions.active === 'function' && actions.active() && actions.consumeTravel)
+                afterTrip = actions.consumeTravel(afterPrivate);
+        } catch (_) {
+            afterTrip = afterPrivate;
+        }
         const afterGo =
             live && live.presence && typeof live.presence.consumeReply === 'function'
-                ? live.presence.consumeReply(afterPrivate)
-                : String(afterPrivate).replace(/<\s*go\b[^>]*\/?>(?:\s*<\s*\/\s*go\s*>)?/gi, '');
+                ? live.presence.consumeReply(afterTrip)
+                : String(afterTrip).replace(/<\s*go\b[^>]*\/?>(?:\s*<\s*\/\s*go\s*>)?/gi, '');
         if (!Directive || !live) return afterGo;
         return Directive.consume(afterGo, {
             session: live.session,

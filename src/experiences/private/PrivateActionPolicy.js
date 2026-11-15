@@ -16,7 +16,7 @@
  *
  * ## What it guarantees
  *
- * - **An allowlist.** Twelve names; anything else is refused before a handler is looked up.
+ * - **An allowlist.** Sixteen names; anything else is refused before a handler is looked up.
  * - **Validated parameters.** Each name has a schema; unknown keys are dropped, strings are
  *   bounded and stripped of markup and links. A model's arguments are data, never instructions.
  * - **Her own initiative is narrow.** A model-sourced action runs only when the person asked for
@@ -25,8 +25,11 @@
  * - **Making a new outfit costs something**, so it needs the person: their own request, or their
  *   yes to an offer. Never the model alone, whatever the autonomy level.
  * - **Care mode stops everything but silence.** Only pausing or stopping music is allowed.
- * - **Nothing here knows the consent level.** No action reads it, moves it or is unlocked by it;
- *   `ConsentFlow` stays the only owner (CLAUDE.md, "Adult experience").
+ * - **Only undressing knows the consent level, and only reads it.** UN1, an owner decision:
+ *   `wardrobe.undress` opens at the top of the evening's pace (`UNDRESS_LEVEL`, 4 of 4) and is
+ *   refused below it, whoever asks. The level arrives as a fact read at the moment of the
+ *   decision; nothing here moves it, and no other action reads it. `ConsentFlow` stays its only
+ *   owner, and a ceiling below 4 means undressing never opens (CLAUDE.md, "Adult experience").
  *
  * Exposes: window.NEXUS_PRIVATE_ACTION_POLICY
  */
@@ -55,6 +58,22 @@
     ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
+    /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
+    const POSE_KEYS = [
+        'kneel',
+        'kneel-up',
+        'all-fours',
+        'lie-back',
+        'lie-front',
+        'lie-side',
+        'bend-forward',
+        'arch-back',
+        'lounge',
+        'stand',
+        'back',
+        'turn',
+    ];
+    const ADULT_POSES = ['all-fours'];
 
     const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
     const GARMENT = /^[a-z0-9][a-z0-9 ,'+&-]{1,119}$/;
@@ -108,14 +127,39 @@
             required: ['prompt'],
         },
         'wardrobe.undo': { family: 'wardrobe', params: {} },
+        // UN5. Dressed again: the outfit she wore before the first layer came off this evening.
+        'wardrobe.redress': { family: 'wardrobe', params: {} },
+        // UN1. One layer off (`next`), or down to the last layer she has (`all`); `look` is the
+        // look an approved offer already chose, so the yes wears what was offered.
+        'wardrobe.undress': {
+            family: 'wardrobe',
+            params: {
+                step: oneOf(['next', 'all']),
+                look: (v) => text(v, 60) || undefined,
+                words: (v) => text(v, 120) || undefined,
+            },
+        },
         'avatar.dance': { family: 'avatar', params: {} },
+        // UN5. A held position from Pose Studio's presets (PrivatePoseController.POSES), or
+        // `stand` to let go of it.
+        'avatar.pose': { family: 'avatar', params: { pose: oneOf(POSE_KEYS) }, required: ['pose'] },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
+        // UN4. A different room for the evening: one of the places this device can show, and
+        // only ever because the person said so (their words, their yes, their tap).
+        'world.travel': {
+            family: 'world',
+            params: { world: (v) => (ID.test(String(v || '').toLowerCase()) ? String(v).toLowerCase() : null) },
+            required: ['world'],
+        },
         'scene.change': {
             family: 'scene',
             params: { scene: (v) => (ID.test(String(v || '').toLowerCase()) ? String(v).toLowerCase() : null) },
             required: ['scene'],
         },
     });
+
+    /** UN1. The pace the evening must be at before any layer comes off. */
+    const UNDRESS_LEVEL = 4;
 
     /** Makes a new asset: slow, and on a paid Forge not free. */
     const GENERATES = Object.freeze(['wardrobe.create', 'wardrobe.change']);
@@ -172,6 +216,7 @@
      * @param {object}  facts.asked      `{ music, wardrobe, avatar, scene }` — the person asked for
      *                                   that family in the turn this action belongs to
      * @param {string}  facts.autonomy   `off` | `suggest` | `autonomous`
+     * @param {number}  [facts.level]    ConsentFlow's current level, read now (UN1; undress only)
      * @returns {{allow: boolean, why?: string, suggest?: boolean}}
      */
     function decide(action, facts) {
@@ -181,6 +226,16 @@
         if (!SOURCES.includes(action.source)) return { allow: false, why: 'unknown-source' };
         if (!f.active) return { allow: false, why: 'not-in-private' };
         if (f.care && !QUIETING.includes(action.name)) return { allow: false, why: 'care' };
+        // UN1. Before who asked: the person's own words below the top of the pace are refused too.
+        if (action.name === 'wardrobe.undress' && !(Number(f.level) >= UNDRESS_LEVEL))
+            return { allow: false, why: 'pace' };
+        // UN5. The adult positions open exactly when undressing does.
+        if (
+            action.name === 'avatar.pose' &&
+            ADULT_POSES.includes(action.params && action.params.pose) &&
+            !(Number(f.level) >= UNDRESS_LEVEL)
+        )
+            return { allow: false, why: 'pace' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
@@ -192,6 +247,8 @@
                 if (QUIETING.includes(action.name)) return { allow: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
             case 'wardrobe': {
+                // UN5. Putting her clothes back on is never a risk: hers to do whenever.
+                if (action.name === 'wardrobe.redress') return { allow: true };
                 if (GENERATES.includes(action.name))
                     return asked ? { allow: true } : { allow: false, why: 'needs-approval', suggest: true };
                 if (asked) return { allow: true };
@@ -205,6 +262,10 @@
                 // A reaction is an expression; a dance is a thing she does to the room.
                 if (action.name === 'avatar.react') return { allow: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
+            case 'world':
+                // UN4. Her invitation is a question for them, never a trip: it becomes an offer
+                // their yes takes (the bridge re-asks this file then, as `user-approved`).
+                return { allow: false, why: 'needs-approval', suggest: true };
             default:
                 // The place is theirs: only their own words move it.
                 return { allow: false, why: 'user-only' };
@@ -219,6 +280,9 @@
         SOURCES,
         GENERATES,
         QUIETING,
+        UNDRESS_LEVEL,
+        POSE_KEYS,
+        ADULT_POSES,
         validate,
         decide,
         autonomy,

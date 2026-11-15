@@ -165,7 +165,13 @@ async function main() {
         const warnings = await apply(p.name);
         const after = await sample();
         const shot = `${String(i + 1).padStart(2, '0')}-${p.name}.jpg`;
-        await page.screenshot({ path: path.join(SHOTS, shot), clip: { x: 16, y: 80, width: 474, height: 650 }, type: 'jpeg', quality: 60, scale: 'css' });
+        await page.screenshot({
+            path: path.join(SHOTS, shot),
+            clip: { x: 16, y: 80, width: 474, height: 650 },
+            type: 'jpeg',
+            quality: 60,
+            scale: 'css',
+        });
         await apply('standing');
         const back = await sample();
 

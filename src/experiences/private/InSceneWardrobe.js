@@ -323,6 +323,35 @@
             return { ok: true, look };
         }
 
+        /**
+         * UN5. Back into what she wore when the session began (the head of her history), in one
+         * swap — not Undo's walk back through every look in between.
+         */
+        async wearOriginal(alive) {
+            const stillMine = typeof alive === 'function' ? alive : () => true;
+            if (!this.session || this.closed) return { ok: false, why: 'wardrobe-not-ready' };
+            const first = this.session.history && this.session.history[0];
+            if (!first) return { ok: false, why: 'nothing-to-undo' };
+            if (!this.current()) return { ok: true, look: first };
+            this._set('changing');
+            let landed = false;
+            try {
+                landed = await this.session.wear(first);
+            } catch (_) {
+                landed = false;
+            }
+            if (!landed) {
+                this._set('failed', 'load-failed');
+                return { ok: false, why: 'load-failed' };
+            }
+            if (!stillMine()) {
+                this._set('idle');
+                return { ok: false, why: 'stale' };
+            }
+            this._set(this.current() ? 'worn' : 'idle');
+            return { ok: true, look: first };
+        }
+
         /** Make a new look (a dictionary set, or plain garment words) and put it on. */
         async create(request, alive) {
             const stillMine = typeof alive === 'function' ? alive : () => true;
