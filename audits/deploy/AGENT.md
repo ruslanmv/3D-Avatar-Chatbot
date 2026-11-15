@@ -23,3 +23,24 @@ HF_TOKEN=hf_... sh audits/deploy/deploy-forge-space.sh
   script).
 - The companion app (this repository) is a static site; it is not part of this
   Space.
+
+## Building the wardrobe dataset
+
+`build-wardrobe-dataset.sh` builds every garment and dictionary outfit for every library
+character with a local Forge and publishes each look to the Hugging Face dataset, then verifies
+the dataset (looks, files per look, per-character coverage, listed looks without a file).
+
+```bash
+HF_TOKEN=hf_... FORGE_ADMIN_PASSWORD=... FORGE_DIR=../3D-Wardrobe-Forge \
+    sh audits/deploy/build-wardrobe-dataset.sh
+```
+
+```bash
+VERIFY_ONLY=1 HF_TOKEN=hf_... FORGE_DIR=../3D-Wardrobe-Forge sh audits/deploy/build-wardrobe-dataset.sh
+```
+
+It is resumable (what exists is skipped), joins a Forge already running on the port instead
+of starting a second one, and takes `ONLY`, `SLUGS`, `OUTFITS=0` and `PLAN_ONLY=1`. New
+garment templates are built only if the Forge checkout has them, so check out the branch you
+mean first. Never run two builds against the same dataset at once: both merge the wardrobe
+lists. The bare body is not part of it.
