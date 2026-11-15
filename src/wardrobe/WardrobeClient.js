@@ -45,6 +45,7 @@
             options = options || {};
             this.baseUrl = String(options.baseUrl || '').replace(/\/$/, '');
             this.token = options.token || '';
+            this.grant = options.grant || '';
             this.fetchImpl = options.fetchImpl || global.fetch.bind(global);
             this.pollIntervalMs = options.pollIntervalMs || 700;
             this.timeoutMs = options.timeoutMs || 15 * 60 * 1000;
@@ -54,6 +55,8 @@
             options = options || {};
             var headers = Object.assign({ Accept: 'application/json' }, options.headers || {});
             if (this.token) headers.Authorization = 'Bearer ' + this.token;
+            // BI2. The read grant goes only to this client's own Forge (the path is relative to it).
+            if (this.grant) headers['X-Wardrobe-Grant'] = this.grant;
             if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
                 headers['Content-Type'] = 'application/json';
             }
@@ -78,6 +81,22 @@
             }
             if (response.status === 204) return null;
             return response.json();
+        }
+
+        /**
+         * BI2. Headers for downloading `url` itself (a look's VRM): the grant, but only when the
+         * URL is on this Forge. A look from a pack or another host never sees it.
+         */
+        downloadHeaders(url) {
+            if (!this.grant || !this.baseUrl || !url) return {};
+            try {
+                var base = new URL(this.baseUrl);
+                var target = new URL(url, base);
+                if (target.origin !== base.origin) return {};
+            } catch (_) {
+                return {};
+            }
+            return { 'X-Wardrobe-Grant': this.grant };
         }
 
         async generate(options) {

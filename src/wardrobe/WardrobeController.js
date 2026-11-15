@@ -25,6 +25,52 @@
              */
             this.wornUrl = null;
             this.looks = [];
+            /**
+             * BI3. Every wear and restore takes a ticket; cancel() and any newer wear or restore
+             * take the next one. Before BI3 nothing could stop a wear once asked: a 14 MB look still
+             * downloading when Private's wear timed out, or when the person said no, or when the
+             * session ended and restored her, finished its download afterwards, became the newest
+             * load the manager had seen, and put the look back on her over the restore. For a
+             * bare look that is a body state shown after the person withdrew from it. A ticket
+             * that is no longer current never loads, never writes `activeLook`, and if its model
+             * had already landed it is rolled back to what she wore before.
+             */
+            this._ticket = 0;
+            this._wearing = null; // {ticket, abort} of the wear in flight
+        }
+
+        /** True while a wear is downloading or loading. */
+        get pending() {
+            return Boolean(this._wearing);
+        }
+
+        /**
+         * BI3. Cancel the wear in flight, if any: its download is aborted, it never becomes
+         * what she wears, and its promise rejects with reason `wear_cancelled`. She keeps (or
+         * gets back) what she had on. Returns whether there was anything to cancel.
+         */
+        cancel() {
+            var wearing = this._wearing;
+            if (!wearing) return false;
+            this._ticket += 1;
+            this._wearing = null;
+            if (wearing.abort) {
+                try {
+                    wearing.abort.abort();
+                } catch (_) {
+                    /* already finished */
+                }
+            }
+            return true;
+        }
+
+        _cancelled(why) {
+            var error = new WardrobeForgeError(
+                why === 'superseded' ? 'Another change came first.' : 'That change was cancelled.'
+            );
+            error.reason = 'wear_cancelled';
+            error.cancelled = why || 'cancelled';
+            return error;
         }
 
         get avatarManager() {
@@ -59,20 +105,58 @@
             if (!this.original || !this.original.url) {
                 throw new WardrobeForgeError('Wait for the avatar to finish loading before trying on a look');
             }
+            // BI3. A newer wear supersedes this one's download rather than racing it.
+            this.cancel();
+            var ticket = ++this._ticket;
+            var abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            this._wearing = { ticket: ticket, abort: abort };
+            var before = { url: this.wornUrl || this.original.url, name: (this.activeLook || this.original).name };
+            var current = function () {
+                return this._ticket === ticket;
+            }.bind(this);
             // W11. A look that names its hash is worn only as the bytes its pack describes. A
             // mismatch refuses here, with the reason, and she keeps what she has on.
             var verified = null;
-            if (this.verifyLook && look && look.sha256) {
-                verified = await this.verifyLook(look);
-                url = verified.url;
+            try {
+                if (this.verifyLook && look && look.sha256) {
+                    verified = await this.verifyLook(look, { signal: abort ? abort.signal : undefined });
+                    url = verified.url;
+                }
+            } catch (error) {
+                if (this._wearing && this._wearing.ticket === ticket) this._wearing = null;
+                if (!current() || (error && error.name === 'AbortError')) throw this._cancelled();
+                throw error;
+            }
+            if (!current()) {
+                if (verified) verified.revoke();
+                throw this._cancelled();
             }
             var hold = this._holdCamera();
+            var landed;
             try {
-                await this._load(manager, url, look.name || 'Generated look', -1);
+                landed = await this._load(manager, url, look.name || 'Generated look', -1);
             } catch (error) {
+                if (this._wearing && this._wearing.ticket === ticket) this._wearing = null;
                 if (verified) verified.revoke();
                 if (hold) hold();
                 throw error;
+            }
+            if (this._wearing && this._wearing.ticket === ticket) this._wearing = null;
+            // The manager answers null when a newer load replaced this one before it finished:
+            // what is on stage is that newer load, not this look.
+            if (!current() || landed === null) {
+                // Cancelled while the model was being placed, and nothing newer has loaded:
+                // it is on stage, so she goes back to what she wore before it.
+                if (landed !== null && !this._wearing && this._ticket === ticket + 1) {
+                    try {
+                        await this._load(manager, before.url, before.name || 'Avatar', -1);
+                    } catch (error) {
+                        console.warn('[Wardrobe] could not roll a cancelled look back', error);
+                    }
+                }
+                if (verified) verified.revoke();
+                if (hold) hold();
+                throw this._cancelled(landed === null ? 'superseded' : 'cancelled');
             }
             this._release();
             this._verified = verified;
@@ -167,13 +251,22 @@
         async restore() {
             if (!this.original || !this.original.url) return false;
             var manager = this._requireManager();
+            // BI3. Restore wins over a wear still on its way: that wear is cancelled, so it can
+            // never land on top of her own clothes after this.
+            this.cancel();
+            var ticket = ++this._ticket;
             var hold = this._holdCamera();
-            await this._load(
+            var landed = await this._load(
                 manager,
                 this.original.url,
                 this.original.name || 'Avatar',
                 this.original.index === undefined ? -1 : this.original.index
             );
+            if (this._ticket !== ticket || landed === null) {
+                // A wear started after this restore: that wear owns what she has on now.
+                if (hold) hold();
+                return false;
+            }
             this._release();
             if (hold) hold();
             else if (manager.frameAvatar) manager.frameAvatar();

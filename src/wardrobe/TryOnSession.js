@@ -313,6 +313,14 @@
                                 if (isOriginal(want)) await this._wearOriginal();
                                 else await this.controller.applyLook(want);
                             } catch (error) {
+                                // BI3. Cancelled is not failed: she kept what she had on. If
+                                // something else is wanted by now, go and wear that; otherwise
+                                // stop wanting the cancelled look.
+                                if (error && error.reason === 'wear_cancelled') {
+                                    if (this.target !== want) continue;
+                                    this.target = this.worn;
+                                    return false;
+                                }
                                 this._failed((error && error.message) || 'That look could not be put on.');
                                 return false;
                             }
@@ -422,6 +430,15 @@
             this.phase = 'kept';
             this._changed();
             return true;
+        }
+
+        /**
+         * BI3. Stop the wear that is on its way, if any (its download is aborted; it never lands,
+         * or is rolled back if it already had). Returns whether there was one.
+         */
+        cancelPending() {
+            var controller = this.controller;
+            return Boolean(controller && typeof controller.cancel === 'function' && controller.cancel());
         }
 
         /** End the haul. Unless she kept a look, she goes back to where the haul began — once. */

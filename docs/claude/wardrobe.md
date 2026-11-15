@@ -44,6 +44,15 @@ creating looks (WF1)** — see the Forge bullet below.
   extension. The controller revokes the blob on the next wear or restore; a
   mismatch refuses before anything is swapped.
 
+- **Private looks are read with a grant, never the admin token (BI2), and a wear can be
+  cancelled (BI3).** `WardrobeConfig.grant` (site `forge.grant`, else `wardrobe_forge_grant`
+  from Settings) goes as `X-Wardrobe-Grant` on Forge requests and on a look download only when
+  the URL is on that Forge (`WardrobeClient.downloadHeaders`). Every wear and restore takes a
+  ticket in `WardrobeController`: `cancel()` aborts the download, a cancelled wear never loads or
+  is rolled back if it landed, `restore()` cancels a pending wear, and `wear_cancelled` is not a
+  failure in `TryOnSession`. Evidence and the blocked bare step:
+  `docs/qa/BODY_STATE_ACCEPTANCE.md`.
+
 - **The whole feature ends at
   `AvatarManager.setAvatarByUrl(url, name, index)`.** A look is a VRM URL.
   Nothing here touches Three.js, the renderer, or the ambience background — a
