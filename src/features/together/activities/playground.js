@@ -1696,7 +1696,9 @@ const PlaygroundActivity = (() => {
             const General = win.NEXUS_GENERAL_ONLY_PLACES;
             const guard = General && typeof General.forPage === 'function' ? General.forPage() : null;
             if (guard) {
-                if (!guard.worlds) guard.worlds = this._worldCatalogue.worlds;
+                // The validated catalogue for `placesFor`; the guard reads the raw one itself.
+                guard.catalogue = this._worldCatalogue.worlds;
+                guard.ensureWorlds();
                 return rooms.concat(guard.destinations(W.placesFor, tier));
             }
             return rooms;

@@ -234,12 +234,19 @@ describe('GO1 previous location and the way back', () => {
             },
         };
         window.NEXUS_BD = { bus: bus(), intimate, togetherPanel: panel };
-        window.NEXUS_VR_WORLDS = { loadCatalogue: async () => ({ worlds: WORLDS }) };
+        window.NEXUS_VR_WORLDS = {
+            // The page's loader drops `generalOnly` (it builds a fresh object per world): the
+            // validated catalogue the page hands out has no such flag, and the guard must not need it.
+            loadCatalogue: async () => ({ worlds: WORLDS.map(({ generalOnly, ...rest }) => rest) }),
+            CATALOGUE_URL: 'assets/vr-worlds/worlds.json',
+        };
+        window.fetch = async () => ({ ok: true, json: async () => ({ worlds: WORLDS }) });
         const guard = new General.GeneralOnlyPlaces({ win: window }).attach();
         guards.push(guard);
         expect(guard.worlds).toBeNull();
         await guard.leavePrivateFor('school');
         expect(calls).toEqual([['places', 'school']]);
         expect(intimate.active).toBe(false);
+        delete window.fetch;
     });
 });

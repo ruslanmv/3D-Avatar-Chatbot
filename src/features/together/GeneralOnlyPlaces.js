@@ -51,7 +51,14 @@
         constructor(options) {
             const o = options || {};
             this.win = o.win || global;
+            /**
+             * The RAW catalogue (worlds.json as written). The page's validated catalogue
+             * (`VRWorlds.validateCatalogue`) builds a fresh object per world and does not carry
+             * `generalOnly`, so this module reads the file itself for that one flag.
+             */
             this.worlds = Array.isArray(o.worlds) ? o.worlds : null;
+            /** The validated catalogue (what `placesFor` takes), when the page has it. */
+            this.catalogue = Array.isArray(o.catalogue) ? o.catalogue : null;
             this.shown = null; // the general-only world on screen, or null
             /**
              * Where she was and what the evening was, kept when Private is left for the school:
@@ -87,10 +94,13 @@
             if (this.worlds) return Promise.resolve(this.worlds);
             if (this._loading) return this._loading;
             const W = this.win && this.win.NEXUS_VR_WORLDS;
-            if (!W || typeof W.loadCatalogue !== 'function') return Promise.resolve([]);
-            this._loading = Promise.resolve(W.loadCatalogue())
-                .then((c) => {
-                    this.worlds = (c && c.worlds) || [];
+            const fetcher = this.win && typeof this.win.fetch === 'function' ? this.win.fetch.bind(this.win) : null;
+            if (!W || !fetcher) return Promise.resolve([]);
+            const url = W.CATALOGUE_URL || 'assets/vr-worlds/worlds.json';
+            this._loading = Promise.resolve(fetcher(url))
+                .then((response) => (response && response.ok ? response.json() : { worlds: [] }))
+                .then((data) => {
+                    this.worlds = Array.isArray(data && data.worlds) ? data.worlds : [];
                     return this.worlds;
                 })
                 .catch(() => [])
@@ -114,7 +124,9 @@
             const W = this.win && this.win.NEXUS_VR_WORLDS;
             if (!this.worlds || !W || typeof W.placesFor !== 'function') return [];
             const fn = typeof placesFor === 'function' ? placesFor : W.placesFor;
-            return fn(this.worlds, { tier, include: ['general'] })
+            // `placesFor` takes the validated catalogue; which of them are general-only is read
+            // from the raw one.
+            return fn(this.catalogue || this.worlds, { tier, include: ['general'] })
                 .filter((p) => this.isGeneralOnly(p.id))
                 .map((p) => ({ ...p, generalOnly: true }));
         }
