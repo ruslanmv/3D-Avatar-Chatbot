@@ -331,7 +331,52 @@
         return tier.find((l) => rank(l).score === top) || null;
     }
 
-    const api = { STYLE_WORDS, choose, score, keyOf, byName, undressStep, colourOf, isBare, coverageOf, isComplete };
+    /**
+     * RU5. Which dictionary outfit each look on her shelf already is, by the prompt Forge made it
+     * from. `choose` reuses a look for an outfit only through `look.outfitId`, which was set only
+     * on a look made in this session — so after a reload, "crop top & jeans" already in her
+     * wardrobe (prebuilt, or made yesterday) was offered as something to *make*, with the wait
+     * and the approval that implies, though Forge then answered it at once. Tags in place;
+     * a look that already says which outfit it is keeps that. Returns how many were tagged.
+     */
+    function tagOutfits(looks, entries) {
+        const norm = (text) =>
+            String(text || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, ' ');
+        const byPrompt = new Map();
+        for (const entry of Array.isArray(entries) ? entries : []) {
+            const prompt = norm(entry && ((entry.request && entry.request.prompt) || entry.prompt));
+            if (!prompt) continue;
+            // Two entries with one prompt (a preset tells them apart) cannot be told apart by it.
+            byPrompt.set(prompt, byPrompt.has(prompt) ? null : entry.id);
+        }
+        let tagged = 0;
+        for (const look of Array.isArray(looks) ? looks : []) {
+            if (!look || look.outfitId) continue;
+            const id = byPrompt.get(norm(look.prompt));
+            if (id) {
+                look.outfitId = id;
+                tagged += 1;
+            }
+        }
+        return tagged;
+    }
+
+    const api = {
+        STYLE_WORDS,
+        choose,
+        score,
+        keyOf,
+        byName,
+        undressStep,
+        colourOf,
+        isBare,
+        coverageOf,
+        isComplete,
+        tagOutfits,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_OUTFIT_DECISION_ENGINE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

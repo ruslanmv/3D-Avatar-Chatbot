@@ -1845,3 +1845,63 @@ describe('UN11. only a look that covers her top and bottom counts as undressed-t
         expect(Engine.undressStep({ looks, current: null, step: 'next', allureOf }).name).toBe('Black Lingerie Set');
     });
 });
+
+describe('RU5. a dictionary outfit already on her shelf is worn, not made again', () => {
+    const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+    const entries = [
+        {
+            id: 'crop-top-jeans',
+            title: 'Crop top & jeans',
+            request: { prompt: 'black fitted crop top + blue straight jeans' },
+        },
+        { id: 'red-dress', title: 'Red dress', request: { prompt: 'red cocktail dress' } },
+    ];
+    // As Forge lists them after a reload: a prompt, no outfitId.
+    const shelf = () => [
+        {
+            lookId: 'look_a',
+            name: 'Blue Straight Jeans',
+            prompt: 'Black fitted crop top +  blue straight jeans',
+            vrmUrl: 'a.vrm',
+            source: 'forge',
+        },
+        {
+            lookId: 'look_b',
+            name: 'Black Lace Bralette',
+            prompt: 'black Lace Bralette',
+            vrmUrl: 'b.vrm',
+            source: 'forge',
+        },
+    ];
+
+    test('tags the looks Forge made from a dictionary prompt, and only those', () => {
+        const looks = shelf();
+        expect(Engine.tagOutfits(looks, entries)).toBe(1);
+        expect(looks[0].outfitId).toBe('crop-top-jeans');
+        expect(looks[1].outfitId).toBeUndefined();
+    });
+
+    test('asking for the outfit then wears her look instead of offering to make it', () => {
+        const untagged = Engine.choose({
+            request: { outfit: 'crop-top-jeans' },
+            looks: shelf(),
+            entries,
+            canCreate: true,
+        });
+        expect(untagged).toMatchObject({ kind: 'outfit', generate: true }); // before RU5
+        const looks = shelf();
+        Engine.tagOutfits(looks, entries);
+        const tagged = Engine.choose({ request: { outfit: 'crop-top-jeans' }, looks, entries, canCreate: true });
+        expect(tagged).toMatchObject({ kind: 'look', generate: false });
+        expect(tagged.look.lookId).toBe('look_a');
+    });
+
+    test('a look that already names its outfit keeps it; an ambiguous prompt tags nothing', () => {
+        const looks = [{ lookId: 'x', prompt: 'red cocktail dress', outfitId: 'mine', vrmUrl: 'x.vrm' }];
+        Engine.tagOutfits(looks, entries);
+        expect(looks[0].outfitId).toBe('mine');
+        const twins = [...entries, { id: 'red-dress-2', request: { prompt: 'red cocktail dress', preset: 'p' } }];
+        const fresh = [{ lookId: 'y', prompt: 'red cocktail dress', vrmUrl: 'y.vrm' }];
+        expect(Engine.tagOutfits(fresh, twins)).toBe(0);
+    });
+});

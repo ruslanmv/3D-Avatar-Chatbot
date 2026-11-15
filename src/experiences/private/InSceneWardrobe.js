@@ -216,6 +216,13 @@
             } catch (_) {
                 this.entries = [];
             }
+            // RU5. Her looks that are dictionary outfits say so, so asking for one wears it.
+            const Engine = this._dep('Engine', (w) => w.NEXUS_OUTFIT_DECISION_ENGINE);
+            try {
+                if (Engine && typeof Engine.tagOutfits === 'function') Engine.tagOutfits(this.looks, this.entries);
+            } catch (_) {
+                /* untagged looks are still worn by name and style; only the shortcut is lost */
+            }
             this._loadedAt = Date.now();
         }
 
