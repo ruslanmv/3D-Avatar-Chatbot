@@ -30,17 +30,18 @@ OBJ copies are not. Every PNG texture larger than 1024 px was resized to 1024 px
 (Meta's guidance for Quest: mostly 512–1024 px textures). Each kit's own licence
 file is beside it as `License.txt`.
 
-| Folder                        | Kit                                           | Author       | Source                                                     | Notes                            |
-| ----------------------------- | --------------------------------------------- | ------------ | ---------------------------------------------------------- | -------------------------------- |
-| `kenney-nature-kit`           | Nature Kit 2.1 (329 models)                   | Kenney       | <https://kenney.nl/assets/nature-kit>                      | GLB                              |
-| `kenney-furniture-kit`        | Furniture Kit 2.0 (140)                       | Kenney       | <https://kenney.nl/assets/furniture-kit>                   | GLB                              |
-| `kenney-fantasy-town-kit`     | Fantasy Town Kit 2.0 (167)                    | Kenney       | <https://kenney.nl/assets/fantasy-town-kit>                | GLB                              |
-| `kaykit-forest-nature`        | KayKit Forest Nature Pack 1.0, free (105)     | Kay Lousberg | <https://kaylousberg.itch.io/kaykit-forest>                | glTF                             |
-| `quaternius-stylized-nature`  | Stylized Nature MegaKit, Standard (68 of 116) | Quaternius   | <https://quaternius.com/packs/stylizednaturemegakit.html>  | glTF; the free Standard subset   |
-| `quaternius-medieval-village` | Medieval Village MegaKit, Standard (176)      | Quaternius   | <https://quaternius.com/packs/medievalvillagemegakit.html> | glTF                             |
-| `quaternius-modular-scifi`    | Modular Sci-Fi MegaKit, Standard (190)        | Quaternius   | <https://quaternius.com/packs/modularscifimegakit.html>    | glTF, see below                  |
-| `3dassets-cozy-home`          | Cozy Home Interiors, starter scene            | 3dassets.dev | <https://3dassets.dev/packs/cozy-home-interiors>           | one GLB; not used by a world yet |
-| `3dassets-hotel-resort`       | Hotel and Resort Operations (9 of 140)        | 3dassets.dev | <https://3dassets.dev/packs/hotel-and-resort-operations>   | GLB; the bathroom's pieces       |
+| Folder                        | Kit                                           | Author       | Source                                                       | Notes                                  |
+| ----------------------------- | --------------------------------------------- | ------------ | ------------------------------------------------------------ | -------------------------------------- |
+| `kenney-nature-kit`           | Nature Kit 2.1 (329 models)                   | Kenney       | <https://kenney.nl/assets/nature-kit>                        | GLB                                    |
+| `kenney-furniture-kit`        | Furniture Kit 2.0 (140)                       | Kenney       | <https://kenney.nl/assets/furniture-kit>                     | GLB                                    |
+| `kenney-fantasy-town-kit`     | Fantasy Town Kit 2.0 (167)                    | Kenney       | <https://kenney.nl/assets/fantasy-town-kit>                  | GLB                                    |
+| `kaykit-forest-nature`        | KayKit Forest Nature Pack 1.0, free (105)     | Kay Lousberg | <https://kaylousberg.itch.io/kaykit-forest>                  | glTF                                   |
+| `quaternius-stylized-nature`  | Stylized Nature MegaKit, Standard (68 of 116) | Quaternius   | <https://quaternius.com/packs/stylizednaturemegakit.html>    | glTF; the free Standard subset         |
+| `quaternius-medieval-village` | Medieval Village MegaKit, Standard (176)      | Quaternius   | <https://quaternius.com/packs/medievalvillagemegakit.html>   | glTF                                   |
+| `quaternius-modular-scifi`    | Modular Sci-Fi MegaKit, Standard (190)        | Quaternius   | <https://quaternius.com/packs/modularscifimegakit.html>      | glTF, see below                        |
+| `3dassets-cozy-home`          | Cozy Home Interiors, starter scene            | 3dassets.dev | <https://3dassets.dev/packs/cozy-home-interiors>             | one GLB; not used by a world yet       |
+| `3dassets-hotel-resort`       | Hotel and Resort Operations (9 of 140)        | 3dassets.dev | <https://3dassets.dev/packs/hotel-and-resort-operations>     | GLB; the bathroom's pieces             |
+| `3dassets-japanese-street`    | Japanese School and City Street (9 of 46)     | 3dassets.dev | <https://3dassets.dev/packs/japanese-school-and-city-street> | GLB, CC0; the shopping street's pieces |
 
 **One repair.** The Sci-Fi MegaKit's glTF files name their textures as if they
 sat beside them, but the zip ships them in a separate `Textures/` folder, so as
@@ -207,6 +208,32 @@ covered the Irish pub; and the taproom starter scene (61K triangles, open
 brewery floor) was downloaded and measured but the bar room read better as a
 pub. No audio was added for any venue: none of these packs ships music, and no
 unlicensed track is used.
+
+## The shopping street (`kits/3dassets-japanese-street/`, VW10)
+
+Nine models of the CC0 "Japanese School and City Street" pack, downloaded
+2026-11-15 from the pack's own download links and kept unmodified. Triangles per
+file (`tools/vr/subset-scene.mjs --list`): ramen shop 2 236, bookshop 3 328,
+laundrette 2 944, shutter 3 280, road section 512, road with drain 768, vending
+machine 1 732, cherry tree 2 294, bicycle rack 640; the world places one of
+each, 17 734 in all. The pack's school rooms (classroom, lockers, gate, gym
+shell) were not taken: see `docs/VR_WORLDS.md` ▸ The shopping street.
+
+## The school (`scenes/japanese-school-grounds*.glb`, VW11)
+
+The "Japanese School and City Street" pack's own starter scene, CC0 1.0
+Universal as the pack page states, downloaded 2026-11-15 from
+<https://3dassets.dev/download/japanese-school-and-city-street-school-g-b3013a62-starter-scene>
+(2.3 MB). `japanese-school-grounds.glb` is the file as downloaded: 88 606
+triangles, 81 top-level nodes (the grounds, the lockers, one classroom, the
+covered walkway, the gate, the street and shopfronts, cherry trees).
+`japanese-school-grounds-light.glb` is cut from it by the recipe `school-light`
+in `tools/vr/playground-subsets.json`
+(`node tools/vr/subset-scene.mjs school-light`): 26 466 triangles, 24 nodes (the
+courtyard and its floor, the covered walkway, the shoe lockers, the classroom
+front, the gate, the bicycle shelter, the cherry trees and fountain). The pack
+is listed by 3dassets.dev as AI-assisted; the scene was reviewed visually in the
+app.
 
 ## Asked for and not included
 

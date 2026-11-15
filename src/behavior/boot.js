@@ -218,6 +218,9 @@
         // desktop and mobile, so one registration creates the tile on both surfaces.
         'src/features/together/activities/playground.js',
         'src/features/together/activities/places.js',
+        // GO1. The school is reachable from Private and only ever General: one hand-off for the
+        // room card, her invitation, a link and a saved visit. After places.js, which it starts.
+        'src/features/together/GeneralOnlyPlaces.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',

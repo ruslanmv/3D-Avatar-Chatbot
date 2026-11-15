@@ -295,3 +295,53 @@ preview renderer refused the frame as one colour: its spot now needs 5 m of clea
 She does not walk between the dungeon's rooms (no measured spots), there are no doors to open,
 nothing to fight and nobody else there: these are places to be in, not a game yet. Walking
 from town to tavern to dungeon needs Living Worlds travel between them, which is not wired.
+
+## The shopping street (VW10)
+
+One general place under "Going out", every tier, 17 734 triangles, no light version (under the
+30 000 phone budget). Assembled, not cut: nine CC0 models of 3dassets.dev's "Japanese School and
+City Street" pack placed as props (`kits/3dassets-japanese-street/`): a row of four shopfronts
+(bookshop, ramen shop, laundrette, a shuttered shop), two road sections in front of them, a
+vending machine, a bicycle rack and a cherry tree in blossom, on a ground disk. Each prop's
+`width` is the model's own measured width (shopfronts 4 m, road sections 8 m), so they sit edge to
+edge without overlap.
+
+She stands at the origin on the pavement with the ramen shop behind her; every prop is at least
+1.7 m from her and none is between her and the camera, so the comfort rule drops nothing. There is
+no floor mesh and no measured spot: she does not walk the street, the shops cannot be entered and
+nobody else is there. The first layout put the laundrette's machines behind her and the place card
+read as a laundrette; the pictures caught it and the row was re-spaced.
+
+The pack's school is its own place, below (VW11).
+
+Not checked: a headset, frame rate on a real phone or Quest, and the road sections' kerbs at
+eye level (the pictures show them from the standing camera only).
+
+## The school (VW11)
+
+A general place under "School": the pack's own starter scene (`school`, desktop, 88 606
+triangles) and its phone and VR cut (`school-light`, 26 466, recipe `school-light`). The courtyard
+with the covered walkway, the shoe lockers, a classroom front, the gate, a bicycle shelter and
+cherry trees. Every character in it is the companion; there is nobody else. It is in Experiences ▸
+Visit a place and in Private's destination list, and her story outline may suggest it.
+
+**Always General** (`generalOnly: true` on the world, inherited by its light cut;
+`src/features/together/GeneralOnlyPlaces.js`, boot list after `places.js`, test
+`tests/general-only-places.test.js`). One hand-off serves every route into it: the room card in
+Private's setup, her invitation once the person says yes, a link, a saved visit, and Private
+started while she is there. It cancels a wear still on its way (the wardrobe controller's
+`cancel`), stops Private through its own path (pending actions go stale, her body is released, the
+story ends and is remembered as an evening, her outfit goes back to hers, the consent flow exits,
+the room request is withdrawn), and only then visits the school as an ordinary place. Nothing is drawn on screen for the rule: no badge, no button. The hand-off remembers the place
+she was in (`previous`, with `goBack()` to visit it again) for code to use; there is no control for
+it, and she is reached again through Visit a place or Private's own controls. Nothing about the school is filtered: it
+is the General experience, whole. Going to any other place leaves Private as it is; the rule is
+scoped to the school and its light cut and adds no restriction anywhere else.
+
+Spot: `node tools/vr/clear-spot.mjs scenes/japanese-school-grounds.glb --behind 060-shoe-locker-bank
+--view 7`, used for both cuts. The first spot (cherry tree behind her) put a fence post across
+the picture; the second (`--view 5`, tree) was fine from the front but the phone showed her half
+hidden by a perimeter fence. Not checked: a headset, frame rate on a real phone or Quest, walking
+the school (no floor mesh, so no measured spots, no stairs, no doors), a live Private evening
+carried through to the school with a real model's reply.
+
