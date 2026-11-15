@@ -135,7 +135,8 @@ try {
         while (Date.now() - t0 < ms) {
             const lines = await herLines();
             const last = lines[lines.length - 1];
-            if (lines.length > before && last && last.who === 'her' && !last.streaming && last.text) break;
+            const first = lines.slice(before).find((l) => l.who === 'her' && !l.streaming && l.text);
+            if (first && last && !last.streaming) break;
             await page.waitForTimeout(400);
         }
         const took = Date.now() - t0;
@@ -194,7 +195,13 @@ try {
             .catch(() => null);
         const after = await state();
         const lines = await herLines();
-        const reply = lines.length ? lines[lines.length - 1].text : '';
+        // Every line of hers since the person's turn: her answer, and anything after it (a
+        // second line once the wardrobe finished, an ambient line) — not just the last one.
+        const mine = lines
+            .slice(count + 1)
+            .filter((l) => l.who === 'her')
+            .map((l) => l.text);
+        const reply = mine.join(' / ');
         const fresh = after.log.slice(before.log.length);
         const changed = fresh.some((a) => a.status === 'completed');
         const claims = CLAIM.test(reply);
