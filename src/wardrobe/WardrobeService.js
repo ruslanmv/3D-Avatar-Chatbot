@@ -51,7 +51,11 @@
             this._RemoteSource = RemoteSource;
             var remote = Boolean(this.config.remoteGeneration && this.config.apiUrl);
             var forge = remote
-                ? new Client({ baseUrl: this.config.apiUrl, token: this.config.token || '' })
+                ? new Client({
+                      baseUrl: this.config.apiUrl,
+                      token: this.config.token || '',
+                      grant: this.config.grant || '',
+                  })
                 : LOCAL_FORGE;
 
             // W11. A look whose pack names its SHA-256 is downloaded and checked before the
@@ -59,9 +63,19 @@
             var Validator = global.NEXUS_WARDROBE_PACK_VALIDATOR;
             var verifyLook =
                 Validator && this.config.verifyLooks !== false
-                    ? function (look) {
-                          return Validator.fetchVerified(look);
-                      }
+                    ? function (look, options) {
+                          // BI2. Read the client at call time: setForge() swaps it, and the grant
+                          // goes only to the Forge that is configured now.
+                          var client = this.controller && this.controller.forge;
+                          var headers =
+                              client && typeof client.downloadHeaders === 'function'
+                                  ? client.downloadHeaders(look.vrmUrl)
+                                  : {};
+                          return Validator.fetchVerified(look, {
+                              headers: headers,
+                              signal: options && options.signal,
+                          });
+                      }.bind(this)
                     : null;
 
             this.controller = new Controller({
@@ -161,7 +175,7 @@
             this.config.apiUrl = url;
             this.config.remoteGeneration = remote;
             this.controller.forge = remote
-                ? new this._Client({ baseUrl: url, token: this.config.token || '' })
+                ? new this._Client({ baseUrl: url, token: this.config.token || '', grant: this.config.grant || '' })
                 : LOCAL_FORGE;
             this._attachForge(remote);
             return remote;

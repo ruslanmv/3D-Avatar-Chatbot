@@ -26,6 +26,7 @@
     var DEFAULT_FORGE_URL = 'https://ruslanmv-3d-wardrobe-forge.hf.space';
     var MODE_KEY = 'wardrobe_forge_mode';
     var URL_KEY = 'wardrobe_forge_url';
+    var GRANT_KEY = 'wardrobe_forge_grant';
     var MODES = ['default', 'custom', 'off'];
 
     function read(storage, key) {
@@ -106,6 +107,26 @@
         return { source: 'default', url: DEFAULT_FORGE_URL };
     }
 
+    /**
+     * BI2. Keep (or, with an empty value, forget) this device's Forge read grant. Only the
+     * shape is checked here (`<claims>.<signature>`, base64url); Forge decides whether it is
+     * valid, unexpired and for her.
+     */
+    function saveGrant(value, storage) {
+        var store = storage || (typeof global.localStorage !== 'undefined' ? global.localStorage : null);
+        var grant = String(value || '').trim();
+        if (grant && !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(grant)) {
+            return { ok: false, why: 'That is not a Forge read grant (it looks like two parts joined by a dot).' };
+        }
+        try {
+            if (grant) store.setItem(GRANT_KEY, grant);
+            else store.removeItem(GRANT_KEY);
+        } catch (_) {
+            return { ok: false, why: 'This browser would not store it.' };
+        }
+        return { ok: true, why: '', grant: grant };
+    }
+
     function readBool(value, fallback) {
         if (value === undefined || value === null || value === '') return fallback;
         if (typeof value === 'boolean') return value;
@@ -139,6 +160,12 @@
             // For development against a keyed Forge only. A public page never holds a key: a
             // hosted Forge trusts its pages by origin (Forge F5) or sits behind a proxy (F4).
             token: supplied.token || '',
+            // BI2. A Forge read grant (`X-Wardrobe-Grant`): read-only, expiring, scoped to named
+            // library avatars, minted by the operator in Forge's admin session. It is what lets
+            // this page list and download her private looks without ever holding the admin
+            // token, which can declare, import and delete. The site's own config wins; otherwise
+            // the one pasted into Settings on this device (`wardrobe_forge_grant`).
+            grant: String((supplied.forge && supplied.forge.grant) || read(storage, GRANT_KEY) || '').trim(),
             // W11. Check a look against its pack's SHA-256 before wearing it.
             verifyLooks: readBool(supplied.verifyLooks, true),
             // W14. Importing wardrobe packs into this browser.
@@ -150,6 +177,8 @@
         DEFAULT_FORGE_URL: DEFAULT_FORGE_URL,
         resolveWardrobeConfig: resolveWardrobeConfig,
         resolveForge: resolveForge,
+        GRANT_KEY: GRANT_KEY,
+        saveGrant: saveGrant,
         normalizeForgeUrl: normalizeForgeUrl,
         storedForgeChoice: storedForgeChoice,
         saveForgeChoice: saveForgeChoice,
