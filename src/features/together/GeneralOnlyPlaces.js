@@ -20,14 +20,13 @@
  * and caught as a request (her invitation, the setup's Begin) or as a shown world (a link, a
  * save) everywhere else. Private started while she is at the school is ended at once with the
  * same hand-off; going to any other place makes Private available again through its normal
- * controls. A "General" badge stays on screen while a general-only place is shown.
+ * controls. Nothing is drawn on screen for it: no badge, no button.
  *
  * Nothing here filters what is said in the school: it is the General experience, whole.
  */
 (function (global) {
     'use strict';
 
-    const BADGE_ID = 'nexus-general-badge';
     const REASON = 'general-place';
 
     /** A general-only world: its own `generalOnly`, or that of the place it stands in for. Pure. */
@@ -221,45 +220,6 @@
             return promise;
         }
 
-        _badge(on) {
-            const doc = this.win && this.win.document;
-            if (!doc || !doc.body) return;
-            let badge = doc.getElementById(BADGE_ID);
-            if (!on) {
-                if (badge) badge.remove();
-                return;
-            }
-            if (badge) {
-                const back = badge.querySelector('[data-action="general-back"]');
-                if (back) back.style.display = this.previous ? '' : 'none';
-            }
-            if (!badge) {
-                badge = doc.createElement('div');
-                badge.id = BADGE_ID;
-                badge.setAttribute('role', 'status');
-                badge.style.cssText =
-                    'position:fixed;top:72px;left:50%;transform:translateX(-50%);z-index:60;' +
-                    'display:flex;gap:10px;align-items:center;' +
-                    'padding:4px 12px;border-radius:999px;font:600 12px/1.4 system-ui,sans-serif;' +
-                    'background:rgba(20,40,60,0.78);color:#e8f4ff';
-                const label = doc.createElement('span');
-                label.textContent = 'General';
-                badge.appendChild(label);
-                // The way back, only when there is somewhere she came from.
-                const back = doc.createElement('button');
-                back.type = 'button';
-                back.dataset.action = 'general-back';
-                back.textContent = 'Back';
-                back.style.cssText =
-                    'font:inherit;color:inherit;background:transparent;border:1px solid currentColor;' +
-                    'border-radius:999px;padding:0 8px;cursor:pointer';
-                back.addEventListener('click', () => this.goBack());
-                back.style.display = this.previous ? '' : 'none';
-                badge.appendChild(back);
-                doc.body.appendChild(badge);
-            }
-        }
-
         onWorldRequest(detail) {
             const d = detail || {};
             if (d.owner !== 'intimate') return;
@@ -281,7 +241,6 @@
             const general = Boolean(id) && this.isGeneralOnly(id);
             this.shown = general ? id : null;
             if (!general) this.previous = null; // somewhere else now: nothing to go back from
-            this._badge(general);
             // A link or a saved visit landed in the school with Private still running.
             if (general && this.privateActive()) this.leavePrivateFor(id);
         }
@@ -336,7 +295,6 @@
                     /* already gone */
                 }
             });
-            this._badge(false);
         }
     }
 
@@ -350,7 +308,7 @@
     // On the page (not under Jest's require): attach once, as soon as the module loads.
     if (global && global.document && !(typeof module !== 'undefined' && module.exports)) forPage();
 
-    const api = { GeneralOnlyPlaces, isGeneralOnly, placeOf, forPage, BADGE_ID, REASON };
+    const api = { GeneralOnlyPlaces, isGeneralOnly, placeOf, forPage, REASON };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_GENERAL_ONLY_PLACES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

@@ -332,10 +332,9 @@ Private's setup, her invitation once the person says yes, a link, a saved visit,
 started while she is there. It cancels a wear still on its way (the wardrobe controller's
 `cancel`), stops Private through its own path (pending actions go stale, her body is released, the
 story ends and is remembered as an evening, her outfit goes back to hers, the consent flow exits,
-the room request is withdrawn), and only then visits the school as an ordinary place. A
-"General" badge stays on screen while it is shown, with a Back button: it remembers the place she
-was in and visits it again if an ordinary visit can show it (a general or romantic place); a
-private room comes back through Private's own controls. Nothing about the school is filtered: it
+the room request is withdrawn), and only then visits the school as an ordinary place. Nothing is drawn on screen for the rule: no badge, no button. The hand-off remembers the place
+she was in (`previous`, with `goBack()` to visit it again) for code to use; there is no control for
+it, and she is reached again through Visit a place or Private's own controls. Nothing about the school is filtered: it
 is the General experience, whole. Going to any other place leaves Private as it is; the rule is
 scoped to the school and its light cut and adds no restriction anywhere else.
 

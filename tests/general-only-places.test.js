@@ -7,7 +7,7 @@
  * - direct links, saves and scene transitions enforce the same rule;
  * - no pending Private action continues inside the school (wear cancelled, Private's own stop);
  * - Private started at the school is ended; going to another place does not end it;
- * - a "General" badge is shown while the school is.
+ * - nothing is drawn on screen for it (no badge, no button).
  */
 const fs = require('fs');
 const path = require('path');
@@ -145,12 +145,12 @@ describe('GO1 links, saves and transitions', () => {
         expect(calls.map((c) => c[0])).toContain('wardrobe.cancel');
     });
 
-    test('the school shown without Private changes nothing but the badge', async () => {
+    test('the school shown without Private changes nothing and draws nothing', async () => {
         const { calls } = page({ privateOn: false });
         window.dispatchEvent(new CustomEvent('nexus-world-shown', { detail: { id: 'school' } }));
         await flush();
         expect(calls).toEqual([]);
-        expect(document.getElementById(General.BADGE_ID).querySelector('span').textContent).toBe('General');
+        expect(document.body.children.length).toBe(0); // nothing drawn on screen
     });
 
     test('Private started at the school is ended; started on its way elsewhere it is not', async () => {
@@ -175,24 +175,21 @@ describe('GO1 links, saves and transitions', () => {
         expect(away.intimate.active).toBe(true);
     });
 
-    test('the badge goes with the school', () => {
+    test('nothing is drawn on screen for the school: no badge, no button', () => {
         page({ privateOn: false });
         window.dispatchEvent(new CustomEvent('nexus-world-shown', { detail: { id: 'school' } }));
-        expect(document.getElementById(General.BADGE_ID)).not.toBeNull();
-        window.dispatchEvent(new CustomEvent('nexus-world-shown', { detail: { id: 'shopping-street' } }));
-        expect(document.getElementById(General.BADGE_ID)).toBeNull();
+        expect(document.body.children.length).toBe(0);
+        expect(document.querySelector('[data-action="general-back"], #nexus-general-badge')).toBeNull();
     });
 });
 
 describe('GO1 previous location and the way back', () => {
-    test('leaving Private for the school remembers where she was; Back visits it again', async () => {
+    test('leaving Private for the school remembers where she was; goBack() visits it again (no button)', async () => {
         const { guard, calls, panel } = page();
         window.NEXUS_VIEWER = { vrWorlds: { activeId: 'cinema' } };
         await guard.leavePrivateFor('school');
         expect(guard.previous).toMatchObject({ world: 'cinema', place: 'cinema' });
         window.dispatchEvent(new CustomEvent('nexus-world-shown', { detail: { id: 'school' } }));
-        const back = document.querySelector('[data-action="general-back"]');
-        expect(back.style.display).toBe('');
         calls.length = 0;
         const result = await guard.goBack();
         expect(result).toEqual({ ok: true, returnedTo: 'cinema' });
@@ -204,19 +201,13 @@ describe('GO1 previous location and the way back', () => {
         delete window.NEXUS_VIEWER;
     });
 
-    test('a private room is not a place a visit can show: Back leaves the school and says so', async () => {
+    test('a private room is not a place a visit can show: goBack() leaves the school and says so', async () => {
         const { guard } = page();
         window.NEXUS_VIEWER = { vrWorlds: { activeId: 'private-cabaret' } };
         await guard.leavePrivateFor('school');
         const result = await guard.goBack();
         expect(result).toEqual({ ok: true, returnedTo: null, privateRoom: true });
         delete window.NEXUS_VIEWER;
-    });
-
-    test('no Back button when there is nowhere to go back to', () => {
-        page({ privateOn: false });
-        window.dispatchEvent(new CustomEvent('nexus-world-shown', { detail: { id: 'school' } }));
-        expect(document.querySelector('[data-action="general-back"]').style.display).toBe('none');
     });
 
     test('the guard loads the catalogue itself when it has none (the page case)', async () => {
