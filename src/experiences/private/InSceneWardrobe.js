@@ -223,6 +223,15 @@
             } catch (_) {
                 /* untagged looks are still worn by name and style; only the shortcut is lost */
             }
+            // UN14. What each look covers, from Forge's templates; null when it cannot be verified.
+            const Coverage = this._dep('Coverage', (w) => w.NEXUS_WARDROBE_COVERAGE);
+            try {
+                if (Coverage && (Coverage.ready() || (await Coverage.load(this.win)))) {
+                    for (const look of this.looks) look.coverage = Coverage.describe(look, this.entries);
+                }
+            } catch (_) {
+                /* unannotated looks fall back to on-demand description, or the name guesses */
+            }
             this._loadedAt = Date.now();
         }
 

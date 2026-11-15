@@ -158,6 +158,7 @@
         'src/experiences/private/PrivateActionIntent.js',
         'src/experiences/private/PrivateActionPolicy.js',
         'src/experiences/private/PrivateMediaController.js',
+        'src/experiences/private/WardrobeCoverage.js',
         'src/experiences/private/OutfitDecisionEngine.js',
         'src/experiences/private/InSceneWardrobe.js',
         // UN5. Her held positions (Pose Studio's presets), read by the bridge.

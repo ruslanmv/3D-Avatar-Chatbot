@@ -20,10 +20,13 @@ const look = (name, prompt) => ({
     vrmUrl: `${name}.vrm`,
 });
 const DRESS = look('Black Cocktail Dress', 'black satin cocktail dress');
-const SET = look('Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs', 'black lace lingerie set');
+const SET = look(
+    'Black Tailored Triangle Bralette + Black Tailored Briefs',
+    'black Tailored Triangle Bralette + black Tailored Briefs'
+);
 const GARTER = look('Black Lingerie Set', 'black Lingerie Set');
 const THONG = look('Black Bralette + Black Micro Tailored Thong', 'black Tailored Thong');
-const BRIEFS = look('Black Tailored Bralette + Black Tailored Briefs', 'black Tailored Briefs');
+const BRIEFS = look('Black Tailored Triangle Bralette + Black Tailored Cheeky Briefs', 'black Tailored Cheeky Briefs');
 const CHAMPAGNE = look('Champagne Lingerie Set', 'champagne Lingerie Set');
 const LOOKS = [DRESS, CHAMPAGNE, SET, GARTER, THONG, BRIEFS];
 

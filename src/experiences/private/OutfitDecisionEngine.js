@@ -245,35 +245,80 @@
     }
 
     /**
-     * UN7. Does this look leave nothing of hers on? Forge replaces only the region a garment
-     * covers: "String Briefs" alone kept her own cardigan on in the real run, a bra alone keeps her
-     * shorts. Only a complete look — a set with a top and a bottom, a garter set, a one-piece, or
-     * her bare body — is a step towards undressed.
+     * UN14. What a look covers comes from Forge's garment templates (WardrobeCoverage): a look on
+     * her shelf carries it as `look.coverage` (InSceneWardrobe annotates the shelf when it loads;
+     * null means it could not be verified), and any other look is described on demand.
+     * `undefined` here means the coverage data itself is not loaded.
      */
-    const UPPER = /\bbra\b|bralette|top\b|bustier|corset|gu[eê]pi[eè]re|cami|balconette/i;
-    const LOWER = /brief|thong|string|panty|panties|knicker|short|tanga|perizoma/i;
-    // UN11. By what Forge's templates actually cover (`coverage` in assets/garment_templates):
-    // a lingerie set is a bra and briefs, so it is whole; a waspie or guêpière covers chest to hips.
-    // A garter set is NOT — `under-garter-set-v1` covers waist, hips and upper legs only, so on the
-    // real avatar her own top stayed on over it while "undressed" was reported (M3 browser run).
-    const ONE_PIECE =
-        /bodysuit|bodystocking|catsuit|teddy|babydoll|chemise|lingerie set|lingerie-set|waspie|gu[eê]pi[eè]re/i;
-    function isComplete(look) {
-        if (!look) return false;
-        if (isBare(look)) return true;
-        const text = `${look.templateId || ''} ${look.name || ''}`;
-        if (ONE_PIECE.test(text)) return true;
-        return /\+/.test(look.name || '') && UPPER.test(text) && LOWER.test(text);
+    function coverageModel() {
+        if (global && global.NEXUS_WARDROBE_COVERAGE) return global.NEXUS_WARDROBE_COVERAGE;
+        if (typeof module !== 'undefined' && module.exports && typeof require === 'function') {
+            try {
+                return require('./WardrobeCoverage.js');
+            } catch (_) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    function coverageFacts(look) {
+        if (!look) return null;
+        if (look.coverage !== undefined) return look.coverage;
+        const model = coverageModel();
+        return model && model.ready() ? model.describe(look) : undefined;
     }
 
     /**
-     * UN7. How much of her a complete lingerie look covers, 0 (bare) to 4, from its template and
-     * name. Allure is not coverage: in the real run "I wanna see you naked" after a bralette and
-     * briefs chose the lowest-allure piece — a bodysuit, more covered than what she had on.
+     * UN7/UN14. Does this look leave nothing of hers on? Forge replaces only the regions a garment
+     * covers: "String Briefs" alone kept her own cardigan on, a bra alone keeps her shorts, and
+     * a garter set — waist, hips and upper legs, no chest — kept the cardigan too (UN11). Complete
+     * means it covers her upper and lower body (chest and hips), or it is her bare body. A look
+     * the coverage cannot verify is not complete: it is never offered as a step of undressing.
+     */
+    function isComplete(look) {
+        if (!look) return false;
+        if (isBare(look)) return true;
+        const facts = coverageFacts(look);
+        if (facts) return facts.complete;
+        if (facts === null) return false;
+        return guessComplete(look);
+    }
+
+    /**
+     * UN7/UN14. How much of her a look covers: 0 (bare) up, from the regions its templates cover
+     * (a bra and briefs 2, a bodysuit 2.5, a babydoll 3); 5 when it cannot be verified. Allure is
+     * not coverage: "I wanna see you naked" after a bralette and briefs once chose a bodysuit.
      */
     function coverageOf(look) {
         if (!look) return 5;
         if (isBare(look)) return 0;
+        const facts = coverageFacts(look);
+        if (facts) return facts.amount;
+        if (facts === null) return 5;
+        return guessCoverage(look);
+    }
+
+    // The pre-UN14 name guesses, used only while the coverage data could not be loaded at all
+    // (offline, a failed fetch) — never alongside it, so the two scales never meet.
+    let warned = false;
+    function guessed() {
+        if (warned) return;
+        warned = true;
+        console.warn('[Wardrobe] no garment coverage data: completeness is guessed from look names');
+    }
+    const UPPER = /\bbra\b|bralette|top\b|bustier|corset|gu[eê]pi[eè]re|cami|balconette/i;
+    const LOWER = /brief|thong|string|panty|panties|knicker|short|tanga|perizoma/i;
+    const ONE_PIECE =
+        /bodysuit|bodystocking|catsuit|teddy|babydoll|chemise|lingerie set|lingerie-set|waspie|gu[eê]pi[eè]re/i;
+    function guessComplete(look) {
+        guessed();
+        const text = `${look.templateId || ''} ${look.name || ''}`;
+        if (ONE_PIECE.test(text)) return true;
+        return /\+/.test(look.name || '') && UPPER.test(text) && LOWER.test(text);
+    }
+    function guessCoverage(look) {
+        guessed();
         const text = `${look.templateId || ''} ${look.name || ''}`;
         if (/bodysuit|bodystocking|catsuit|teddy|babydoll|chemise/i.test(text)) return 4;
         if (/garter|suspender|waspie|gu[eê]pi[eè]re|corset|stocking|bustier/i.test(text)) return 3;

@@ -871,8 +871,35 @@
             action,
             out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
             out.ok ? null : out.why,
-            { name: look.name || '', bare }
+            { name: look.name || '', bare, covers: coveredBy(s, look) }
         );
+    }
+
+    /** UN14. The regions a look covers, from Forge's templates (WardrobeCoverage); [] when unknown. */
+    function coveredBy(s, look) {
+        const Coverage = pick(s.win, 'NEXUS_WARDROBE_COVERAGE', './WardrobeCoverage.js');
+        try {
+            const facts = look && (look.coverage !== undefined ? look.coverage : Coverage && Coverage.describe(look));
+            return facts && Array.isArray(facts.regions) ? facts.regions.slice() : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    const REGION_WORDS = {
+        chest: 'chest',
+        waist: 'waist',
+        hips: 'hips',
+        upperLegs: 'thighs',
+        lowerLegs: 'calves',
+        upperArms: 'upper arms',
+        lowerArms: 'forearms',
+        shoulders: 'shoulders',
+        feet: 'feet',
+    };
+    function regionText(regions) {
+        const words = (regions || []).map((r) => REGION_WORDS[r] || r);
+        return words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0] || '';
     }
 
     async function wear(s, action, alive) {
@@ -1539,14 +1566,18 @@
                     );
                 else if (w.status === 'completed' && askedNaked)
                     now.push(
-                        `They asked to see you naked. You took off all you can here: you are now wearing only “${name}”. Being fully bare is not in your wardrobe yet — say so once, warmly and honestly, and never say you are naked.`
+                        `They asked to see you naked. You changed into the least you have here: you are now wearing only “${name}”. Being fully bare is not in your wardrobe yet — say so once, warmly and honestly, and never say you are naked.`
                     );
-                else if (w.status === 'completed')
+                else if (w.status === 'completed') {
+                    // UN14. Forge swaps her whole look in one change; it does not peel garments off
+                    // one by one. She says what she wears now — as playfully as the moment allows —
+                    // and never narrates removing a piece the renderer never showed coming off.
+                    const covers = regionText(w.result && w.result.covers);
                     now.push(
-                        `You have just taken a layer off${name ? `: you are now wearing “${name}”` : ''}. Say it in a few words, in the moment.`
+                        `You have just changed into something lighter${name ? `: you are now wearing “${name}”` : ''}${covers ? ` (it covers your ${covers}; nothing of your earlier outfit shows)` : ''}. It was one change, all at once: say what you wear now, in a few words, in the moment — not a piece-by-piece undressing.`
                     );
-                else if (w.status === 'pending')
-                    now.push('You are taking a layer off right now — say so in one short sentence.');
+                } else if (w.status === 'pending')
+                    now.push('You are changing into something lighter right now — say so in one short sentence.');
                 else if (w.why === 'pace' && w.source === 'model')
                     now.push('Undressing is not open yet. Stay as you are and do not describe taking anything off.');
                 else if (w.why === 'pace')

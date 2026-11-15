@@ -1287,7 +1287,10 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         await flush();
         expect(worn(w)).toEqual(['Black Cocktail Dress', 'Black Lingerie Set']);
         expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'completed', name: 'Black Lingerie Set' });
-        expect(Actions.promptLines().join('\n')).toMatch(/taken a layer off/);
+        // UN14. One whole-look change, said as one: what she wears now and what it covers.
+        const told = Actions.promptLines().join('\n');
+        expect(told).toMatch(/RIGHT NOW[\s\S]*now wearing “Black Lingerie Set” \(it covers your chest and hips/);
+        expect(told).toMatch(/one change, all at once/);
         await say('togliti ancora qualcosa');
         await flush();
         expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
@@ -1833,7 +1836,7 @@ describe('UN11. only a look that covers her top and bottom counts as undressed-t
         ['Black Lingerie Set', true],
         ['Ivory Waspie', true],
         ['Red Guêpière', true],
-        ['Black Bralette + Black Thong', true],
+        ['Black Bralette + Black Micro Tailored Thong', true],
     ])('%s → complete %s', (name, complete) => expect(Engine.isComplete({ name })).toBe(complete));
 
     test('dressed, with only a garter set and a full set to choose from, she takes the full set', () => {
@@ -1903,5 +1906,65 @@ describe('RU5. a dictionary outfit already on her shelf is worn, not made again'
         const twins = [...entries, { id: 'red-dress-2', request: { prompt: 'red cocktail dress', preset: 'p' } }];
         const fresh = [{ lookId: 'y', prompt: 'red cocktail dress', vrmUrl: 'y.vrm' }];
         expect(Engine.tagOutfits(fresh, twins)).toBe(0);
+    });
+});
+
+describe("UN14. what a look covers comes from Forge's templates, not its name", () => {
+    const Coverage = require('../../src/experiences/private/WardrobeCoverage.js');
+    const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
+
+    test('the UN11 garter set: no chest, so not complete, and her own top stays visible', () => {
+        const garter = { name: 'Black Garter Set' };
+        expect(Coverage.describe(garter)).toMatchObject({ templates: ['under-garter-set-v1'], complete: false });
+        expect(Coverage.rendered(garter)).toMatchObject({ known: true, ownOutfitVisible: true });
+        expect(Engine.isComplete(garter)).toBe(false);
+    });
+
+    test("a look resolves by its Forge template id first, then a dictionary outfit, then Forge's name", () => {
+        expect(Coverage.templatesOf({ templateId: 'under-thong-v2', name: 'Anything' })).toEqual(['under-thong-v2']);
+        const entries = [
+            { id: 'crop', garments: [{ template: 'top-crop-tee-v1' }, { template: 'jeans-straight-v1' }] },
+        ];
+        expect(Coverage.templatesOf({ outfitId: 'crop', name: 'x' }, entries)).toEqual([
+            'top-crop-tee-v1',
+            'jeans-straight-v1',
+        ]);
+        // Forge names: colour words, " + " pieces, the "Micro" cut, hosiery straps.
+        expect(Coverage.templatesOf({ name: 'Black Micro Tailored G-String' })).toEqual(['under-g-string-v2']);
+        expect(
+            Coverage.templatesOf({ name: 'Black Waspie + Black Thigh-High Stockings + Black Suspender Straps' })
+        ).toEqual(['under-waspie-v1', 'legwear-thigh-highs-v1']);
+    });
+
+    test("an attractive name that is not Forge's is unknown, and unknown is never complete", () => {
+        const invented = { name: 'Sexy Lace Lingerie Set Deluxe' };
+        expect(Coverage.describe(invented)).toBeNull();
+        expect(Engine.isComplete(invented)).toBe(false);
+        expect(Engine.coverageOf(invented)).toBe(5);
+    });
+
+    test('less fabric is measured: a thong covers less of her hips than briefs', () => {
+        const thong = Coverage.describe({ name: 'Black Bralette + Black Micro Tailored Thong' });
+        const briefs = Coverage.describe({ name: 'Black Tailored Triangle Bralette + Black Tailored Briefs' });
+        expect(thong.regions.sort()).toEqual(briefs.regions.sort());
+        expect(thong.amount).toBeLessThan(briefs.amount);
+    });
+
+    test('garments can be worn together only when they cover none of the same regions', () => {
+        expect(Coverage.compatible({ templateId: 'under-bra-full-v2' }, { templateId: 'under-thong-v2' })).toBe(true);
+        expect(Coverage.compatible({ templateId: 'under-bodysuit-v2' }, { templateId: 'under-thong-v2' })).toBe(false);
+    });
+
+    test('the shelf is annotated when the wardrobe loads: every real lingerie name resolves', () => {
+        const real = [
+            'Black Garter Set',
+            'Champagne Lingerie Set',
+            'Black Tailored Triangle Bralette + Black Tailored Briefs',
+            'Black High-Waisted Suspender Belt + Black Thigh-High Stockings + Black Suspender Straps',
+            'Burgundy Micro Tailored High-Waist Thong',
+            'Black Tailored Bodysuit',
+            'Black Babydoll',
+        ];
+        for (const name of real) expect(Coverage.describe({ name })).not.toBeNull();
     });
 });
