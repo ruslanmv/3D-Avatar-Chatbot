@@ -4,6 +4,13 @@
 `feat/bare-base-body` @ `4a77eed`). Nothing is merged to `master` / `main`, no PR is open,
 and the Forge Space still runs Forge `49788ec` (before the bare-body merge).
 
+> **2026-11-15, later: `BODY_STATE_ACCEPTANCE.md`.** An operator-supplied private body state now
+> imports into Forge (BI1, checked against her pinned file, rig, face, hair and expressions), the
+> app reads it with a read grant instead of the admin token (BI2), and a wear can be cancelled
+> (BI3). Verified in the real renderer with a lingerie state of AvatarSample A, desktop and
+> 390 px, EN and IT. A bare state of a real character is still blocked on a design review and an
+> operator-supplied file.
+
 > **Superseded** for the per-character status by `BARE_PRODUCTION_READINESS.md`. **Corrected
 > by `BARE_ELIGIBILITY_MATRIX.md`:** all eight characters are declared adult by the
 > operator and their own licences allow sexual expression; AvatarSample A and B build since the
