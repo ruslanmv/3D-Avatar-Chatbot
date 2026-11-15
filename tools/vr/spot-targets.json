@@ -347,6 +347,82 @@
           "rating": "romantic"
         }
       ]
+    },
+    "scenes/cinema-auditorium.glb": {
+      "title": {
+        "en": "the cinema",
+        "it": "il cinema"
+      },
+      "spots": [
+        {
+          "id": "seats",
+          "label": {
+            "en": "by the front seats",
+            "it": "vicino alle prime file"
+          },
+          "room": "auditorium",
+          "near": ["^00[34]-tiered-seating-row$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of cinema seats rising towards the back, facing the big screen in the dim light",
+            "it": "file di poltrone che salgono verso il fondo, rivolte al grande schermo nella penombra"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "screen",
+          "label": {
+            "en": "in front of the screen",
+            "it": "davanti allo schermo"
+          },
+          "room": "auditorium",
+          "near": ["^018-cinema-screen-and-masking$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the cinema screen filling the wall, with the seats rising behind",
+            "it": "lo schermo del cinema che riempie la parete, con le poltrone che salgono alle spalle"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/cinema-auditorium-light.glb": {
+      "title": {
+        "en": "the cinema",
+        "it": "il cinema"
+      },
+      "spots": [
+        {
+          "id": "seats",
+          "label": {
+            "en": "by the front seats",
+            "it": "vicino alle prime file"
+          },
+          "room": "auditorium",
+          "near": ["^00[34]-tiered-seating-row$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of cinema seats rising towards the back, facing the big screen in the dim light",
+            "it": "file di poltrone che salgono verso il fondo, rivolte al grande schermo nella penombra"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "screen",
+          "label": {
+            "en": "in front of the screen",
+            "it": "davanti allo schermo"
+          },
+          "room": "auditorium",
+          "near": ["^018-cinema-screen-and-masking$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the cinema screen filling the wall, with the seats rising behind",
+            "it": "lo schermo del cinema che riempie la parete, con le poltrone che salgono alle spalle"
+          },
+          "rating": "general"
+        }
+      ]
     }
   }
 }

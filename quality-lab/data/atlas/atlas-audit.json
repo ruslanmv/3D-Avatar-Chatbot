@@ -55,7 +55,10 @@
             ]
         },
         "fails": 0,
-        "unzoned": []
+        "unzoned": [
+            "cinema",
+            "cinema-light"
+        ]
     },
     "zones": [
         {

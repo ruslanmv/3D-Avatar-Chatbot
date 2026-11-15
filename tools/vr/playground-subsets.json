@@ -48,6 +48,18 @@
       "out": "assets/vr-worlds/scenes/airship-dock-light.glb",
       "keep": ["31-32", "37-40", "45-47", "65-73", "110", "115", "123", "132-134"],
       "budget": 30000
+    },
+    "cinema": {
+      "src": "assets/vr-worlds/sources/cinema-multiplex.glb",
+      "out": "assets/vr-worlds/scenes/cinema-auditorium.glb",
+      "keep": ["3-18", "20-23", "65-89", "110-124", "129-136"],
+      "budget": 100000
+    },
+    "cinema-light": {
+      "src": "assets/vr-worlds/sources/cinema-multiplex.glb",
+      "out": "assets/vr-worlds/scenes/cinema-auditorium-light.glb",
+      "keep": ["3-5", "18", "66-69", "71-74", "111-116", "129-130"],
+      "budget": 30000
     }
   }
 }

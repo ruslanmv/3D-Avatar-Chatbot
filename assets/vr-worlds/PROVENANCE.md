@@ -105,17 +105,29 @@ output's source and the top-level nodes it keeps, and
 in headless Chromium). The cut files are float, not quantized, so they are
 larger on disk than their triangle count suggests.
 
-| File                        | From                                              | Source                                                                                        | Triangles |
-| --------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------- |
-| `pub-bar-room.glb`          | Bar room (Bar, Pub and Brewery Taproom), whole    | <https://3dassets.dev/assets/bar-pub-and-brewery-taproom-bar-room-d134f615-starter-scene>     | 94 872    |
-| `pub-bar-room-light.glb`    | the same, recipe `pub-light`                      | as above                                                                                      | 29 058    |
-| `club-main-room.glb`        | Club main room (Nightclub and DJ Booth), whole    | <https://3dassets.dev/assets/nightclub-and-dj-booth-club-main-room-4e00883e-starter-scene>    | 138 814   |
-| `club-main-room-light.glb`  | the same, recipe `club-light`                     | as above                                                                                      | 27 904    |
-| `cabaret-stage.glb`         | Playhouse stage (Theatre Stage and Backstage)     | <https://3dassets.dev/assets/theatre-stage-and-backstage-playhouse-st-bcd91a59-starter-scene> | 68 044    |
-| `cabaret-stage-light.glb`   | the same, recipe `cabaret-light`                  | as above                                                                                      | 25 160    |
-| `academy-seminar.glb`       | Seminar room (University Lecture Hall and Campus) | <https://3dassets.dev/assets/university-lecture-hall-and-campus-teach-1377fb44-starter-scene> | 41 160    |
-| `academy-seminar-light.glb` | the same, recipe `academy-light`                  | as above                                                                                      | 29 356    |
-| `airship-dock-light.glb`    | `airship-dock.glb` above, recipe `airship-light`  | as above (VW3 table)                                                                          | 29 140    |
+| File                          | From                                              | Source                                                                                        | Triangles |
+| ----------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------- |
+| `pub-bar-room.glb`            | Bar room (Bar, Pub and Brewery Taproom), whole    | <https://3dassets.dev/assets/bar-pub-and-brewery-taproom-bar-room-d134f615-starter-scene>     | 94 872    |
+| `pub-bar-room-light.glb`      | the same, recipe `pub-light`                      | as above                                                                                      | 29 058    |
+| `club-main-room.glb`          | Club main room (Nightclub and DJ Booth), whole    | <https://3dassets.dev/assets/nightclub-and-dj-booth-club-main-room-4e00883e-starter-scene>    | 138 814   |
+| `club-main-room-light.glb`    | the same, recipe `club-light`                     | as above                                                                                      | 27 904    |
+| `cabaret-stage.glb`           | Playhouse stage (Theatre Stage and Backstage)     | <https://3dassets.dev/assets/theatre-stage-and-backstage-playhouse-st-bcd91a59-starter-scene> | 68 044    |
+| `cabaret-stage-light.glb`     | the same, recipe `cabaret-light`                  | as above                                                                                      | 25 160    |
+| `academy-seminar.glb`         | Seminar room (University Lecture Hall and Campus) | <https://3dassets.dev/assets/university-lecture-hall-and-campus-teach-1377fb44-starter-scene> | 41 160    |
+| `academy-seminar-light.glb`   | the same, recipe `academy-light`                  | as above                                                                                      | 29 356    |
+| `airship-dock-light.glb`      | `airship-dock.glb` above, recipe `airship-light`  | as above (VW3 table)                                                                          | 29 140    |
+| `cinema-auditorium.glb`       | Cinema Multiplex and Foyer, recipe `cinema`       | <https://3dassets.dev/packs/cinema-multiplex-and-foyer> (starter scene)                       | 98 472    |
+| `cinema-auditorium-light.glb` | the same, recipe `cinema-light`                   | as above                                                                                      | 27 168    |
+
+`sources/cinema-multiplex.glb` (176 506 triangles, SHA-256 `94ba5463…62a347`,
+downloaded 2026-11-15, CC0 1.0 as stated on the pack page, reported there as
+AI-assisted) is the unmodified starter scene the two cinema recipes cut from: a
+foyer with concessions and an auditorium in one file. The desktop cinema keeps
+the auditorium (the screen, six of the eight tiered rows, the recliner rows, the
+aisle, the acoustic walls, light strips and speakers) and drops the foyer and
+the two front rows; the phone and VR stand-in keeps the screen, two rows, the
+floor in front and the walls behind and beside it. Both were looked at in the
+app on desktop and at phone size before shipping (`lab_screenshot`).
 
 `sources/playhouse-stage.glb` (202 994 triangles) and
 `sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret

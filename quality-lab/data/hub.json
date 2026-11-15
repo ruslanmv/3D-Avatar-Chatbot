@@ -21,14 +21,14 @@
             "humanReviews": 0
         },
         "3d": {
-            "worlds": 38,
+            "worlds": 40,
             "offered": {
-                "desktop": 30,
-                "mobile": 28,
-                "vr": 29
+                "desktop": 31,
+                "mobile": 29,
+                "vr": 30
             },
             "fails": 0,
-            "warns": 19,
+            "warns": 20,
             "animations": {
                 "avatars": 17,
                 "clips": 163,
@@ -165,8 +165,8 @@
             "id": "3d-vr-comfort",
             "area": "3d",
             "priority": 3,
-            "title": "Check VR comfort near her spot in 11 worlds",
-            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy.",
+            "title": "Check VR comfort near her spot in 12 worlds",
+            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy, cinema-light.",
             "command": "node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset",
             "files": [
                 "assets/vr-worlds/worlds.json",

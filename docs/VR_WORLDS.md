@@ -192,3 +192,20 @@ showed bare sand.
   are not in the repository, so no world names one.
 - New materials compile on the first frame a world is shown; that frame is
   under the black of the fade.
+
+## The cinema (VW5)
+
+A place to go on a date: `cinema` (desktop, 98 472 triangles: the auditorium with its screen,
+six tiered rows, the recliner rows, the aisle and the acoustic walls) and its stand-in
+`cinema-light` (phones and VR, 27 168: the screen, two rows, the floor in front of them and the
+walls behind and beside). Both are cut by recipe from one CC0 starter scene
+(`sources/cinema-multiplex.glb`, 3dassets.dev "Cinema Multiplex and Foyer"; recipes `cinema`
+and `cinema-light` in `tools/vr/playground-subsets.json`); the foyer and its concessions are
+not used yet.
+
+She stands on a measured spot, in front of the screen (`spots/cinema-auditorium*.json`: `screen`
+and `seats`, both verified by `tools/vr/measure-spots.mjs`). It is a place only: listed in
+Experiences ▸ Visit a place under "Going out", general rating, no template of things to do, no
+film playing on the screen and no sitting — a seat-aligned pose does not exist yet, so nothing
+claims one. Known: in the VR stand-in the screen is 0.4 m behind her spot (the audit's comfort
+warning); it has not been checked in a headset.

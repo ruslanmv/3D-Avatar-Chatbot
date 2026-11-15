@@ -2030,6 +2030,93 @@
         "radius": 6
       },
       "lightFor": "creative-academy"
+    },
+    {
+      "id": "cinema",
+      "title": "Cinema",
+      "note": "An auditorium with rows of seats and the big screen.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 98472,
+      "activities": [],
+      "sky": {
+        "top": "#0b0a12",
+        "horizon": "#1a1420",
+        "bottom": "#060508"
+      },
+      "fog": {
+        "color": "#120e18",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#b9a8d8",
+        "ground": "#1a1218",
+        "hemi": 0.6,
+        "key": "#ffe9c8",
+        "keyIntensity": 0.85,
+        "fill": "#8fb4ff",
+        "fillIntensity": 0.5,
+        "rim": "#ff9a6b",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cinema-auditorium.glb",
+        "at": [12.567, -0.02, 1.473],
+        "turn": -15
+      },
+      "ground": {
+        "color": "#2b2730",
+        "radius": 9
+      },
+      "preview": "previews/cinema.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "cinema-light",
+      "title": "Cinema",
+      "note": "The screen and the front rows, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 27168,
+      "activities": [],
+      "sky": {
+        "top": "#0b0a12",
+        "horizon": "#1a1420",
+        "bottom": "#060508"
+      },
+      "fog": {
+        "color": "#120e18",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#b9a8d8",
+        "ground": "#1a1218",
+        "hemi": 0.6,
+        "key": "#ffe9c8",
+        "keyIntensity": 0.85,
+        "fill": "#8fb4ff",
+        "fillIntensity": 0.5,
+        "rim": "#ff9a6b",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cinema-auditorium-light.glb",
+        "at": [12.567, -0.02, 1.473],
+        "turn": -15
+      },
+      "ground": {
+        "color": "#2b2730",
+        "radius": 9
+      },
+      "lightFor": "cinema"
     }
   ]
 }

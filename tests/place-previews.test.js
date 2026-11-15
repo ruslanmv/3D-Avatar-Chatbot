@@ -30,9 +30,12 @@ function webpSize(buf) {
 }
 
 describe('the pictures', () => {
-    test('all fourteen places have one: 640×480 WebP, at most 60 KB, and a category', () => {
+    test('every place has one: 640×480 WebP, at most 60 KB, and a category', () => {
         expect(problems).toEqual([]);
-        expect(named.length).toBe(14); // LW2 added the apartment
+        // The property, not a count: a new place (the cinema was the fifteenth) must not need
+        // this number edited; the orphan test below already pins previews to places one to one.
+        expect(named.length).toBeGreaterThanOrEqual(15);
+        expect(named.map((w) => w.id)).toContain('cinema');
         for (const w of named) {
             expect(`${w.id}: ${w.preview}`).toBe(`${w.id}: previews/${w.id}.webp`);
             expect(w.category).toMatch(/^[A-Z]/);
