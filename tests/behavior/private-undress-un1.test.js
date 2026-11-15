@@ -22,8 +22,8 @@ const look = (name, prompt) => ({
 const DRESS = look('Black Cocktail Dress', 'black satin cocktail dress');
 const SET = look('Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs', 'black lace lingerie set');
 const GARTER = look('Black Garter Set', 'black Garter Set');
-const THONG = look('Black Micro Tailored Thong', 'black Tailored Thong');
-const BRIEFS = look('Black Tailored Briefs', 'black Tailored Briefs');
+const THONG = look('Black Bralette + Black Micro Tailored Thong', 'black Tailored Thong');
+const BRIEFS = look('Black Tailored Bralette + Black Tailored Briefs', 'black Tailored Briefs');
 const CHAMPAGNE = look('Champagne Garter Set', 'champagne Garter Set');
 const LOOKS = [DRESS, CHAMPAGNE, SET, GARTER, THONG, BRIEFS];
 
@@ -115,18 +115,45 @@ describe('UN1. which layer comes off, from her own looks', () => {
         expect(Engine.colourOf(next)).toBe('black');
     });
 
-    test('in lingerie → the next layer down, then the next, then nothing more', () => {
-        expect(step(GARTER, 'next').name).toBe(THONG.name);
-        expect(step(THONG, 'next').name).toBe(BRIEFS.name);
-        expect(step(BRIEFS, 'next')).toBeNull();
+    // UN7. Each step leaves less fabric on her — never more. (These pinned an allure-only order,
+    // garter → thong → briefs, in which "taking a layer off" put more on.)
+    test('in lingerie → each next layer covers less, down to the least there is, then nothing more', () => {
+        const seen = [GARTER];
+        let at = GARTER;
+        for (let next = step(at, 'next'); next; next = step(at, 'next')) {
+            expect(Engine.coverageOf(next)).toBeLessThanOrEqual(Engine.coverageOf(at));
+            expect(seen).not.toContain(next);
+            seen.push(next);
+            at = next;
+        }
+        expect(at.name).toBe(THONG.name);
+        expect(Engine.coverageOf(THONG)).toBeLessThan(Engine.coverageOf(BRIEFS));
     });
 
-    test('"all of it" goes straight to the last layer she has', () => {
-        expect(step(DRESS, 'all').name).toBe(BRIEFS.name);
+    test('"all of it" goes straight to the least she has', () => {
+        expect(step(DRESS, 'all').name).toBe(THONG.name);
+        expect(step(SET, 'all').name).toBe(THONG.name);
+        expect(step(THONG, 'all')).toBeNull();
     });
 
     test('a colour she has no lower layer in falls back to any lower layer', () => {
-        expect(step(CHAMPAGNE, 'next').name).toBe(THONG.name);
+        const next = step(CHAMPAGNE, 'next');
+        expect(Engine.colourOf(next)).toBe('black');
+        expect(Engine.coverageOf(next)).toBeLessThan(Engine.coverageOf(CHAMPAGNE));
+    });
+
+    // UN7. Forge replaces only what a garment covers: string briefs alone kept her own cardigan on
+    // in the real run. A single piece is never a step towards undressed.
+    test('a single piece that leaves her own clothes on is never an undress step', () => {
+        const STRING = look('Black Tailored String Briefs', 'black Tailored String Briefs');
+        const BRA = look('Black Tailored Plunge Bra', 'black Tailored Plunge Bra');
+        expect(Engine.isComplete(STRING)).toBe(false);
+        expect(Engine.isComplete(BRA)).toBe(false);
+        expect(Engine.isComplete(SET)).toBe(true);
+        const only = Engine.undressStep({ looks: [DRESS, STRING, BRA], current: DRESS, step: 'all', allureOf });
+        expect(only).toBeNull();
+        const with_ = Engine.undressStep({ looks: [DRESS, STRING, SET], current: DRESS, step: 'all', allureOf });
+        expect(with_.name).toBe(SET.name);
     });
 
     test('with no lingerie looks there is nothing to change into', () => {

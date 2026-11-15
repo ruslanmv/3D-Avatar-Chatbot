@@ -233,34 +233,101 @@
             .toLowerCase();
         return UNDRESS_COLOURS.find((c) => new RegExp(`\\b${c}\\b`).test(words)) || null;
     }
+    /**
+     * UN7. A look that is her bare body: Forge's `bare` base-body mode (everything taken off, her
+     * skin restored, refused wherever her model has no body under the clothes). Below every
+     * lingerie rank: the last step there is.
+     */
+    function isBare(look) {
+        if (!look) return false;
+        if (look.bare === true) return true;
+        return /^body-bare\b/i.test(String(look.templateId || look.template || ''));
+    }
+
+    /**
+     * UN7. Does this look leave nothing of hers on? Forge replaces only the region a garment
+     * covers: "String Briefs" alone kept her own cardigan on in the real run, a bra alone keeps her
+     * shorts. Only a complete look — a set with a top and a bottom, a garter set, a one-piece, or
+     * her bare body — is a step towards undressed.
+     */
+    const UPPER = /\bbra\b|bralette|top\b|bustier|corset|gu[eê]pi[eè]re|cami|balconette/i;
+    const LOWER = /brief|thong|string|panty|panties|knicker|short|tanga|perizoma/i;
+    const ONE_PIECE =
+        /bodysuit|bodystocking|catsuit|teddy|babydoll|chemise|garter set|lingerie set|lingerie-set|garter-set/i;
+    function isComplete(look) {
+        if (!look) return false;
+        if (isBare(look)) return true;
+        const text = `${look.templateId || ''} ${look.name || ''}`;
+        if (ONE_PIECE.test(text)) return true;
+        return /\+/.test(look.name || '') && UPPER.test(text) && LOWER.test(text);
+    }
+
+    /**
+     * UN7. How much of her a complete lingerie look covers, 0 (bare) to 4, from its template and
+     * name. Allure is not coverage: in the real run "I wanna see you naked" after a bralette and
+     * briefs chose the lowest-allure piece — a bodysuit, more covered than what she had on.
+     */
+    function coverageOf(look) {
+        if (!look) return 5;
+        if (isBare(look)) return 0;
+        const text = `${look.templateId || ''} ${look.name || ''}`;
+        if (/bodysuit|bodystocking|catsuit|teddy|babydoll|chemise/i.test(text)) return 4;
+        if (/garter|suspender|waspie|gu[eê]pi[eè]re|corset|stocking|bustier/i.test(text)) return 3;
+        if (/thong|g-?string|string|tie-side|perizoma|tanga/i.test(text)) return 1;
+        if (/brazilian|cheeky/i.test(text)) return 1.5;
+        return 2;
+    }
+
     function undressStep(o) {
         const opts = o || {};
         const rank = typeof opts.allureOf === 'function' ? opts.allureOf : null;
         if (!rank) return null;
         const looks = Array.isArray(opts.looks) ? opts.looks : [];
         const current = opts.current || null;
-        const here = current ? rank(current) : null;
-        const inLingerie = Boolean(here && here.band === 'lingerie');
+        if (current && isBare(current)) return null; // nothing left to take off
         const currentKey = current ? keyOf(current) : null;
-        let pool = looks.filter((l) => l && keyOf(l) !== currentKey && rank(l).band === 'lingerie');
-        if (inLingerie) pool = pool.filter((l) => rank(l).score < here.score);
-        if (!pool.length) return null;
+        const bare = looks.find((l) => l && keyOf(l) !== currentKey && isBare(l)) || null;
+        // Asked to see her naked, or for everything at once: her bare body when her wardrobe has it.
+        if (bare && (opts.naked || opts.step === 'all')) return bare;
+        const here = current ? rank(current) : null;
+        // A single piece leaves her own clothes on: she is still dressed, as far as undressing goes.
+        const inLingerie = Boolean(here && here.band === 'lingerie' && isComplete(current));
+        const covered = inLingerie ? coverageOf(current) : 5;
+        let pool = looks.filter(
+            (l) => l && keyOf(l) !== currentKey && !isBare(l) && rank(l).band === 'lingerie' && isComplete(l)
+        );
+        // Never more fabric than she has on; one layer at a time also goes down the allure rank.
+        if (inLingerie) pool = pool.filter((l) => coverageOf(l) <= covered);
+        if (inLingerie && opts.step !== 'all')
+            pool = pool.filter((l) => coverageOf(l) < covered || rank(l).score < here.score);
+        if (inLingerie && opts.step === 'all') pool = pool.filter((l) => coverageOf(l) < covered);
+        // Down to her last layer: the next step is her bare body, when there is one.
+        if (!pool.length) return bare;
         const colour = current ? colourOf(current) : null;
         const sameColour = colour ? pool.filter((l) => colourOf(l) === colour) : [];
         const from = sameColour.length ? sameColour : pool;
-        const scores = from.map((l) => rank(l).score);
+        if (opts.step === 'all') {
+            // All of it: the least fabric there is, the lowest allure rank among those.
+            const least = Math.min(...from.map(coverageOf));
+            const thin = from.filter((l) => coverageOf(l) === least);
+            const low = Math.min(...thin.map((l) => rank(l).score));
+            return thin.find((l) => rank(l).score === low) || null;
+        }
         // Dressed: the richest lingerie first (a set before a single piece). In lingerie: the next
-        // rank down. All: the lowest rank there is.
-        const target =
-            opts.step === 'all'
-                ? Math.min(...scores)
-                : inLingerie
-                  ? Math.max(...scores.filter((s) => s < here.score))
-                  : Math.max(...scores);
-        return from.find((l) => rank(l).score === target) || null;
+        // step down — less fabric first, then the next rank down.
+        if (!inLingerie) {
+            const top = Math.max(...from.map((l) => rank(l).score));
+            return from.find((l) => rank(l).score === top) || null;
+        }
+        const less = from.filter((l) => coverageOf(l) < covered);
+        const next = less.length ? less : from;
+        const best = Math.max(...next.map(coverageOf));
+        const tier = next.filter((l) => coverageOf(l) === best);
+        const top = Math.max(...tier.map((l) => rank(l).score));
+        return tier.find((l) => rank(l).score === top) || null;
     }
 
-    const api = { STYLE_WORDS, choose, score, keyOf, byName, undressStep, colourOf };
+    const api = { STYLE_WORDS, choose, score, keyOf, byName, undressStep, colourOf, isBare, coverageOf, isComplete };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_OUTFIT_DECISION_ENGINE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

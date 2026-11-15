@@ -1252,7 +1252,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
         {
             lookId: 't',
-            name: 'Black Micro Tailored Thong',
+            name: 'Black Bralette + Black Micro Tailored Thong',
             prompt: 'black Tailored Thong',
             vrmUrl: 'thong.vrm',
             private: true,
@@ -1290,7 +1290,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
         expect(Actions.promptLines().join('\n')).toMatch(/taken a layer off/);
         await say('togliti ancora qualcosa');
         await flush();
-        expect(worn(w).slice(-1)).toEqual(['Black Micro Tailored Thong']);
+        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
         await say('spogliati');
         await flush();
         expect(Actions.snapshot().outfitAction).toMatchObject({ status: 'failed', why: 'last-layer' });
@@ -1341,7 +1341,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
         {
             lookId: 't',
-            name: 'Black Micro Tailored Thong',
+            name: 'Black Bralette + Black Micro Tailored Thong',
             prompt: 'black Tailored Thong',
             vrmUrl: 'thong.vrm',
             private: true,
@@ -1391,7 +1391,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(prompt()).toMatch(/Your body is in that position now \(bend forward\)/);
         await say('spogliati');
         await flush();
-        expect(worn(w).slice(-1)).toEqual(['Black Micro Tailored Thong']);
+        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
         // Let go before the swap, the same position again on the new outfit.
         expect(w.pose.calls.slice(2)).toEqual(['release', 'claim', 'apply:standingBendForward']);
         await say('Ho finito, rivestiti');
@@ -1621,5 +1621,200 @@ describe('UN5. lying positions in their words', () => {
         ['túmbate boca abajo', 'lie-front'],
     ])('%s → %s', (said, key) =>
         expect(Intent.parse(said)).toMatchObject({ name: 'avatar.pose', params: { pose: key } })
+    );
+});
+
+describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the avatar, not a sentence', () => {
+    const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+    const DRESS = {
+        lookId: 'd',
+        name: 'Black Cocktail Dress',
+        prompt: 'black satin cocktail dress',
+        vrmUrl: 'dress.vrm',
+    };
+    const LINGERIE = [
+        { lookId: 'g', name: 'Black Garter Set', prompt: 'black Garter Set', vrmUrl: 'garter.vrm', private: true },
+        {
+            lookId: 't',
+            name: 'Black Bralette + Black Micro Tailored Thong',
+            prompt: 'black Tailored Thong',
+            vrmUrl: 'thong.vrm',
+            private: true,
+        },
+    ];
+    const BARE = {
+        lookId: 'b',
+        name: 'Bare',
+        templateId: 'body-bare-v1',
+        vrmUrl: 'bare.vrm',
+        private: true,
+        bare: true,
+    };
+    async function at(level, options) {
+        const o = options || {};
+        const w = await begin({
+            adult: o.adult !== false,
+            looks: o.looks || [DRESS, ...LINGERIE],
+            loadFails: o.loadFails,
+        });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = level;
+        return w;
+    }
+    const worn = (w) => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+    const prompt = () => Actions.promptLines().join('\n');
+    const truthful = (reply) => Capability.outfitTruthful(reply, Actions.outfitTruth(), 'en');
+
+    test('the reported session: both requests change what she wears, and her words follow the avatar', async () => {
+        const w = await at(4);
+        await say('Mettiti il vestito da cocktail nero');
+        await say('Undress please.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'completed' });
+        expect(worn(w).slice(-1)).toEqual(['Black Garter Set']);
+        await say('Please, I wanna see you naked.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'wardrobe.undress',
+            status: 'completed',
+            params: { step: 'all', naked: true },
+        });
+        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
+        // No bare look in her wardrobe: she says what is true, and "naked" is never claimed.
+        expect(prompt()).toMatch(/Being fully bare is not in your wardrobe yet/);
+        expect(truthful("I'm naked now, just for you. Do you like it?")).not.toMatch(/naked/i);
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('the real run: after a bralette and briefs, "naked" never picks a bodysuit', async () => {
+        const SET = {
+            lookId: 's',
+            name: 'Black Lace Tailored Triangle Bralette + Black Lace Tailored Briefs',
+            templateId: 'under-lingerie-set-v1',
+            vrmUrl: 'set.vrm',
+            private: true,
+        };
+        const BODY = { lookId: 'y', name: 'Black Bodysuit', templateId: 'under-bodysuit-v1', vrmUrl: 'body.vrm' };
+        const w = await at(4, { looks: [DRESS, SET, BODY, ...LINGERIE] });
+        await say('Mettiti il vestito da cocktail nero');
+        await say('Undress please.');
+        await flush();
+        await say('Please, I wanna see you naked.');
+        await flush();
+        expect(worn(w)).not.toContain('Black Bodysuit');
+        expect(worn(w).slice(-1)).toEqual(['Black Bralette + Black Micro Tailored Thong']);
+    });
+
+    test('with her bare look in the wardrobe, "naked" is exactly that, and she may say so', async () => {
+        const w = await at(4, { looks: [DRESS, ...LINGERIE, BARE] });
+        await say('Mettiti il vestito da cocktail nero');
+        await say('I wanna see you naked');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Bare']);
+        expect(Actions.outfitTruth()).toMatchObject({ state: 'changed', bare: true });
+        expect(prompt()).toMatch(/you are naked now/);
+        expect(truthful("I'm naked now, just for you.")).toMatch(/naked/);
+        // One step at a time ends there too: after the last lingerie, the next layer is the bare look.
+        await say('rivestiti');
+        await flush();
+        await say('spogliati');
+        await say('spogliati');
+        await say('spogliati');
+        await flush();
+        expect(worn(w).slice(-3)).toEqual(['Black Garter Set', 'Black Bralette + Black Micro Tailored Thong', 'Bare']);
+    });
+
+    test('a look that cannot be loaded: she stays as she was, and "I\'m undressing" is not said', async () => {
+        const w = await at(4, { loadFails: true });
+        await say('Undress please.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'failed' });
+        expect(Actions.snapshot().outfit.wearing).toBe(false);
+        expect(prompt()).toMatch(/it did not happen/);
+        expect(truthful("I'm undressing for you now... Mmh.")).not.toMatch(/undressing/i);
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('an avatar not declared adult: refused, nothing changes, nothing is claimed', async () => {
+        const w = await at(4, { adult: false });
+        await say('Please, I wanna see you naked.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'wardrobe.undress',
+            status: 'failed',
+            why: 'adult-ineligible',
+        });
+        expect(w.controller.applyLook).not.toHaveBeenCalled();
+        expect(truthful("I'm undressing for you right now...")).not.toMatch(/undressing/i);
+    });
+
+    test('below level 4 it waits: "not yet", dressed, and no claim survives', async () => {
+        const w = await at(3);
+        await say('Undress please.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'blocked', why: 'pace' });
+        expect(w.controller.applyLook).not.toHaveBeenCalled();
+        expect(prompt()).toMatch(/not that close yet/);
+        expect(truthful("I'm undressing for you now.")).not.toMatch(/undressing/i);
+        expect(w.adult.level).toBe(3);
+    });
+
+    test('a turn with no wardrobe action at all: an undressing claim is taken out', async () => {
+        await at(4);
+        await say('Sei bellissima stasera');
+        await flush();
+        expect(Actions.outfitTruth().state).toBe('none');
+        expect(truthful('Mi sto spogliando per te. Ti piace?')).not.toMatch(/spogliando/i);
+    });
+
+    test('many changes in one evening, then back, then the end restores her own outfit', async () => {
+        const w = await at(4);
+        await say('Mettiti il vestito da cocktail nero');
+        await say('spogliati');
+        await say('spogliati');
+        await flush();
+        expect(worn(w)).toEqual([
+            'Black Cocktail Dress',
+            'Black Garter Set',
+            'Black Bralette + Black Micro Tailored Thong',
+        ]);
+        await say('spogliati'); // the last layer she has: nothing changes, and she says so
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'wardrobe.undress',
+            status: 'failed',
+            why: 'last-layer',
+        });
+        await say('Ho finito, rivestiti');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        await say('spogliati'); // not locked: the evening can go again
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Black Garter Set']);
+        w.activity.stop('user');
+        await flush();
+        expect(w.controller.restore).toHaveBeenCalled();
+    });
+
+    test.each([
+        'Please, I wanna see you naked.',
+        'get naked',
+        'strip for me',
+        'Voglio vederti nuda',
+        'resta senza vestiti',
+        'Quiero verte desnuda',
+        'Je veux te voir nue',
+        'Ich will dich nackt sehen',
+        'Quero te ver nua',
+    ])('%s → everything off', (said) =>
+        expect(Intent.parse(said)).toMatchObject({ name: 'wardrobe.undress', params: { step: 'all', naked: true } })
+    );
+
+    test.each(['are you naked?', 'sei nuda?', "don't get naked", 'wear the nude heels', 'strip club music'])(
+        '%s → not a request to undress',
+        (said) => {
+            const got = Intent.parse(said);
+            expect(got && got.name).not.toBe('wardrobe.undress');
+        }
     );
 });

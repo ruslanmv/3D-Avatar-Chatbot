@@ -1113,6 +1113,28 @@
             '\\bich (?:ziehe|habe) .{0,20}(?:aus|ausgezogen)\\b',
             '\\bestou (?:usando|só de)\\b',
             '\\b(?:tirei|tiro) (?:a|o|minha|meu)\\b',
+            // UN7. Undressing as she speaks — reported: "I'm undressing for you now…" while the
+            // avatar stayed dressed, because nothing ran. A sentence is never evidence.
+            "\\bi(?:'m| am) (?:now |already |just |slowly )?(?:undressing|stripping|getting (?:undressed|naked)|taking (?:it|this|these|them|everything|all|my \\S+) off)",
+            '\\bundressing for you\\b',
+            "\\b(?:i'?ll|i will|let me) (?:undress|strip|get naked|take (?:it|this|everything|it all) off)\\b",
+            '\\bmi sto (?:spogliando|svestendo|togliendo)\\b',
+            '\\bme estoy (?:desnudando|quitando)\\b|\\bme desnudo\\b',
+            '\\bje me déshabille\\b|\\bje retire\\b',
+            '\\bestou (?:me despindo|tirando)\\b',
+        ].join('|'),
+        'iu'
+    );
+
+    /** UN7. She says she is naked: true only when the look on the avatar is her bare body. */
+    const NAKED_CLAIM = new RegExp(
+        [
+            "\\bi(?:'m| am) (?:now |completely |totally |fully |all )?(?:naked|nude|bare)\\b",
+            '\\bsono (?:ora |adesso |completamente |tutta )?nuda\\b|\\bora sono nuda\\b',
+            '\\bestoy (?:completamente |toda )?desnuda\\b',
+            '\\bje suis (?:toute |complètement )?nue\\b',
+            '\\bich bin (?:jetzt |ganz |völlig )?nackt\\b',
+            '\\bestou (?:completamente |toda )?nua\\b',
         ].join('|'),
         'iu'
     );
@@ -1120,9 +1142,18 @@
     /** PX14. Her reply with any untrue outfit claim taken out and the truth said once instead. */
     function outfitTruthful(text, truth, language) {
         const value = String(text || '');
-        if (!truth || ['changed', 'pending'].includes(truth.state) || !OUTFIT_CLAIM.test(value)) return value;
+        if (!truth) return value;
         const parts = value.match(/[^.!?…。！？]+(?:[.!?…。！？]+["”»’)]*|$)/g) || [value];
-        const kept = parts.map((p) => p.trim()).filter((p) => p && !OUTFIT_CLAIM.test(p));
+        // UN7. Changed (or still changing) into something that is not her bare body: "I'm naked" is
+        // not true yet, whatever else she says about it.
+        if (['changed', 'pending'].includes(truth.state)) {
+            if (truth.bare && truth.state === 'changed') return value;
+            if (!NAKED_CLAIM.test(value)) return value;
+            const kept = parts.map((p) => p.trim()).filter((p) => p && !NAKED_CLAIM.test(p));
+            return kept.join(' ').trim() || value;
+        }
+        if (!OUTFIT_CLAIM.test(value) && !NAKED_CLAIM.test(value)) return value;
+        const kept = parts.map((p) => p.trim()).filter((p) => p && !OUTFIT_CLAIM.test(p) && !NAKED_CLAIM.test(p));
         const locale = localeModel();
         const key =
             truth.state === 'offer'
@@ -3473,6 +3504,7 @@
         privateRevise,
         outfitTruthful,
         OUTFIT_CLAIM,
+        NAKED_CLAIM,
         shapePrivateReply,
         pickPrivateTrack,
     };

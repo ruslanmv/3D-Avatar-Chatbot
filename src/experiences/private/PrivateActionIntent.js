@@ -329,6 +329,29 @@
         'iu'
     );
 
+    /**
+     * UN7. Asked to be seen naked, in words that are not a verb of undressing: "I wanna see you
+     * naked", "get naked", "strip for me", "voglio vederti nuda", "senza vestiti". Reported: at
+     * level 4 "Please, I wanna see you naked" parsed as nothing, no wardrobe action ran, and her
+     * reply said she was undressing while the avatar stayed dressed. These are the "everything
+     * off" step; `nude` counts only with a person ("you nude", "get nude") because it is a colour
+     * too ("the nude heels").
+     */
+    const NAKED = new RegExp(
+        [
+            '\\bnaked\\b|\\b(?:get|be|go|stay|see you|you)\\s+(?:completely\\s+|totally\\s+|fully\\s+)?nude\\b|^strip(?:\\s+(?:for me|down|naked|off|now|please))*[\\s.!,]*$|\\bstrip (?:for me|down|naked|off)\\b',
+            '\\bnud[ao]\\b|\\bnude\\b(?=.*\\b(?:ti|te|vederti|mostrati)\\b)|\\bsenza (?:vestiti|niente addosso|nulla addosso)\\b|\\bspogliata del tutto\\b',
+            '\\bdesnud[ao]\\b|\\bsin (?:ropa|nada puesto)\\b|\\bencuérate\\b',
+            '\\b(?:toute )?nue\\b|\\bsans (?:vêtements|rien sur (?:toi|vous))\\b',
+            '\\bnackt\\b|\\bohne (?:kleider|kleidung)\\b',
+            '\\bnua\\b|\\bpelad[ao]\\b|\\bsem roupa\\b',
+            '裸|알몸|벗은 몸|光着|裸体',
+        ].join('|'),
+        'iu'
+    );
+    /** "Are you naked?" asks about her state; it is not a request. */
+    const ASKS_STATE = /^(?:are you|you are|sei|tu sei|estás|tu es|es-tu|bist du|du bist|você está|voce esta)\b/iu;
+
     const CHANGE_OUTFIT = new RegExp(
         word(
             "change (?:your )?(?:outfit|clothes|dress|look)|get changed|cambia(?:ti)?(?: (?:il |d[’'])?(?:vestito|abito|outfit|look))|cambiati|cámbiate(?: de ropa)?|cambiate(?: de ropa)?|cambia de (?:ropa|vestido)|change-toi|change de tenue|zieh dich um|troca de roupa|muda de roupa"
@@ -632,6 +655,9 @@
         // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
         const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
         if (posed) return posed;
+        // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
+        if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
+            return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');
         // UN4. "Possiamo andare altrove?" is a request put as a question; going is never talk.
         const goingFirst = travelFrom(body);
         if (goingFirst && !NEGATED.test(body)) return goingFirst;

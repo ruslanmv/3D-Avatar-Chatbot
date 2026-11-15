@@ -793,6 +793,7 @@
             looks,
             current: s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null,
             step: (params && params.step) || 'next',
+            naked: Boolean(params && params.naked),
             allureOf: rank,
         });
     }
@@ -805,6 +806,8 @@
         if (!s.closet.privateOpen) return settle(action, 'failed', 'adult-ineligible');
         const look = nextLayer(s, action.params);
         if (!look) return settle(action, 'failed', 'last-layer');
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const bare = Boolean(Engine && typeof Engine.isBare === 'function' && Engine.isBare(look));
         // UN5. What she wore before the first layer came off is what "rivestiti" puts back.
         if (!s.dressedLook) s.dressedLook = s.closet.current() || ORIGINAL;
         const out = await keepingPose(s, () => s.closet.wearLook(look, alive));
@@ -813,7 +816,7 @@
             action,
             out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
             out.ok ? null : out.why,
-            { name: look.name || '' }
+            { name: look.name || '', bare }
         );
     }
 
@@ -1187,7 +1190,12 @@
             const offer = s.offer && s.offer.turnId === s.turnId;
             return { state: offer ? 'offer' : 'none' };
         }
-        if (w.status === 'completed') return { state: 'changed', name: (w.result && w.result.name) || '' };
+        if (w.status === 'completed')
+            return {
+                state: 'changed',
+                name: (w.result && w.result.name) || '',
+                bare: Boolean(w.result && w.result.bare),
+            };
         if (w.status === 'pending') return { state: 'pending' };
         if (w.why === 'needs-approval') return { state: 'offer' };
         return { state: 'failed', why: w.why };
@@ -1432,7 +1440,19 @@
                 // UN5. Told in its own words below.
             } else if (w.name === 'wardrobe.undress') {
                 // UN1. What the layer step did, in the words the reply must not contradict.
-                if (w.status === 'completed')
+                // UN7. The renderer's answer, never her draft: what is on the avatar now is the
+                // only thing she may say she wears — naked only when the bare look is the one shown.
+                const bare = Boolean(w.result && w.result.bare);
+                const askedNaked = Boolean(w.params && w.params.naked);
+                if (w.status === 'completed' && bare)
+                    now.push(
+                        'You have just taken everything off: you are naked now, as they asked. Say it in a few words, in the moment.'
+                    );
+                else if (w.status === 'completed' && askedNaked)
+                    now.push(
+                        `They asked to see you naked. You took off all you can here: you are now wearing only “${name}”. Being fully bare is not in your wardrobe yet — say so once, warmly and honestly, and never say you are naked.`
+                    );
+                else if (w.status === 'completed')
                     now.push(
                         `You have just taken a layer off${name ? `: you are now wearing “${name}”` : ''}. Say it in a few words, in the moment.`
                     );
@@ -1446,6 +1466,10 @@
                     );
                 else if (w.why === 'needs-approval')
                     now.push('You offered to take something off; the app is asking them. Wait for their answer.');
+                else if (w.why === 'last-layer' && askedNaked)
+                    now.push(
+                        'They asked to see you naked. You are already wearing the least you have here, and being fully bare is not in your wardrobe yet. Say so once, warmly and honestly; nothing changes, and never say you are naked.'
+                    );
                 else if (w.why === 'last-layer')
                     now.push(
                         'They asked you to undress, and you are already down to the last layer you have here. Say so playfully; nothing changes.'

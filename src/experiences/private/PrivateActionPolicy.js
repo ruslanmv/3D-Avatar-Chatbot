@@ -137,6 +137,8 @@
                 step: oneOf(['next', 'all']),
                 look: (v) => text(v, 60) || undefined,
                 words: (v) => text(v, 120) || undefined,
+                // UN7. They asked to see her naked (not only "take a layer off").
+                naked: (v) => (v === true ? true : undefined),
             },
         },
         'avatar.dance': { family: 'avatar', params: {} },
