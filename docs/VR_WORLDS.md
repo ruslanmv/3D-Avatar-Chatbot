@@ -274,3 +274,24 @@ Nothing is played or swum: there is no ball, no water motion and no sport animat
 pool's wall has a gap behind her spot that shows the backdrop. A Japanese school campus was
 asked for alongside these and was not built: this app's stories lead to undressing, and a
 school setting for that is not something to make.
+
+## Fantasy places: guild tavern, dungeon, jungle ruins (VW9)
+
+Three general places under "Fantasy", from 3dassets.dev CC0 starter scenes.
+
+| Place        | Desktop                 | Phones                     | VR       |
+| ------------ | ----------------------- | -------------------------- | -------- |
+| Guild tavern | 58 604, whole           | 29 344 (`tavern-light`)    | light    |
+| Dungeon      | 10 268, whole           | the same                   | the same |
+| Jungle ruins | 70 924 (`ruins`)        | 28 032 (`ruins-light`)     | light    |
+
+The tavern is one timbered hall (fireplace, bar, quest board, a gallery upstairs). The dungeon
+is three connected stone rooms in one file; she stands in the first, the store room. The ruins
+are one walled compound cut out of a 680 598-triangle lost city. Spots are computed by
+`tools/vr/clear-spot.mjs`. The dungeon's first spot left the app's camera inside a wall and the
+preview renderer refused the frame as one colour: its spot now needs 5 m of clear view
+(`--view 5`), and a floor up to 0.3 m thick counts as floor.
+
+She does not walk between the dungeon's rooms (no measured spots), there are no doors to open,
+nothing to fight and nobody else there: these are places to be in, not a game yet. Walking
+from town to tavern to dungeon needs Living Worlds travel between them, which is not wired.

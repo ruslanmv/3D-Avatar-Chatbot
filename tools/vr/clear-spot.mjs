@@ -40,7 +40,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../.
 const full = path.isAbsolute(file) ? file : path.join(root, 'assets/vr-worlds', file);
 // Lower than a step is floor, not an obstacle: a pitch, a pool deck and its drain channel are
 // 0.1 to 0.2 m thick and covered every point when 5 cm counted as solid.
-const STEP = 0.25;
+const STEP = 0.3;
 const all = inspect(full, null).filter((n) => n.box);
 const nodes = all.filter((n) => n.box[1][1] > STEP && n.box[0][1] < 1.8);
 // What she stands in front of may be overhead (a basketball hoop) or flat (a lane rope): it is

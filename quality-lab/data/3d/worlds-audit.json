@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 51,
-        "places": 22,
-        "standIns": 13,
+        "worlds": 56,
+        "places": 25,
+        "standIns": 15,
         "withSpots": 7,
         "fails": 0,
-        "warns": 28,
+        "warns": 33,
         "offered": {
-            "desktop": 38,
-            "mobile": 36,
-            "vr": 37
+            "desktop": 41,
+            "mobile": 39,
+            "vr": 40
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2604,6 +2604,261 @@
                 {
                     "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "guild-tavern",
+            "title": "Guild tavern",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "guild-tavern-light",
+            "triangles": 58604,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/guild-tavern.glb",
+                "exists": true,
+                "bytes": 571132
+            },
+            "preview": {
+                "src": "previews/guild-tavern.webp",
+                "exists": true,
+                "bytes": 14868
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "guild-tavern",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "loads its light stand-in guild-tavern-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "loads its light stand-in guild-tavern-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "guild-tavern-light",
+            "title": "Guild tavern",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "guild-tavern",
+            "standIn": null,
+            "triangles": 29344,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/guild-tavern-light.glb",
+                "exists": true,
+                "bytes": 890996
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "stand-in for guild-tavern"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "guild-tavern-light",
+                    "why": "stand-in for guild-tavern"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "dungeon",
+            "title": "Dungeon",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 10268,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/dungeon-rooms.glb",
+                "exists": true,
+                "bytes": 192580
+            },
+            "preview": {
+                "src": "previews/dungeon.webp",
+                "exists": true,
+                "bytes": 12806
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "004-wall-plain",
+                    "metres": 0
+                },
+                {
+                    "node": "052-torch-stand",
+                    "metres": 0.97
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "dungeon",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (004-wall-plain 0 m, 052-torch-stand 0.97 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "jungle-ruins",
+            "title": "Jungle ruins",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "jungle-ruins-light",
+            "triangles": 70924,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/jungle-ruins.glb",
+                "exists": true,
+                "bytes": 2241100
+            },
+            "preview": {
+                "src": "previews/jungle-ruins.webp",
+                "exists": true,
+                "bytes": 15310
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "jungle-ruins",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "loads its light stand-in jungle-ruins-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "loads its light stand-in jungle-ruins-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "jungle-ruins-light",
+            "title": "Jungle ruins",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "jungle-ruins",
+            "standIn": null,
+            "triangles": 28032,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/jungle-ruins-light.glb",
+                "exists": true,
+                "bytes": 1411496
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "184-corbel-arch-doorway",
+                    "metres": 0.5
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "stand-in for jungle-ruins"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "jungle-ruins-light",
+                    "why": "stand-in for jungle-ruins"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (184-corbel-arch-doorway 0.5 m) — check in a headset or leave out of the VR version"
                 }
             ]
         }

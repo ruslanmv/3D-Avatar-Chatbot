@@ -2978,6 +2978,220 @@
       },
       "preview": "previews/soccer-ground.webp",
       "category": "Sport"
+    },
+    {
+      "id": "guild-tavern",
+      "title": "Guild tavern",
+      "note": "A timbered hall with a fireplace, a bar, a quest board and a gallery upstairs.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 58604,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c12",
+        "horizon": "#5a3c24",
+        "bottom": "#1a120c"
+      },
+      "fog": {
+        "color": "#3a281a",
+        "near": 9,
+        "far": 28
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#3a2616",
+        "hemi": 0.75,
+        "key": "#ffb86b",
+        "keyIntensity": 1.05,
+        "fill": "#ffdcb0",
+        "fillIntensity": 0.5,
+        "rim": "#ff8a3c",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/guild-tavern.glb",
+        "at": [-1.929, -0.222, -0.301],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#4a3422",
+        "radius": 9
+      },
+      "preview": "previews/guild-tavern.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "guild-tavern-light",
+      "title": "Guild tavern",
+      "note": "The hall, the fireplace and the bar, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29344,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c12",
+        "horizon": "#5a3c24",
+        "bottom": "#1a120c"
+      },
+      "fog": {
+        "color": "#3a281a",
+        "near": 9,
+        "far": 28
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#3a2616",
+        "hemi": 0.75,
+        "key": "#ffb86b",
+        "keyIntensity": 1.05,
+        "fill": "#ffdcb0",
+        "fillIntensity": 0.5,
+        "rim": "#ff8a3c",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/guild-tavern-light.glb",
+        "at": [-1.929, -0.222, -0.301],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#4a3422",
+        "radius": 9
+      },
+      "lightFor": "guild-tavern"
+    },
+    {
+      "id": "dungeon",
+      "title": "Dungeon",
+      "note": "Three stone rooms: a store with a chest, a study and a shrine up the stairs.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 10268,
+      "activities": [],
+      "sky": {
+        "top": "#0c0d14",
+        "horizon": "#1c1e2a",
+        "bottom": "#07070b"
+      },
+      "fog": {
+        "color": "#12131c",
+        "near": 7,
+        "far": 24
+      },
+      "light": {
+        "sky": "#8f98c8",
+        "ground": "#16141c",
+        "hemi": 0.85,
+        "key": "#ff9a4a",
+        "keyIntensity": 1.0,
+        "fill": "#6f8cff",
+        "fillIntensity": 0.45,
+        "rim": "#ffb060",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/dungeon-rooms.glb",
+        "at": [-1.631, -0.25, 2.125],
+        "turn": 30
+      },
+      "preview": "previews/dungeon.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "jungle-ruins",
+      "title": "Jungle ruins",
+      "note": "A ruined stone compound: a gate tower, an arch, fallen walls and a colonnade.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 70924,
+      "activities": [],
+      "sky": {
+        "top": "#8fc0e0",
+        "horizon": "#dcebd2",
+        "bottom": "#4a5e34"
+      },
+      "fog": {
+        "color": "#cfe0c4",
+        "near": 30,
+        "far": 110
+      },
+      "light": {
+        "sky": "#eef8e8",
+        "ground": "#5a6a3e",
+        "hemi": 1.0,
+        "key": "#fff2cc",
+        "keyIntensity": 1.15,
+        "fill": "#d8ecd8",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/jungle-ruins.glb",
+        "at": [6.877, -0.1, 9.511],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#5a6a3e",
+        "radius": 40
+      },
+      "preview": "previews/jungle-ruins.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "jungle-ruins-light",
+      "title": "Jungle ruins",
+      "note": "The gate tower, the arch and the walls, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28032,
+      "activities": [],
+      "sky": {
+        "top": "#8fc0e0",
+        "horizon": "#dcebd2",
+        "bottom": "#4a5e34"
+      },
+      "fog": {
+        "color": "#cfe0c4",
+        "near": 30,
+        "far": 110
+      },
+      "light": {
+        "sky": "#eef8e8",
+        "ground": "#5a6a3e",
+        "hemi": 1.0,
+        "key": "#fff2cc",
+        "keyIntensity": 1.15,
+        "fill": "#d8ecd8",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/jungle-ruins-light.glb",
+        "at": [6.877, -0.1, 9.511],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#5a6a3e",
+        "radius": 40
+      },
+      "lightFor": "jungle-ruins"
     }
   ]
 }

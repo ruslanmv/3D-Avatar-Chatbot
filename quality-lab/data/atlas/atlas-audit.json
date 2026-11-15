@@ -68,7 +68,12 @@
             "swimming-pool-light",
             "sports-hall",
             "sports-hall-light",
-            "soccer-ground"
+            "soccer-ground",
+            "guild-tavern",
+            "guild-tavern-light",
+            "dungeon",
+            "jungle-ruins",
+            "jungle-ruins-light"
         ]
     },
     "zones": [

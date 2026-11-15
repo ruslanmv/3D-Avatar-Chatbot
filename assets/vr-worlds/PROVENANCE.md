@@ -129,6 +129,11 @@ larger on disk than their triangle count suggests.
 | `sports-hall-court.glb`            | Sports hall (Community Sports Hall and Changing Rooms), recipe `sports-hall` | <https://3dassets.dev/packs/community-sports-hall-and-changing-rooms>                         | 34 524    |
 | `sports-hall-court-light.glb`      | the same, recipe `sports-hall-light`                                         | as above                                                                                      | 25 248    |
 | `soccer-ground.glb`                | Assembled club ground (Football Soccer Club Grounds), whole                  | <https://3dassets.dev/packs/football-soccer-club-grounds>                                     | 14 020    |
+| `guild-tavern.glb`                 | Two-storey tavern (Adventurers Tavern and Guild Hall), whole                 | <https://3dassets.dev/packs/adventurers-tavern-and-guild-hall>                                | 58 604    |
+| `guild-tavern-light.glb`           | the same, recipe `tavern-light`                                              | as above                                                                                      | 29 344    |
+| `dungeon-rooms.glb`                | Three-room dungeon (Dungeon Room Builder), whole                             | <https://3dassets.dev/packs/dungeon-room-builder>                                             | 10 268    |
+| `jungle-ruins.glb`                 | Lost city (Jungle Temple and Stone City), recipe `ruins`                     | <https://3dassets.dev/packs/jungle-temple-and-stone-city>                                     | 70 924    |
+| `jungle-ruins-light.glb`           | the same, recipe `ruins-light`                                               | as above                                                                                      | 28 032    |
 
 `sources/cinema-multiplex.glb` (176 506 triangles, SHA-256 `94ba5463…62a347`,
 downloaded 2026-11-15, CC0 1.0 as stated on the pack page, reported there as
@@ -163,6 +168,14 @@ drops the spectator gallery (it left no room on the deck for her and a camera)
 and, on phones and VR, the tank under the water. The soccer ground is shipped
 whole. Her spots were computed by `tools/vr/clear-spot.mjs` (the pool with its
 water kept out and the camera kept inside the hall).
+
+`sources/lost-city.glb` (680 598 triangles) is the unmodified lost-city starter
+scene the two ruins recipes cut from (downloaded 2026-11-15 with the tavern and
+the dungeon, all CC0 1.0 as stated on their pack pages and reported there as
+AI-assisted). The ruins keep one walled compound of it (gate tower, arch, walls,
+colonnade) and none of its pyramid, plaza or jungle floor, which are most of its
+triangles; the tavern's stand-in drops its floor tiles (a ground disk stands in)
+and the gallery rail. Spots computed by `tools/vr/clear-spot.mjs`.
 
 `sources/playhouse-stage.glb` (202 994 triangles) and
 `sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret
