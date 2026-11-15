@@ -621,7 +621,10 @@ describe("UN17. tonight's outfit theme suggests one of her real looks, once, and
 
     test('a hotel keeps what she has on; what she wears now is not suggested again', () => {
         expect(Engine.themeLook('evening-black', shelf, { venue: 'hotel-suite Hotel suite' })).toBeNull();
-        expect(Engine.themeLook('evening-black', shelf, { venue: 'cabaret', current: shelf[1] })).toBeNull();
+        // Wearing the cocktail dress, the theme offers her other black dress, never the one on her.
+        expect(Engine.themeLook('evening-black', shelf, { venue: 'cabaret', current: shelf[1] }).name).toBe(
+            'Black Slip Dress'
+        );
     });
 
     test('her prompt carries the suggestion until anything about her clothes happens', async () => {
