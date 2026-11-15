@@ -884,8 +884,22 @@
             worn = null;
         }
         const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
-        const rendered = Boolean(out.ok && worn && keyOf(worn) === keyOf(look) && (!bare || Engine.isBare(worn)));
-        if (out.ok && !rendered) return settle(action, 'failed', 'not-rendered', { name: look.name || '' });
+        let rendered = Boolean(out.ok && worn && keyOf(worn) === keyOf(look) && (!bare || Engine.isBare(worn)));
+        // BL2. For bare, the loaded asset itself must show no garment Forge put on her. (Its
+        // bytes were already checked against Forge's hash by the controller before loading.)
+        if (rendered && bare && typeof s.closet.renderedGarments === 'function') {
+            const garments = s.closet.renderedGarments();
+            if (typeof garments === 'number' && garments > 0) rendered = false;
+        }
+        if (out.ok && !rendered) {
+            // What is on her is not what was asked for: back to the look she had, and say so.
+            try {
+                if (typeof s.closet.undo === 'function') await s.closet.undo();
+            } catch (_) {
+                /* the session's own end restores her */
+            }
+            return settle(action, 'failed', 'not-rendered', { name: look.name || '' });
+        }
         if (out.ok) s.offer = null;
         return settle(
             action,

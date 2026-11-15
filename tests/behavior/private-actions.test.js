@@ -1741,6 +1741,35 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         expect(Actions.snapshot().outfitState).toBe('look');
     });
 
+    test('BL2. a bare look that still draws a garment is not announced: she is put back and says so', async () => {
+        const w = await at(4, { looks: [DRESS, ...LINGERIE, BARE] });
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        // The renderer still shows a garment Forge put on her (a stale or wrong file).
+        const garment = { isMesh: true, visible: true, userData: { wardrobeForge: { kind: 'garment' } } };
+        const root = { userData: {}, parent: null, traverse: (fn) => [root, garment].forEach(fn) };
+        garment.parent = root;
+        const before = window.NEXUS_VIEWER;
+        window.NEXUS_VIEWER = {
+            ...(before || {}),
+            avatarManager: { ...((before && before.avatarManager) || {}), currentRoot: root },
+        };
+        try {
+            await say('I wanna see you naked');
+            await flush();
+            expect(Actions.snapshot().last).toMatchObject({
+                name: 'wardrobe.undress',
+                status: 'failed',
+                why: 'not-rendered',
+            });
+            expect(Actions.outfitTruth()).not.toMatchObject({ bare: true });
+            expect(prompt()).not.toMatch(/you are naked now/);
+            expect(prompt()).toMatch(/did not show on you/);
+        } finally {
+            window.NEXUS_VIEWER = before;
+        }
+    });
+
     test('UN19. the plan keeps bare and lingerie apart', () => {
         const Engine = require('../../src/experiences/private/OutfitDecisionEngine.js');
         const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');

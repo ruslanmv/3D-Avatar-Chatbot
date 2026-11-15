@@ -241,6 +241,8 @@
     function isBare(look) {
         if (!look) return false;
         if (look.bare === true) return true;
+        // BL2. Forge says so in the wardrobe manifest (wardrobeState); never inferred from a name.
+        if (look.wardrobeState === 'bare') return true;
         return /^body-bare\b/i.test(String(look.templateId || look.template || ''));
     }
 

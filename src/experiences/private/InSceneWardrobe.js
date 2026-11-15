@@ -273,6 +273,35 @@
             }
         }
 
+        /**
+         * BL2. How many garment meshes the renderer is drawing on her right now, or null when it
+         * cannot be asked. Forge tags each garment node (`extras.wardrobeForge.kind: 'garment'`)
+         * and the loader copies node extras to `userData`, so this is read from the loaded asset
+         * itself, not from which look was selected. Her source avatar's own clothes carry no
+         * tag: this counts what Forge put on her, which is what a bare look must have none of.
+         */
+        renderedGarments() {
+            try {
+                const viewer = this.win && this.win.NEXUS_VIEWER;
+                const root = viewer && viewer.avatarManager && viewer.avatarManager.currentRoot;
+                if (!root || typeof root.traverse !== 'function') return null;
+                let count = 0;
+                root.traverse((object) => {
+                    if (!object || !object.isMesh || object.visible === false) return;
+                    for (let o = object; o && o !== root.parent; o = o.parent) {
+                        const tag = o.userData && o.userData.wardrobeForge;
+                        if (tag && tag.kind === 'garment') {
+                            count += 1;
+                            break;
+                        }
+                    }
+                });
+                return count;
+            } catch (_) {
+                return null;
+            }
+        }
+
         /** The look she has on, or null for her own outfit. */
         current() {
             const worn = this.session ? this.session.worn : null;
