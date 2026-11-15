@@ -243,9 +243,9 @@
         const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
         const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
         if (!Weaver || !Director) return;
-        const deal = (places) => {
-            if (state !== s || s.story) return;
-            const current = (injected && injected.current) || shownWorld(s.win);
+        const deal = (places, shownNow) => {
+            if (state !== s || (s.story && !shownNow)) return;
+            const current = shownNow || (injected && injected.current) || shownWorld(s.win);
             const outline = Weaver.weave({
                 places,
                 current,
@@ -272,6 +272,19 @@
                 const d = (event && event.detail) || {};
                 const id = d.base || d.id || null;
                 if (s.travel && (id === s.travel.world || d.id === s.travel.world)) arrive(s, id);
+                else if (
+                    // UN12. The outline can be dealt before the renderer has shown the opening room
+                    // (the setup screen's world is still loading), and then name that very room as
+                    // where the evening leads — found at 430 px: "elsewhere" was the cabaret she
+                    // stood in. Before any trip, the room the renderer reports is the opening, so
+                    // the evening is dealt again from where she really is.
+                    id &&
+                    !s.travel &&
+                    s.story.phase === 'opening' &&
+                    s.story.outline &&
+                    s.story.outline.destination === id
+                )
+                    deal(s.places || [], id);
                 else s.story.shown(id);
                 emit();
             };

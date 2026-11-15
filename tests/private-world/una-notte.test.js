@@ -468,3 +468,26 @@ describe('UN9. the person closes the evening, or asks her to forget past evening
         expect(Actions.snapshot().story.phase).toBe('opening'); // tonight goes on
     });
 });
+
+describe('UN12. an outline dealt before the opening room is shown never leads to that room', () => {
+    afterEach(() => Actions.end());
+    test('the renderer shows the destination as the opening: the evening is dealt again from there', () => {
+        // No current room at deal time, as when the setup screen's world is still loading.
+        Actions.begin(
+            { _stopped: false, _care: false, adult: { level: 1, active: true } },
+            { win: window, deps: { story: { places: PLACES, current: null, rng: seeded(5), canTravel: true } } }
+        );
+        const first = Actions.snapshot().story;
+        const dest = Actions.promptLines()
+            .join('\n')
+            .match(/<go place="([a-z0-9-]+)"\/>/)[1];
+        window.dispatchEvent(new window.CustomEvent('nexus-world-shown', { detail: { id: dest, base: dest } }));
+        const after = Actions.snapshot().story;
+        expect(after.shown).toBe(dest);
+        expect(after.storyId).not.toBe(first.storyId);
+        const next = Actions.promptLines()
+            .join('\n')
+            .match(/<go place="([a-z0-9-]+)"\/>/);
+        if (next) expect(next[1]).not.toBe(dest);
+    });
+});
