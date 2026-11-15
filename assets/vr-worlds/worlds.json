@@ -3192,6 +3192,93 @@
         "radius": 40
       },
       "lightFor": "jungle-ruins"
+    },
+    {
+      "id": "shopping-street",
+      "title": "Shopping street",
+      "note": "A quiet neighbourhood street: a ramen shop, a bookshop, a laundrette and a vending machine.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 17734,
+      "activities": [],
+      "sky": {
+        "top": "#7fa7d6",
+        "horizon": "#f0d9c4",
+        "bottom": "#8a8f96"
+      },
+      "fog": {
+        "color": "#e8dccf",
+        "near": 14,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f0ff",
+        "ground": "#7a7f86",
+        "hemi": 0.9,
+        "key": "#fff1dc",
+        "keyIntensity": 1.05,
+        "fill": "#dbe8ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd2a8",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-japanese-street/street-road-section.glb",
+          "width": 8.0,
+          "at": [-4.0, -0.37, 3.4],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-japanese-street/street-road-drain-sect.glb",
+          "width": 8.0,
+          "at": [4.0, -0.37, 3.4],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-bookshop.glb",
+          "width": 4.0,
+          "at": [-4.0, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-ramen-shop.glb",
+          "width": 4.0,
+          "at": [0.0, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-laundrette.glb",
+          "width": 4.1,
+          "at": [4.05, 0, -2.9]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-shutter.glb",
+          "width": 4.0,
+          "at": [8.1, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/vending-machine.glb",
+          "width": 1.05,
+          "at": [-6.6, 0, -1.9]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/bicycle-rack.glb",
+          "width": 1.9,
+          "at": [2.6, 0, -1.7]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/cherry-tree-blossom.glb",
+          "width": 4.1,
+          "at": [-8.6, 0, 1.2]
+        }
+      ],
+      "ground": {
+        "color": "#8d9096",
+        "radius": 13
+      },
+      "preview": "previews/shopping-street.webp",
+      "category": "Going out"
     }
   ]
 }

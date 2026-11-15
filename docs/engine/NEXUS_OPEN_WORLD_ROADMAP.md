@@ -14,9 +14,9 @@ its code merges.
 
 | Figure | Value | Source |
 | --- | --- | --- |
-| Worlds in the catalogue | 56 (25 places, 15 phone stand-ins) | 3D audit |
+| Worlds in the catalogue | 57 (26 places, 15 phone stand-ins) | 3D audit |
 | Zones on the map | 30 in 5 regions, 26 public | atlas audit |
-| Offered on desktop / mobile / VR | 41 / 39 / 40 worlds | 3D audit |
+| Offered on desktop / mobile / VR | 42 / 40 / 41 worlds | 3D audit |
 | Walkable from home on desktop / mobile / VR | 26 / 12 / 12 of 26 public zones | atlas audit |
 | First gateway cutting a device off | `walled-town` (mobile, vr) | atlas audit |
 | 3D failures / warnings | 0 / 33 | 3D audit |

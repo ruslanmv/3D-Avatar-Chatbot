@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 56,
-        "places": 25,
+        "worlds": 57,
+        "places": 26,
         "standIns": 15,
         "withSpots": 7,
         "fails": 0,
         "warns": 33,
         "offered": {
-            "desktop": 41,
-            "mobile": 39,
-            "vr": 40
+            "desktop": 42,
+            "mobile": 40,
+            "vr": 41
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -2861,6 +2861,47 @@
                     "text": "VR comfort: 1 scene part within 1 m of her spot (184-corbel-arch-doorway 0.5 m) — check in a headset or leave out of the VR version"
                 }
             ]
+        },
+        {
+            "id": "shopping-street",
+            "title": "Shopping street",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 17734,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/shopping-street.webp",
+                "exists": true,
+                "bytes": 16624
+            },
+            "props": 9,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "shopping-street",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "shopping-street",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "shopping-street",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
         }
     ]
 }

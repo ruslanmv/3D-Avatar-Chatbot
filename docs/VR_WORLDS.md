@@ -295,3 +295,28 @@ preview renderer refused the frame as one colour: its spot now needs 5 m of clea
 She does not walk between the dungeon's rooms (no measured spots), there are no doors to open,
 nothing to fight and nobody else there: these are places to be in, not a game yet. Walking
 from town to tavern to dungeon needs Living Worlds travel between them, which is not wired.
+
+## The shopping street (VW10)
+
+One general place under "Going out", every tier, 17 734 triangles, no light version (under the
+30 000 phone budget). Assembled, not cut: nine CC0 models of 3dassets.dev's "Japanese School and
+City Street" pack placed as props (`kits/3dassets-japanese-street/`): a row of four shopfronts
+(bookshop, ramen shop, laundrette, a shuttered shop), two road sections in front of them, a
+vending machine, a bicycle rack and a cherry tree in blossom, on a ground disk. Each prop's
+`width` is the model's own measured width (shopfronts 4 m, road sections 8 m), so they sit edge to
+edge without overlap.
+
+She stands at the origin on the pavement with the ramen shop behind her; every prop is at least
+1.7 m from her and none is between her and the camera, so the comfort rule drops nothing. There is
+no floor mesh and no measured spot: she does not walk the street, the shops cannot be entered and
+nobody else is there. The first layout put the laundrette's machines behind her and the place card
+read as a laundrette; the pictures caught it and the row was re-spaced.
+
+**Not done, by decision.** The same pack's school rooms (gate, shoe lockers, classroom, corridor,
+gym shell) were not added. Private sessions can travel to every general place (see
+`docs/claude/adding-a-place.md` ▸ Ratings), and a school must not be reachable from an intimate
+story; adding them first needs a way to keep a general place out of Private.
+
+Not checked: a headset, frame rate on a real phone or Quest, and the road sections' kerbs at
+eye level (the pictures show them from the standing camera only).
+
