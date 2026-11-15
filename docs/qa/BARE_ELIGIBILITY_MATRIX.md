@@ -1,5 +1,10 @@
 # Bare-body eligibility matrix: eight library characters + the reference body
 
+> **Updated by `BARE_PRODUCTION_READINESS.md` (Forge BE1/SR2/BE2/BR1).** Two rows below are
+> superseded: Model Girl's "skin not restored" is measured as **restoration-not-needed** (0
+> painted, 0 cut-away texels in her body region), and the design review is now actually
+> enforced for bare (before BE1 the bare path never asked it). Everything else stands.
+
 2026-11-15. Forge `feat/bare-base-body` @ `4a77eed` (in Forge `ultimate`). Evidence is read from
 the repository and from Forge's own audit tools (`tools/audit/bare_visibility.py`); no nude
 render of a library character was made. This corrects the earlier readiness report, which

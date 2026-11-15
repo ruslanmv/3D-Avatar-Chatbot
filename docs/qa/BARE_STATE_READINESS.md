@@ -4,7 +4,8 @@
 `feat/bare-base-body` @ `4a77eed`). Nothing is merged to `master` / `main`, no PR is open,
 and the Forge Space still runs Forge `49788ec` (before the bare-body merge).
 
-> **Corrected by `BARE_ELIGIBILITY_MATRIX.md`:** all eight characters are declared adult by the
+> **Superseded** for the per-character status by `BARE_PRODUCTION_READINESS.md`. **Corrected
+> by `BARE_ELIGIBILITY_MATRIX.md`:** all eight characters are declared adult by the
 > operator and their own licences allow sexual expression; AvatarSample A and B build since the
 > AF5 fix; the open items are the design review (empty), AvatarSample O's missing mid-chest, a
 > Model Girl skin-restore question, and the absence of any prebuilt bare look.
