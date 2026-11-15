@@ -125,7 +125,13 @@ try {
             const lines = window.NEXUS_PRIVATE_ACTIONS.promptLines().join('\n');
             return {
                 label,
-                shown: window.NEXUS_VIEWER.vrWorlds?.activeId || null,
+                // M5. The world by its catalogue id: a phone shows a place's lighter variant
+                // (`roadside-motel-light`), which the renderer announces with `base`.
+                shown: (() => {
+                    const id = window.NEXUS_VIEWER.vrWorlds?.activeId || null;
+                    const said = window.__travelLog.filter((e) => e.kind === 'shown' && e.id === id).pop();
+                    return (said && said.base) || id;
+                })(),
                 phase: snap.story && snap.story.phase,
                 story: snap.story,
                 offer: snap.offer || null,
@@ -244,7 +250,14 @@ try {
 
     // 5. Arrived only on the renderer's word.
     await page
-        .waitForFunction((d) => window.NEXUS_VIEWER.vrWorlds?.activeId === d, dest, { timeout: 120000 })
+        .waitForFunction(
+            (d) => {
+                const id = window.NEXUS_VIEWER.vrWorlds?.activeId;
+                return id === d || window.__travelLog.some((e) => e.kind === 'shown' && e.base === d && e.id === id);
+            },
+            dest,
+            { timeout: 120000 }
+        )
         .catch(() => fail('arrive', 'the renderer never showed the destination'));
     await page.waitForTimeout(2500);
     const s4 = await state('04-arrived');

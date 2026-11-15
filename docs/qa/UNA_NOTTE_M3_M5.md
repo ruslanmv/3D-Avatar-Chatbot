@@ -78,9 +78,17 @@ invitation, decline, a second invitation, yes, arrival on the renderer's word,
 "somewhere else?" after arriving, and the end. Each run also fails on any
 sideways overflow.
 
-See the results table in the commit that adds this file
-(`docs/qa/una-notte/m5-*.jpg`): ten runs, 0 failed checks, 0 page errors after
-UN12.
+| width | Italian | English |
+| --- | --- | --- |
+| desktop 1440 | 0 failed, cabaret → candlelit-suite 7.5 s | 0 failed, → roadside-motel 13.3 s |
+| 320 px | 0 failed, → candlelit-suite 5.6 s | 0 failed, → apartment 6.1 s |
+| 375 px | 0 failed, → apartment 6.4 s | 0 failed, → private-stream-studio 6.1 s |
+| 390 px | 0 failed, → lagoon-beach 8.9 s | 0 failed, → candlelit-suite 5.5 s |
+| 430 px | 0 failed, → apartment 7.0 s | 0 failed, → hotel-suite 6.0 s |
+
+0 page errors and 0 px sideways overflow everywhere. The destination differs run to run
+because each run is a new evening (M4). Frames after arrival:
+[`una-notte/m5-it.jpg`](una-notte/m5-it.jpg), [`una-notte/m5-en.jpg`](una-notte/m5-en.jpg).
 
 **Defect found and fixed (UN12).** At 430 px (Italian) the outline was dealt
 while the setup screen's world was still loading, so no room was known yet. It
@@ -96,6 +104,13 @@ conversation column beside a short viewer strip (the same frames are in
 `docs/qa/un6/after-private-flow-phone-390.jpg`). With a phone's own user agent
 (Playwright's Pixel 7), Private renders its mobile layout. The phone sizes now
 use it.
+
+**Audit defect found and fixed: the lighter world on phones.** Three phone runs
+reported "the renderer never showed the destination". On a phone the renderer shows
+a place's lighter variant (`roadside-motel-light`) and announces it with `base:
+roadside-motel`; the app arrived correctly (phase `arrived`), but the audit waited
+for the exact id and timed out at 125 s. It now compares the announced base, and
+the three runs re-passed.
 
 **Open: a desktop browser at phone width.** A desktop browser window narrowed
 to under about 430 px still gets the squeezed desktop columns, because the
