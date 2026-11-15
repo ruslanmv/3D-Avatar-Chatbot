@@ -120,8 +120,8 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (290 files today, nested ones included), setup
-in `tests/setup.js`. CommonJS — `require('../src/…')`.
+Jest, jsdom, `tests/**/*.test.js` (311 files on 2026-11-15, nested ones
+included), setup in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
 
@@ -160,7 +160,8 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6318 tests in 290 suites, all passing.**
+— lint clean, format clean, **6318 tests in 290 suites, all passing**
+(2026-11-15: 6705 in 311).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -233,8 +234,10 @@ adult experience configuration
 3.0's in-session actions
 (`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`), `UN` for
 undressing and poses in Private (same doc, §14), `PMA` for Private's
-more-actions menu (the Playground chips behind one ⋯) and `MO` for the motion
-runtime fixes (the body doing what the conversation says;
+more-actions menu (the Playground chips behind one ⋯), `BI` for private
+body-state assets (Forge import and read grants, wear cancellation;
+`docs/qa/BODY_STATE_ACCEPTANCE.md`) and `MO` for the motion runtime fixes (the
+body doing what the conversation says;
 `docs/audits/animation-runtime-audit.md`). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.

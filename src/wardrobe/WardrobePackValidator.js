@@ -349,9 +349,24 @@
     async function fetchVerified(look, options) {
         options = options || {};
         var fetchImpl = options.fetchImpl || global.fetch.bind(global);
-        var response = await fetchImpl(look.vrmUrl);
-        if (!response.ok) throw new Error('The look could not be downloaded (' + response.status + ').');
+        // BI2. `headers` carries a Forge read grant for a private look; `signal` lets a wear that
+        // was cancelled stop its download instead of finishing it and being thrown away.
+        var init = {};
+        if (options.headers && Object.keys(options.headers).length) init.headers = options.headers;
+        if (options.signal) init.signal = options.signal;
+        var response = await fetchImpl(look.vrmUrl, init);
+        if (!response.ok) {
+            var failed = new Error('The look could not be downloaded (' + response.status + ').');
+            failed.reason = 'look_download_failed';
+            failed.status = response.status;
+            throw failed;
+        }
         var buffer = await response.arrayBuffer();
+        if (options.signal && options.signal.aborted) {
+            var cut = new Error('The look was cancelled.');
+            cut.name = 'AbortError';
+            throw cut;
+        }
         var verdict = await verifyBytes(buffer, look, options);
         if (!verdict.ok) {
             var error = new Error('This look was not worn: ' + verdict.reason + '.');

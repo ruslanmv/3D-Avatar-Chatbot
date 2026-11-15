@@ -166,6 +166,15 @@
             '</div>' +
             '<p id="wardrobe-forge-status" role="status" aria-live="polite"' +
             ' style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); margin: 8px 2px 0"></p>' +
+            // BI2. The read grant for her private looks: read-only, expiring, for named avatars.
+            '<label class="input-label" for="wardrobe-forge-grant" style="margin-top: 10px">' +
+            '🔒 PRIVATE LOOKS ACCESS (READ GRANT)</label>' +
+            '<input type="password" id="wardrobe-forge-grant" class="text-input" autocomplete="off"' +
+            ' spellcheck="false" placeholder="Paste the grant your Forge operator gave you" />' +
+            '<p style="' +
+            STYLE_HINT +
+            '">Lets Private show her private looks from this Forge. It can only read, for the avatars it' +
+            ' names, until it expires. Never paste the Forge admin password or session token here.</p>' +
             '<label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;' +
             ' font-size: 0.78rem">' +
             '<input type="checkbox" id="wardrobe-ai-enabled" /> Let her change her outfit when you ask in the chat' +
@@ -263,6 +272,27 @@
             }
         });
         test.addEventListener('click', refresh);
+        var grantInput = section.querySelector('#wardrobe-forge-grant');
+        if (grantInput) {
+            grantInput.value = current().grant || '';
+            grantInput.disabled = Boolean(
+                global.NEXUS_WARDROBE_CONFIG &&
+                    global.NEXUS_WARDROBE_CONFIG.forge &&
+                    global.NEXUS_WARDROBE_CONFIG.forge.grant
+            );
+            grantInput.addEventListener('change', function () {
+                var saved = Config.saveGrant(grantInput.value, options.storage);
+                if (!saved.ok) return say(saved.why, false);
+                var config = current();
+                var wardrobe = options.wardrobe || global.NEXUS_WARDROBE;
+                var service = wardrobe && wardrobe.service;
+                if (service && service.config) service.config.grant = config.grant;
+                if (service && service.controller && service.controller.forge && 'grant' in service.controller.forge) {
+                    service.controller.forge.grant = config.grant;
+                }
+                return say(config.grant ? 'Read grant saved on this device.' : 'Read grant removed.', true);
+            });
+        }
         // W16. The wardrobe tool's switch (WardrobeTool): on by default — asking her to put
         // something on is the request — and off here for anyone who would rather she did not.
         var aiToggle = section.querySelector('#wardrobe-ai-enabled');

@@ -405,7 +405,10 @@
             }
             if (timedOut) {
                 try {
-                    // Back to the look she had: the slow one, when it lands, is replaced at once.
+                    // BI3. The slow look is cancelled, not left to land and then be replaced: its
+                    // download stops, and it never shows (a bare look the person stopped waiting
+                    // for must not appear for a moment either). Then back to the look she had.
+                    if (typeof this.session.cancelPending === 'function') this.session.cancelPending();
                     Promise.resolve(this.session.undo()).catch(() => null);
                 } catch (_) {
                     /* the session's own end restores her */
@@ -561,6 +564,9 @@
             }
             const session = this.session;
             this.listeners.clear();
+            // BI3. A wear still downloading is cancelled before the session restores her, so it
+            // cannot land after the restore.
+            if (session && typeof session.cancelPending === 'function') session.cancelPending();
             if (!session) return true;
             const worn = this.current();
             try {
