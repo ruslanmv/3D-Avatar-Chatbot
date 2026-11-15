@@ -5,6 +5,8 @@
 **Scope:** one additional gated static pose, source/asset compatibility tests, no changes to existing pose IDs, renderer, wardrobe, Private logic or UI styling.  
 **Status:** *Experimental — browser and real-VRM contact validation still required*. No PR or merge.
 
+> **Update (UN6, `una-notte`, 2026-11-15):** integrated by cherry-pick and verified on the rendered avatar — knees and palms on the sole plane (palms 10–16 mm, the arms straight at the elbow limit), fingers forward, palms down, held through turning and an outfit change, routed from "Mettiti a quattro zampe" at level 4 only. See `docs/qa/UN6_PRIVATE_POSES_RENDER_AUDIT.md`.
+
 ## What was actually found
 
 The existing `allFoursArched` and `doggyStyle` presets in `src/gltf-viewer/VRPoseSystem.js` are **standing forward-bend presets**, not hands-and-knees contacts. The preset's name or a successful `getCurrentPreset()` response is insufficient evidence that the character is visibly on four points. `PoseLibrary.js` does not own built-in presets: `VRPoseSystem.js` does.

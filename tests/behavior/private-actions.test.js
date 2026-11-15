@@ -1351,10 +1351,11 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
     function poseSystem(spicy = true) {
         const calls = [];
         const presets = ['kneeling', 'lyingBack', 'lyingFront', 'lyingSide', 'standingBendForward'];
-        if (spicy) presets.push('allFoursArched');
+        if (spicy) presets.push('allFoursArched', 'handsKnees');
         let current = 'standing';
         return {
             calls,
+            lastSupport: null,
             claimBones: () => calls.push('claim'),
             releaseBones: () => calls.push('release') && true,
             applyPreset: (name) => {
@@ -1417,17 +1418,45 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(w.adult.level).toBe(2);
     });
 
-    test('on all fours is not in the library yet: at level 4 it is an honest "not available", never another pose', async () => {
+    test('on all fours at level 4 is the distinct hands-and-knees preset, never a standing bend', async () => {
         const w = await at(4);
         await say('mettiti a quattro zampe');
         await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:handsKnees']);
+        expect(w.pose.calls).not.toContain('apply:allFoursArched');
+        expect(w.pose.calls).not.toContain('apply:doggyStyle');
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('UN6: a hands-and-knees whose palms did not reach the floor is a failure, and she goes back', async () => {
+        const w = await at(4);
+        await say('inginocchiati');
+        await flush();
+        const apply = w.pose.applyPreset;
+        w.pose.applyPreset = (name) => {
+            apply(name);
+            if (name === 'handsKnees')
+                w.pose.lastSupport = {
+                    preset: 'handsKnees',
+                    hands: { leftHand: { palmAfterMm: 45 }, rightHand: { palmAfterMm: 39 } },
+                };
+        };
+        await say('mettiti a quattro zampe');
+        await flush();
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'not-rendered' });
+        // Back in the position she held: kneeling, not standing and not half on all fours.
+        expect(w.pose.calls.slice(-1)).toEqual(['apply:kneeling']);
+        expect(w.pose.getCurrentPreset()).toBe('kneeling');
+    });
+
+    test('with the adult presets unlisted (Spicy off) all fours is refused, never substituted', async () => {
+        const w = await at(4, { spicyOff: true });
+        await say('mettiti a quattro zampe');
+        await flush();
         expect(w.pose.calls).toEqual([]);
-        expect(Actions.snapshot().last).toMatchObject({
-            name: 'avatar.pose',
-            status: 'failed',
-            why: 'unsupported-pose',
-        });
-        expect(prompt()).toMatch(/cannot take here yet\. Say so honestly/);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed', why: 'unknown-pose' });
     });
 
     test('a preset this build does not list is refused, never substituted', async () => {

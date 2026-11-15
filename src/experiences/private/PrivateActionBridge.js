@@ -759,7 +759,25 @@
             return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
         }
         const out = s.poses.apply(action.params.pose);
-        return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: action.params.pose });
+        if (!out.ok || typeof s.poses.confirm !== 'function')
+            return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, {
+                name: action.params.pose,
+            });
+        // UN6. Success only once the renderer shows it. A pose that did not land is taken back:
+        // she returns to the position she held before (or stands), and the reply says it failed.
+        return s.poses.confirm(action.params.pose).then((seen) => {
+            if (state !== s) return settle(action, 'blocked', 'stale');
+            if (seen && seen.ok) return settle(action, 'completed', null, { name: action.params.pose });
+            try {
+                s.poses.back();
+            } catch (_) {
+                /* she keeps whatever she shows; the failure is still reported */
+            }
+            return settle(action, 'failed', 'not-rendered', {
+                name: action.params.pose,
+                measured: seen && seen.measured,
+            });
+        });
     }
 
     function nextLayer(s, params) {
@@ -1122,6 +1140,31 @@
             parsed.params = { query: (before && before.params.query) || '' };
         }
         return request(parsed.name, parsed.params, { source: 'user', turnId: s.turnId });
+    }
+
+    /**
+     * UN6. Are these words a position for her body that Private will take? The composer hands
+     * every utterance to the motion fast path BEFORE the conversation reaches this bridge, so
+     * "sdraiati sul fianco" first started the chat stack's lie-down clip and set its `laying`
+     * state; the pose system then claimed her mid-clip. On "alzati" the release scheduled
+     * `lay_idle` — measured: the pose system said "standing" while her rendered hips were at
+     * 0.18 m, crouched. The fast path asks this first and stands aside (look-at only).
+     * Pure: parses, changes nothing.
+     */
+    function ownsBody(text) {
+        const s = state;
+        if (!s || s.session._stopped || !s.poses) return false;
+        const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
+        if (!Intent || typeof Intent.parse !== 'function') return false;
+        try {
+            const parsed = Intent.parse(String(text == null ? '' : text), {
+                poseHeld: Boolean(typeof s.poses.held === 'function' && s.poses.held()),
+                undressed: Boolean(s.dressedLook),
+            });
+            return Boolean(parsed && parsed.name === 'avatar.pose');
+        } catch (_) {
+            return false;
+        }
     }
 
     /** A tag she wrote, routed here instead of to the app-wide executor. */
@@ -1523,6 +1566,7 @@
         active,
         request,
         onUserTurn,
+        ownsBody,
         fromModel,
         consumeTravel,
         approveOffer,

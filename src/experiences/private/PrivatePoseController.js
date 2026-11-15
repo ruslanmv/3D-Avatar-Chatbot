@@ -29,12 +29,10 @@
     const POSES = Object.freeze({
         kneel: { preset: 'kneeling', adult: false },
         'kneel-up': { preset: 'kneelingUp', adult: false },
-        // Not available yet. The library has no hands-and-knees pose: `allFoursArched` (panel
-        // label "All Fours (Arched)") and `doggyStyle` are both defined as STANDING forward bends,
-        // and `allFoursArched` rendered as a near-rest pose on AvatarSample_A in the real-3D check
-        // (UN5, 2026-11-14). Asked for, this answers "unsupported" honestly instead of showing a
-        // different position; it opens the day a verified preset exists.
-        'all-fours': { preset: null, adult: true },
+        // UN6. Hands and knees: the distinct `handsKnees` preset (never allFoursArched or
+        // doggyStyle, which are standing forward bends). It rests on skinned knee surfaces and
+        // turns its hands palm-down onto the floor; `confirm()` below checks it really did.
+        'all-fours': { preset: 'handsKnees', adult: true },
         'lie-back': { preset: 'lyingBack', adult: false },
         'lie-front': { preset: 'lyingFront', adult: false },
         'lie-side': { preset: 'lyingSide', adult: false },
@@ -73,6 +71,17 @@
         }
 
         function exitPoseMode() {
+            // UN6. Letting go of a position in Private is standing up: the claim's snapshot she is
+            // handed back to is her standing idle. A sit/lie state the chat motion stack still
+            // remembered would schedule `sit_idle`/`lay_idle` the moment the hold lifts — the
+            // "Alzati" that reported standing and rendered crouched.
+            call(() => {
+                const st = win.NEXUS_MOTION && win.NEXUS_MOTION.state;
+                if (st) {
+                    st.sitting = false;
+                    st.laying = false;
+                }
+            });
             call(() => win.NEXUS_PROCEDURAL_ANIMATOR && win.NEXUS_PROCEDURAL_ANIMATOR.setPoseMode(false));
             call(() => win.NEXUS_MOTION && win.NEXUS_MOTION.holdForPoseStudio(false));
             call(() => {
@@ -150,6 +159,46 @@
             },
             held() {
                 return held;
+            },
+            /**
+             * UN6. A recognised request or a reported preset name is not proof: wait until the
+             * pose system has finished moving her (blend, grounding, hands), then check what it
+             * left. `{ok}` or `{ok:false, why:'not-rendered', measured}`. A pose that names its
+             * supports must have them on the floor: knees/hips within 10 mm, palms within 20 mm.
+             */
+            confirm(key, opts) {
+                const o = opts || {};
+                const entry = POSES[key];
+                const vps = system();
+                const wait =
+                    typeof o.wait === 'function'
+                        ? o.wait
+                        : (ms) => new Promise((r) => (win.setTimeout || setTimeout)(r, ms));
+                const limit = Number.isFinite(o.timeoutMs) ? o.timeoutMs : 6000;
+                const check = () => {
+                    if (!entry || !entry.preset || !vps) return { ok: false, why: 'not-rendered' };
+                    const now = typeof vps.getCurrentPreset === 'function' ? vps.getCurrentPreset() : null;
+                    const holding = typeof vps.isHoldingBones === 'function' ? vps.isHoldingBones() : true;
+                    if (now !== entry.preset || !holding)
+                        return { ok: false, why: 'not-rendered', measured: { now, holding } };
+                    const support = vps.lastSupport;
+                    if (support && support.preset === entry.preset && support.hands) {
+                        const palms = Object.values(support.hands).map((h) => h && h.palmAfterMm);
+                        if (palms.some((mm) => mm == null || Math.abs(mm) > 20))
+                            return { ok: false, why: 'not-rendered', measured: support };
+                    }
+                    return { ok: true, measured: support || null };
+                };
+                return (async () => {
+                    let waited = 0;
+                    while (vps && typeof vps.isSettling === 'function' && vps.isSettling() && waited < limit) {
+                        await wait(100);
+                        waited += 100;
+                    }
+                    if (vps && typeof vps.isSettling === 'function' && vps.isSettling())
+                        return { ok: false, why: 'not-rendered', measured: { settling: true } };
+                    return check();
+                })();
             },
         };
     }

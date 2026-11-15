@@ -1219,7 +1219,16 @@ const MotionIntegration = (() => {
     function onUserUtterance(text) {
         if (!_enabled() || typeof window === 'undefined') return;
         // UN5. A held pose is the body's answer for now; its owner decides what words do to it.
-        if (_heldByPoseStudio) {
+        // UN6. So are words Private is about to turn into a held pose: a sit or lie clip started
+        // here first is what the pose system would claim her from, and what release went back to.
+        let privateBody = false;
+        try {
+            const pa = window.NEXUS_PRIVATE_ACTIONS;
+            privateBody = Boolean(pa && typeof pa.ownsBody === 'function' && pa.ownsBody(text));
+        } catch (_e) {
+            privateBody = false;
+        }
+        if (_heldByPoseStudio || privateBody) {
             const at = getUserPosition();
             if (at) setLookAtTarget(at);
             return;
