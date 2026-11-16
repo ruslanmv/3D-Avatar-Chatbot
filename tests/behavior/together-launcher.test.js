@@ -1032,3 +1032,31 @@ describe('TG2: Back goes one step up', () => {
         expect(h.panel.activeActivity).toBeNull();
     });
 });
+
+describe('AC1. the phone sheet is the phone, not the avatar card', () => {
+    // jsdom cannot compute a containing block, so this pins the rule that fixes the measured bug
+    // (tools/qa/adult-experience-acceptance.mjs measures the result in a real browser): on a
+    // 390px phone the sheet was `position: fixed` inside a card with a backdrop-filter, which makes
+    // the card its containing block, and five of the seven tiles - Private among them - sat above
+    // the top of the screen.
+    const narrow = () => {
+        const css = TogetherLauncher.CSS;
+        const start = css.indexOf('@media (max-width: 640px)');
+        expect(start).toBeGreaterThan(-1);
+        return css.slice(start, css.indexOf('@media (prefers-reduced-motion', start));
+    };
+
+    test('while the sheet is open, whatever holds it gives up its backdrop-filter', () => {
+        const block = narrow();
+        expect(block).toMatch(
+            /\.glass-panel:has\(#nexus-bd-together-panel:not\(\[hidden\]\)\)\s*\{[^}]*backdrop-filter:\s*none/
+        );
+    });
+
+    test('the rule is scoped to the open sheet and to narrow screens, so the desktop card keeps its glass', () => {
+        const css = TogetherLauncher.CSS;
+        const rule = css.indexOf('.glass-panel:has(#nexus-bd-together-panel');
+        expect(rule).toBeGreaterThan(css.indexOf('@media (max-width: 640px)'));
+        expect(css.slice(0, css.indexOf('@media (max-width: 640px)'))).not.toMatch(/\.glass-panel:has/);
+    });
+});

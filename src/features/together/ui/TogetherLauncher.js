@@ -470,6 +470,22 @@ const TogetherLauncher = (() => {
        err on. */
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
+  /* AC1. position:fixed above is relative to the phone only while no ancestor makes itself the
+     containing block, and a backdrop-filter does exactly that. The avatar card carries one
+     (the glass look), so on a 390px phone the sheet was pinned inside a 155px card and clipped
+     by the card's overflow: hidden - measured in Chromium, a 302px grid starting 137px above the
+     top of the screen, with Playground, Watch, Music, Try-On and Private unreachable and only
+     the last tile showing. The comment above records that this was fixed once; the glass card
+     brought it back, and nothing measured it because the tests cannot compute a containing
+     block.
+
+     While the sheet is open, the blur is taken off whatever holds it. The card is behind a
+     full-width sheet at that moment, so nothing visible is lost, and it comes back when the
+     sheet closes. Where :has is not supported the rule is ignored and the sheet behaves as it
+     did before. (No backticks in this comment: the whole stylesheet is a JS template literal.) */
+  .glass-panel:has(#nexus-bd-together-panel:not([hidden])) {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
   .nexus-bd-together-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
