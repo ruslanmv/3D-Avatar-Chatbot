@@ -3,9 +3,10 @@
  * BI4. Private body-state acceptance in the real renderer, through PrivateActionBridge only.
  *
  *   node tools/qa/private-body-state-acceptance.mjs --forge http://127.0.0.1:8092 --grant-file <file> \
- *        --look-id import-… [--size desktop|phone] [--lang en-US|it-IT] [--out dir]
+ *        --look-id import-… [--character avatar-sample-a] [--state lingerie|bare] [--sha256 <hex>] \
+ *        [--size desktop|phone] [--lang en-US|it-IT] [--out dir]
  *
- * Needs a Forge that holds an operator-imported body state for AvatarSample A (Forge BI1) and a
+ * Needs a Forge that holds an operator-imported body state for the character (Forge BI1) and a
  * read grant for her (Forge BI2). The app is given the grant, never the admin token. Nothing here
  * calls the wardrobe controller to wear anything: every change is the person's words, read by
  * the bridge, exactly as in a session. The controller and renderer are only *read*.
@@ -23,7 +24,26 @@
  *   7. Cancelled: the download is held; the session ends while it waits; the look never reaches
  *      the renderer, and she is in her own outfit.
  * Screenshots are written to --out (keep them out of the repository). report.json, exit 1 on failure.
+ *
+ * BI6. `--character` and `--state`. The driver was written for one character and one state:
+ * AvatarSample A, and a lingerie import, with step 3 asserting that asking for everything off
+ * is refused because no bare state exists. Run as it was for another character it would have
+ * tested A; run for a bare import it would have failed at step 3 on the import working.
+ *
+ * - `--character` is one of the five characters this app ships and pins to a Forge slug
+ *   (`src/wardrobe/AvatarIdentity.js`). The page is opened on her, and step 1 checks that the
+ *   renderer loaded her file and that its bytes are the pinned hash.
+ * - `--state bare`: step 2 is the request for everything off and the import must be worn as
+ *   `bare`; step 3 does not apply (there is a bare state) and is recorded as skipped. With
+ *   `lingerie` (the default) every step is as before.
+ * - The report records the SHA-256 of her own file and of the import as Forge serves it to the
+ *   grant; `--sha256` states what the import must be, and a different file fails the run.
+ *
+ * It needs the import to exist: for a bare state that means a file a person reviewed, built or
+ * delivered and imported by the operator (Forge `docs/qa/body-state-specs/`). Nothing here
+ * makes one.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -38,6 +58,38 @@ const lang = arg('--lang', 'en-US');
 const FORGE = arg('--forge', 'http://127.0.0.1:8092').replace(/\/$/, '');
 const GRANT = fs.readFileSync(arg('--grant-file'), 'utf8').trim();
 const LOOK_ID = arg('--look-id');
+/** The characters this app ships and pins to a Forge slug (src/wardrobe/AvatarIdentity.js). */
+const CHARACTERS = {
+    'avatar-sample-a': {
+        file: 'AvatarSample_A.vrm',
+        sha256: 'b86b0b8a66d48911431d6f920a5211a974226f83aa672eca3f3dfade58ac346e',
+    },
+    'avatar-sample-b': {
+        file: 'AvatarSample_B.vrm',
+        sha256: '4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d',
+    },
+    'avatar-sample-c': {
+        file: 'AvatarSample_C.vrm',
+        sha256: '395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a',
+    },
+    'fem-vroid': { file: 'fem_vroid.vrm', sha256: '983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8' },
+    'masc-vroid': {
+        file: 'masc_vroid.vrm',
+        sha256: 'ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb',
+    },
+};
+const SLUG = arg('--character', 'avatar-sample-a');
+const STATE = arg('--state', 'lingerie');
+const EXPECTED_SHA = (arg('--sha256', '') || '').trim().toLowerCase();
+const CHARACTER = CHARACTERS[SLUG];
+if (!CHARACTER || !['lingerie', 'bare'].includes(STATE) || !LOOK_ID) {
+    console.error(
+        `--character must be one of ${Object.keys(CHARACTERS).join(', ')} (the characters this app ships; ` +
+            'Model Girl, Rinna and AvatarSample_O are Forge library characters the app does not ship), ' +
+            '--state lingerie or bare, and --look-id is required'
+    );
+    process.exit(2);
+}
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/wardrobe/runs', `${stamp}-${size}-${lang}`)));
 fs.mkdirSync(out, { recursive: true });
@@ -51,9 +103,34 @@ const SAY = {
 const D = await import(pathToFileURL(path.join(ROOT, 'tools/vr/page-driver.mjs')).href);
 const { playwright } = D.loadPlaywright();
 const server = await D.ensureServer(arg('--url', 'http://127.0.0.1:8080').replace(/\/$/, ''));
-const report = { size, lang, forge: FORGE, lookId: LOOK_ID, steps: [], failures: [], errors: [] };
+const report = {
+    size,
+    lang,
+    forge: FORGE,
+    character: SLUG,
+    state: STATE,
+    lookId: LOOK_ID,
+    steps: [],
+    failures: [],
+    errors: [],
+};
 const fail = (step, what) => report.failures.push(`${step}: ${what}`);
 const lookUrl = `${FORGE}/v1/assets/looks/${LOOK_ID}/look.vrm`;
+const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
+// Her own file, as this app serves it, and the import, as Forge serves it to the grant: the
+// two exact files this run is about, named by their bytes in the report.
+report.avatarSha256 = sha256(fs.readFileSync(path.join(ROOT, 'vendor/avatars', CHARACTER.file)));
+if (report.avatarSha256 !== CHARACTER.sha256)
+    fail('source', `her file here is ${report.avatarSha256}, not the pinned one`);
+try {
+    const response = await fetch(lookUrl, { headers: { 'X-Wardrobe-Grant': GRANT } });
+    if (!response.ok) fail('import', `Forge answered ${response.status} for the import with this grant`);
+    else report.lookSha256 = sha256(Buffer.from(await response.arrayBuffer()));
+} catch (error) {
+    fail('import', `Forge could not be asked for the import: ${String(error && error.message)}`);
+}
+if (EXPECTED_SHA && report.lookSha256 && report.lookSha256 !== EXPECTED_SHA)
+    fail('import', `the import is ${report.lookSha256}, not the reviewed file ${EXPECTED_SHA}`);
 
 const browser = await playwright.chromium.launch({ args: D.SWIFTSHADER });
 try {
@@ -69,8 +146,10 @@ try {
               }
     );
     await ctx.addInitScript(
-        ({ code, forge, grant }) => {
+        ({ code, forge, grant, file }) => {
             localStorage.setItem('app_lang', code);
+            // Her, as the avatar picker would have left it (main.js restores it by file name).
+            localStorage.setItem('nexus_selected_avatar_file', file);
             localStorage.setItem('nexus_together_enabled', 'on');
             localStorage.setItem('nexus_spicy_enabled', 'true');
             localStorage.setItem('nexus_spicy_verified', 'true');
@@ -80,7 +159,7 @@ try {
             // BI2. The read grant, as Settings stores it. Never the admin token.
             localStorage.setItem('wardrobe_forge_grant', grant);
         },
-        { code: lang, forge: FORGE, grant: GRANT }
+        { code: lang, forge: FORGE, grant: GRANT, file: CHARACTER.file }
     );
     const page = await ctx.newPage();
     page.on('pageerror', (e) => report.errors.push(String(e.message).slice(0, 240)));
@@ -213,11 +292,14 @@ try {
     const s1 = await renderer('01-original');
     report.steps.push(s1);
     if (s1.activeLook) fail('original', 'a look is worn before anything was asked');
+    if (!s1.managerUrl || !s1.managerUrl.split('?')[0].endsWith(CHARACTER.file))
+        fail('original', `the page loaded ${s1.managerUrl}, not ${CHARACTER.file}`);
     await shoot('01-original');
 
-    // 2. Undress → her private imported body state.
+    // 2. Undress → her private imported body state (for a bare import: everything off).
+    const ASK = STATE === 'bare' ? SAY.bare : SAY.undress;
     let n = await wardrobeCount();
-    await say(SAY.undress);
+    await say(ASK);
     await settle('undress', n);
     const s2 = await renderer('02-imported-state');
     report.steps.push(s2);
@@ -227,25 +309,32 @@ try {
     if (!s2.wornUrl || !s2.wornUrl.startsWith('blob:')) fail('undress', 'not worn as verified bytes');
     if (s2.managerUrl !== s2.wornUrl) fail('undress', 'the renderer root is not the selected asset');
     if (s2.rootUuid === s1.rootUuid) fail('undress', 'the renderer root did not change');
-    if (s2.outfitState !== 'lingerie') fail('undress', `bridge says ${s2.outfitState}, not lingerie`);
+    if (s2.outfitState !== STATE) fail('undress', `bridge says ${s2.outfitState}, not ${STATE}`);
+    if (s2.activeLook && s2.activeLook.state && s2.activeLook.state !== STATE)
+        fail('undress', `the import is recorded as ${s2.activeLook.state}, not ${STATE}`);
     if (s2.boneNodes !== s1.boneNodes) fail('identity', 'humanoid rig differs from hers');
     if (s2.expressions !== s1.expressions) fail('identity', 'expressions differ from hers');
     if (!s2.faceHair || s2.faceHair !== s1.faceHair) fail('identity', 'face/hair meshes differ from hers');
     if (JSON.stringify(s2.camera) !== JSON.stringify(s1.camera)) fail('camera', 'the camera moved across the swap');
     await shoot('02-imported-state');
 
-    // 3. Everything off: no bare state for her → honest refusal, nothing changes.
-    n = await wardrobeCount();
-    await say(SAY.bare);
-    await settle('bare', n);
-    const s3 = await renderer('03-bare-refused');
-    report.steps.push(s3);
-    if (s3.wardrobe && s3.wardrobe.status === 'completed' && s3.wardrobe.name !== 'wardrobe.pace')
-        fail('bare', `claimed success with no bare state: ${JSON.stringify(s3.wardrobe)}`);
-    if (s3.rootUuid !== s2.rootUuid) fail('bare', 'the avatar changed on a refused request');
-    if (!s3.wardrobe || s3.wardrobe.why !== 'no-bare-look')
-        fail('bare', `expected no-bare-look: ${JSON.stringify(s3.wardrobe)}`);
-    if (s3.outfitState !== 'lingerie') fail('bare', `bridge says ${s3.outfitState} after a refused bare request`);
+    // 3. Everything off: no bare state for her → honest refusal, nothing changes. Only when the
+    // import under test is not itself the bare state.
+    if (STATE === 'bare') {
+        report.skipped = ['03-bare-refused: the import under test is the bare state'];
+    } else {
+        n = await wardrobeCount();
+        await say(SAY.bare);
+        await settle('bare', n);
+        const s3 = await renderer('03-bare-refused');
+        report.steps.push(s3);
+        if (s3.wardrobe && s3.wardrobe.status === 'completed' && s3.wardrobe.name !== 'wardrobe.pace')
+            fail('bare', `claimed success with no bare state: ${JSON.stringify(s3.wardrobe)}`);
+        if (s3.rootUuid !== s2.rootUuid) fail('bare', 'the avatar changed on a refused request');
+        if (!s3.wardrobe || s3.wardrobe.why !== 'no-bare-look')
+            fail('bare', `expected no-bare-look: ${JSON.stringify(s3.wardrobe)}`);
+        if (s3.outfitState !== 'lingerie') fail('bare', `bridge says ${s3.outfitState} after a refused bare request`);
+    }
 
     // 4. Redress → her own outfit.
     n = await wardrobeCount();
@@ -278,13 +367,15 @@ try {
         await page.route(lookUrl, handler);
         const before = await renderer(step + '-before');
         n = await wardrobeCount();
-        await say(SAY.undress);
+        await say(ASK);
         await settle(step, n);
         const after = await renderer(step);
         report.steps.push(after);
         await page.unroute(lookUrl);
         if (after.wardrobe && after.wardrobe.status === 'completed' && after.wardrobe.name === 'wardrobe.undress')
             fail(step, 'reported success');
+        if (after.outfitState !== before.outfitState)
+            fail(step, `bridge says ${after.outfitState} after a download that did not arrive`);
         if (after.rootUuid !== before.rootUuid) fail(step, 'the avatar changed');
         if (after.activeLook) fail(step, 'a look was recorded as worn');
     }
@@ -297,7 +388,7 @@ try {
         await route.continue().catch(() => {});
     });
     const loadsBefore = (await renderer('07-before')).loads.length;
-    await say(SAY.undress);
+    await say(ASK);
     await page.waitForTimeout(3000);
     const pending = await page.evaluate(() => Boolean(window.NEXUS_WARDROBE?.service?.controller?.pending));
     report.cancelPendingSeen = pending;
@@ -329,5 +420,21 @@ try {
 }
 report.passed = report.failures.length === 0;
 fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));
-console.log(JSON.stringify({ size, lang, passed: report.passed, failures: report.failures, out }, null, 2));
+console.log(
+    JSON.stringify(
+        {
+            character: SLUG,
+            state: STATE,
+            size,
+            lang,
+            avatarSha256: report.avatarSha256,
+            lookSha256: report.lookSha256 || null,
+            passed: report.passed,
+            failures: report.failures,
+            out,
+        },
+        null,
+        2
+    )
+);
 process.exit(report.passed ? 0 : 1);
