@@ -1063,6 +1063,9 @@
             'setup.private': 'Private',
             'setup.musicNo': 'No music',
             'setup.musicChosen': 'Music selected',
+            'setup.locked.settings':
+                'Private is for adults (18+). Turn on Private Mode in Settings to use it; you will confirm your age there.',
+            'setup.openSettings': 'Open Settings',
             'preset.name.affectionate': 'Affectionate',
             'preset.name.romantic': 'Romantic',
             'preset.name.sensual': 'Sensual',
@@ -1098,6 +1101,9 @@
             'setup.private': 'Privato',
             'setup.musicNo': 'Nessuna musica',
             'setup.musicChosen': 'Musica scelta',
+            'setup.locked.settings':
+                'Private è riservata agli adulti (18+). Attiva la modalità privata nelle Impostazioni per usarla: lì confermerai la tua età.',
+            'setup.openSettings': 'Apri le Impostazioni',
             'preset.name.affectionate': 'Affettuoso',
             'preset.name.romantic': 'Romantico',
             'preset.name.sensual': 'Sensuale',
@@ -1132,6 +1138,9 @@
             'setup.private': 'Privado',
             'setup.musicNo': 'Sin música',
             'setup.musicChosen': 'Música seleccionada',
+            'setup.locked.settings':
+                'Private es solo para adultos (18+). Activa el modo privado en Ajustes para usarlo; allí confirmarás tu edad.',
+            'setup.openSettings': 'Abrir Ajustes',
             'preset.name.affectionate': 'Cariñoso',
             'preset.name.romantic': 'Romántico',
             'preset.name.sensual': 'Sensual',
@@ -1166,6 +1175,9 @@
             'setup.private': 'Privé',
             'setup.musicNo': 'Sans musique',
             'setup.musicChosen': 'Musique choisie',
+            'setup.locked.settings':
+                'Private est réservé aux adultes (18+). Active le mode privé dans les Réglages pour l’utiliser ; tu y confirmeras ton âge.',
+            'setup.openSettings': 'Ouvrir les Réglages',
             'preset.name.affectionate': 'Affectueux',
             'preset.name.romantic': 'Romantique',
             'preset.name.sensual': 'Sensuel',
@@ -1201,6 +1213,9 @@
             'setup.private': 'Privat',
             'setup.musicNo': 'Keine Musik',
             'setup.musicChosen': 'Musik ausgewählt',
+            'setup.locked.settings':
+                'Private ist nur für Erwachsene (18+). Aktiviere den privaten Modus in den Einstellungen; dort bestätigst du dein Alter.',
+            'setup.openSettings': 'Einstellungen öffnen',
             'preset.name.affectionate': 'Zärtlich',
             'preset.name.romantic': 'Romantisch',
             'preset.name.sensual': 'Sinnlich',
@@ -1235,6 +1250,9 @@
             'setup.private': 'Privado',
             'setup.musicNo': 'Sem música',
             'setup.musicChosen': 'Música escolhida',
+            'setup.locked.settings':
+                'Private é só para adultos (18+). Ative o modo privado nas Configurações para usar; lá você confirma a sua idade.',
+            'setup.openSettings': 'Abrir Configurações',
             'preset.name.affectionate': 'Carinhoso',
             'preset.name.romantic': 'Romântico',
             'preset.name.sensual': 'Sensual',
@@ -1269,6 +1287,9 @@
             'setup.private': 'プライベート',
             'setup.musicNo': '音楽なし',
             'setup.musicChosen': '音楽を選択済み',
+            'setup.locked.settings':
+                'Private は大人（18歳以上）向けです。使うには設定でプライベートモードをオンにしてね。年齢の確認もそこで行います。',
+            'setup.openSettings': '設定を開く',
             'preset.name.affectionate': '親しみ',
             'preset.name.romantic': 'ロマンチック',
             'preset.name.sensual': '官能的',
@@ -1303,6 +1324,9 @@
             'setup.private': '프라이빗',
             'setup.musicNo': '음악 없음',
             'setup.musicChosen': '음악 선택됨',
+            'setup.locked.settings':
+                'Private는 성인(만 18세 이상)을 위한 기능이야. 사용하려면 설정에서 프라이빗 모드를 켜 줘. 나이 확인도 거기서 해.',
+            'setup.openSettings': '설정 열기',
             'preset.name.affectionate': '다정함',
             'preset.name.romantic': '로맨틱',
             'preset.name.sensual': '감각적',
@@ -1337,6 +1361,9 @@
             'setup.private': '私人',
             'setup.musicNo': '无音乐',
             'setup.musicChosen': '已选择音乐',
+            'setup.locked.settings':
+                'Private 仅限成年人（18 岁以上）。请在设置中开启私密模式后使用，年龄确认也在那里完成。',
+            'setup.openSettings': '打开设置',
             'preset.name.affectionate': '亲切',
             'preset.name.romantic': '浪漫',
             'preset.name.sensual': '感性',

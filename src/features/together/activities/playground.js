@@ -1475,6 +1475,25 @@ const PlaygroundActivity = (() => {
         return { ok: true, why: '' };
     }
 
+    /**
+     * AC2. Is the Private tile drawn when the person has not turned Private Mode on?
+     *
+     * It was not: with the preference off the activity was not even registered, so nothing in the
+     * app said that a Private destination existed or where its switch was (PX8 recorded this as a
+     * decision waiting to be made). Now it is drawn locked: a tile that grants nothing, whose
+     * screen says it is for adults and opens Settings, where the age confirmation is still the
+     * only way in. `start()` asks the gate again, as it always did.
+     *
+     * A deployment that does not want the tile before the switch is on says so in its own page
+     * configuration (never storage, never a setting - the same rule as `contentTier`):
+     * `window.NEXUS_ADULT_EXPERIENCE_CONFIG = { discoverable: false }`.
+     */
+    function privateTileListed(spicy, win) {
+        if (privateTileVisibility(spicy).ok) return true;
+        const config = win && win.NEXUS_ADULT_EXPERIENCE_CONFIG;
+        return !(config && config.discoverable === false);
+    }
+
     function intimateEligibility(director, spicy) {
         if (!privatePreferenceOn(spicy)) {
             return { ok: false, why: 'Private Mode is disabled in Settings' };
@@ -2232,6 +2251,18 @@ const PlaygroundActivity = (() => {
         availability() {
             return this.capability();
         }
+        /**
+         * AC2. Why the destination cannot start, as a code the setup screen can act on.
+         *
+         * `'settings'` is the one a person can fix themselves (the switch is off), so it is the one
+         * that gets a button. Everything else a locked screen can say - the consent flow still
+         * loading, the gate not yet confirmed - is waiting, not a decision, and stays a sentence.
+         */
+        lockedReason() {
+            const gate = this.availability();
+            if (!gate || gate.ok !== false) return null;
+            return /disabled in settings/i.test(String(gate.why || '')) ? 'settings' : 'pending';
+        }
         async start({ input = {} } = {}) {
             if (this.active) return { ok: false, why: 'Private is already running' };
             const gate = this.availability();
@@ -2350,6 +2381,9 @@ const PlaygroundActivity = (() => {
         let unsubscribeSpicy = null;
         let unsubscribePanel = null;
         let unsubscribeAdultExit = null;
+        // AC2. Whether the last paint drew the tile locked. The tile is registered either way now, so
+        // a change of the switch is not a registration and has to repaint on its own account.
+        let drewLocked = null;
 
         const repaint = () => {
             if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function')
@@ -2381,8 +2415,8 @@ const PlaygroundActivity = (() => {
             if (!director || !director.togetherPanel || !window.NEXUS_SPICY) return false;
             const visible = privateTileVisibility(window.NEXUS_SPICY);
             mirrorPreference(visible.ok);
-            if (visible.ok) {
-                ensureAdultFlow(director);
+            if (visible.ok || privateTileListed(window.NEXUS_SPICY, window)) {
+                if (visible.ok) ensureAdultFlow(director);
                 const existing = director.togetherPanel.activities && director.togetherPanel.activities.get('intimate');
                 if (!existing) {
                     activity = new Intimate({
@@ -2405,19 +2439,28 @@ const PlaygroundActivity = (() => {
                     director.intimate = existing;
                 }
                 const gate = intimateEligibility(director, window.NEXUS_SPICY);
-                if (
-                    !gate.ok &&
-                    (director.togetherPanel.active === 'intimate' ||
-                        director.togetherPanel.activeActivity === 'intimate')
-                ) {
+                const running =
+                    director.togetherPanel.active === 'intimate' ||
+                    director.togetherPanel.activeActivity === 'intimate';
+                if (!gate.ok && running) {
                     director.togetherPanel.stopActivity(gate.why || 'Private eligibility changed');
-                    // Starting an activity closes Together. If trust disappears while it is
-                    // running, reopen the chooser so the still-enabled Private preference is
-                    // represented by its locked tile rather than by an apparently vanished
-                    // destination.
-                    if (typeof director.togetherPanel.open === 'function') director.togetherPanel.open();
+                    // AC2. The person switched Private Mode off in Settings: the session ends and the
+                    // tile stays, locked. Reopening Together here would put a menu over the Settings
+                    // panel they are standing in. Any other reason (the consent flow went away,
+                    // trust was lost) still reopens the chooser, as before: starting an activity
+                    // closes Together, and a destination that is still enabled should not appear to
+                    // have vanished.
+                    if (visible.ok && typeof director.togetherPanel.open === 'function') director.togetherPanel.open();
+                    else repaint();
                 }
-            } else unregister(visible.why);
+                if (drewLocked !== !visible.ok) {
+                    drewLocked = !visible.ok;
+                    repaint();
+                }
+            } else {
+                drewLocked = null;
+                unregister(visible.why);
+            }
             return visible.ok;
         };
         const wire = () => {
@@ -3005,6 +3048,7 @@ const PlaygroundActivity = (() => {
         presets: INTIMATE_PRESETS,
         eligibility: intimateEligibility,
         visibility: privateTileVisibility,
+        listed: privateTileListed,
     };
 
     return {

@@ -425,6 +425,12 @@ const TogetherLauncher = (() => {
   margin: .35rem 0 0; color: #9aa6b8; font: 400 .7rem/1.4 inherit;
 }
 
+/* AC2. The Private tile before its switch is on: dimmer, with the reason on it. */
+.nexus-bd-together-tile[data-locked="1"] { opacity: .78; }
+.nexus-bd-together-badge {
+  display: block; margin-top: .15rem; font: 600 .6rem/1.2 inherit; letter-spacing: .06em; opacity: .85;
+}
+
 @media (max-width: 640px) {
   /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet.
 

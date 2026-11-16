@@ -1,7 +1,9 @@
 /**
  * Private / Together availability contract.
  *
- * Product invariant: the Together tile follows the user's Private Mode Settings preference.
+ * Product invariant: the Together tile follows the user's Private Mode Settings preference, and
+ * the preference alone decides whether the destination can START. AC2: with the preference off the
+ * tile is still listed, locked, so the destination can be found; a locked tile grants nothing.
  * Trusted verification still controls whether the activity can start, so showing the tile never
  * grants adult access by itself.
  */
@@ -165,16 +167,92 @@ describe('Private runtime eligibility', () => {
 });
 
 describe('Private tile invariant', () => {
-    test('Private Mode OFF means no registered activity or tile in Together', () => {
+    test('AC2: Private Mode OFF lists a LOCKED tile that grants nothing', async () => {
         const s = setup({ requested: false, verified: true, withAdult: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         s.panel.open();
 
-        expect(s.panel.activities.has('intimate')).toBe(false);
-        expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
+        const tile = document.querySelector('[data-activity="intimate"]');
+        expect(tile).not.toBeNull();
+        expect(tile.dataset.locked).toBe('1');
+        expect(tile.textContent).toContain('18+');
+        const activity = s.panel.activities.get('intimate');
+        expect(activity.inputs()).toEqual([]);
+        expect(activity.lockedReason()).toBe('settings');
+        // The preference is what the consent side reads, and it is still off.
         expect(s.director.blackboard.nsfwAllowed).toBe(false);
+        // Listing is not entering: the gate refuses, and the adult flow is never touched.
+        const refused = await activity.start({ input: { id: 'romantic' } });
+        expect(refused.ok).toBe(false);
+        expect(activity.active).toBe(false);
+        expect(s.adult.enter).not.toHaveBeenCalled();
 
         bridge.detach();
+    });
+
+    test('AC2: a deployment can keep the tile away until the switch is on', () => {
+        window.NEXUS_ADULT_EXPERIENCE_CONFIG = { discoverable: false };
+        try {
+            const s = setup({ requested: false, verified: true, withAdult: true });
+            const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+            s.panel.open();
+
+            expect(s.panel.activities.has('intimate')).toBe(false);
+            expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
+            s.spicy.set(true);
+            expect(document.querySelector('[data-activity="intimate"]')).not.toBeNull();
+
+            bridge.detach();
+        } finally {
+            delete window.NEXUS_ADULT_EXPERIENCE_CONFIG;
+        }
+    });
+
+    test('AC2: the locked screen says why, in the app language, and its button opens Settings without flipping the switch', () => {
+        const s = setup({ requested: false, verified: true, withAdult: true });
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            '<button id="settings-btn" type="button"></button><input id="spicy-mode-toggle" type="checkbox" />'
+        );
+        const opened = jest.fn();
+        document.getElementById('settings-btn').addEventListener('click', opened);
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        s.panel.open();
+
+        expect(s.panel.choose('intimate')).toEqual({ ok: true, why: 'setup' });
+        const locked = s.panel.root.querySelector('[data-private-locked="1"]');
+        expect(locked.textContent).toMatch(/18\+/);
+        expect(locked.textContent).toMatch(/Settings/);
+        expect(s.panel.root.querySelectorAll('.nexus-private-preset')).toHaveLength(0);
+
+        s.panel.root.querySelector('[data-action="private-open-settings"]').click();
+        expect(opened).toHaveBeenCalledTimes(1);
+        expect(s.panel.isOpen).toBe(false);
+        // Turning Private Mode on is the person's act, behind the age confirmation; this button is
+        // only the way to it.
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
+        expect(s.spicy.isRequested()).toBe(false);
+
+        bridge.detach();
+    });
+
+    test('AC2: the locked screen is Italian in an Italian app, and the other reasons keep their sentence', () => {
+        window.AppLanguage = { code: 'it-IT' };
+        try {
+            const s = setup({ requested: false, verified: true, withAdult: true });
+            const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+            s.panel.open();
+            s.panel.choose('intimate');
+            const text = s.panel.root.querySelector('[data-private-locked="1"]').textContent;
+            expect(text).toMatch(/adulti \(18\+\)/);
+            expect(text).toMatch(/Impostazioni/);
+            expect(s.panel.root.querySelector('[data-action="private-open-settings"]').textContent).toBe(
+                'Apri le Impostazioni'
+            );
+            bridge.detach();
+        } finally {
+            delete window.AppLanguage;
+        }
     });
 
     test('Private Mode ON keeps the tile visible while the consent flow is still loading', () => {
@@ -196,28 +274,32 @@ describe('Private tile invariant', () => {
         bridge.detach();
     });
 
-    test('turning Private Mode ON while Together is already open inserts the tile immediately', () => {
+    test('turning Private Mode ON while Together is already open unlocks the tile immediately', () => {
         const s = setup({ requested: false, verified: false, withAdult: false });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         s.panel.open();
-        expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
+        expect(document.querySelector('[data-activity="intimate"]').dataset.locked).toBe('1');
 
         s.spicy.set(true);
 
         expect(s.panel.activities.has('intimate')).toBe(true);
-        expect(document.querySelector('[data-activity="intimate"]')).not.toBeNull();
+        const tile = document.querySelector('[data-activity="intimate"]');
+        expect(tile).not.toBeNull();
+        expect(tile.dataset.locked).toBeUndefined();
         expect(s.director.blackboard.nsfwAllowed).toBe(true);
 
         bridge.detach();
     });
 
-    test('trusted verification alone does not expose Private when Settings is OFF', () => {
+    test('trusted verification alone does not unlock Private when Settings is OFF', async () => {
         const s = setup({ requested: false, verified: true, withAdult: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         s.panel.open();
 
-        expect(s.panel.activities.has('intimate')).toBe(false);
-        expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
+        expect(document.querySelector('[data-activity="intimate"]').dataset.locked).toBe('1');
+        expect(s.panel.activities.get('intimate').availability().ok).toBe(false);
+        expect((await s.panel.startActivity('intimate', { id: 'romantic' })).ok).toBe(false);
+        expect(s.adult.enter).not.toHaveBeenCalled();
 
         bridge.detach();
     });
@@ -268,7 +350,7 @@ describe('Private tile invariant', () => {
         bridge.detach();
     });
 
-    test('switching Private Mode OFF stops an active session and removes every Private destination immediately', async () => {
+    test('switching Private Mode OFF stops an active session at once and leaves the destination locked', async () => {
         const s = setup({ requested: true, verified: true, withAdult: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         await s.panel.startActivity('intimate', { id: 'romantic' });
@@ -277,11 +359,12 @@ describe('Private tile invariant', () => {
         s.spicy.set(false);
 
         expect(s.panel.activeActivity).toBeNull();
-        expect(s.panel.activities.has('intimate')).toBe(false);
-        expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
-        expect(s.director.intimate).toBeNull();
         expect(s.adult.exit).toHaveBeenCalledTimes(1);
         expect(s.director.blackboard.nsfwAllowed).toBe(false);
+        expect(s.director.intimate.active).toBe(false);
+        // Still listed, now locked; and Together did not pop open over the Settings the person is in.
+        expect(s.panel.activities.get('intimate').availability().ok).toBe(false);
+        expect(s.panel.isOpen).toBe(false);
 
         bridge.detach();
     });
