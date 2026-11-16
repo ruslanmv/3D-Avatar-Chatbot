@@ -1218,7 +1218,14 @@ const PrivateConversationView = (() => {
                 // UN15. Past a few seconds, say it is still on its way rather than look stuck.
                 text = t(outfit.why === 'slow' ? 'outfit.slow' : 'outfit.changing');
             } else if (action && action.status === 'failed') {
-                const known = ['adult-ineligible', 'no-match', 'forge-unavailable', 'timeout'].includes(action.why)
+                const known = [
+                    'adult-ineligible',
+                    'no-match',
+                    'forge-unavailable',
+                    'timeout',
+                    'bare-needs-review',
+                    'bare-blocked',
+                ].includes(action.why)
                     ? action.why
                     : 'other';
                 text = t(`outfit.failed.${known}`);
