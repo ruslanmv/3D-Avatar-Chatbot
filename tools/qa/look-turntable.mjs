@@ -20,6 +20,10 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+// The helper is the house IIFE: Jest require()s it; here (package type "module") it loads as ESM,
+// where only its global assignment runs.
+await import('./turntable-facing.js');
+const { facingOffset } = globalThis.NEXUS_TURNTABLE_FACING;
 const all = (name) => process.argv.flatMap((value, i) => (value === name ? [process.argv[i + 1]] : []));
 const arg = (name, fallback) => all(name)[0] ?? fallback;
 const files = all('--vrm').map((file) => path.resolve(file));
@@ -90,7 +94,7 @@ try {
         await page.waitForTimeout(3000);
         // The app's own framing of her, then (for hips) the camera brought in along the line it
         // already looks down, level with her hip joint. She is turned; the camera is not.
-        const base = await page.evaluate(
+        const measured = await page.evaluate(
             ({ focus, distance }) => {
                 const viewer = window.NEXUS_VIEWER;
                 const m = viewer.avatarManager;
@@ -110,10 +114,29 @@ try {
                     viewer.camera.position.y = target.y + 0.03;
                     viewer.controls.update();
                 }
-                return m.currentRoot.rotation.y;
+                // RP2. Her shoulders and the camera, so Node can tell her front from her back.
+                const boneAt = (name) => {
+                    const node =
+                        vrm && vrm.humanoid && vrm.humanoid.getBoneNode ? vrm.humanoid.getBoneNode(name) : null;
+                    if (!node) return null;
+                    const p = node.getWorldPosition(new THREE.Vector3());
+                    return { x: p.x, y: p.y, z: p.z };
+                };
+                const root = m.currentRoot.getWorldPosition(new THREE.Vector3());
+                const cam = viewer.camera.position;
+                return {
+                    yaw: m.currentRoot.rotation.y,
+                    left: boneAt('leftUpperArm'),
+                    right: boneAt('rightUpperArm'),
+                    toCamera: { x: cam.x - root.x, y: cam.y - root.y, z: cam.z - root.z },
+                };
             },
             { focus, distance }
         );
+        // The app turns every VRM by π, which shows a VRM 1.0 file from behind; "front" must be
+        // her front (tools/qa/turntable-facing.js).
+        const facing = facingOffset(measured.left, measured.right, measured.toCamera);
+        const base = measured.yaw + facing.offset;
         const shots = [];
         for (const [view, degrees] of VIEWS) {
             await page.evaluate(
@@ -132,7 +155,12 @@ try {
         await page.evaluate((base) => {
             window.NEXUS_VIEWER.avatarManager.currentRoot.rotation.y = base;
         }, base);
-        rows.push({ label, source: path.basename(files[i]), shots });
+        rows.push({
+            label,
+            source: path.basename(files[i]),
+            facing: { asFramed: facing.facing, turned: facing.offset !== 0, dot: Number(facing.dot.toFixed(3)) },
+            shots,
+        });
         console.log(`${label}: ${shots.map((s) => s.file).join(', ')}`);
     }
     await ctx.close();
