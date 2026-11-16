@@ -192,6 +192,13 @@
             }
         }
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
+        // CV1. Private is over: her clothing is shown again, exactly as it was, whatever ended it.
+        try {
+            const clothing = s.win && s.win.NEXUS_CLOTHING;
+            if (clothing && typeof clothing.showClothing === 'function') clothing.showClothing('private-ended');
+        } catch (_) {
+            /* nothing hidden, or already restored */
+        }
         if (s.travel) clearTimeout(s.travel.timer);
         s.travel = null;
         // UN5. Whatever ended the evening, her skeleton is hers again.
