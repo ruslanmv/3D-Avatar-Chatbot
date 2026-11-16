@@ -2045,3 +2045,126 @@ describe('UN18. the reported session: "Togliete vestiti" moved nothing and she s
         expect(said('Va bene, li tolgo.', 'changed')).toMatch(/li tolgo/);
     });
 });
+
+describe('AC3. easing, stopping and care reach the body, in every language', () => {
+    /** Pose Studio's system as the page has it (UN5's, restated: that one is local to its describe). */
+    function poseSystem() {
+        const calls = [];
+        const presets = ['kneeling', 'lyingBack', 'handsKnees'];
+        let current = 'standing';
+        return {
+            calls,
+            lastSupport: null,
+            claimBones: () => calls.push('claim'),
+            releaseBones: () => calls.push('release') && true,
+            applyPreset: (name) => {
+                calls.push(`apply:${name}`);
+                if (presets.includes(name)) current = name;
+            },
+            getCurrentPreset: () => current,
+            getPresetList: () => presets.map((name) => ({ name })),
+        };
+    }
+    async function atLevel(level) {
+        const pose = poseSystem();
+        window.vrPoseSystem = pose;
+        const w = await begin({ adult: true });
+        w.adult.level = level;
+        w.pose = pose;
+        return w;
+    }
+    const lastCall = (w) => w.pose.calls[w.pose.calls.length - 1];
+
+    test.each([
+        ['Italian', 'basta così'],
+        ['Italian', 'fermati'],
+        ['French', 'arrête'],
+        ['German', 'hör auf'],
+        ['Portuguese', 'pare agora'],
+        ['Japanese', 'やめて'],
+        ['Korean', '그만해'],
+        ['Chinese', '停止'],
+    ])('%s: "%s" typed to her ends the evening, as "stop" does', async (_language, words) => {
+        const w = await atLevel(2);
+        expect(w.session._stopped).toBeFalsy();
+        await say(words);
+        await flush();
+        // The same property the English "stop" test holds: the session asked the panel to end it.
+        expect(w.session._stopped || w.panel.stopActivity.mock.calls.length > 0).toBe(true);
+    });
+
+    test('an everyday phrase in another language ends nothing', async () => {
+        const w = await atLevel(2);
+        for (const words of ['para ti', 'assez bien', 'Che bella serata', 'gracias por esto']) {
+            await say(words);
+            await flush();
+        }
+        expect(w.session._stopped).toBeFalsy();
+        expect(w.panel.stopActivity).not.toHaveBeenCalled();
+    });
+
+    test('"rallenta" takes the pace all the way down and lets go of an adult position she held', async () => {
+        const w = await atLevel(4);
+        await say('mettiti a quattro zampe');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:handsKnees']);
+        expect(w.session.adult.level).toBe(4);
+
+        await say('rallenta');
+        await flush();
+        expect(w.adult.level).toBe(1);
+        expect(lastCall(w)).toBe('release');
+        expect(Actions.snapshot().poseHeld).toBeFalsy();
+        // Only the position went: the session is still running.
+        expect(w.session._stopped).toBeFalsy();
+        expect(w.panel.stopActivity).not.toHaveBeenCalled();
+    });
+
+    test('a care concern lets go of whatever she holds, even a position that is not adult', async () => {
+        const w = await atLevel(2);
+        await say('inginocchiati');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+        await say('voglio farla finita');
+        await flush();
+        expect(w.session._care).toBe(true);
+        expect(lastCall(w)).toBe('release');
+    });
+
+    test('care mode draws no offers: not the choices, not the mood question, not the idle ways back in', async () => {
+        const w = await atLevel(2);
+        const view = w.session.view;
+        await say('voglio farla finita');
+        await flush();
+        expect(w.session._care).toBe(true);
+        // Spied AFTER care began: anything the view is asked to draw from here on is an offer.
+        const choices = jest.spyOn(view, 'showChoices');
+        const mood = jest.spyOn(view, 'showMoodChoice');
+        expect(w.session._offerChoices(['a', 'b'])).toBe(false);
+        expect(w.session._offerIdleChoices()).toBe(false);
+        w.session._showMoodChoice();
+        w.session._offerTextureChoice();
+        expect(choices).not.toHaveBeenCalled();
+        expect(mood).not.toHaveBeenCalled();
+    });
+
+    test('the Ease button lets go of an adult position when the level it lands on no longer allows it', async () => {
+        const w = await atLevel(4);
+        await say('mettiti a quattro zampe');
+        await flush();
+        w.session._easeUp();
+        await flush();
+        expect(w.adult.level).toBe(3);
+        expect(lastCall(w)).toBe('release');
+    });
+
+    test('...but a position that is not adult stays through a step down: she was not asked to stand', async () => {
+        const w = await atLevel(4);
+        await say('inginocchiati');
+        await flush();
+        w.session._easeUp();
+        await flush();
+        expect(w.adult.level).toBe(3);
+        expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+    });
+});

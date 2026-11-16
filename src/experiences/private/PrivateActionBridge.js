@@ -792,6 +792,44 @@
         }
     }
 
+    /**
+     * AC3. She eased off, or a care concern was raised: whatever the body is holding, she lets go of.
+     *
+     * A held position outlived "slow down", "cozy" and care mode: the pace came down through
+     * ConsentFlow and nothing told the pose, so an adult position taken at the top of the pace was
+     * still on screen at the bottom of it. Easing is the person saying the evening should get
+     * gentler; the body does not stay where it was while the words do not. Only the pose is
+     * released - her outfit, the music and the room are the person's to change, and she keeps them.
+     * Returns whether anything was let go.
+     */
+    function easeBody(session, why, options) {
+        const s = state;
+        if (!s || (session && s.session !== session) || !s.poses) return false;
+        let held = null;
+        try {
+            held = typeof s.poses.held === 'function' ? s.poses.held() : null;
+        } catch (_) {
+            held = null;
+        }
+        if (!held) return false;
+        // A step down the dial (the Ease button) lets go only of what the level it landed on no
+        // longer allows: an adult position below the level that opens them. The words and care
+        // mode say "all the way down" and let go of whatever she holds.
+        const opts = options || {};
+        if (opts.adultOnly) {
+            const entry = s.poses.POSES && s.poses.POSES[held];
+            if (!entry || !entry.adult || !(Number(opts.level) < UNDRESS_AT)) return false;
+        }
+        try {
+            s.poses.release();
+        } catch (_) {
+            /* the pose system restores itself on its own reset */
+        }
+        faceFront(s);
+        s.easedBody = { at: Date.now(), why: String(why || 'eased'), was: held };
+        return true;
+    }
+
     const ORIGINAL = { original: true };
 
     async function redress(s, action, alive) {
@@ -1823,6 +1861,7 @@
         TRAVEL_MS,
         begin,
         end,
+        easeBody,
         active,
         request,
         onUserTurn,

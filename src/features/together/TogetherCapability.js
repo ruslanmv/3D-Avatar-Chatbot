@@ -1730,6 +1730,8 @@
                 } catch (_) {
                     /* the prompt half still applies */
                 }
+                this._letGoOfPose('care');
+                this._withdrawOffers();
                 this._emit('private:care', { at });
                 // The model's answer cannot be trusted to name help: in the second real-model run
                 // it answered kindly and pointed nowhere. So the app shows one fixed notice itself,
@@ -1993,6 +1995,7 @@
             // `exit('soft')` remains the all-the-way-down safe word.
             if (next.loweredPace && this.adult && typeof this.adult.eased === 'function') this.adult.eased();
 
+            this._letGoOfPose('eased', { adultOnly: true, level: next.level });
             this.energy = next.energy;
             if (next.atFloor) {
                 // At the bottom of both dials the register is a request rather than a suggestion, and
@@ -2043,6 +2046,21 @@
         }
 
         /**
+         * AC3. The body follows the pace down: a held position is let go of when she eases off or a
+         * care concern is raised (see PrivateActionBridge.easeBody). Fail-soft: the pace has already
+         * come down through ConsentFlow, and this must never take that away.
+         */
+        _letGoOfPose(why, options) {
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.easeBody === 'function') return actions.easeBody(this, why, options);
+            } catch (_) {
+                /* the level is already down; the pose also goes at the end of the evening */
+            }
+            return false;
+        }
+
+        /**
          * All the way down, for a request phrased as a word rather than a step.
          *
          * A typed "slow down", "too much", "cozy". `ConsentFlow.exit('soft')` is the right mechanism
@@ -2063,6 +2081,7 @@
                 return true;
             }
             if (level > 1 && this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
+            this._letGoOfPose('eased');
             this.energy = 'quiet';
             this.style = 'quiet';
             this._styleLocked = true;
@@ -2097,6 +2116,10 @@
 
         _offerChoices(list, { source = 'local' } = {}) {
             if (this._stopped || this.state === 'complete' || !this.view) return false;
+            // AC3. Care mode offers nothing: no pace buttons, no idle ways back in. The care prompt
+            // and the fixed notice are the whole of what is on the table, and End and Ease stay in
+            // the footer where they always were.
+            if (this._care) return false;
             if (typeof this.view.showChoices !== 'function') return false;
             const api = choicesModel();
             let choices = Array.isArray(list) ? list.filter(Boolean) : [];
@@ -3021,7 +3044,7 @@
         }
 
         _showMoodChoice() {
-            if (this.state !== 'active') return;
+            if (this.state !== 'active' || this._care) return;
             const prompt = this._line('moodPrompt');
             if (!this._mayOffer('mood-choice', prompt)) return;
             // A person who has asked for quiet is not asking to be handed a menu. The mood is
@@ -3063,6 +3086,7 @@
          * escalation, and it needs no consent step because it grants nothing.
          */
         _offerTextureChoice() {
+            if (this._care) return;
             this._ensurePlanLanguage();
             const texture = (this.plan && this.plan.texture) || null;
             if (!texture || !texture.prompt) {

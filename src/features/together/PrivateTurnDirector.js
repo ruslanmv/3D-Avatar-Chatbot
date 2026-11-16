@@ -72,13 +72,64 @@
     }
 
     /**
+     * Whole-word matching that works outside ASCII. `\b` in a JS regex is ASCII-only, so it cannot see
+     * the edge of "arrête" or "più"; this asks for no letter or digit on either side instead. CJK has
+     * no spaces, so those languages are plain substring patterns beside it.
+     */
+    function unicodeWords(list) {
+        const escaped = list.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        return [new RegExp('(?<![\\p{L}\\p{N}])(?:' + escaped.join('|') + ')(?![\\p{L}\\p{N}])', 'u')];
+    }
+
+    /**
      * The two that outrank everything, in the order they are checked.
      *
      * `ConsentFlow` already owns `stop` and `exit` as hard-exit words and `cozy` as the soft
      * one; these are the same idea reached through ordinary phrasing, and they are first so that
      * no amount of surrounding sentence can outvote them.
      */
-    const END = [/\bstop\b/, /\bexit\b/, /\bend (?:this|it|the session)\b/, /\bi(?:'m| am) done\b/, /\bgoodnight\b/];
+    const END = [
+        /\bstop\b/,
+        /\bexit\b/,
+        /\bend (?:this|it|the session)\b/,
+        /\bi(?:'m| am) done\b/,
+        /\bgoodnight\b/,
+        // AC3. The same two safe ideas in the languages the app speaks. They were English only, so an
+        // Italian "basta" or "fermati" typed to her was read as small talk and only the End button
+        // worked. Whole words only, and only words that mean "stop" or "good night" and nothing else
+        // in any of the nine languages: Spanish and Portuguese "para" and French "assez" are left
+        // out on purpose, because they are also everyday words ("for", "quite") and this check runs
+        // on every language at once.
+        ...unicodeWords([
+            // it
+            'basta',
+            'fermati',
+            'smettila',
+            'buonanotte',
+            'buona notte',
+            // es
+            'detente',
+            'ya basta',
+            'buenas noches',
+            // fr
+            'arrête',
+            'arrete',
+            'arrête-toi',
+            'bonne nuit',
+            // de
+            'hör auf',
+            'hoer auf',
+            'aufhören',
+            'stopp',
+            'gute nacht',
+            // pt
+            'pare',
+            'boa noite',
+        ]),
+        /やめて|やめろ|ストップ|おやすみ|終わりにして|止めて/,
+        /그만|멈춰|중지|잘 자/,
+        /停止|停下|别说了|够了|结束吧|晚安/,
+    ];
     const PACE_DOWN = [
         /\bslow(?:er)? down\b/,
         /\bslow it down\b/,
@@ -89,6 +140,45 @@
         /\bless intense\b/,
         /\btoo (?:much|fast|intense)\b/,
         /\bback off\b/,
+        // AC3. Slow down / too much / calm down, in the languages the app speaks. A person who says
+        // this gets the pace all the way down, so the words are the ones that unambiguously ask for
+        // it; looser ones ("calma", "troppo" on its own) stay conversation.
+        ...unicodeWords([
+            // it
+            'rallenta',
+            'più piano',
+            'piu piano',
+            'troppo veloce',
+            'troppo intenso',
+            'è troppo',
+            'calmati',
+            // es
+            'más despacio',
+            'mas despacio',
+            'más lento',
+            'demasiado rápido',
+            'demasiado rapido',
+            'baja el ritmo',
+            // fr
+            'plus doucement',
+            'ralentis',
+            'trop vite',
+            'trop intense',
+            'calme-toi',
+            // de
+            'langsamer',
+            'zu schnell',
+            'zu viel',
+            'beruhige dich',
+            // pt
+            'mais devagar',
+            'muito rápido',
+            'muito rapido',
+            'mais calmo',
+        ]),
+        /ゆっくり|速すぎ|早すぎ|落ち着いて/,
+        /천천히|너무 빨라|진정해/,
+        /慢一点|慢点|太快了|太多了|冷静一点/,
     ];
 
     const PACE_UP = [
