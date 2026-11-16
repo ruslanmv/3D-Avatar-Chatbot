@@ -321,24 +321,11 @@ try {
     for (const [label, said, draft, planned] of SAY) {
         draftFor = () => draft;
         let expect = planned;
-        // "Aspetta" stops a change only while it is under way. On a fast device the change may
-        // have landed before the words were sent: then there is nothing to stop, and the right
-        // outcome is no action at all (and she must not claim one).
-        if (planned.cancelled && previous) {
-            const stillPending = await page.evaluate(
-                (turnId) =>
-                    window.NEXUS_PRIVATE_ACTIONS.log().some((a) => a.turnId === turnId && a.status === 'pending'),
-                previous.turnId
-            );
-            if (!stillPending) {
-                expect = { noAction: true, landedFirst: true };
-                console.log(`${label}: the change had already landed when it was said; expecting no action`);
-            }
-        }
-        const before = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.log().length);
-        const shownBefore = (await herLines()).length;
-        await page.fill('#speech-text', said);
-        await page.click('#speak-btn');
+        let noneSettled = false;
+        // "Aspetta" stops a change only while it is under way. Whether it still was is decided
+        // after the step, from when the bridge received the words (typing on a phone takes
+        // seconds, and the change may land meanwhile) — see `landedFirst` below.
+        const wasRunning = previous ? previous.turnId : null;
         if (expect.send) {
             // Sent on: wait only until it is under way.
             await page
@@ -363,9 +350,11 @@ try {
                         return log.length > n && w && w.status !== 'pending';
                     },
                     before,
-                    { timeout: 180000 }
+                    { timeout: planned.cancelled ? 30000 : 180000 }
                 )
-                .catch(() => fail(label, 'no action settled'));
+                .catch(() => {
+                    noneSettled = true;
+                });
         await page
             .waitForFunction(
                 (n) => document.querySelectorAll('[data-private-turn="her"] .nexus-private-copy').length > n,
@@ -422,7 +411,29 @@ try {
         console.log(
             `${label}: ${facts.action} ${facts.status}${facts.why ? ` (${facts.why})` : ''} → “${step.shown}” [${step.choices.join(' | ')}]`
         );
+        // The change had settled before the bridge received "wait": nothing to stop. The right
+        // outcome is then no action, and no false claim shown.
+        if (planned.cancelled && wasRunning != null) {
+            const landed = await page.evaluate(
+                ({ turnId, said: words }) => {
+                    const a = window.NEXUS_PRIVATE_ACTIONS.log().find(
+                        (x) => x.turnId === turnId && x.family === 'wardrobe'
+                    );
+                    const heard = [...(window.__turns || [])]
+                        .reverse()
+                        .find((t) => t.who === 'you' && t.text === words);
+                    return Boolean(a && a.settledAt && heard && a.settledAt <= heard.at);
+                },
+                { turnId: wasRunning, said }
+            );
+            if (landed) {
+                expect = { noAction: true, landedFirst: true };
+                step.expected = expect;
+                console.log(`${label}: the change had landed before the words arrived; expecting no action`);
+            }
+        }
         // What must hold for this step.
+        if (noneSettled && !expect.noAction) fail(label, 'no action settled');
         if (expect.noAction && facts.count !== before) fail(label, `an action ran: ${facts.action}`);
         if (expect.landedFirst && after.some((l) => l.includes(draft))) fail(label, 'her false claim is shown');
         if (expect.action && facts.action !== expect.action) fail(label, `${facts.action}, expected ${expect.action}`);

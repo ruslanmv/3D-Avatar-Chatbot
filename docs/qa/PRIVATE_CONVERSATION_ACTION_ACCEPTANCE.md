@@ -125,7 +125,32 @@ Straps", a lingerie look the page already has. **No bare body state exists for a
 
 ## 8. Real browser
 
-BROWSER_RESULTS
+Driver: `node tools/qa/private-change-requests.mjs --script directive --lang it-IT|en-US --size desktop|phone`.
+Real page, real Private session raised to level 4 by three taps on ConsentFlow's own Closer
+control, the composer, the bridge, the wardrobe controller (its real `cancel()`) and the
+renderer; looks from the vendored pack. The one stand-in is the model's HTTP answer, written as
+the worst case: every draft claims the change happened and offers "Sì, fallo / Aspetta un
+momento" chips. A timeline records every turn, action and level event.
+
+| Config | Result | "Aspetta" / "Wait" | Everything off (4 phrasings) | Level | Notes |
+|---|---|---|---|---|---|
+| desktop 1440×900, it-IT | **PASS** | sent while the lingerie loaded → `wardrobe.cancel` completed, the change `cancelled`, never reached her | `failed · no-bare-look`, reason shown once each, corrections read as corrections | 4 throughout | no page errors |
+| desktop 1440×900, en-US | **PASS** | same | same | 4 throughout | no page errors |
+| phone 390 px, it-IT | PHONE_IT | PHONE_IT_WAIT | same as desktop | 4 throughout | no page errors |
+| phone 390 px, en-US | PHONE_EN | PHONE_EN_WAIT | same as desktop | 4 throughout | no page errors |
+
+What the earlier runs of this driver found, and what was fixed for each (all in this branch):
+
+| Run | Found | Fix |
+|---|---|---|
+| 1 | Level 4 → 1 mid-conversation; then "everything off" refused for `pace` | `ConsentFlow.noteActivity()` on typed turns (`bb3f8c4`) |
+| 1 | "Sì, fallo / Aspetta un momento" chips under a reply that offered nothing | yes/wait chips only under a pending offer (`bb3f8c4`) |
+| 2 | Scripted lines apparently "with the answer" | Driver artefact: element screenshots waited ~60 s on a live canvas; the lull (18 s) is the design. Timeline check now (`c2ecd08`, later commit) |
+| 3 | Phone: her false "me li tolgo lo stesso" shown after a change that had already landed | `main.js` reads an empty revise as "unchanged"; she now says what she really wears (`947f4da`) |
+| 4 | Phone: driver expected a cancel though the change landed ~7 s before "Aspetta" arrived | Driver judges from the timeline; the product was right (no action, true reply) |
+
+Scripted lull lines in every passing run arrived 19 s or more after the person's last line or a
+settled action (the design's 18 s lull), never inside it.
 
 ## 9. Tests
 
