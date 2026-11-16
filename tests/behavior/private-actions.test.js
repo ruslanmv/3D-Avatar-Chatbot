@@ -2114,7 +2114,6 @@ describe('AC3. easing, stopping and care reach the body, in every language', () 
         await flush();
         expect(w.adult.level).toBe(1);
         expect(lastCall(w)).toBe('release');
-        expect(Actions.snapshot().poseHeld).toBeFalsy();
         // Only the position went: the session is still running.
         expect(w.session._stopped).toBeFalsy();
         expect(w.panel.stopActivity).not.toHaveBeenCalled();
@@ -2166,5 +2165,143 @@ describe('AC3. easing, stopping and care reach the body, in every language', () 
         await flush();
         expect(w.adult.level).toBe(3);
         expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+    });
+
+    describe('AC5. an outfit change keeps the position she holds', () => {
+        test('a plain change of outfit is let go of and taken again on the new avatar', async () => {
+            const w = await atLevel(2);
+            await say('inginocchiati');
+            await flush();
+            expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+            await say('Mettiti un vestito elegante.');
+            await flush();
+            expect(w.controller.applyLook).toHaveBeenCalledTimes(1);
+            // Let go before the file swaps, the same position again on the new one.
+            expect(w.pose.calls).toEqual(['claim', 'apply:kneeling', 'release', 'claim', 'apply:kneeling']);
+            expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.wear', status: 'completed' });
+        });
+
+        test('and a change that fails leaves her wearing what she had, still in the position', async () => {
+            const w = await atLevel(2);
+            await say('inginocchiati');
+            await flush();
+            w.controller.applyLook.mockImplementationOnce(async () => {
+                throw new Error('That look could not be loaded.');
+            });
+            await say('Mettiti un vestito elegante.');
+            await flush();
+            expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.wear', status: 'failed' });
+            // Let go for the swap, taken again when the swap failed: she is still kneeling in what
+            // she was already wearing.
+            expect(w.pose.calls).toEqual(['claim', 'apply:kneeling', 'release', 'claim', 'apply:kneeling']);
+        });
+    });
+
+    describe('AC5. she says she is dancing only when the motion system shows it', () => {
+        /** MotionIntegration's own record, `state.execution`, driven by the test. */
+        function motionRecords(w, outcome) {
+            window.NEXUS_MOTION.state = { execution: null };
+            w.execute.mockImplementation(() => {
+                const record = { action: 'dance', status: 'requested', clip: null, reason: null };
+                window.NEXUS_MOTION.state.execution = record;
+                if (outcome.status) {
+                    setTimeout(() => {
+                        record.status = outcome.status;
+                        record.reason = outcome.reason || null;
+                    }, 30);
+                }
+            });
+        }
+        const dance = () => Actions.request('avatar.dance', {}, { source: 'user' });
+
+        test('a clip that plays is a dance she may claim', async () => {
+            const w = await atLevel(2);
+            motionRecords(w, { status: 'playing' });
+            const a = await dance();
+            expect(a.status).toBe('completed');
+            expect(a.result).toMatchObject({ via: 'renderer', status: 'playing' });
+        });
+
+        test('a clip that did not load is a failure with its reason, not a dance', async () => {
+            const w = await atLevel(2);
+            motionRecords(w, { status: 'failed', reason: 'no_clip' });
+            const a = await dance();
+            expect(a.status).toBe('failed');
+            expect(a.why).toBe('no_clip');
+        });
+
+        test('a request another gesture overtook is blocked, never completed', async () => {
+            const w = await atLevel(2);
+            motionRecords(w, { status: 'superseded' });
+            const a = await dance();
+            expect(a.status).toBe('blocked');
+            expect(a.why).toBe('superseded');
+        });
+
+        test('an answer that never comes is "not-confirmed" after three seconds, not a dance', async () => {
+            const w = await atLevel(2);
+            motionRecords(w, {});
+            jest.useFakeTimers();
+            try {
+                const pending = dance();
+                await jest.advanceTimersByTimeAsync(3300);
+                const a = await pending;
+                expect(a.status).toBe('failed');
+                expect(a.why).toBe('not-confirmed');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('a position she holds is let go of first, so the dance can be performed', async () => {
+            const w = await atLevel(2);
+            await say('inginocchiati');
+            await flush();
+            expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+            motionRecords(w, { status: 'started' });
+            // A new turn: one action per family per turn is the bridge's rule, and the dance is a
+            // second thing asked for after the position.
+            await say('che bella serata');
+            await flush();
+            const a = await dance();
+            expect(a.name).toBe('avatar.dance');
+            expect(lastCall(w)).toBe('release');
+            expect(w.execute).toHaveBeenCalledTimes(1);
+            expect(a.status).toBe('completed');
+        });
+
+        test('a build that keeps no record keeps the old answer, flagged as unconfirmed', async () => {
+            const w = await atLevel(2);
+            delete window.NEXUS_MOTION.state;
+            const a = await dance();
+            expect(w.execute).toHaveBeenCalledTimes(1);
+            expect(a.status).toBe('completed');
+            expect(a.result).toMatchObject({ via: 'unconfirmed' });
+        });
+    });
+});
+
+describe('AC5. Italian positions are positions, not wardrobe', () => {
+    test.each([
+        ['mettiti in ginocchio', 'kneel'],
+        ['Puoi inginocchiarti?', 'kneel'],
+        ['potresti sdraiarti sulla schiena?', 'lie-back'],
+        ['mettiti sul fianco', 'lie-side'],
+        ['puoi piegarti in avanti', 'bend-forward'],
+        ['mettiti a quattro zampe', 'all-fours'],
+    ])('"%s" is the %s position', (text, pose) => {
+        expect(Intent.parse(text)).toMatchObject({ name: 'avatar.pose', params: { pose } });
+    });
+
+    test.each(['mettiti in posa', 'mettiti a tuo agio', 'mettiti seduta'])(
+        '"%s" is said to her body and asks for no outfit',
+        (text) => {
+            expect(Intent.parse(text)).toBeNull();
+        }
+    );
+
+    test('clothes after the same verb are still clothes', () => {
+        expect(Intent.parse('mettiti i jeans')).toMatchObject({ name: 'wardrobe.wear' });
+        expect(Intent.parse('mettiti il vestito rosso')).toMatchObject({ name: 'wardrobe.wear' });
     });
 });

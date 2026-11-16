@@ -490,27 +490,27 @@
         ],
         [
             'kneel',
-            'inginocchiati|in ginocchio|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
+            'inginocchiati|inginocchiarti|(?:mettiti |metterti )?in ginocchio|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
             /跪いて|ひざまずいて|무릎\s?꿇어|跪下/u,
         ],
         [
             'lie-back',
-            '(?:sdraiati |stenditi |mettiti )?(?:sulla schiena|a pancia in su)|(?:lie |lay )?on your back|(?:túmbate |acuéstate )?boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
+            '(?:sdraiati |sdraiarti |stenditi |stenderti |mettiti |metterti )?(?:sulla schiena|a pancia in su)|(?:lie |lay )?on your back|(?:túmbate |acuéstate )?boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
             /仰向け|똑바로\s?누워|躺平|仰躺/u,
         ],
         [
             'lie-front',
-            '(?:sdraiati |stenditi |mettiti )?(?:a pancia in giù|sulla pancia|a pancia sotto)|(?:lie |lay )?on your (?:stomach|front|belly)|(?:túmbate |acuéstate )?boca abajo|sur le ventre|auf den bauch|de bruços',
+            '(?:sdraiati |sdraiarti |stenditi |stenderti |mettiti |metterti )?(?:a pancia in giù|sulla pancia|a pancia sotto)|(?:lie |lay )?on your (?:stomach|front|belly)|(?:túmbate |acuéstate )?boca abajo|sur le ventre|auf den bauch|de bruços',
             /うつ伏せ|엎드려|趴着|趴下/u,
         ],
         [
             'lie-side',
-            '(?:sdraiati |stenditi |mettiti )?sul fianco|(?:lie |lay )?on your side|(?:túmbate |acuéstate )?de lado|de costado|sur le côté|auf die seite',
+            '(?:sdraiati |sdraiarti |stenditi |stenderti |mettiti |metterti )?sul fianco|(?:lie |lay )?on your side|(?:túmbate |acuéstate )?de lado|de costado|sur le côté|auf die seite',
             /横向き|옆으로\s?누워|侧躺/u,
         ],
         [
             'bend-forward',
-            'piegati(?: in avanti)?|chinati|bend over|bend forward|lean forward|inclínate|inclinate|agáchate|agachate|penche-toi|beug dich vor|bück dich|inclina-te|curva-te',
+            'piegati(?: in avanti)?|piegarti(?: in avanti)?|chinati|chinarti|bend over|bend forward|lean forward|inclínate|inclinate|agáchate|agachate|penche-toi|beug dich vor|bück dich|inclina-te|curva-te',
             /前かがみ|かがんで|숙여|弯腰|俯身/u,
         ],
         [
@@ -519,6 +519,17 @@
             /背中を反らして|허리를\s?젖혀|弯起背/u,
         ],
     ];
+    /**
+     * AC5. "Strike a pose", "make yourself at ease", "sit down" said with a wear verb: never clothes.
+     * With `mettiti` as a wear verb they became a request for an outfit called "in posa" or "tuo
+     * agio", and the answer was "I'm staying as I am". Deliberately NOT here: "mettiti comoda",
+     * which is as often "put on something comfortable" as "get comfortable", and which the
+     * wardrobe already reads as the comfy style.
+     */
+    const NOT_CLOTHES = new RegExp(
+        `^(?:${word('mettiti|metterti|mettersi|ponte|ponerte|mets-toi|setz dich|põe-te')})\\s+(?:in posa|a tuo agio|a sedere|seduta|seduto|à l[’']aise|à vontade)(?![\\p{L}])`,
+        'iu'
+    );
     const STAND_WORDS = new RegExp(
         `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
         'iu'
@@ -714,6 +725,8 @@
         // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
         const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
         if (posed) return posed;
+        // AC5. Said to her body, not to her wardrobe (see NOT_CLOTHES): the conversation takes it.
+        if (NOT_CLOTHES.test(body)) return null;
         // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
         if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
             return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');

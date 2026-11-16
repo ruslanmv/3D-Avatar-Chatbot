@@ -714,7 +714,8 @@
                 return pose(s, action);
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
-                const out = await s.closet.undo();
+                // AC5. A swap of the avatar file, like every other: a position she holds goes with it.
+                const out = await keepingPose(s, () => s.closet.undo());
                 return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why);
             }
             case 'avatar.dance':
@@ -758,6 +759,8 @@
         const was = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
         if (was) s.poses.release({ keepHistory: true });
         const out = await change();
+        // AC5. Re-take it whether the swap worked or not: a failed download leaves the avatar she
+        // already wore, and the position that was let go of for the swap belongs back on her too.
         if (was && state === s) {
             try {
                 s.poses.apply(was, { restoring: true });
@@ -1040,7 +1043,7 @@
         if (!planned.ok) return settle(action, 'failed', planned.why);
         const choice = planned.choice;
         if (!choice.generate) {
-            const out = await s.closet.wearLook(choice.look, alive);
+            const out = await keepingPose(s, () => s.closet.wearLook(choice.look, alive));
             if (out.ok) s.offer = null;
             return settle(
                 action,
@@ -1075,7 +1078,9 @@
             s.offer = { kind: 'create', spec, name: spec.label || spec.prompt, turnId: s.turnId, from: action.id };
             return settle(action, 'blocked', 'needs-approval', { name: s.offer.name });
         }
-        const out = spec.change ? await s.closet.change(spec.prompt, alive) : await s.closet.create(spec, alive);
+        const out = await keepingPose(s, () =>
+            spec.change ? s.closet.change(spec.prompt, alive) : s.closet.create(spec, alive)
+        );
         if (out.ok) s.offer = null;
         return settle(
             action,
@@ -1203,7 +1208,7 @@
                 // UN5. Through the undress step itself: it remembers what she wore and keeps her pose.
                 await undress(s, action, alive);
             } else if (offer.kind === 'wear') {
-                const out = await s.closet.wearLook(offer.look, alive);
+                const out = await keepingPose(s, () => s.closet.wearLook(offer.look, alive));
                 settle(
                     action,
                     out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
@@ -1236,19 +1241,87 @@
         return s.motion || s.win.NEXUS_MOTION || null;
     }
 
+    /**
+     * AC5. What the motion system itself says happened to the gesture it was just asked for.
+     *
+     * `NEXUS_MOTION.state.execution` is MotionIntegration's record of the last body request:
+     * `requested` while the clip loads, then `playing` / `started`, `failed` (with why) or
+     * `superseded`. Dancing used to be reported `completed` the moment `execute()` returned, so her
+     * prompt said "you are dancing now" over a clip that never loaded, over a motion switch that
+     * was off, and over a held pose (which makes MotionIntegration drop every body gesture). The
+     * answer is read from the record; if this build keeps none, the old answer stands (`unconfirmed`)
+     * rather than inventing a failure.
+     *
+     * `fresh` is the record that was current before the request, so a previous wave cannot confirm
+     * this dance; `already` is the case where the fast path ran on this very utterance, whose record
+     * is the one to read.
+     */
+    function confirmMotion(s, action, { fresh, already }) {
+        const motion = motionOf(s);
+        const read = () => {
+            try {
+                return (motion && motion.state && motion.state.execution) || null;
+            } catch (_) {
+                return null;
+            }
+        };
+        const mine = (record) => Boolean(record && (already ? /dance/i.test(record.action || '') : record !== fresh));
+        if (!motion || !motion.state || !('execution' in motion.state))
+            return settle(action, 'completed', null, { via: 'unconfirmed' });
+        const timer = (s.win && s.win.setTimeout) || setTimeout;
+        const limit = 3000;
+        return new Promise((resolve) => {
+            let waited = 0;
+            const look = () => {
+                if (state !== s) return resolve(settle(action, 'blocked', 'stale'));
+                const record = read();
+                if (mine(record)) {
+                    if (record.status === 'playing' || record.status === 'started')
+                        return resolve(settle(action, 'completed', null, { via: 'renderer', status: record.status }));
+                    if (record.status === 'failed')
+                        return resolve(settle(action, 'failed', record.reason || 'did_not_play'));
+                    if (record.status === 'superseded') return resolve(settle(action, 'blocked', 'superseded'));
+                }
+                waited += 100;
+                if (waited >= limit) return resolve(settle(action, 'failed', 'not-confirmed'));
+                timer(look, 100);
+            };
+            look();
+        });
+    }
+
     function dance(s, action) {
         const motion = motionOf(s);
         const fast = s.win.NEXUS_INTENT_FASTPATH;
+        // AC5. A held position owns her skeleton, and MotionIntegration drops every body gesture while
+        // one is held. Dancing is standing up first: the position is let go of (as getting dressed
+        // again does), so the dance is one she can actually perform and the reply can be true.
+        let heldPose = null;
+        try {
+            heldPose = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        } catch (_) {
+            heldPose = null;
+        }
+        if (heldPose) {
+            try {
+                s.poses.release();
+            } catch (_) {
+                /* the dance below is still tried, and reported as it renders */
+            }
+            faceFront(s);
+        }
         // "balla" / "dance" already ran through the motion fast path on this very utterance
-        // (MotionIntegration.onUserUtterance); firing it again would restart the clip mid-step.
+        // (MotionIntegration.onUserUtterance); firing it again would restart the clip mid-step. It
+        // did not run while a position was held, so then it is not "already" and is sent below.
         let already = false;
         try {
             const hit = fast && typeof fast.match === 'function' ? fast.match(s.turnText) : null;
-            already = Boolean(hit && hit.label === 'dance' && action.source === 'user');
+            already = Boolean(hit && hit.label === 'dance' && action.source === 'user' && !heldPose);
         } catch (_) {
             already = false;
         }
-        if (already) return settle(action, 'completed', null, { via: 'fastpath' });
+        const fresh = (motion && motion.state && motion.state.execution) || null;
+        if (already) return confirmMotion(s, action, { fresh, already: true });
         if (!motion || typeof motion.execute !== 'function') return settle(action, 'failed', 'no-motion');
         let plan = null;
         try {
@@ -1267,10 +1340,10 @@
         };
         try {
             motion.execute(plan);
-            return settle(action, 'completed');
         } catch (_) {
             return settle(action, 'failed', 'motion-failed');
         }
+        return confirmMotion(s, action, { fresh, already: false });
     }
 
     const EXPRESSION = {
