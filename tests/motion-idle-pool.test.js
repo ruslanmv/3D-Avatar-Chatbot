@@ -148,16 +148,44 @@ describe('entering idle draws a fresh clip', () => {
     });
 
     test('back-to-back repeats are rare, which is what the bag actually buys', () => {
-        // The bag guarantees no repeat WITHIN a cycle: it is shuffled once and
-        // drained. It does NOT guarantee no repeat across a refill, because the
-        // fresh shuffle can put the just-drawn clip first. With a pool of N that
-        // is a 1/N chance every N draws, so a few percent overall -- worth
-        // stating rather than over-claiming.
-        const picks = [];
-        for (let i = 0; i < 400; i++) picks.push(ClipMap.resolve('idle').candidates[0]);
-        let repeats = 0;
-        for (let i = 1; i < picks.length; i++) if (picks[i] === picks[i - 1]) repeats++;
-        expect(repeats / picks.length).toBeLessThan(0.1);
+        // What the bag guarantees, since MO9 gave the breathing loop three tickets of the ten:
+        // a clip with ONE ticket never repeats within a cycle (the bag is shuffled once and
+        // drained), only across a refill, when the fresh shuffle puts the just-drawn clip
+        // first. The breathing loop can also follow itself inside a cycle: 3 * 2 / 10 = 0.6
+        // times per ten draws. Together that is about 7.6% of draws, the breathing loop's
+        // share of it by design.
+        //
+        // This asserted `< 0.1` over 400 unseeded draws, written when every clip had one
+        // ticket (about 1%). After MO9 the expectation is 7.6% with a spread of 1.3% over 400
+        // draws, so the bound sat under two standard deviations away and the test failed a
+        // few runs in a hundred on nothing (CI, Node 22: "Expected: < 0.1, Received: 0.1").
+        // The shuffle is Math.random; it is seeded here, so the same draws are made on every
+        // run, over ten times as many, and the two kinds of repeat are told apart.
+        let seed = 0x2f6e2b1;
+        const random = jest.spyOn(Math, 'random').mockImplementation(() => {
+            seed = (seed + 0x6d2b79f5) | 0;
+            let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        });
+        try {
+            const BREATHING = 'vendor/animations/vrma/idle_loop.vrma';
+            const picks = [];
+            for (let i = 0; i < 4000; i++) picks.push(ClipMap.resolve('idle').candidates[0]);
+            let repeats = 0;
+            let others = 0;
+            for (let i = 1; i < picks.length; i++) {
+                if (picks[i] !== picks[i - 1]) continue;
+                repeats++;
+                if (picks[i] !== BREATHING) others++;
+            }
+            expect(repeats / picks.length).toBeLessThan(0.1);
+            // A one-ticket clip repeats only across a refill: 7 clips * (1/10 * 1/10) per
+            // refill, one refill per ten draws: 0.7% of draws. Well under 2%.
+            expect(others / picks.length).toBeLessThan(0.02);
+        } finally {
+            random.mockRestore();
+        }
     });
 
     test('a full cycle drains the bag before any clip comes round again', () => {
