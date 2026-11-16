@@ -705,14 +705,15 @@
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             toggle.addEventListener('change', function () {
+                // CG1. The adult confirmation is once per device. Turning Private back ON on a
+                // device that already accepted it asked the same question again every time; the
+                // answer is in `nexus_spicy_verified`, and `setEnabled` still shows the dialog on a
+                // device that never answered (or after `resetVerification`). Each experience keeps
+                // its own consent check-ins in ConsentFlow: that is consent, not this question.
                 const wantsOn = toggle.checked;
-                window.NEXUS_SPICY.setEnabled(
-                    wantsOn,
-                    function () {
-                        updateUI();
-                    },
-                    wantsOn ? { requireConfirmation: true } : undefined
-                );
+                window.NEXUS_SPICY.setEnabled(wantsOn, function () {
+                    updateUI();
+                });
                 updateUI();
             });
         }

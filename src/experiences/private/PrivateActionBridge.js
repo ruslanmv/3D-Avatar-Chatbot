@@ -192,6 +192,13 @@
             }
         }
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
+        // CV1. Private is over: her clothing is shown again, exactly as it was, whatever ended it.
+        try {
+            const clothing = s.win && s.win.NEXUS_CLOTHING;
+            if (clothing && typeof clothing.showClothing === 'function') clothing.showClothing('private-ended');
+        } catch (_) {
+            /* nothing hidden, or already restored */
+        }
         if (s.travel) clearTimeout(s.travel.timer);
         s.travel = null;
         // UN5. Whatever ended the evening, her skeleton is hers again.
@@ -553,6 +560,9 @@
     /** UN20. The outcome lines shared with the reply check (TogetherCapability.outfitLineKey). */
     const FOLLOW_OUTFIT = {
         'no-bare-look': 'outfit.say.noBare',
+        // CG1. The same outcome, with Forge's reason for her exact file: her line is the same.
+        'bare-needs-review': 'outfit.say.noBare',
+        'bare-blocked': 'outfit.say.noBare',
         'last-layer': 'outfit.say.lastLayer',
         pace: 'outfit.say.pace',
         'already-dressed': 'outfit.say.alreadyDressed',
@@ -973,7 +983,16 @@
         const plan = nextLayer(s, action.params);
         const look = plan.look;
         // Nothing changes: what she has on stays, and the reason is told (no-bare-look, last-layer).
-        if (!look) return settle(action, 'failed', plan.why || 'last-layer');
+        // CG1. With no bare look, Forge's answer for her exact file says why, so the person sees
+        // what this character needs rather than a generic failure: her file awaits a review, or a
+        // review found it not clearly adult. Scoped to her; nothing else in Private changes.
+        if (!look) {
+            let why = plan.why || 'last-layer';
+            const body = s.closet.bodyState && s.closet.bodyState.status;
+            if (why === 'no-bare-look' && body === 'needs-review') why = 'bare-needs-review';
+            else if (why === 'no-bare-look' && body === 'blocked') why = 'bare-blocked';
+            return settle(action, 'failed', why);
+        }
         const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
         const bare = plan.state === 'bare';
         // UN5. What she wore before the first layer came off is what "rivestiti" puts back.
@@ -1641,6 +1660,9 @@
         // UN19. Bare is its own state: no bare look, no change, and no lingerie in its place.
         'no-bare-look':
             'this body has no bare look in your wardrobe, so nothing was taken off and you are still wearing what you had',
+        'bare-needs-review':
+            'being fully bare is not open for this body yet, so nothing was taken off and you are still wearing what you had',
+        'bare-blocked': 'being fully bare is not available for this body, so nothing was taken off',
         'not-rendered': 'the change did not show on you, so you are still as you were',
         timeout: 'it was taking far too long, so it was stopped and you are still in what you had — they can ask again',
         'nothing-to-undo': 'there is no earlier outfit to go back to',
@@ -1866,7 +1888,7 @@
                     now.push(
                         'You have just taken everything off: you are naked now, as they asked. Say it in a few words, in the moment.'
                     );
-                else if (w.why === 'no-bare-look')
+                else if (['no-bare-look', 'bare-needs-review', 'bare-blocked'].includes(w.why))
                     // UN19. Everything was asked for and this body has no bare look: nothing was
                     // changed and no lingerie was put on in its place. She says exactly that.
                     now.push(

@@ -1226,6 +1226,8 @@ const PrivateConversationView = (() => {
                     'timeout',
                     'no-bare-look',
                     'last-layer',
+                    'bare-needs-review',
+                    'bare-blocked',
                 ].includes(action.why)
                     ? action.why
                     : 'other';

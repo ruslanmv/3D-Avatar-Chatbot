@@ -104,6 +104,29 @@ describe('Private Settings gate', () => {
         expect(localStorage.getItem('nexus_spicy_verified')).toBe('true');
     });
 
+    test('turning Private back on asks nothing on a device that already confirmed (CG1)', () => {
+        const s = loadGate({ acknowledged: true, storedEnabled: false });
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(document.querySelector('.spicy-age-overlay')).toBeNull();
+        expect(s.gate.isEnabled()).toBe(true);
+    });
+
+    test('after the confirmation is reset, turning Private on asks again (CG1)', () => {
+        const s = loadGate({ acknowledged: true });
+        s.gate.resetVerification();
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(document.querySelector('.spicy-age-overlay')).not.toBeNull();
+        expect(s.gate.isEnabled()).toBe(false);
+    });
+
     test('programmatic enable completes immediately after conditions were already accepted', () => {
         const s = loadGate({ acknowledged: true, connected: false });
         const done = jest.fn();

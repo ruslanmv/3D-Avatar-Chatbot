@@ -1186,6 +1186,9 @@
      */
     const OUTFIT_LINE = {
         'no-bare-look': 'outfit.say.noBare',
+        // CG1. The same outcome, with Forge's reason for her exact file: her line is the same.
+        'bare-needs-review': 'outfit.say.noBare',
+        'bare-blocked': 'outfit.say.noBare',
         'last-layer': 'outfit.say.lastLayer',
         pace: 'outfit.say.pace',
         'already-dressed': 'outfit.say.alreadyDressed',

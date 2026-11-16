@@ -140,7 +140,7 @@ function world(options) {
         constructor() {
             this.library = {
                 available: !o.noForge,
-                library: async () => [{ slug: 'ava', depictsAdult: o.adult === true }],
+                library: async () => [{ slug: 'ava', depictsAdult: o.adult === true, bodyState: o.bodyState }],
             };
             this.create = create;
         }
@@ -1760,12 +1760,28 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
             adult: o.adult !== false,
             looks: o.looks || [DRESS, ...LINGERIE],
             loadFails: o.loadFails,
+            bodyState: o.bodyState,
         });
         window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
         w.adult.level = level;
         return w;
     }
     const worn = (w) => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+
+    test.each([
+        ['needs-review', 'bare-needs-review'],
+        ['blocked', 'bare-blocked'],
+    ])('CG1. no bare look, and Forge says her exact file is %s: the refusal says so for her', async (status, why) => {
+        const w = await at(4, { bodyState: { status } });
+        await say('Mettiti il vestito da cocktail nero');
+        await say('Please, I wanna see you naked.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'failed', why });
+        // Nothing changed and nothing else in Private was turned off: she still wears the dress.
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        expect(prompt()).toMatch(/Being fully bare is not available for this body[\s\S]*nothing was changed/);
+        expect(w.adult.level).toBe(4);
+    });
     const prompt = () => Actions.promptLines().join('\n');
     const truthful = (reply) => Capability.outfitTruthful(reply, Actions.outfitTruth(), 'en');
 

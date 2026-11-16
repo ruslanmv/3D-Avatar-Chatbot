@@ -162,7 +162,7 @@ Know the coverage gaps, because they are not intuitive:
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
 — lint clean, format clean, **6318 tests in 290 suites, all passing**
 (2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317, then 6978 in 320 with `NL`,
-6982 in 321 with `RP2`, 7004 in 322 with `UN20`).
+6982 in 321 with `RP2`, 7004 in 322 with `UN20`, 7020 in 323 with `CG1`/`CV1`).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -240,10 +240,14 @@ body-state assets (Forge import and read grants, wear cancellation;
 `docs/qa/BODY_STATE_ACCEPTANCE.md`), `MO` for the motion runtime fixes (the body
 doing what the conversation says; `docs/audits/animation-runtime-audit.md`),
 `NL` for positions and animations asked for in words
-(`docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`) and `RP` for the review
-packets of a body state (Forge's RP1; here `tools/qa/look-turntable.mjs`).
-Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+(`docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`), `RP` for the review packets
+of a body state (Forge's RP1; here `tools/qa/look-turntable.mjs`), `CG` for
+character gates (one adult confirmation per device; Forge's per-file `bodyState`
+said for her) and `CV` for clothing visibility
+(`src/wardrobe/ClothingVisibility.js`: hidden only where Forge's
+`/v1/visibility` allows it for the exact bytes on stage). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

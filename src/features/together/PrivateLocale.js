@@ -138,6 +138,9 @@
             'outfit.yes': 'Yes',
             'outfit.no': 'Not now',
             'outfit.failed.adult-ineligible': 'That outfit is not available for this avatar',
+            'outfit.failed.bare-needs-review':
+                'Undressing isn’t open for this avatar yet: her exact file is waiting for an adult-design review',
+            'outfit.failed.bare-blocked': 'Undressing isn’t available for this avatar',
             'outfit.failed.no-match': 'Nothing like that in her wardrobe',
             'outfit.failed.forge-unavailable': 'New outfits cannot be made right now',
             'outfit.slow': 'Still changing… the look is on its way',
@@ -258,6 +261,9 @@
             'outfit.yes': 'Sí',
             'outfit.no': 'Ahora no',
             'outfit.failed.adult-ineligible': 'Ese conjunto no está disponible para este avatar',
+            'outfit.failed.bare-needs-review':
+                'Desvestirse aún no está disponible para este avatar: su archivo exacto espera una revisión de diseño adulto',
+            'outfit.failed.bare-blocked': 'Desvestirse no está disponible para este avatar',
             'outfit.failed.no-match': 'No hay nada parecido en su armario',
             'outfit.failed.forge-unavailable': 'Ahora no se pueden crear conjuntos nuevos',
             'outfit.slow': 'Sigue cambiándose… el conjunto está llegando',
@@ -377,6 +383,9 @@
             'outfit.yes': 'Sì',
             'outfit.no': 'Non ora',
             'outfit.failed.adult-ineligible': 'Quell’abito non è disponibile per questo avatar',
+            'outfit.failed.bare-needs-review':
+                'Spogliarsi non è ancora disponibile per questo avatar: il suo file esatto attende una revisione del design adulto',
+            'outfit.failed.bare-blocked': 'Spogliarsi non è disponibile per questo avatar',
             'outfit.failed.no-match': 'Niente di simile nel suo guardaroba',
             'outfit.failed.forge-unavailable': 'Ora non si possono creare abiti nuovi',
             'outfit.slow': 'Si sta ancora cambiando… il look sta arrivando',
@@ -497,6 +506,9 @@
             'outfit.yes': 'Oui',
             'outfit.no': 'Pas maintenant',
             'outfit.failed.adult-ineligible': 'Cette tenue n’est pas disponible pour cet avatar',
+            'outfit.failed.bare-needs-review':
+                'Se déshabiller n’est pas encore ouvert pour cet avatar : son fichier exact attend une vérification de design adulte',
+            'outfit.failed.bare-blocked': 'Se déshabiller n’est pas disponible pour cet avatar',
             'outfit.failed.no-match': 'Rien de tel dans sa garde-robe',
             'outfit.failed.forge-unavailable': 'Impossible de créer de nouvelles tenues pour l’instant',
             'outfit.slow': 'Elle se change encore… la tenue arrive',
@@ -619,6 +631,9 @@
             'outfit.yes': 'Ja',
             'outfit.no': 'Jetzt nicht',
             'outfit.failed.adult-ineligible': 'Dieses Outfit ist für diesen Avatar nicht verfügbar',
+            'outfit.failed.bare-needs-review':
+                'Ausziehen ist für diesen Avatar noch nicht freigegeben: ihre genaue Datei wartet auf eine Prüfung des erwachsenen Designs',
+            'outfit.failed.bare-blocked': 'Ausziehen ist für diesen Avatar nicht verfügbar',
             'outfit.failed.no-match': 'Nichts Passendes in ihrem Kleiderschrank',
             'outfit.failed.forge-unavailable': 'Neue Outfits können gerade nicht erstellt werden',
             'outfit.slow': 'Sie zieht sich noch um… das Outfit kommt',
@@ -738,6 +753,9 @@
             'outfit.yes': 'Sim',
             'outfit.no': 'Agora não',
             'outfit.failed.adult-ineligible': 'Essa roupa não está disponível para este avatar',
+            'outfit.failed.bare-needs-review':
+                'Tirar a roupa ainda não está disponível para este avatar: o arquivo exato dela aguarda uma revisão de design adulto',
+            'outfit.failed.bare-blocked': 'Tirar a roupa não está disponível para este avatar',
             'outfit.failed.no-match': 'Nada parecido no guarda-roupa dela',
             'outfit.failed.forge-unavailable': 'Não é possível criar roupas novas agora',
             'outfit.slow': 'Ainda a trocar de roupa… o visual está a chegar',
@@ -857,6 +875,9 @@
             'outfit.yes': 'はい',
             'outfit.no': '今はいい',
             'outfit.failed.adult-ineligible': 'この服はこのアバターでは利用できません',
+            'outfit.failed.bare-needs-review':
+                'このアバターの脱衣はまだ利用できません：このファイルは成人デザインの審査待ちです',
+            'outfit.failed.bare-blocked': 'このアバターの脱衣は利用できません',
             'outfit.failed.no-match': 'ワードローブに合うものがありません',
             'outfit.failed.forge-unavailable': '今は新しい服を作れません',
             'outfit.slow': 'まだ着替え中… もうすぐです',
@@ -976,6 +997,9 @@
             'outfit.yes': '네',
             'outfit.no': '나중에',
             'outfit.failed.adult-ineligible': '이 옷은 이 아바타에서 사용할 수 없습니다',
+            'outfit.failed.bare-needs-review':
+                '이 아바타의 탈의는 아직 사용할 수 없습니다: 이 파일은 성인 디자인 검토를 기다리고 있습니다',
+            'outfit.failed.bare-blocked': '이 아바타의 탈의는 사용할 수 없습니다',
             'outfit.failed.no-match': '옷장에 비슷한 것이 없습니다',
             'outfit.failed.forge-unavailable': '지금은 새 옷을 만들 수 없습니다',
             'outfit.slow': '아직 갈아입는 중… 곧 도착해요',
@@ -1094,6 +1118,8 @@
             'outfit.yes': '好',
             'outfit.no': '先不要',
             'outfit.failed.adult-ineligible': '这套衣服不适用于此形象',
+            'outfit.failed.bare-needs-review': '此形象暂不支持脱衣：该文件仍在等待成人设计审核',
+            'outfit.failed.bare-blocked': '此形象不支持脱衣',
             'outfit.failed.no-match': '衣橱里没有类似的',
             'outfit.failed.forge-unavailable': '现在无法制作新衣服',
             'outfit.slow': '还在换衣服… 马上就好',
