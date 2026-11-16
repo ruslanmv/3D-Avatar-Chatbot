@@ -76,6 +76,10 @@
         // person did not ask to forget.
         'nexus_companion_session_v1',
         'nexus_companion_memory_v1',
+        // UN3. The last ten Private evenings' outline ids (venue, hook, mood, destination,
+        // outfit theme, arc) so the next one differs. No line of any evening, nothing anybody
+        // said: catalogue ids only. Its own control is StoryWeaver.forget ("Forget my stories").
+        'nexus_private_story_history',
     ]);
 
     let epoch = 1;

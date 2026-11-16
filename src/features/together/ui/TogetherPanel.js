@@ -1200,8 +1200,11 @@ const TogetherPanel = (() => {
                     card.innerHTML =
                         '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
                     card.querySelector('.nexus-private-scene-name').textContent = room.title;
-                    card.querySelector('.nexus-private-scene-note').textContent =
-                        room.rating === 'private' ? this._privateWord('setup.private', 'Private') : '';
+                    card.querySelector('.nexus-private-scene-note').textContent = room.generalOnly
+                        ? this._privateWord('setup.general', 'General — ends Private')
+                        : room.rating === 'private'
+                          ? this._privateWord('setup.private', 'Private')
+                          : '';
                     // PG1–PG2. Each room shows its own picture (the world catalogue's `preview`,
                     // else a playground template's), on its sky colours while it loads.
                     const templates = this.doc.defaultView && this.doc.defaultView.NEXUS_PLAYGROUND_TEMPLATES;
@@ -1227,7 +1230,14 @@ const TogetherPanel = (() => {
                         img.addEventListener('error', () => img.remove());
                         card.insertBefore(img, card.firstChild);
                     }
-                    card.addEventListener('click', () => activity.setAtmosphere({ world: room.id }));
+                    card.addEventListener('click', () => {
+                        // GO1. A general-only place is not a room for the evening: tapping it
+                        // ends Private and visits the place in General mode, at once.
+                        const General = this.doc.defaultView && this.doc.defaultView.NEXUS_GENERAL_ONLY_PLACES;
+                        const guard = room.generalOnly && General && General.forPage ? General.forPage() : null;
+                        if (guard) guard.leavePrivateFor(room.id);
+                        else activity.setAtmosphere({ world: room.id });
+                    });
                     roomCards.appendChild(card);
                 }
                 shell.appendChild(roomCards);

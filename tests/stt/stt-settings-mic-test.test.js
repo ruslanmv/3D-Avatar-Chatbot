@@ -333,6 +333,11 @@ describe('ST11 — the performance result under the test', () => {
     });
 
     test('ST9 holds with diagnostics loaded: no second capture on a phone, and the browser run is filed', async () => {
+        // The browser recognizer reports no stages, so the verdict must be `unknown`. The marks
+        // this test makes back to back are on the real clock, though, and about one run in five
+        // the transcript was "displayed" 1 ms after it was validated: that 1 ms read as a
+        // postprocessing stage and the verdict flipped. One frozen clock for the whole run.
+        const clock = jest.spyOn(window.performance, 'now').mockReturnValue(1000);
         window.NEXUS_STT_PERF = P;
         Object.defineProperty(window.navigator, 'userAgent', {
             value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/132 Mobile Safari/537.36',
@@ -364,6 +369,7 @@ describe('ST11 — the performance result under the test', () => {
         expect(r.data.provider).toBe('webspeech');
         expect(r.metrics.sttMs).not.toBeNull();
         expect(r.diagnosis.likely_bottleneck).toBe('unknown'); // the browser reports no stages
+        clock.mockRestore();
         delete window.NEXUS_STT_PERF;
     });
 });

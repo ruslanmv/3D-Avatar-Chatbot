@@ -134,8 +134,14 @@
                 (Wardrobe ? new Wardrobe.InSceneWardrobe({ win, deps: (o.deps && o.deps.wardrobeDeps) || {} }) : null),
             motion: (o.deps && o.deps.motion) || null,
             unwatch: [],
+            // UN3. The evening's outline and narrative state (StoryWeaver / StoryDirector).
+            story: null,
+            // UN5. Her held position (PrivatePoseController), and what she wore before undressing.
+            poses: (o.deps && o.deps.poses) || makePoses(win),
+            dressedLook: null,
         };
         const s = state;
+        startStory(s, o.deps && o.deps.story);
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -177,6 +183,18 @@
             }
         }
         for (const a of s.log) if (a.status === 'pending') settle(a, 'blocked', 'stale');
+        if (s.travel) clearTimeout(s.travel.timer);
+        s.travel = null;
+        // UN5. Whatever ended the evening, her skeleton is hers again.
+        try {
+            if (s.poses) s.poses.release();
+        } catch (_) {
+            /* the pose system restores itself on its own reset */
+        }
+        faceFront(s);
+        // UN13. An evening that ended before its opening was confirmed is still one evening.
+        commitStory(s);
+        if (s.story) s.story.end();
         try {
             if (s.media && typeof s.media.dispose === 'function') s.media.dispose();
         } catch (_) {
@@ -187,6 +205,282 @@
         }
         emit();
         return true;
+    }
+
+    // ------------------------------------------------------------------ UN3. the evening
+    /**
+     * The places this device can show for Private (the setup screen's rooms plus the nightlife
+     * openings), resolved for its tier. `VRWorlds.placesFor` is the only source: a place that is
+     * not in the catalogue for this device can never be named in her outline.
+     */
+    async function storyPlaces(win) {
+        const W = win && win.NEXUS_VR_WORLDS;
+        if (!W || typeof W.loadCatalogue !== 'function' || typeof W.placesFor !== 'function') return [];
+        const catalogue = await W.loadCatalogue();
+        const doc = win.document;
+        const mobile = !!(doc && doc.documentElement && doc.documentElement.classList.contains('is-mobile'));
+        return W.placesFor(catalogue.worlds, {
+            tier: W.tierFor({ xr: false, mobile }),
+            include: ['general', 'romantic', 'private'],
+            privateOpen: true,
+        });
+    }
+
+    /** The world the renderer shows right now, by catalogue id, or null. */
+    function shownWorld(win) {
+        try {
+            const runtime = win && win.NEXUS_VIEWER && win.NEXUS_VIEWER.vrWorlds;
+            return (runtime && runtime.activeId) || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Deal this session's outline, and follow the renderer. Nothing here moves anything: the
+     * outline is guidance for her prompt, and `nexus-world-shown` — the renderer's own
+     * announcement — is the only thing that says where she is.
+     *
+     * UN13. An outline is *provisional* until the opening room is authoritative: the renderer's
+     * `activeId` when it is dealt, or its first `nexus-world-shown`. While provisional and before
+     * the person has done anything, the renderer's opening may re-deal it from the room she is
+     * really in (UN12 did this only when the room was the destination). It is remembered in the
+     * between-evenings history exactly once — `commitStory` — at the first of: the opening is
+     * confirmed, the person's first turn or action, a trip, or the end of the session. Before,
+     * every deal called `remember`, so a UN12 re-deal stored two fingerprints for one evening.
+     * After the person has interacted, a late opening announcement only says where she is: it
+     * never replaces the evening they are already in. Every deal carries a generation, so a
+     * catalogue that resolves late, or after the session ended, cannot overwrite a newer one.
+     */
+    function startStory(s, injected) {
+        const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
+        const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
+        if (!Weaver || !Director) return;
+        s.storyGen = 0;
+        s.storyCommitted = false;
+        s.storyWeaver = Weaver;
+        const deal = (places, shownNow, gen) => {
+            if (state !== s || s.session._stopped) return;
+            if (gen !== undefined && gen !== s.storyGen) return; // a newer deal already happened
+            if (s.story && !shownNow) return;
+            s.storyGen += 1;
+            const known = (injected && injected.current) || shownWorld(s.win);
+            const current = shownNow || known;
+            const outline = Weaver.weave({
+                places,
+                current,
+                history: Weaver.history(s.win),
+                rng: injected && injected.rng,
+            });
+            s.places = places;
+            s.canTravel =
+                injected && injected.canTravel !== undefined
+                    ? Boolean(injected.canTravel)
+                    : places.length > 1 && Boolean(s.win && s.win.NEXUS_VIEWER && s.win.CustomEvent);
+            s.story = Director.create(outline, { places, current, weaver: Weaver });
+            s.storyProvisional = !current;
+            if (current) commitStory(s);
+            emit();
+        };
+        const first = s.storyGen;
+        if (injected && Array.isArray(injected.places)) deal(injected.places, undefined, first);
+        else
+            storyPlaces(s.win)
+                .then((places) => deal(places, undefined, first))
+                .catch(() => deal([], undefined, first));
+        if (s.win && typeof s.win.addEventListener === 'function') {
+            const onShown = (event) => {
+                if (state !== s || !s.story || s.session._stopped) return;
+                const d = (event && event.detail) || {};
+                const id = d.base || d.id || null;
+                if (s.travel && (id === s.travel.world || d.id === s.travel.world)) arrive(s, id);
+                else if (id && !s.travel && !s.interacted && s.story.phase === 'opening' && s.story.outline) {
+                    const outline = s.story.outline;
+                    // UN12/UN13. Before anything has happened, the room the renderer reports is the
+                    // opening: an outline guessed without it, or one that leads to this very room,
+                    // is dealt again from here. Otherwise the outline stands and is now confirmed.
+                    if (outline.destination === id || (s.storyProvisional && outline.openingVenue !== id))
+                        deal(s.places || [], id);
+                    else {
+                        s.story.shown(id);
+                        s.storyProvisional = false;
+                        commitStory(s);
+                    }
+                } else s.story.shown(id);
+                emit();
+            };
+            s.win.addEventListener('nexus-world-shown', onShown);
+            s.unwatch.push(() => s.win.removeEventListener('nexus-world-shown', onShown));
+        }
+    }
+
+    /** UN13. Keep tonight's outline in the between-evenings history — once per Private session. */
+    function commitStory(s) {
+        if (!s || s.storyCommitted || !s.story || !s.story.outline || !s.storyWeaver) return;
+        s.storyCommitted = true;
+        s.storyProvisional = false;
+        try {
+            s.storyWeaver.remember(s.story.outline.fingerprint, s.win);
+        } catch (_) {
+            /* a history that cannot be written only makes the next evening less different */
+        }
+    }
+
+    /** UN13. The person did something: the evening is theirs now, and late openings cannot replace it. */
+    function touched(s) {
+        if (!s || s.interacted) return;
+        s.interacted = true;
+        commitStory(s);
+    }
+
+    // ------------------------------------------------------------------ UN4. going somewhere else
+    /** How long a trip may take before the room she was in is asked for again (as WorldPresence). */
+    const TRAVEL_MS = 45 * 1000;
+    const PLACE_KEYS = {
+        hotel: /hotel|suite/,
+        apartment: /apartment|flat|home/,
+        bedroom: /bedroom/,
+        motel: /motel/,
+        discoteca: /discoteca|club/,
+        cabaret: /cabaret/,
+        rooftop: /rooftop/,
+        street: /street/,
+    };
+
+    /**
+     * A keyword or a catalogue id → one of the places this device can show, or null. "elsewhere"
+     * is tonight's destination. Never a world that is not in `s.places`: the outline and the
+     * catalogue are the only sources, so nobody can type their way into a room.
+     */
+    function resolvePlace(s, key) {
+        const places = s.places || [];
+        const here = s.story ? s.story.snapshot().shown : null;
+        const outline = s.story ? s.story.outline : null;
+        const id = String(key || '').toLowerCase();
+        if (id === 'elsewhere') {
+            const dest = outline && outline.destination;
+            return places.find((p) => p.id === dest && p.id !== here) || null;
+        }
+        const exact = places.find((p) => p.id === id || p.world === id);
+        if (exact) return exact;
+        const re = PLACE_KEYS[id];
+        if (!re) return null;
+        const matches = places.filter(
+            (p) => re.test(`${p.id} ${String(p.title || '').toLowerCase()}`) && p.id !== here
+        );
+        if (!matches.length) return null;
+        return (outline && matches.find((p) => p.id === outline.destination)) || matches[0];
+    }
+
+    /** Her invitation, or "somewhere else": one question for the person, nothing moves. */
+    function travelOffer(s, place, action) {
+        s.offer = {
+            kind: 'travel',
+            world: place.id,
+            name: String(place.title || place.id),
+            turnId: s.turnId,
+            from: action ? action.id : null,
+        };
+        if (s.story) s.story.propose(place.id);
+        emit();
+    }
+
+    function requestWorld(s, id) {
+        try {
+            s.win.dispatchEvent(
+                new s.win.CustomEvent('nexus-world-request', { detail: { id: id || null, owner: 'intimate' } })
+            );
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * The person agreed (their words naming the place, their yes, their tap): ask the renderer
+     * for the room through the Private experience's own channel (`nexus-world-request`, owner
+     * `intimate` — the request the setup screen's choice makes), and wait for its word. Nothing
+     * here says she has arrived: `arrive` does, when `nexus-world-shown` names this room. A trip
+     * that does not land in TRAVEL_MS asks for the room she was in, and says it did not happen.
+     */
+    function travel(s, action) {
+        if (!s.canTravel) return settle(action, 'failed', 'no-travel');
+        const place = resolvePlace(s, action.params.world);
+        if (!place) {
+            if (action.params.world === 'elsewhere') return settle(action, 'failed', 'no-destination');
+            return settle(action, 'failed', 'not-a-place');
+        }
+        const here = s.story ? s.story.snapshot().shown : null;
+        if (place.id === here)
+            return settle(action, 'completed', null, { name: place.title || place.id, already: true });
+        // "Somewhere else", or her invitation: the place is the evening's idea, so it is asked.
+        if (action.params.world === 'elsewhere' && action.source === 'user') {
+            travelOffer(s, place, action);
+            return settle(action, 'blocked', 'needs-approval', { name: place.title || place.id });
+        }
+        if (s.travel) clearTimeout(s.travel.timer);
+        const from = here;
+        s.travel = { action, world: place.id, from, timer: null };
+        s.offer = null;
+        if (s.story) s.story.travelling(place.id);
+        action.result = { name: String(place.title || place.id) };
+        if (!requestWorld(s, place.id)) {
+            s.travel = null;
+            if (s.story) s.story.failed('no-renderer');
+            return settle(action, 'failed', 'no-renderer');
+        }
+        const trip = s.travel;
+        trip.timer = setTimeout(() => {
+            if (state !== s || s.travel !== trip) return;
+            s.travel = null;
+            if (s.story) s.story.failed('timeout');
+            s.travelNews = { name: (action.result && action.result.name) || trip.world };
+            finish(action, 'failed', 'timeout');
+            requestWorld(s, from);
+            emit();
+        }, TRAVEL_MS);
+        emit();
+        // Stays `pending` until the renderer answers; the prompt says "on your way" meanwhile.
+        return action;
+    }
+
+    /** The renderer confirmed a world. Only the trip in progress arrives. */
+    function arrive(s, id) {
+        const trip = s.travel;
+        if (!trip) return s.story && s.story.shown(id);
+        clearTimeout(trip.timer);
+        s.travel = null;
+        if (s.story) s.story.arrived(trip.world);
+        s.arrivedNews = { world: trip.world, name: (trip.action.result && trip.action.result.name) || trip.world };
+        finish(trip.action, 'completed');
+        return true;
+    }
+
+    /** UN4. Her `<go place="…"/>` inside Private: an invitation, never a trip. Strips every <go>. */
+    const GO_TAG = /<\s*go\b([^>]*?)\/?>(?:\s*<\s*\/\s*go\s*>)?/gi;
+    function consumeTravel(text) {
+        const raw = String(text == null ? '' : text);
+        const s = state;
+        if (!s || s.session._stopped) return raw;
+        let first = null;
+        const clean = raw.replace(GO_TAG, (whole, attrs) => {
+            if (!first) {
+                const m = /place\s*=\s*["']([a-z0-9-]{1,40})["']/i.exec(attrs || '');
+                if (m) first = m[1].toLowerCase();
+            }
+            return ' ';
+        });
+        if (first) {
+            try {
+                Promise.resolve(fromModel('world.travel', { world: first })).catch(() => null);
+            } catch (_) {
+                /* an invitation that cannot be made must not take her reply down */
+            }
+        }
+        return clean
+            .replace(/[ \t]{2,}/g, ' ')
+            .replace(/[ \t]+\n/g, '\n')
+            .trim();
     }
 
     function active() {
@@ -254,7 +548,33 @@
             care: Boolean(s.session._care),
             asked,
             autonomy: Policy ? Policy.autonomy(s.win) : 'suggest',
+            // UN1. Read at the moment of the decision, for undressing only; never written.
+            level: levelOf(s),
         };
+    }
+
+    /** ConsentFlow's current level for this session (UN1), or 0 when there is none. */
+    /** UN1. Kept equal to `PrivateActionPolicy.UNDRESS_LEVEL`; a test holds them together. */
+    const UNDRESS_AT = 4;
+
+    function levelOf(s) {
+        try {
+            const flow = s && s.session && s.session.adult;
+            return flow && flow.active !== false ? Number(flow.level) || 0 : 0;
+        } catch (_) {
+            return 0;
+        }
+    }
+
+    /** The haul's layer ranking (LT9), the one the undress step reads its layers from. */
+    function allureOf(s) {
+        const haul = s.win && s.win.NEXUS_TRY_ON_HAUL_ACTIVITY;
+        if (haul && typeof haul.allureOf === 'function') return haul.allureOf;
+        try {
+            return require('../../wardrobe/TryOnHaulActivity.js').allureOf || null;
+        } catch (_) {
+            return null;
+        }
     }
 
     /**
@@ -283,6 +603,8 @@
             at: Date.now(),
         };
         if (!s) return (settle(action, 'blocked', 'not-in-private'), action);
+        // UN13. Their words or their tap; her own tags follow a turn of theirs and do not count.
+        if (source !== 'model') touched(s);
         const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
         if (!Policy) return (settle(action, 'blocked', 'no-policy'), action);
 
@@ -304,11 +626,28 @@
         const verdict = Policy.decide(action, facts(s, action));
         if (!verdict.allow) {
             if (verdict.suggest) await offerFrom(s, action);
+            // UN1. "Not yet" is this turn's answer about her clothes: the reply is told so, and a
+            // request that never ran cannot be described as having happened.
+            if (action.name === 'wardrobe.undress' && verdict.why === 'pace') s.wardrobe = action;
             return finish(action, 'blocked', verdict.why);
         }
         if (source !== 'control') s.byTurn.set(key, action);
         if (action.family === 'music' && ['music.play', 'music.search'].includes(action.name)) s.music = action;
-        if (action.family === 'wardrobe') s.wardrobe = action;
+        if (action.family === 'wardrobe') {
+            // LT10. This request replaces the one before it (`alive()` below turns false for
+            // that one). If its look is still downloading, it is stopped now: before, it landed
+            // on her first and was undone afterwards, so an outfit she no longer wanted (in
+            // Private, possibly a state she had just asked to leave) was shown for a moment.
+            const earlier = s.wardrobe;
+            if (earlier && earlier !== action && earlier.status === 'pending') {
+                try {
+                    if (s.closet && typeof s.closet.cancelPending === 'function') s.closet.cancelPending();
+                } catch (error) {
+                    console.warn('[PrivateActions] could not stop the earlier outfit change', error);
+                }
+            }
+            s.wardrobe = action;
+        }
         emit();
 
         const alive = () =>
@@ -367,6 +706,12 @@
                     change: action.name === 'wardrobe.change',
                     label: null,
                 });
+            case 'wardrobe.undress':
+                return undress(s, action, alive);
+            case 'wardrobe.redress':
+                return redress(s, action, alive);
+            case 'avatar.pose':
+                return pose(s, action);
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
                 const out = await s.closet.undo();
@@ -376,6 +721,8 @@
                 return dance(s, action);
             case 'avatar.react':
                 return react(s, action);
+            case 'world.travel':
+                return travel(s, action);
             case 'scene.change': {
                 const controller = s.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
                 if (!controller || typeof controller.apply !== 'function') return settle(action, 'failed', 'no-scenes');
@@ -390,6 +737,260 @@
             default:
                 return settle(action, 'blocked', 'unknown-action');
         }
+    }
+
+    /**
+     * UN1. One layer off: the next look down from the one she has on, chosen from her own looks
+     * (`OutfitDecisionEngine.undressStep`), worn the way every look is worn — the controller keeps
+     * her on screen until the new file has loaded, and a stale result is taken off again.
+     */
+    function makePoses(win) {
+        const Poses = pick(win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+        return Poses && typeof Poses.create === 'function' ? Poses.create({ win }) : null;
+    }
+
+    /**
+     * UN5. A look is a whole avatar file: a pose held on the old one would be held on bones that
+     * are gone. Let go before the swap, and take the same position again on the new one, so she
+     * stays kneeling while a layer comes off.
+     */
+    async function keepingPose(s, change) {
+        const was = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        if (was) s.poses.release({ keepHistory: true });
+        const out = await change();
+        if (was && state === s) {
+            try {
+                s.poses.apply(was, { restoring: true });
+            } catch (_) {
+                /* she stands in the new outfit; the next request poses her */
+            }
+        }
+        return out;
+    }
+
+    /**
+     * UN5. Her whole body turned in place, the pose kept: the try-on's own turner (it eases the
+     * root's yaw and keeps it across an outfit swap, so a layer coming off does not spin her
+     * back to the front). Made once per session, on first use.
+     */
+    function turnerOf(s) {
+        if (s.turner !== undefined) return s.turner;
+        const haul = pick(s.win, 'NEXUS_TRY_ON_HAUL_ACTIVITY', '../../wardrobe/TryOnHaulActivity.js');
+        const manager = s.win && s.win.NEXUS_VIEWER && s.win.NEXUS_VIEWER.avatarManager;
+        s.turner =
+            haul && typeof haul.makeTurner === 'function' && manager && 'currentRoot' in manager
+                ? haul.makeTurner(manager, s.win)
+                : null;
+        return s.turner;
+    }
+
+    function faceFront(s) {
+        try {
+            if (s.turner && typeof s.turner.reset === 'function') s.turner.reset();
+        } catch (_) {
+            /* she faces wherever the turner left her */
+        }
+    }
+
+    const ORIGINAL = { original: true };
+
+    async function redress(s, action, alive) {
+        if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
+        if (!s.dressedLook) return settle(action, 'failed', 'already-dressed');
+        const back = s.dressedLook;
+        if (s.poses) s.poses.release(); // dressed again, she stands, facing them
+        faceFront(s);
+        const out = back === ORIGINAL ? await s.closet.wearOriginal(alive) : await s.closet.wearLook(back, alive);
+        if (out.ok) s.dressedLook = null;
+        return settle(
+            action,
+            out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
+            out.ok ? null : out.why,
+            { name: back === ORIGINAL ? '' : back.name || '' }
+        );
+    }
+
+    function pose(s, action) {
+        if (!s.poses) return settle(action, 'failed', 'no-pose-system');
+        if (action.params.pose === 'stand') {
+            s.poses.release();
+            faceFront(s);
+            return settle(action, 'completed', null, { name: 'stand' });
+        }
+        if (action.params.pose === 'turn') {
+            const turner = turnerOf(s);
+            if (!turner) return settle(action, 'failed', 'no-turn');
+            const back = turner.toggle();
+            return settle(action, 'completed', null, { name: back ? 'turned' : 'front' });
+        }
+        if (action.params.pose === 'back') {
+            const out = s.poses.back();
+            return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
+        }
+        const out = s.poses.apply(action.params.pose);
+        if (!out.ok || typeof s.poses.confirm !== 'function')
+            return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, {
+                name: action.params.pose,
+            });
+        // UN6. Success only once the renderer shows it. A pose that did not land is taken back:
+        // she returns to the position she held before (or stands), and the reply says it failed.
+        return s.poses.confirm(action.params.pose).then((seen) => {
+            if (state !== s) return settle(action, 'blocked', 'stale');
+            if (seen && seen.ok) return settle(action, 'completed', null, { name: action.params.pose });
+            try {
+                s.poses.back();
+            } catch (_) {
+                /* she keeps whatever she shows; the failure is still reported */
+            }
+            return settle(action, 'failed', 'not-rendered', {
+                name: action.params.pose,
+                measured: seen && seen.measured,
+            });
+        });
+    }
+
+    /**
+     * UN19. Which look answers this undress request, and which state it is: `bare` (her authored
+     * body, nothing on) or `lingerie`. A request for everything is answered only by her bare
+     * look; without one the plan has no look and says `no-bare-look` — lingerie is never
+     * substituted for complete removal.
+     */
+    function nextLayer(s, params) {
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const rank = allureOf(s);
+        if (!Engine || typeof Engine.undressPlan !== 'function' || !rank)
+            return { look: null, state: null, why: 'last-layer' };
+        const looks = (s.closet && s.closet.looks) || [];
+        if (params && params.look) {
+            const named = looks.find((l) => String(l.name || '') === params.look);
+            if (named) return { look: named, state: Engine.isBare(named) ? 'bare' : 'lingerie', why: null };
+        }
+        return Engine.undressPlan({
+            looks,
+            current: s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null,
+            step: (params && params.step) || 'next',
+            naked: Boolean(params && params.naked),
+            allureOf: rank,
+        });
+    }
+
+    async function undress(s, action, alive) {
+        if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
+        const opened = await s.closet.open();
+        if (!alive()) return settle(action, 'blocked', 'stale');
+        if (!opened.ok) return settle(action, 'failed', opened.why);
+        if (!s.closet.privateOpen) return settle(action, 'failed', 'adult-ineligible');
+        const plan = nextLayer(s, action.params);
+        const look = plan.look;
+        // Nothing changes: what she has on stays, and the reason is told (no-bare-look, last-layer).
+        if (!look) return settle(action, 'failed', plan.why || 'last-layer');
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const bare = plan.state === 'bare';
+        // UN5. What she wore before the first layer came off is what "rivestiti" puts back.
+        if (!s.dressedLook) s.dressedLook = s.closet.current() || ORIGINAL;
+        const out = await keepingPose(s, () => s.closet.wearLook(look, alive));
+        // UN19. The renderer's answer before anything is announced: the look the wardrobe now
+        // reports on her is the one asked for, and for bare it is her bare look.
+        let worn = null;
+        try {
+            worn = typeof s.closet.current === 'function' ? s.closet.current() : null;
+        } catch (_) {
+            worn = null;
+        }
+        const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+        let rendered = Boolean(out.ok && worn && keyOf(worn) === keyOf(look) && (!bare || Engine.isBare(worn)));
+        // BL2. For bare, the loaded asset itself must show no garment Forge put on her. (Its
+        // bytes were already checked against Forge's hash by the controller before loading.)
+        if (rendered && bare && typeof s.closet.renderedGarments === 'function') {
+            const garments = s.closet.renderedGarments();
+            if (typeof garments === 'number' && garments > 0) rendered = false;
+        }
+        if (out.ok && !rendered) {
+            // What is on her is not what was asked for: back to the look she had, and say so.
+            try {
+                if (typeof s.closet.undo === 'function') await s.closet.undo();
+            } catch (_) {
+                /* the session's own end restores her */
+            }
+            return settle(action, 'failed', 'not-rendered', { name: look.name || '' });
+        }
+        if (out.ok) s.offer = null;
+        return settle(
+            action,
+            out.ok ? 'completed' : out.why === 'stale' ? 'blocked' : 'failed',
+            out.ok ? null : out.why,
+            { name: look.name || '', bare, state: plan.state, covers: coveredBy(s, look) }
+        );
+    }
+
+    /**
+     * UN17. The one look the evening's outfit theme suggests, while nothing about her clothes has
+     * happened yet this session — no request, no offer, no change. Once anything has, it is the
+     * person's evening and the theme is quiet. Never a change on its own: a line in her prompt.
+     */
+    function themeSuggestion(s) {
+        if (!s.story || !s.story.outline || !s.closet || s.story.phase === 'epilogue') return null;
+        if (s.log.some((a) => a.family === 'wardrobe') || (s.offer && s.offer.kind !== 'travel')) return null;
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        if (!Engine || typeof Engine.themeLook !== 'function') return null;
+        try {
+            const here = s.story.snapshot().shown || '';
+            const place = (s.places || []).find((p) => p.id === here);
+            const look = Engine.themeLook(s.story.outline.outfitTheme, s.closet.looks || [], {
+                venue: `${here} ${(place && place.title) || ''}`,
+                current: typeof s.closet.current === 'function' ? s.closet.current() : null,
+            });
+            return look ? String(look.name || '') || null : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function wardrobeState(s) {
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        try {
+            const worn = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            return Engine && typeof Engine.outfitState === 'function' ? Engine.outfitState(worn, allureOf(s)) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** UN19. What the wardrobe reports on her right now, for a line that must not be wrong. */
+    function currentName(s) {
+        try {
+            const worn = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            return worn && worn.name ? `“${worn.name}”` : 'your own outfit';
+        } catch (_) {
+            return 'what you had on';
+        }
+    }
+
+    /** UN14. The regions a look covers, from Forge's templates (WardrobeCoverage); [] when unknown. */
+    function coveredBy(s, look) {
+        const Coverage = pick(s.win, 'NEXUS_WARDROBE_COVERAGE', './WardrobeCoverage.js');
+        try {
+            const facts = look && (look.coverage !== undefined ? look.coverage : Coverage && Coverage.describe(look));
+            return facts && Array.isArray(facts.regions) ? facts.regions.slice() : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    const REGION_WORDS = {
+        chest: 'chest',
+        waist: 'waist',
+        hips: 'hips',
+        upperLegs: 'thighs',
+        lowerLegs: 'calves',
+        upperArms: 'upper arms',
+        lowerArms: 'forearms',
+        shoulders: 'shoulders',
+        feet: 'feet',
+    };
+    function regionText(regions) {
+        const words = (regions || []).map((r) => REGION_WORDS[r] || r);
+        return words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0] || '';
     }
 
     async function wear(s, action, alive) {
@@ -450,11 +1051,36 @@
 
     /** SUGGEST: her idea becomes a question for the person, with the look already resolved. */
     async function offerFrom(s, action) {
+        if (action.family === 'world') {
+            // UN4. Her invitation: the place she named, if it is one of tonight's places.
+            if (!s.canTravel || s.travel) return;
+            // UN9. Once they said the evening is drawing to a close she proposes nothing new;
+            // the person can still ask to go, which is their request, not her invitation.
+            if (s.story && s.story.phase === 'epilogue') return;
+            const place = resolvePlace(s, action.params.world);
+            const here = s.story ? s.story.snapshot().shown : null;
+            if (place && place.id !== here) travelOffer(s, place, action);
+            return;
+        }
         if (!s.closet || action.family !== 'wardrobe') return;
         try {
             const opened = await s.closet.open();
             if (state !== s || !opened.ok) return;
-            if (action.name === 'wardrobe.wear') {
+            if (action.name === 'wardrobe.undress') {
+                // UN1. Her idea, at level 4, under SUGGEST: the layer is resolved now and offered;
+                // the yes runs it as an undress again, so the level is checked a second time.
+                if (!s.closet.privateOpen) return;
+                const look = nextLayer(s, action.params).look;
+                if (look)
+                    s.offer = {
+                        kind: 'wear',
+                        undress: true,
+                        look,
+                        name: look.name || '',
+                        turnId: s.turnId,
+                        from: action.id,
+                    };
+            } else if (action.name === 'wardrobe.wear') {
                 const planned = s.closet.plan(action.params);
                 if (!planned.ok) return;
                 const c = planned.choice;
@@ -491,14 +1117,32 @@
     async function approveOffer(source) {
         const s = state;
         if (!s || !s.offer) return null;
+        touched(s);
         const offer = s.offer;
         s.offer = null;
+        if (offer.kind === 'travel') {
+            // UN4. Their yes is the trip: asked again of the policy, as `user-approved`.
+            return request(
+                'world.travel',
+                { world: offer.world },
+                {
+                    source: source === 'control' ? 'control' : 'user-approved',
+                    turnId: s.turnId,
+                }
+            );
+        }
         seq += 1;
         const action = {
             id: `act-${Date.now().toString(36)}-${seq}`,
             sessionId: s.sessionId,
             turnId: s.turnId,
-            name: offer.kind === 'wear' ? 'wardrobe.wear' : offer.spec.change ? 'wardrobe.change' : 'wardrobe.create',
+            name: offer.undress
+                ? 'wardrobe.undress'
+                : offer.kind === 'wear'
+                  ? 'wardrobe.wear'
+                  : offer.spec.change
+                    ? 'wardrobe.change'
+                    : 'wardrobe.create',
             params: offer.kind === 'wear' ? { look: offer.name } : { prompt: offer.spec.prompt },
             family: 'wardrobe',
             source: source === 'control' ? 'control' : 'user-approved',
@@ -517,7 +1161,10 @@
         emit();
         const alive = () => state === s && !s.session._stopped && s.wardrobe === action;
         try {
-            if (offer.kind === 'wear') {
+            if (offer.undress) {
+                // UN5. Through the undress step itself: it remembers what she wore and keeps her pose.
+                await undress(s, action, alive);
+            } else if (offer.kind === 'wear') {
                 const out = await s.closet.wearLook(offer.look, alive);
                 settle(
                     action,
@@ -541,6 +1188,7 @@
 
     function declineOffer() {
         if (!state || !state.offer) return false;
+        if (state.offer.kind === 'travel' && state.story) state.story.decline();
         state.offer = null;
         emit();
         return true;
@@ -622,17 +1270,50 @@
         if (!s || s.session._stopped) return null;
         s.turnId += 1;
         s.turnText = String(text == null ? '' : text);
+        touched(s);
         const intent = turn && turn.intent;
         if (intent === 'end' || intent === 'pace-down') return null;
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
         if (!Intent) return null;
 
+        // UN9. The evening's own cues move nothing in the world: the epilogue changes how she
+        // speaks, and forgetting erases only the between-evenings outline history.
+        const cue = typeof Intent.storyCue === 'function' ? Intent.storyCue(s.turnText) : null;
+        if (cue === 'epilogue' && s.story && s.story.epilogue()) {
+            s.offer = null;
+            s.storyNews = { kind: 'epilogue', turnId: s.turnId };
+            emit();
+            return null;
+        }
+        if (cue === 'forget') {
+            const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
+            let done = false;
+            try {
+                done = Boolean(Weaver && typeof Weaver.forget === 'function' && (Weaver.forget(s.win), true));
+            } catch (_) {
+                done = false;
+            }
+            s.storyNews = { kind: done ? 'forgotten' : 'not-forgotten', turnId: s.turnId };
+            emit();
+            return null;
+        }
+
         // An offer waits two turns for an answer, then stops waiting.
         if (s.offer && s.turnId - s.offer.turnId > OFFER_TURNS) s.offer = null;
-        const yes = intent === 'affirmation' || (typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
+        const travelling = s.offer && s.offer.kind === 'travel';
+        const yes =
+            intent === 'affirmation' ||
+            (travelling && typeof Intent.affirmsGoing === 'function'
+                ? Intent.affirmsGoing(s.turnText)
+                : typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
         if (s.offer && yes && !s.session._care) {
-            s.asked.wardrobe = s.turnId;
+            s.asked[travelling ? 'world' : 'wardrobe'] = s.turnId;
             return approveOffer('user');
+        }
+        // UN4. A trip not taken: the next turn that is not a yes closes the invitation.
+        if (travelling && s.turnId > s.offer.turnId) {
+            s.offer = null;
+            if (s.story) s.story.decline();
         }
 
         const media = s.media ? s.media.status() : { status: 'idle' };
@@ -641,6 +1322,8 @@
             musicStatus: media.status,
             canUndoOutfit: closet.canUndo,
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
+            poseHeld: Boolean(s.poses && typeof s.poses.held === 'function' && s.poses.held()),
+            undressed: Boolean(s.dressedLook),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -660,6 +1343,31 @@
             parsed.params = { query: (before && before.params.query) || '' };
         }
         return request(parsed.name, parsed.params, { source: 'user', turnId: s.turnId });
+    }
+
+    /**
+     * UN6. Are these words a position for her body that Private will take? The composer hands
+     * every utterance to the motion fast path BEFORE the conversation reaches this bridge, so
+     * "sdraiati sul fianco" first started the chat stack's lie-down clip and set its `laying`
+     * state; the pose system then claimed her mid-clip. On "alzati" the release scheduled
+     * `lay_idle` — measured: the pose system said "standing" while her rendered hips were at
+     * 0.18 m, crouched. The fast path asks this first and stands aside (look-at only).
+     * Pure: parses, changes nothing.
+     */
+    function ownsBody(text) {
+        const s = state;
+        if (!s || s.session._stopped || !s.poses) return false;
+        const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
+        if (!Intent || typeof Intent.parse !== 'function') return false;
+        try {
+            const parsed = Intent.parse(String(text == null ? '' : text), {
+                poseHeld: Boolean(typeof s.poses.held === 'function' && s.poses.held()),
+                undressed: Boolean(s.dressedLook),
+            });
+            return Boolean(parsed && parsed.name === 'avatar.pose');
+        } catch (_) {
+            return false;
+        }
     }
 
     /** A tag she wrote, routed here instead of to the app-wide executor. */
@@ -682,7 +1390,12 @@
             const offer = s.offer && s.offer.turnId === s.turnId;
             return { state: offer ? 'offer' : 'none' };
         }
-        if (w.status === 'completed') return { state: 'changed', name: (w.result && w.result.name) || '' };
+        if (w.status === 'completed')
+            return {
+                state: 'changed',
+                name: (w.result && w.result.name) || '',
+                bare: Boolean(w.result && w.result.bare),
+            };
         if (w.status === 'pending') return { state: 'pending' };
         if (w.why === 'needs-approval') return { state: 'offer' };
         return { state: 'failed', why: w.why };
@@ -699,6 +1412,8 @@
                 ? { status: s.music.status, why: s.music.why, query: s.music.params.query || '' }
                 : null,
             outfit: s.closet ? s.closet.snapshot() : null,
+            // UN19. original | look | lingerie | bare — what is on her, never what was asked for.
+            outfitState: wardrobeState(s),
             outfitAction: s.wardrobe
                 ? {
                       status: s.wardrobe.status,
@@ -708,6 +1423,14 @@
                 : null,
             offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
+            // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.
+            story: s.story
+                ? {
+                      ...s.story.snapshot(),
+                      provisional: Boolean(s.storyProvisional),
+                      committed: Boolean(s.storyCommitted),
+                  }
+                : null,
         };
     }
 
@@ -733,6 +1456,12 @@
         'forge-unavailable': 'new outfits cannot be made right now',
         'create-failed': 'the new outfit could not be made',
         'load-failed': 'the outfit could not be put on, so you are still in what you had',
+        // UN15. A change that did not finish in time is given up and she is put back.
+        // UN19. Bare is its own state: no bare look, no change, and no lingerie in its place.
+        'no-bare-look':
+            'this body has no bare look in your wardrobe, so nothing was taken off and you are still wearing what you had',
+        'not-rendered': 'the change did not show on you, so you are still as you were',
+        timeout: 'it was taking far too long, so it was stopped and you are still in what you had — they can ask again',
         'nothing-to-undo': 'there is no earlier outfit to go back to',
         busy: 'an outfit is already being made',
     };
@@ -811,6 +1540,45 @@
                     '  You may suggest a saved look in words; to offer it, end with <wardrobe action="wear" look="NAME"/> on its own line — they are asked before anything changes. Never say you have changed until told so below.'
                 );
             else lines.push('  Change only when they ask. Talking about clothes is not asking.');
+            const themed = themeSuggestion(s);
+            if (themed && autonomy !== 'off')
+                lines.push(
+                    `  Tonight suits “${themed}” (saved, ready now). If the moment invites it you may suggest it once, in your own words — a suggestion, never a change: they decide.`
+                );
+            // UN1. Undressing: one layer at a time, from her own looks, and only at the top of the
+            // evening's pace. Below it she is told so, and never to describe it as happening.
+            const at = levelOf(s);
+            // UN1. At the top of the pace, her looks are loaded in the background (once) so the
+            // layers are known by the time anybody asks; until they are, she is told what the
+            // level allows and the handler checks her eligibility when it runs.
+            // `_loadedAt` starts at -Infinity: finite means her looks have been listed.
+            const listed = Number.isFinite(closet._loadedAt);
+            if (at >= UNDRESS_AT && !listed && !s.undressWarm && typeof closet.open === 'function') {
+                s.undressWarm = true;
+                Promise.resolve()
+                    .then(() => closet.open())
+                    .then(() => state === s && emit())
+                    .catch(() => {});
+            }
+            if (closet.privateOpen || !listed) {
+                if (at >= UNDRESS_AT) {
+                    lines.push(
+                        '- Undressing: the evening is at its closest, so you may take your clothes off, one layer at a time (the app changes you into what is underneath). When they ask, you do it; when the moment feels right and you want to, you may do it yourself.'
+                    );
+                    if (autonomy === 'autonomous')
+                        lines.push(
+                            '  To take a layer off: one short sentence, then <wardrobe action="undress"/> on its own line. Use step="all" only when they ask for everything at once.'
+                        );
+                    else if (autonomy === 'suggest')
+                        lines.push(
+                            '  To offer it on your own, end with <wardrobe action="undress"/> on its own line — they are asked before anything comes off. When they ask, it simply happens.'
+                        );
+                    else lines.push('  Take something off only when they ask.');
+                } else
+                    lines.push(
+                        `- Undressing is not open yet: the evening is at ${at || 1} of ${UNDRESS_AT}. If they ask, say "not yet" warmly and playfully — it opens when they bring the evening closer. Never describe yourself undressing before then.`
+                    );
+            }
         }
         // PX14. The rule that stops the reported transcript: "Mi tolgo il vestito per te. Ora ho
         // solo mutande e reggiseno." while the avatar wore exactly what she had on. Her clothes are
@@ -819,6 +1587,22 @@
             '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
         );
         lines.push('- Dancing: when they ask you to dance, you do.');
+        // UN5. Positions and dressing again, as the app can do them.
+        if (s.poses) {
+            lines.push(
+                '- Positions: when they ask you to kneel, lie on your back, front or side, bend forward or arch your back, the app puts your body in that position and holds it — turning round keeps it — until they ask you to stand or to go back to how you were. Say it in a few words, in the moment.'
+            );
+            if (s.dressedLook)
+                lines.push(
+                    '- Getting dressed again: when they say they are done or ask you to get dressed, the app puts back the outfit you wore before; then the evening can end gently.'
+                );
+        }
+        // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
+        // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
+        // asked for in any language. The motion contract carries the names; this says they apply.
+        lines.push(
+            '- Poses and moves: every gesture in your motion list works here — sit, lie down, stand, turn round, spin, a model pose, showing your outfit, and the rest. When they ask for a pose in any language, take it, and say so in a few words.'
+        );
         lines.push(
             'An executable request is never answered with "tell me more" or a list of options: acknowledge it in one short sentence, as something you are doing.'
         );
@@ -872,7 +1656,55 @@
             const name = (w.result && w.result.name) || '';
             w.told = true;
             if (['failed', 'blocked'].includes(w.status)) w.toldFailure = true;
-            if (w.name === 'wardrobe.undo') {
+            if (w.name === 'wardrobe.redress') {
+                // UN5. Told in its own words below.
+            } else if (w.name === 'wardrobe.undress') {
+                // UN1. What the layer step did, in the words the reply must not contradict.
+                // UN7. The renderer's answer, never her draft: what is on the avatar now is the
+                // only thing she may say she wears — naked only when the bare look is the one shown.
+                const bare = Boolean(w.result && w.result.bare);
+                const askedNaked = Boolean(w.params && w.params.naked);
+                if (w.status === 'completed' && bare)
+                    now.push(
+                        'You have just taken everything off: you are naked now, as they asked. Say it in a few words, in the moment.'
+                    );
+                else if (w.why === 'no-bare-look')
+                    // UN19. Everything was asked for and this body has no bare look: nothing was
+                    // changed and no lingerie was put on in its place. She says exactly that.
+                    now.push(
+                        `They asked you to take everything off. Being fully bare is not available for this body in your wardrobe, so nothing was changed: you are still wearing ${currentName(s)}. Say so once, warmly and honestly, and never say you are naked or that you took anything off. You may ask whether they would like you in lingerie instead — a question, not a change.`
+                    );
+                else if (w.status === 'completed') {
+                    // UN14. Forge swaps her whole look in one change; it does not peel garments off
+                    // one by one. She says what she wears now — as playfully as the moment allows —
+                    // and never narrates removing a piece the renderer never showed coming off.
+                    const covers = regionText(w.result && w.result.covers);
+                    now.push(
+                        `You have just changed into lingerie${name ? `: you are now wearing “${name}”` : ''}${covers ? ` (it covers your ${covers}; nothing of your earlier outfit shows)` : ''}. You are in lingerie, not naked. It was one change, all at once: say what you wear now, in a few words, in the moment — not a piece-by-piece undressing.`
+                    );
+                } else if (w.status === 'pending')
+                    now.push('You are changing into something lighter right now — say so in one short sentence.');
+                else if (w.why === 'pace' && w.source === 'model')
+                    now.push('Undressing is not open yet. Stay as you are and do not describe taking anything off.');
+                else if (w.why === 'pace')
+                    now.push(
+                        'They asked you to undress, but the evening is not that close yet. Say "not yet" warmly, teasing — it opens when they bring the evening closer. Stay dressed and do not describe undressing.'
+                    );
+                else if (w.why === 'needs-approval')
+                    now.push('You offered to take something off; the app is asking them. Wait for their answer.');
+                else if (w.why === 'last-layer' && askedNaked)
+                    now.push(
+                        'They asked to see you naked. You are already wearing the least you have here, and being fully bare is not in your wardrobe yet. Say so once, warmly and honestly; nothing changes, and never say you are naked.'
+                    );
+                else if (w.why === 'last-layer')
+                    now.push(
+                        'They asked you to undress, and you are already down to the last layer you have here. Say so playfully; nothing changes.'
+                    );
+                else
+                    now.push(
+                        `They asked you to undress and it did not happen: ${WHY_OUTFIT[w.why] || 'it could not be done'}. Tell them so once, in your own voice, and stay as you are.`
+                    );
+            } else if (w.name === 'wardrobe.undo') {
                 now.push(
                     w.status === 'failed'
                         ? `They asked you to go back to your earlier outfit and it could not be done: ${WHY_OUTFIT[w.why] || 'it did not work'}. Say so once.`
@@ -905,6 +1737,80 @@
                     ? 'They asked you to dance, and you are dancing now.'
                     : 'They asked you to dance and you cannot right now. Say so lightly.'
             );
+        // UN4. Where she is going, in the words the renderer allows. Arrival and a failed trip
+        // land between turns, so they are news told once, on the next prompt.
+        const trip = [...s.log].reverse().find((a) => a.name === 'world.travel' && a.turnId === s.turnId);
+        const tripName = trip && trip.result && trip.result.name;
+        if (s.arrivedNews) {
+            now.push(
+                `You have just arrived at ${s.arrivedNews.name} together, as they agreed — it is around you now. Welcome them there in your own words.`
+            );
+            s.arrivedNews = null;
+        } else if (s.travelNews) {
+            now.push(
+                `The trip to ${s.travelNews.name} did not happen; you are still where you were. Say so once, lightly, and stay.`
+            );
+            s.travelNews = null;
+        } else if (trip && trip.status === 'pending')
+            now.push(
+                `They said yes: you are on your way to ${tripName || 'the other place'} right now. Say so in one short sentence; do not describe arriving yet.`
+            );
+        else if (trip && trip.status === 'completed' && trip.result && trip.result.already)
+            now.push(`You are already at ${tripName}.`);
+        else if (trip && trip.why === 'needs-approval')
+            now.push(
+                `Going to ${(s.offer && s.offer.name) || tripName || 'another place'} has been suggested; the app is asking them. Wait for their answer — you are still here.`
+            );
+        else if (trip && ['not-a-place', 'no-destination', 'no-travel'].includes(trip.why))
+            now.push(
+                'They asked to go somewhere you cannot take them from here tonight. Say so warmly and stay where you are.'
+            );
+        // UN5. What her body and her clothes just did.
+        const body = [...s.log].reverse().find((a) => a.name === 'avatar.pose' && a.turnId === s.turnId);
+        if (body) {
+            const named = String(body.params.pose || '').replace(/-/g, ' ');
+            const result = (body.result && body.result.name) || body.params.pose;
+            if (body.status === 'completed' && result === 'stand') now.push('You are standing again.');
+            else if (body.status === 'completed' && result === 'turned')
+                now.push('You have turned round, holding your position: they see your back now.');
+            else if (body.status === 'completed' && result === 'front')
+                now.push('You have turned to face them again, holding your position.');
+            else if (body.status === 'completed' && body.params.pose === 'back')
+                now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
+            else if (body.status === 'completed')
+                now.push(`Your body is in that position now (${named}). Stay in it until they ask you to stand.`);
+            else if (body.why === 'pace')
+                now.push(
+                    'They asked for a position the evening is not close enough for yet. Say "not yet", warmly and teasing.'
+                );
+            else if (body.why === 'unsupported-pose')
+                now.push(
+                    'They asked for a position your body cannot take here yet. Say so honestly and lightly, offer one you can (kneeling, lying on your back, front or side, bending forward), and stay as you are until they choose.'
+                );
+            else now.push('They asked for a position you cannot take here. Say so lightly and stay as you are.');
+        }
+        const back =
+            s.wardrobe && s.wardrobe.turnId === s.turnId && s.wardrobe.name === 'wardrobe.redress' ? s.wardrobe : null;
+        if (back) {
+            if (back.status === 'completed')
+                now.push('You are dressed again, in what you wore before. If they are done, close the evening warmly.');
+            else if (back.status === 'pending')
+                now.push('You are getting dressed again right now — say so in a few words.');
+            else if (back.why === 'already-dressed') now.push('You are already dressed.');
+            else now.push('Getting dressed again did not work just now. Say so once, lightly.');
+        }
+        // UN3. Tonight's outline, after what she can do and before what is happening now.
+        if (s.story) lines.push(...s.story.lines({ canTravel: Boolean(s.canTravel) }));
+        // UN9. This turn's answer about the evening itself.
+        const news = s.storyNews && s.storyNews.turnId === s.turnId ? s.storyNews.kind : null;
+        if (news === 'forgotten')
+            lines.push(
+                'RIGHT NOW: they asked you to forget your past evenings together, and it is done — this evening goes on. Say so in a few warm words.'
+            );
+        else if (news === 'not-forgotten')
+            lines.push(
+                'RIGHT NOW: they asked you to forget your past evenings, and this device would not let it be erased. Say so once.'
+            );
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;
@@ -913,12 +1819,16 @@
     const api = {
         GENERATE_KEY,
         OFFER_TURNS,
+        UNDRESS_AT,
+        TRAVEL_MS,
         begin,
         end,
         active,
         request,
         onUserTurn,
+        ownsBody,
         fromModel,
+        consumeTravel,
         approveOffer,
         declineOffer,
         snapshot,

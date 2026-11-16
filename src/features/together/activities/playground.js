@@ -1685,11 +1685,23 @@ const PlaygroundActivity = (() => {
             }
             const doc = win.document;
             const mobile = !!(doc && doc.documentElement && doc.documentElement.classList.contains('is-mobile'));
-            return W.placesFor(this._worldCatalogue.worlds, {
-                tier: W.tierFor({ xr: false, mobile }),
+            const tier = W.tierFor({ xr: false, mobile });
+            const rooms = W.placesFor(this._worldCatalogue.worlds, {
+                tier,
                 include: ['romantic', 'private'],
                 privateOpen: true,
             });
+            // GO1. And the general-only places (the school): listed here, but choosing one ends
+            // Private and visits it in General mode (src/features/together/GeneralOnlyPlaces.js).
+            const General = win.NEXUS_GENERAL_ONLY_PLACES;
+            const guard = General && typeof General.forPage === 'function' ? General.forPage() : null;
+            if (guard) {
+                // The validated catalogue for `placesFor`; the guard reads the raw one itself.
+                guard.catalogue = this._worldCatalogue.worlds;
+                guard.ensureWorlds();
+                return rooms.concat(guard.destinations(W.placesFor, tier));
+            }
+            return rooms;
         }
 
         _requestWorld(id) {

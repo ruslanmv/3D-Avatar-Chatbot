@@ -432,16 +432,20 @@ const POSE_PRESETS = {
     // KNEELING POSES
     // =====================================================================
 
+    // UN6. Knee flexion was -145° with the thighs upright, which tips the shins 45° up behind her:
+    // grounded on rendered skin, the knees touched and the feet hung 27 cm in the air (joint
+    // grounding had left all of her 12–14 cm up, which the front camera never showed). -96°
+    // lays the shins on the floor and -70° at the ankle lays the insteps down.
     kneeling: {
         label: 'Kneeling',
         bones: {
             hips: eulerDegToQuat(10, 0, 0),
-            leftUpperLeg: eulerDegToQuat(10, 0, -5),
-            rightUpperLeg: eulerDegToQuat(10, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-145, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-145, 0, 0),
-            leftFoot: eulerDegToQuat(-50, 0, 0),
-            rightFoot: eulerDegToQuat(-50, 0, 0),
+            leftUpperLeg: eulerDegToQuat(6, 0, -5),
+            rightUpperLeg: eulerDegToQuat(6, 0, 5),
+            leftLowerLeg: eulerDegToQuat(-96, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-96, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
             spine: eulerDegToQuat(-10, 0, 0),
         },
     },
@@ -450,12 +454,12 @@ const POSE_PRESETS = {
         label: 'Kneeling (Up)',
         bones: {
             hips: eulerDegToQuat(0, 0, 0),
-            leftUpperLeg: eulerDegToQuat(10, 0, -5),
-            rightUpperLeg: eulerDegToQuat(10, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-145, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-145, 0, 0),
-            leftFoot: eulerDegToQuat(-50, 0, 0),
-            rightFoot: eulerDegToQuat(-50, 0, 0),
+            leftUpperLeg: eulerDegToQuat(6, 0, -5), // UN6. shins on the floor, as in kneeling
+            rightUpperLeg: eulerDegToQuat(6, 0, 5),
+            leftLowerLeg: eulerDegToQuat(-96, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-96, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
             leftUpperArm: eulerDegToQuat(20, 0, 50), // Hands on thighs
             rightUpperArm: eulerDegToQuat(20, 0, -50),
             leftLowerArm: eulerDegToQuat(0, -50, 0),
@@ -471,6 +475,21 @@ const POSE_PRESETS = {
 
     lyingBack: {
         label: 'Lying (Back)',
+        // UN6. Rests on the back of her body. Grounded on her whole skin, the shoes (the legs run
+        // a little below her back line) held her back and head 17 cm above the floor.
+        support: {
+            ground: [
+                'hips',
+                'spine',
+                'chest',
+                'upperChest',
+                'head',
+                'leftUpperLeg',
+                'rightUpperLeg',
+                'leftLowerLeg',
+                'rightLowerLeg',
+            ],
+        },
         bones: {
             hips: eulerDegToQuat(90, 0, 0),
             leftUpperLeg: eulerDegToQuat(0, 0, -5),
@@ -501,46 +520,97 @@ const POSE_PRESETS = {
         },
     },
 
+    // UN6. On her stomach, the way a person lies there: pelvis, thighs and forearms on the floor,
+    // chest lifted by the spine's extension, head up. The old preset straightened her arms
+    // under her (a push-up's top) and, grounded on skin, left her body 10–20 cm in the air on
+    // her fingertips. Upper arms point "forward" from the shoulder (−80°/+80° Y: towards the
+    // floor once she is prone) and the elbows bend about Z so the forearms lie towards her head.
     lyingFront: {
         label: 'Lying (Front)',
         bones: {
-            hips: eulerDegToQuat(-85, 0, 0), // Prone — face down (slightly less than 90 to avoid floor clip)
-            leftUpperLeg: eulerDegToQuat(5, 0, -5), // Legs natural, slight splay
-            rightUpperLeg: eulerDegToQuat(5, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Slight knee relaxation
-            rightLowerLeg: eulerDegToQuat(-10, 0, 0),
-            leftFoot: eulerDegToQuat(-15, 0, 0), // Toes pointed naturally
-            rightFoot: eulerDegToQuat(-15, 0, 0),
-            spine: eulerDegToQuat(10, 0, 0), // Slight back extension (propping up)
-            chest: eulerDegToQuat(8, 0, 0),
-            leftUpperArm: eulerDegToQuat(-30, 0, -50), // Arms forward propping up, clear of body
-            rightUpperArm: eulerDegToQuat(-30, 0, 50),
-            leftLowerArm: eulerDegToQuat(0, -70, 0), // Forearms on ground
-            rightLowerArm: eulerDegToQuat(0, 70, 0),
-            head: eulerDegToQuat(25, 0, 0), // Head lifted, looking forward
-            neck: eulerDegToQuat(10, 0, 0),
+            hips: eulerDegToQuat(-88, 0, 0), // Prone
+            spine: eulerDegToQuat(15, 0, 0), // Extension lifts the chest
+            chest: eulerDegToQuat(12, 0, 0),
+            upperChest: eulerDegToQuat(6, 0, 0),
+            neck: eulerDegToQuat(8, 0, 0),
+            head: eulerDegToQuat(10, 0, 0), // Looking ahead
+            leftUpperLeg: eulerDegToQuat(4, 0, -5),
+            rightUpperLeg: eulerDegToQuat(4, 0, 5),
+            leftLowerLeg: eulerDegToQuat(-12, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-12, 0, 0),
+            leftFoot: eulerDegToQuat(-40, 0, 0), // Toes pointed
+            rightFoot: eulerDegToQuat(-40, 0, 0),
+            leftUpperArm: eulerDegToQuat(0, -80, 0), // Elbows under the shoulders
+            rightUpperArm: eulerDegToQuat(0, 80, 0),
+            leftLowerArm: eulerDegToQuat(0, 0, -90), // Forearms flat, towards her head
+            rightLowerArm: eulerDegToQuat(0, 0, 90),
         },
     },
 
+    // UN6. Euler order is XYZ, so the old hips (90, 0, -90) rolled her onto her side and then
+    // the +90 X turned her chest to the ceiling: she lay on her back, legs lifted. A -90 roll
+    // about Z alone lays her on her right side, facing the way she faced standing; the top leg
+    // drawn further forward than the bottom one, the lower arm reaching forward under her head.
     lyingSide: {
         label: 'Lying (Side)',
+        // UN6. She lies on her right hip, thigh and arm: their skin rests on the floor plane.
+        support: { ground: ['hips', 'rightUpperLeg', 'rightLowerLeg', 'rightUpperArm'] },
         bones: {
-            hips: eulerDegToQuat(90, 0, -90),
-            leftUpperLeg: eulerDegToQuat(15, 0, 0),
-            rightUpperLeg: eulerDegToQuat(30, 0, 0),
-            leftLowerLeg: eulerDegToQuat(-10, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-40, 0, 0),
-            leftUpperArm: eulerDegToQuat(0, 0, -40),
-            rightUpperArm: eulerDegToQuat(30, 0, 20),
-            leftLowerArm: eulerDegToQuat(0, -60, 0),
-            rightLowerArm: eulerDegToQuat(0, 60, 0),
-            head: eulerDegToQuat(0, 20, 0),
+            hips: eulerDegToQuat(0, 0, -90),
+            spine: eulerDegToQuat(-4, 0, 0),
+            chest: eulerDegToQuat(-4, 0, 0),
+            neck: eulerDegToQuat(0, 0, 8),
+            head: eulerDegToQuat(0, 0, 6),
+            leftUpperLeg: eulerDegToQuat(40, 0, 0), // Top leg forward
+            rightUpperLeg: eulerDegToQuat(22, 0, 0),
+            leftLowerLeg: eulerDegToQuat(-55, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-35, 0, 0),
+            rightUpperArm: eulerDegToQuat(0, 70, 0), // Lower arm forward along the floor
+            rightLowerArm: eulerDegToQuat(0, 40, 0),
+            leftUpperArm: eulerDegToQuat(18, 0, 72), // Top arm resting along her side
+            leftLowerArm: eulerDegToQuat(0, -20, 0),
         },
     },
 
     // =====================================================================
     // GROUND POSES
     // =====================================================================
+
+    // Experimental grounded hands-and-knees candidate. Unlike allFoursArched and
+    // doggyStyle (which are standing forward bends), the pelvis pitches the trunk
+    // towards horizontal, knees flex beneath the hips and arms extend to the floor.
+    // No fixed hipsPosition: MO5 ground settling measures the loaded avatar's own rig.
+    // Four-point contact must be confirmed by the browser joint-contact audit before
+    // shipping this preset beyond this isolated review branch.
+    handsKnees: {
+        label: 'Hands and Knees (Candidate)',
+        adult: true,
+        // UN6. What she rests on. `ground`: the body is lowered until the lowest rendered skin of
+        // these rests on the plane her soles stand on (the knees: the legs are the approved,
+        // rigid part). `reach`: these hands are turned palm-down, fingers forward, from the rig's
+        // own frame, then brought to that plane by the arm chain's IK — never by moving the hips.
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'], reach: ['leftHand', 'rightHand'] },
+        bones: {
+            hips: eulerDegToQuat(-78, 0, 0),
+            spine: eulerDegToQuat(3, 0, 0),
+            chest: eulerDegToQuat(-2, 0, 0),
+            upperChest: eulerDegToQuat(0, 0, 0),
+            neck: eulerDegToQuat(16, 0, 0),
+            head: eulerDegToQuat(12, 0, 0),
+            leftUpperLeg: eulerDegToQuat(72, 0, -9),
+            rightUpperLeg: eulerDegToQuat(72, 0, 9),
+            leftLowerLeg: eulerDegToQuat(-99, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-99, 0, 0),
+            leftFoot: eulerDegToQuat(-12, 0, 0),
+            rightFoot: eulerDegToQuat(-12, 0, 0),
+            leftUpperArm: eulerDegToQuat(0, -85, 0),
+            rightUpperArm: eulerDegToQuat(0, 85, 0),
+            leftLowerArm: eulerDegToQuat(0, -8, 0),
+            rightLowerArm: eulerDegToQuat(0, 8, 0),
+            leftHand: eulerDegToQuat(-5, 0, 0),
+            rightHand: eulerDegToQuat(-5, 0, 0),
+        },
+    },
 
     allFoursArched: {
         label: 'Bent Forward (Arched)',
@@ -633,46 +703,61 @@ const POSE_PRESETS = {
         },
     },
 
+    // UN6. Both standing bends were written with the trunk signs reversed and no leg counter-
+    // rotation. On the normalized rig a NEGATIVE X on hips/spine/chest flexes forward (lyingFront
+    // is hips -85, face down) and a positive one extends. The hips carry the legs, so a hips
+    // rotation the thighs do not undo tips her whole body like a plank: measured on
+    // AvatarSample_A, the old "Bent Over" leaned her 40° BACKWARD with her soles 7 cm in the
+    // floor, and the old "Bent Backward" leaned her 22° forward. Seen from the front both read as
+    // "upright with the arms out" — the upper arms were only 25–30° below the T-pose. Now: the
+    // hips hinge, the thighs counter-rotate by almost as much so the legs stay vertical, the
+    // spine follows, and the arms hang towards the floor (a +X swing on top of the arms-down Z).
+    // Verified from front, back, side and three-quarter on the real avatar (docs/qa/).
     standingBendForward: {
         label: 'Standing (Bent Over)',
         bones: {
-            hips: eulerDegToQuat(30, 0, 0), // Moderate hip hinge — not extreme, keeps CoG over feet
-            spine: eulerDegToQuat(8, 0, 0), // Gentle forward curve — lumbar follows hips
-            chest: eulerDegToQuat(5, 0, 0), // Minimal thoracic flex — S-curve maintained
-            leftShoulder: eulerDegToQuat(8, 0, 5),
-            rightShoulder: eulerDegToQuat(8, 0, -5),
-            leftUpperArm: eulerDegToQuat(20, 10, 25), // Arms forward/down — counterbalance + gravity
-            rightUpperArm: eulerDegToQuat(20, -10, -25),
-            leftLowerArm: eulerDegToQuat(0, -30, 0), // Relaxed elbow bend
-            rightLowerArm: eulerDegToQuat(0, 30, 0),
-            leftUpperLeg: eulerDegToQuat(-3, 0, -2), // Legs near-vertical — hips shift back to compensate
-            rightUpperLeg: eulerDegToQuat(-3, 0, 2),
-            leftLowerLeg: eulerDegToQuat(-8, 0, 0), // Soft knees (natural micro-bend)
-            rightLowerLeg: eulerDegToQuat(-8, 0, 0),
-            head: eulerDegToQuat(-18, 0, 0), // Look forward — compensates for torso tilt
-            neck: eulerDegToQuat(-10, 0, 0),
+            hips: eulerDegToQuat(-40, 0, 0), // Hip hinge: trunk forward
+            spine: eulerDegToQuat(-15, 0, 0), // Lumbar follows
+            chest: eulerDegToQuat(-10, 0, 0),
+            upperChest: eulerDegToQuat(-5, 0, 0),
+            neck: eulerDegToQuat(18, 0, 0), // Head lifted to look ahead, not at her feet
+            head: eulerDegToQuat(14, 0, 0),
+            leftShoulder: eulerDegToQuat(0, 0, 6),
+            rightShoulder: eulerDegToQuat(0, 0, -6),
+            leftUpperArm: eulerDegToQuat(62, 0, 78), // Arms down, swung forward: hanging to the floor
+            rightUpperArm: eulerDegToQuat(62, 0, -78),
+            leftLowerArm: eulerDegToQuat(0, -14, 0), // Relaxed elbow
+            rightLowerArm: eulerDegToQuat(0, 14, 0),
+            leftUpperLeg: eulerDegToQuat(36, 0, -2), // Counter-rotates the hinge: legs stay vertical
+            rightUpperLeg: eulerDegToQuat(36, 0, 2),
+            leftLowerLeg: eulerDegToQuat(-6, 0, 0), // Soft knees
+            rightLowerLeg: eulerDegToQuat(-6, 0, 0),
+            leftFoot: eulerDegToQuat(4, 0, 0),
+            rightFoot: eulerDegToQuat(4, 0, 0),
         },
     },
 
     standingBentBackward: {
         label: 'Standing (Bent Backward)',
         bones: {
-            hips: eulerDegToQuat(-5, 0, 0), // Subtle pelvis forward — keeps CoG over wider stance
-            spine: eulerDegToQuat(-12, 0, 0), // Lumbar extension (primary bend point)
-            chest: eulerDegToQuat(-8, 0, 0), // Thoracic continuation — not extreme
-            upperChest: eulerDegToQuat(-5, 0, 0), // Gentle upper curve
-            neck: eulerDegToQuat(-8, 0, 0), // Cervical extension follows spine
-            head: eulerDegToQuat(-5, 0, 0), // Gaze upward
-            leftShoulder: eulerDegToQuat(-3, 0, -8), // Clavicles back — opens chest
-            rightShoulder: eulerDegToQuat(-3, 0, 8),
-            leftUpperArm: eulerDegToQuat(15, -10, 30), // Arms forward/out as counterbalance
-            rightUpperArm: eulerDegToQuat(15, 10, -30),
-            leftLowerArm: eulerDegToQuat(0, -25, 0), // Relaxed bend
-            rightLowerArm: eulerDegToQuat(0, 25, 0),
-            leftUpperLeg: eulerDegToQuat(5, 0, -6), // Wider stance for stability
-            rightUpperLeg: eulerDegToQuat(5, 0, 6),
-            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Bent knees — absorb backward lean
+            hips: eulerDegToQuat(6, 0, 0), // Pelvis tips back a little
+            spine: eulerDegToQuat(14, 0, 0), // Lumbar extension: the arch itself
+            chest: eulerDegToQuat(11, 0, 0),
+            upperChest: eulerDegToQuat(8, 0, 0),
+            neck: eulerDegToQuat(4, 0, 0), // Gaze up, neck not cranked
+            head: eulerDegToQuat(5, 0, 0),
+            leftShoulder: eulerDegToQuat(0, 0, -4), // Clavicles back: the chest opens
+            rightShoulder: eulerDegToQuat(0, 0, 4),
+            leftUpperArm: eulerDegToQuat(-14, 0, 74), // Arms down and a little behind
+            rightUpperArm: eulerDegToQuat(-14, 0, -74),
+            leftLowerArm: eulerDegToQuat(0, -12, 0),
+            rightLowerArm: eulerDegToQuat(0, 12, 0),
+            leftUpperLeg: eulerDegToQuat(-4, 0, -4), // Thighs undo the pelvis tilt
+            rightUpperLeg: eulerDegToQuat(-4, 0, 4),
+            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Soft knees take the lean
             rightLowerLeg: eulerDegToQuat(-10, 0, 0),
+            leftFoot: eulerDegToQuat(6, 0, 0),
+            rightFoot: eulerDegToQuat(6, 0, 0),
         },
     },
 
@@ -1255,6 +1340,7 @@ const PRESET_ORDER = [
     'lyingSprawl',
     // Adult — Ground poses
     'allFoursArched',
+    'handsKnees',
     // Adult — Core VR Simulation (Spicy Mode only)
     'missionary',
     'doggyStyle',
@@ -1786,6 +1872,156 @@ function solveCCDIK(chain, targetWorldPos, opts = {}) {
 }
 
 // =========================================================================
+// UN6. RENDERED SUPPORT SURFACES
+// =========================================================================
+// A joint is not where she touches the floor: the knee joint sits ~5 cm above the skin of the
+// knee, the wrist ~6 cm above the palm, and MO5's joint grounding left a hands-and-knees pose
+// with every support ~10 cm in the air. These read the skinned mesh itself — the vertices whose
+// strongest skin weight is a given raw bone, transformed exactly as the GPU draws them.
+
+const _dominantCache = new WeakMap();
+const _surfVertex = new THREE.Vector3();
+const _surfNear = new THREE.Vector3();
+const SKIN_ATTRS = ['getX', 'getY', 'getZ', 'getW'];
+
+/**
+ * Her skin as contact surface, computed once per avatar root: for every vertex of every skinned
+ * mesh, the skeleton index of the bone with the largest weight, or -1 when the vertex is not her
+ * surface, and every bone it leans on by more than 5 % (skin leaning on a secondary bone does not
+ * follow a posed limb).
+ *
+ * Not her surface: a vertex no triangle draws, or one far outside its bone's spread in the bind
+ * pose. AvatarSample_A's tights carry a 28 cm wide strip at floor level 30 cm out from the right
+ * foot (drawn, but cut out by the texture's alpha); read as "the lowest point of her foot", it
+ * held her body 19 cm off the floor when she lay on her back. Each vertex's bind-pose distance
+ * from its bone's segment (joint to child joint) is pooled per bone over all her meshes, and a
+ * vertex beyond 2 × the 95th percentile + 3 cm is an outlier: real skin (shoe soles included) is
+ * within ~11 cm of the segment, the strip ~30 cm. Outliers are kept for the standing-sole
+ * reference — the sole is an extreme by definition, and the strip lies at sole level standing.
+ */
+function skinOfAvatar(root) {
+    let cached = _dominantCache.get(root);
+    if (cached) return cached;
+    const meshes = [];
+    root.traverse((mesh) => {
+        if (mesh.isSkinnedMesh && mesh.skeleton && mesh.geometry?.attributes?.position) meshes.push(mesh);
+    });
+    const v = new THREE.Vector3();
+    const spread = new Map(); // bone object → bind distances
+    const per = new Map();
+    for (const mesh of meshes) {
+        const geometry = mesh.geometry;
+        const si = geometry.attributes.skinIndex;
+        const sw = geometry.attributes.skinWeight;
+        const pos = geometry.attributes.position;
+        if (!si || !sw) continue;
+        const dominant = new Int16Array(si.count);
+        const others = new Int16Array(si.count * 4).fill(-1);
+        const dist = new Float32Array(si.count);
+        const drawn = new Uint8Array(si.count);
+        const index = geometry.index;
+        if (index) for (let t = 0; t < index.count; t++) drawn[index.getX(t)] = 1;
+        else drawn.fill(1);
+        const bones = mesh.skeleton.bones;
+        const joints = (mesh.skeleton.boneInverses || []).map((inv) =>
+            new THREE.Vector3().setFromMatrixPosition(inv.clone().invert())
+        );
+        // Each bone as a segment, joint → its first child joint, in the bind pose.
+        const ends = bones.map((bone, b) => {
+            const c = bones.findIndex((x) => x && x.parent === bone);
+            return c >= 0 && joints[c] ? joints[c] : joints[b];
+        });
+        const segment = new THREE.Line3();
+        const closest = new THREE.Vector3();
+        const bind = mesh.bindMatrix || new THREE.Matrix4();
+        for (let i = 0; i < si.count; i++) {
+            let best = 0;
+            let weight = -1;
+            for (let k = 0; k < 4; k++) {
+                const w = sw[SKIN_ATTRS[k]](i);
+                const b = si[SKIN_ATTRS[k]](i);
+                if (w > 0.05) others[i * 4 + k] = b;
+                if (w > weight) {
+                    weight = w;
+                    best = b;
+                }
+            }
+            dominant[i] = drawn[i] ? best : -1;
+            if (dominant[i] < 0 || !joints[best] || !bones[best]) continue;
+            v.fromBufferAttribute(pos, i).applyMatrix4(bind);
+            segment.set(joints[best], ends[best]);
+            segment.closestPointToPoint(v, true, closest);
+            dist[i] = v.distanceTo(closest);
+            if (!spread.has(bones[best])) spread.set(bones[best], []);
+            spread.get(bones[best]).push(dist[i]);
+        }
+        per.set(mesh, { dominant, others, dist });
+    }
+    const limit = new Map();
+    for (const [bone, list] of spread) {
+        list.sort((x, y) => x - y);
+        limit.set(bone, list[Math.min(list.length - 1, Math.floor(list.length * 0.95))] * 2 + 0.03);
+    }
+    for (const [mesh, skin] of per) {
+        const bones = mesh.skeleton.bones;
+        skin.outlier = new Uint8Array(skin.dominant.length);
+        for (let i = 0; i < skin.dominant.length; i++) {
+            const b = skin.dominant[i];
+            if (b >= 0 && bones[b] && skin.dist[i] > limit.get(bones[b])) skin.outlier[i] = 1;
+        }
+    }
+    cached = per;
+    _dominantCache.set(root, cached);
+    return cached;
+}
+
+/**
+ * Lowest world Y of the skin dominated by any of `nodes` (raw bones). With `radius`, only skin
+ * within that distance of its bone's joint counts — the knee, not the whole shin. With `body`
+ * (a Set of the raw humanoid bones), a vertex that leans on any bone outside it is skipped.
+ * Bind-pose outliers are skipped unless `withOutliers`. Null if no vertex qualifies.
+ */
+function lowestSkinY(root, nodes, radius = 0, body = null, withOutliers = false) {
+    if (!root || !nodes || !nodes.length) return null;
+    const wanted = new Set(nodes.filter(Boolean));
+    if (!wanted.size) return null;
+    let lowest = Infinity;
+    root.updateMatrixWorld(true);
+    const skins = skinOfAvatar(root);
+    for (const [mesh, skin] of skins) {
+        if (!mesh.visible || typeof mesh.boneTransform !== 'function') continue;
+        let shown = true;
+        for (let n = mesh; n; n = n.parent) if (n.visible === false) shown = false;
+        if (!shown) continue;
+        const bones = mesh.skeleton.bones;
+        const hit = new Map();
+        for (let b = 0; b < bones.length; b++) if (wanted.has(bones[b])) hit.set(b, bones[b]);
+        if (!hit.size) continue;
+        const inBody = body ? bones.map((b) => body.has(b)) : null;
+        mesh.skeleton.update();
+        const position = mesh.geometry.attributes.position;
+        for (let i = 0; i < skin.dominant.length; i++) {
+            const bone = hit.get(skin.dominant[i]);
+            if (!bone || (!withOutliers && skin.outlier[i])) continue;
+            if (inBody) {
+                let stray = false;
+                for (let k = 0; k < 4; k++) {
+                    const b = skin.others[i * 4 + k];
+                    if (b >= 0 && !inBody[b]) stray = true;
+                }
+                if (stray) continue;
+            }
+            _surfVertex.fromBufferAttribute(position, i);
+            mesh.boneTransform(i, _surfVertex);
+            _surfVertex.applyMatrix4(mesh.matrixWorld);
+            if (radius > 0 && _surfVertex.distanceTo(bone.getWorldPosition(_surfNear)) > radius) continue;
+            if (_surfVertex.y < lowest) lowest = _surfVertex.y;
+        }
+    }
+    return Number.isFinite(lowest) ? lowest : null;
+}
+
+// =========================================================================
 // SPRING DAMPER (smooth bone rotation interpolation)
 // =========================================================================
 
@@ -1848,6 +2084,11 @@ export class VRPoseSystem {
         this._groundPending = false;
         this._hipsPositionFrom = null;
         this._hipsPositionTo = null;
+        // UN6. The plane her soles stand on (skinned, measured once per avatar), and a pose with
+        // `support` hands still to be placed on it once she has settled.
+        this._restSurfaceFloor = null;
+        this._supportPending = false;
+        this.lastSupport = null;
 
         // Spring dampers (one per bone for smooth movement)
         this._springs = new Map();
@@ -1976,6 +2217,7 @@ export class VRPoseSystem {
         if (!this._own || !this._own.isClaimed()) return false;
         if (this._activeIKTarget) this.endIK();
         this._isBlending = false;
+        this._supportPending = false;
         this._hipsPositionFrom = null;
         this._hipsPositionTo = null;
         this._releaseCloth();
@@ -2103,6 +2345,203 @@ export class VRPoseSystem {
         }
         // MO5. Where her lowest joint is when she stands: the floor every posture is measured against.
         this._restLowest = this._lowestJointY();
+        // UN6. And where her soles actually are — the plane a supported pose rests on.
+        this._restSurfaceFloor = null;
+        try {
+            this._restSurfaceFloor = lowestSkinY(
+                this.avatarRoot,
+                ['leftFoot', 'rightFoot', 'leftToes', 'rightToes'].map((k) => this._rawNode(k)),
+                0,
+                new Set(this._bodyNodes()),
+                true
+            );
+        } catch (e) {
+            console.warn('[VRPoseSystem] sole surface not measured', e);
+        }
+    }
+
+    /** UN6. The bone her mesh is skinned to (raw for a VRM), including bones this system does not drive. */
+    _rawNode(key) {
+        const humanoid = this._humanoid();
+        try {
+            const raw = humanoid && typeof humanoid.getRawBoneNode === 'function' ? humanoid.getRawBoneNode(key) : null;
+            if (raw) return raw;
+        } catch (_e) {
+            /* fall through to the bones this system resolved */
+        }
+        return this._visualBones.get(key) || this._bones.get(key) || null;
+    }
+
+    /** UN6. The normalized node of any humanoid bone (fingers too), or null. */
+    _normNode(key) {
+        if (this._bones.has(key)) return this._bones.get(key);
+        const humanoid = this._humanoid();
+        try {
+            return (humanoid && humanoid.getNormalizedBoneNode && humanoid.getNormalizedBoneNode(key)) || null;
+        } catch (_e) {
+            return null;
+        }
+    }
+
+    /**
+     * UN6. Make her skin show what this system just wrote, or say it cannot. The mesh is skinned
+     * by the raw bones; this system writes the normalized rig, and three-vrm copies it across
+     * only in `vrm.update()` (next frame) and only while `autoUpdateHumanBones` is on. Read
+     * before that copy, the skin is the PREVIOUS pose: the motion audit's instant presets
+     * (Pose Studio, no claim) were each grounded on the last one and her hips climbed to 5 m.
+     * Held: the claim's sync. Pose Studio (copy on): the same copy, now. Neither: the skin is the
+     * idle animator's, not this pose — false, and grounding falls back to joints.
+     */
+    _skinFollowsPose() {
+        if (this._own && this._own.isClaimed()) return this._own.sync() !== false;
+        const humanoid = this._humanoid();
+        const PS = typeof window !== 'undefined' ? window.NEXUS_PUPPET_SKELETON : null;
+        if (humanoid && humanoid.autoUpdateHumanBones && PS && typeof PS.sync === 'function') {
+            return PS.sync(humanoid) !== false;
+        }
+        return false;
+    }
+
+    /** UN6. Bring the skin up to date with what this system wrote, then read a support surface. */
+    _supportSkinY(keys) {
+        if (!this._skinFollowsPose()) return null;
+        let lowest = null;
+        for (const key of keys) {
+            // A lower leg rests on its knee: only skin near the joint counts, not the shin or ankle.
+            const y = lowestSkinY(
+                this.avatarRoot,
+                [this._rawNode(key)],
+                /LowerLeg$/.test(key) ? 0.12 : 0,
+                new Set(this._bodyNodes())
+            );
+            if (y != null && (lowest == null || y < lowest)) lowest = y;
+        }
+        return lowest;
+    }
+
+    /** UN6. Every raw humanoid bone: the skin that follows a pose. */
+    _bodyNodes() {
+        const humanoid = this._humanoid();
+        const names = humanoid && humanoid.humanBones ? Object.keys(humanoid.humanBones) : [];
+        const nodes = names.length ? names.map((k) => this._rawNode(k)) : [...this._visualBones.values()];
+        return nodes.filter(Boolean);
+    }
+
+    /** UN6. Lowest rendered point of her whole body (every humanoid bone's skin). */
+    _bodySkinY() {
+        if (!this._skinFollowsPose()) return null;
+        const nodes = this._bodyNodes();
+        return lowestSkinY(this.avatarRoot, nodes, 0, new Set(nodes));
+    }
+
+    /**
+     * UN6. Palm down, fingers forward, as a rotation in the avatar's own frame (the hips'
+     * parent). The normalized rig has identity rest rotations and VRM's rest is a T-pose with the
+     * palms down, so turning the rest hand about "up" until its fingers point the way she faces
+     * is exactly palm-down-fingers-forward — derived from this avatar's bones, not typed.
+     */
+    _palmDownFrame(handKey) {
+        const left = this._bones.get('leftUpperLeg');
+        const right = this._bones.get('rightUpperLeg');
+        if (!left || !right) return null;
+        const up = new THREE.Vector3(0, 1, 0);
+        const lr = left.position.clone().sub(right.position).setY(0);
+        if (lr.lengthSq() < 1e-8) return null;
+        lr.normalize();
+        const forward = lr.clone().cross(up).normalize();
+        const side = handKey === 'leftHand' ? 'left' : 'right';
+        const middle = this._normNode(side + 'MiddleProximal');
+        const fingers = middle ? middle.position.clone().setY(0) : new THREE.Vector3();
+        if (fingers.lengthSq() < 1e-8) fingers.copy(lr).multiplyScalar(side === 'left' ? 1 : -1);
+        fingers.normalize();
+        return new THREE.Quaternion().setFromUnitVectors(fingers, forward);
+    }
+
+    /** UN6. A hand's local rotation that gives `frameQuat` under the given parent rotation (avatar frame). */
+    static _localFor(parentFrameQuat, frameQuat) {
+        return parentFrameQuat.clone().invert().multiply(frameQuat);
+    }
+
+    /**
+     * UN6. The target hand rotations of a `support.reach` preset, from the targets of every bone
+     * above the hand — computed before the blend so the hands ease into place with the body.
+     */
+    _reachTargets(preset) {
+        const reach = preset.support && preset.support.reach;
+        if (!reach) return;
+        const keyOf = new Map();
+        for (const [key, bone] of this._bones) keyOf.set(bone, key);
+        const hips = this._bones.get('hips');
+        for (const handKey of reach) {
+            const hand = this._bones.get(handKey);
+            const frame = this._palmDownFrame(handKey);
+            if (!hand || !frame) continue;
+            const parent = new THREE.Quaternion();
+            const chain = [];
+            for (let node = hand.parent; node; node = node.parent) {
+                chain.unshift(node);
+                if (node === hips) break;
+            }
+            for (const node of chain) {
+                const key = keyOf.get(node);
+                parent.multiply((key && this._blendTo.get(key)) || node.quaternion);
+            }
+            this._blendTo.set(handKey, VRPoseSystem._localFor(parent, frame));
+        }
+    }
+
+    /**
+     * UN6. Once a `support` pose has settled and been grounded on its `ground` contacts: turn the
+     * reaching hands palm-down, then move each to the floor with the arm chain's own CCD IK
+     * (shoulder, upper and lower arm), re-turning the hand after each pass because its parents
+     * moved. The hips are not touched. Records what it measured in `lastSupport`.
+     */
+    _placeSupportHands() {
+        const preset = POSE_PRESETS[this._currentPreset];
+        const reach = preset && preset.support && preset.support.reach;
+        if (!reach || this._restSurfaceFloor == null) return null;
+        const floor = this._restSurfaceFloor;
+        const hipsParent = this._bones.get('hips')?.parent;
+        const frameWorld = new THREE.Quaternion();
+        const report = { floor: +floor.toFixed(4), hands: {} };
+        const orient = (handKey) => {
+            const hand = this._bones.get(handKey);
+            const frame = this._palmDownFrame(handKey);
+            if (!hand || !frame || !hand.parent) return;
+            if (hipsParent) hipsParent.getWorldQuaternion(frameWorld);
+            else frameWorld.identity();
+            const parentFrame = frameWorld
+                .clone()
+                .invert()
+                .multiply(hand.parent.getWorldQuaternion(new THREE.Quaternion()));
+            hand.quaternion.copy(VRPoseSystem._localFor(parentFrame, frame));
+            hand.updateMatrixWorld(true);
+        };
+        for (const handKey of reach) {
+            const chainName = handKey === 'leftHand' ? 'leftArm' : 'rightArm';
+            const keys = IK_CHAINS[chainName].filter((k) => this._bones.has(k));
+            const chain = keys.map((k) => this._bones.get(k));
+            orient(handKey);
+            const before = this._supportSkinY([handKey]);
+            let gap = before == null ? null : before - floor;
+            for (let pass = 0; pass < 4 && gap != null && Math.abs(gap) > 0.004; pass++) {
+                const hand = this._bones.get(handKey);
+                const target = hand.getWorldPosition(new THREE.Vector3());
+                target.y -= gap;
+                solveCCDIK(chain, target, { iterations: 12, tolerance: 0.002, chainName, boneKeys: keys });
+                orient(handKey);
+                const now = this._supportSkinY([handKey]);
+                gap = now == null ? null : now - floor;
+            }
+            report.hands[handKey] = {
+                palmBeforeMm: before == null ? null : Math.round((before - floor) * 1000),
+                palmAfterMm: gap == null ? null : Math.round(gap * 1000),
+            };
+        }
+        if (this._own && this._own.isClaimed()) this._own.sync();
+        this.lastSupport = Object.assign(this.lastSupport || {}, report, { preset: this._currentPreset });
+        console.log(`[VRPoseSystem] UN6 support placed: ${JSON.stringify(this.lastSupport)}`);
+        return this.lastSupport;
     }
 
     /**
@@ -2141,10 +2580,38 @@ export class VRPoseSystem {
     _groundSettledPose() {
         if (!this.autoGround || this._restLowest == null) return false;
         const hipsBone = this._bones.get('hips');
-        const lowest = this._lowestJointY();
-        if (!hipsBone || !hipsBone.parent || lowest == null) return false;
-        const floating = lowest - this._restLowest;
-        if (floating < 0.03) return false;
+        if (!hipsBone || !hipsBone.parent) return false;
+        // UN6. Grounded on rendered skin, not joints. MO5 lowered the lowest JOINT to the height
+        // of her standing toe joint; on AvatarSample_A that left kneeling with the knees' skin
+        // 12-14 cm in the air and hands-and-knees ~10 cm up (the front camera hid both). Now the
+        // lowest skinned point of her body — or of the contacts a preset names in
+        // `support.ground` — is put on the plane her standing soles rest on, raised as well as
+        // lowered. Joint grounding stays the fallback when the skin cannot be read.
+        const preset = POSE_PRESETS[this._currentPreset];
+        const ground = preset && preset.support && preset.support.ground;
+        let floating = null;
+        if (this._restSurfaceFloor != null) {
+            try {
+                const skin = ground ? this._supportSkinY(ground) : this._bodySkinY();
+                if (skin != null) floating = skin - this._restSurfaceFloor;
+            } catch (e) {
+                console.warn('[VRPoseSystem] skin not measured; joint grounding instead', e);
+            }
+            if (floating != null) {
+                this.lastSupport = {
+                    preset: this._currentPreset,
+                    groundBeforeMm: Math.round(floating * 1000),
+                    floor: +this._restSurfaceFloor.toFixed(4),
+                };
+                if (Math.abs(floating) < 0.006) return false;
+            }
+        }
+        if (floating == null) {
+            const lowest = this._lowestJointY();
+            if (lowest == null) return false;
+            floating = lowest - this._restLowest;
+            if (floating < 0.03) return false;
+        }
         const world = new THREE.Vector3();
         hipsBone.getWorldPosition(world);
         const from = hipsBone.parent.worldToLocal(world.clone());
@@ -2288,6 +2755,16 @@ export class VRPoseSystem {
         this._currentPreset = presetName;
         // MO5. A preset that places her hips itself is left alone; every other one is grounded.
         this._groundPending = !preset.hipsPosition;
+        // UN6. Hands that support her turn palm-down with the blend, and reach the floor after it.
+        this.lastSupport = null;
+        this._supportPending = Boolean(preset.support && preset.support.reach);
+        if (this._supportPending) {
+            try {
+                this._reachTargets(preset);
+            } catch (e) {
+                console.warn('[VRPoseSystem] support hand targets skipped', e);
+            }
+        }
 
         // Notify desktop UI so dropdown stays synced
         window.dispatchEvent(new CustomEvent('vr-pose-changed', { detail: { preset: presetName } }));
@@ -2316,6 +2793,7 @@ export class VRPoseSystem {
                     this._isBlending = false;
                 }
             }
+            this._finishSupport();
             this._settleCloth();
             console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
             return;
@@ -2609,9 +3087,28 @@ export class VRPoseSystem {
                 this._groundPending = false;
                 if (this._groundSettledPose()) return; // cloth is corrected once she is down
             }
+            this._finishSupport();
             this._settleCloth();
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
         }
+    }
+
+    /** UN6. Once per settled `support` pose: place the reaching hands. Fail soft — she keeps the pose. */
+    _finishSupport() {
+        if (!this._supportPending) return;
+        this._supportPending = false;
+        try {
+            this._placeSupportHands();
+        } catch (e) {
+            console.warn('[VRPoseSystem] support hands not placed', e);
+        }
+    }
+
+    /** UN6. Is the pose system still moving her (blend, grounding, hands, release ease)? */
+    isSettling() {
+        return Boolean(
+            this._isBlending || this._groundPending || this._supportPending || (this._own && this._own.isBlending())
+        );
     }
 
     _updateSprings(_dt) {

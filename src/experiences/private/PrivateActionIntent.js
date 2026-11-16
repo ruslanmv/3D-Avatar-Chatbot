@@ -310,15 +310,50 @@
     /**
      * PX14. "Togliti il vestito", "spogliati": in this app that is a change into underwear, made by
      * the same wardrobe as any other outfit and behind the same private-outfit gate — never a
-     * removal the avatar cannot show. Without this the request reached the model as talk and she
+     * removal the avatar cannot show. UN1: it is `wardrobe.undress`, one layer at a time, open
+     * only at the top of the evening's pace. Without this the request reached the model as talk and she
      * described undressing while the avatar stayed exactly as she was.
      */
     const UNDRESS = new RegExp(
         `^(?:${word(
-            'togliti|toglierti|levati|spogliati|svestiti|take off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
+            // UN18. The reported session: "Togliete vestiti" (plural imperative, no article) moved
+            // nothing and she said "li tolgo". Clothes named, so "togli la musica" stays music.
+            'togliete(?:vi)? (?:(?:i |tutti i )?(?:vestiti|abiti))|toglietevi|togli (?:i |tutti i )?(?:vestiti|abiti)|spogliatevi|svestitevi|levatevi (?:i )?(?:vestiti|abiti)|' +
+                'togliti|toglierti|levati|spogliati|svestiti|take off|take (?:\\S+ ){0,3}?\\S+ off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
         )})`,
         'iu'
     );
+
+    /** UN1. "All of it": straight to the last layer she has, not one at a time. */
+    const UNDRESS_ALL = new RegExp(
+        `${word(
+            'everything|all of it|completely|all the way|tutto|tutta|completamente|del tutto|todo|toda|completamente|tout|complètement|entièrement|alles|ganz|komplett|tudo|toda'
+        )}|全部|すべて|全部脱|다 벗|모두|全部脱|都脱`,
+        'iu'
+    );
+
+    /**
+     * UN7. Asked to be seen naked, in words that are not a verb of undressing: "I wanna see you
+     * naked", "get naked", "strip for me", "voglio vederti nuda", "senza vestiti". Reported: at
+     * level 4 "Please, I wanna see you naked" parsed as nothing, no wardrobe action ran, and her
+     * reply said she was undressing while the avatar stayed dressed. These are the "everything
+     * off" step; `nude` counts only with a person ("you nude", "get nude") because it is a colour
+     * too ("the nude heels").
+     */
+    const NAKED = new RegExp(
+        [
+            '\\bnaked\\b|\\b(?:get|be|go|stay|see you|you)\\s+(?:completely\\s+|totally\\s+|fully\\s+)?nude\\b|^strip(?:\\s+(?:for me|down|naked|off|now|please))*[\\s.!,]*$|\\bstrip (?:for me|down|naked|off)\\b',
+            '\\bnud[ao]\\b|\\bnude\\b(?=.*\\b(?:ti|te|vederti|mostrati)\\b)|\\bsenza (?:vestiti|niente addosso|nulla addosso)\\b|\\bspogliata del tutto\\b',
+            '\\bdesnud[ao]\\b|\\bsin (?:ropa|nada puesto)\\b|\\bencuérate\\b',
+            '\\b(?:toute )?nue\\b|\\bsans (?:vêtements|rien sur (?:toi|vous))\\b',
+            '\\bnackt\\b|\\bohne (?:kleider|kleidung)\\b',
+            '\\bnua\\b|\\bpelad[ao]\\b|\\bsem roupa\\b',
+            '裸|알몸|벗은 몸|光着|裸体',
+        ].join('|'),
+        'iu'
+    );
+    /** "Are you naked?" asks about her state; it is not a request. */
+    const ASKS_STATE = /^(?:are you|you are|sei|tu sei|estás|tu es|es-tu|bist du|du bist|você está|voce esta)\b/iu;
 
     const CHANGE_OUTFIT = new RegExp(
         word(
@@ -383,6 +418,229 @@
     /** "yes" to something she offered, in the app's languages — a short message and nothing else. */
     const YES =
         /^(?:yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|volentieri|oui|d[’']accord|vas-y|ja|klar|gern|mach das|sim|claro|pode|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行)(?:[\s,]+(?:please|per favore|por favor|bitte|grazie|thanks))?[\s.!]*$/iu;
+
+    /**
+     * UN4. Going somewhere else, in their words. A verb of going (or "take me") must start the
+     * message; the destination is a keyword the bridge resolves against the places this device
+     * can show — never a world id typed by anybody. With no destination named it is `elsewhere`:
+     * the bridge turns that into her invitation to tonight's destination, which their yes takes.
+     */
+    const GO_VERB = new RegExp(
+        `^(?:${word(
+            "let[’']?s go|let us go|shall we go|can we go|could we go|take me|bring me|go to|we could go|andiamo|andiamocene|portami|possiamo andare|potremmo andare|podemos ir|on peut aller|können wir (?:gehen|nach|zu)|podemos ir|vamos|vámonos|vamonos|llévame|llevame|allons|on va|emmène-moi|emmene-moi|lass uns gehen|lass uns|gehen wir|bring mich|bora|leva-me|me leva|vamos para"
+        )})`,
+        'iu'
+    );
+    const GO_CJK = /行こう|に行きたい|連れて行って|가자|데려가|我们去|带我去|走吧/u;
+    const PLACE_WORDS = [
+        ['hotel', 'hotel|hôtel|albergo|suite|ホテル|호텔|酒店|宾馆'],
+        [
+            'apartment',
+            'apartment|flat|appartamento|apartamento|appartement|wohnung|casa tua|casa mia|da te|da me|chez toi|chez moi|zu dir|zu mir|tua casa|your place|my place|部屋|아파트|집|公寓',
+        ],
+        [
+            'bedroom',
+            'bedroom|camera da letto|in camera|dormitorio|habitación|chambre|schlafzimmer|quarto|寝室|침실|卧室',
+        ],
+        ['motel', 'motel'],
+        ['discoteca', 'discoteca|disco|nightclub|club|boîte|ディスコ|클럽|夜店'],
+        ['cabaret', 'cabaret|cabaré|カバレー'],
+        ['rooftop', 'rooftop|terrazza|tetto|azotea|toit|dachterrasse|屋上|옥상|天台'],
+        ['street', 'street|strada|calle|rue|straße|strasse|rua|街|거리'],
+    ];
+    const ELSEWHERE = new RegExp(
+        `${word(
+            "somewhere(?: else| quieter)?|elsewhere|another place|out of here|altrove|da un[’']?altra parte|un altro posto|un posto più tranquillo|via di qui|a otro sitio|a otro lugar|ailleurs|autre part|woanders(?:hin)?|outro lugar"
+        )}|どこか|다른 곳|别的地方`,
+        'iu'
+    );
+
+    function travelFrom(body) {
+        if (!GO_VERB.test(body) && !GO_CJK.test(body)) return null;
+        for (const [key, words] of PLACE_WORDS)
+            if (
+                new RegExp(
+                    `${word(words)}|${
+                        words
+                            .split('|')
+                            .filter((w) => /[\u3040-\u9fff\uac00-\ud7af]/u.test(w))
+                            .join('|') || '(?!)'
+                    }`,
+                    'iu'
+                ).test(body)
+            )
+                return action('world.travel', { world: key }, 'world');
+        if (ELSEWHERE.test(body)) return action('world.travel', { world: 'elsewhere' }, 'world');
+        return null;
+    }
+
+    /**
+     * UN5. Her body's positions, in neutral words, nine languages. Plain "sdraiati" / "lie down"
+     * stays the lie-down motion it always was; only "on your back / front / side" is a held pose.
+     * "Alzati" / "stand up" lets go of a held pose — and only when one is held, so it is still the
+     * ordinary stand-up motion otherwise.
+     */
+    const POSE_WORDS = [
+        [
+            // The everyday adult name for the same static position maps to it too (owner
+            // decision): the pose, held, nothing more — and it opens only where all fours does.
+            'all-fours',
+            '(?:mettiti |get |go )?(?:a |on )?(?:quattro zampe|all fours|pecorina)|(?:in )?doggy(?: style)?|a cuatro patas|a lo perrito|en perrito|à quatre pattes|en levrette|auf alle viere|de quatro|de gatas',
+            /四つん這い|四つんばい|네\s?발로|跪趴|趴在床上/u,
+        ],
+        [
+            'kneel',
+            'inginocchiati|in ginocchio|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
+            /跪いて|ひざまずいて|무릎\s?꿇어|跪下/u,
+        ],
+        [
+            'lie-back',
+            '(?:sdraiati |stenditi |mettiti )?(?:sulla schiena|a pancia in su)|(?:lie |lay )?on your back|(?:túmbate |acuéstate )?boca arriba|sur le dos|auf den rücken|de costas|barriga para cima',
+            /仰向け|똑바로\s?누워|躺平|仰躺/u,
+        ],
+        [
+            'lie-front',
+            '(?:sdraiati |stenditi |mettiti )?(?:a pancia in giù|sulla pancia|a pancia sotto)|(?:lie |lay )?on your (?:stomach|front|belly)|(?:túmbate |acuéstate )?boca abajo|sur le ventre|auf den bauch|de bruços',
+            /うつ伏せ|엎드려|趴着|趴下/u,
+        ],
+        [
+            'lie-side',
+            '(?:sdraiati |stenditi |mettiti )?sul fianco|(?:lie |lay )?on your side|(?:túmbate |acuéstate )?de lado|de costado|sur le côté|auf die seite',
+            /横向き|옆으로\s?누워|侧躺/u,
+        ],
+        [
+            'bend-forward',
+            'piegati(?: in avanti)?|chinati|bend over|bend forward|lean forward|inclínate|inclinate|agáchate|agachate|penche-toi|beug dich vor|bück dich|inclina-te|curva-te',
+            /前かがみ|かがんで|숙여|弯腰|俯身/u,
+        ],
+        [
+            'arch-back',
+            'inarca la schiena|arch your back|arquea la espalda|cambre-toi|mach ein hohlkreuz|arqueia as costas',
+            /背中を反らして|허리를\s?젖혀|弯起背/u,
+        ],
+    ];
+    const STAND_WORDS = new RegExp(
+        `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
+        'iu'
+    );
+    const TURN_WORDS = new RegExp(
+        `^(?:(?:adesso|ora|now|ahora|maintenant|jetzt|agora)\\s+)?(?:${word(
+            'girati|voltati|gira ti|turn around|turn round|show me your back|let me see your back|fammi vedere la schiena|mostrami la schiena|date la vuelta|date vuelta|muéstrame la espalda|muestrame la espalda|retourne-toi|tourne-toi|montre-moi ton dos|dreh dich um|zeig mir deinen rücken|vira-te|mostra-me as costas'
+        )})`,
+        'iu'
+    );
+    const TURN_CJK = /振り向いて|後ろを向いて|背中を見せて|뒤돌아|등\s?보여\s?줘|转过身|转身|让我看看你的背/u;
+
+    /** "Torna come prima" — the previous position, while one is held. */
+    const AS_BEFORE = new RegExp(
+        `^(?:${word('torna come prima|come prima|come eri prima|as before|like before|as you were|go back to how you were|como antes|vuelve como antes|comme avant|reviens comme avant|wie vorher|wie eben|como estavas')})|元に戻って|아까처럼|像刚才那样`,
+        'iu'
+    );
+    const REDRESS = new RegExp(
+        `^(?:${word(
+            'rivestiti|vestiti di nuovo|rimettiti (?:i vestiti|il vestito|le tue cose)|get dressed(?: again)?|dress again|put (?:your|the) clothes (?:back )?on|put your clothes back on|vuelve a vestirte|vístete de nuevo|vistete de nuevo|ponte la ropa|rhabille-toi|zieh dich wieder an|veste-te de novo|volta a vestir'
+        )})|服を着て|옷\s?입어|옷을\s?입어|穿上衣服|穿好衣服|把衣服穿上`,
+        'iu'
+    );
+
+    /** "Ho finito", "I'm done": a lead before "rivestiti", or alone once something came off. */
+    const DONE = new RegExp(
+        `^(?:${word("ho finito|abbiamo finito|i[’']?m done|i am done|we[’']?re done|he terminado|terminé|j[’']ai fini|ich bin fertig|terminei|acabei")})(?:[\\s,.!]+|$)`,
+        'iu'
+    );
+    const DONE_CJK = /^(?:終わった|終わり|끝났어|다\s?했어|我好了|结束了)/u;
+
+    function bodyFrom(body, context) {
+        const c = context || {};
+        const rest = body.replace(DONE, '').trim();
+        if (REDRESS.test(rest)) return action('wardrobe.redress', {}, 'wardrobe');
+        if (
+            c.undressed &&
+            (DONE.test(body) || DONE_CJK.test(body)) &&
+            rest.split(' ').length <= 3 &&
+            !REDRESS.test(rest)
+        )
+            return action('wardrobe.redress', {}, 'wardrobe');
+        for (const [key, words, cjk] of POSE_WORDS)
+            if (new RegExp(`^(?:${word(words)})`, 'iu').test(body) || cjk.test(body))
+                return action('avatar.pose', { pose: key }, 'avatar');
+        if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
+        if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
+        // While she holds a position, turning keeps it (her whole body turns in place).
+        if (c.poseHeld && (TURN_WORDS.test(body) || TURN_CJK.test(body)))
+            return action('avatar.pose', { pose: 'turn' }, 'avatar');
+        return null;
+    }
+
+    /** "Andiamo!", "volentieri" — a yes to going, in particular. */
+    const GO_YES = new RegExp(
+        `^(?:${word(
+            "andiamo|volentieri|let[’']?s go|let[’']?s do it|vamos|vámonos|vamonos|allons-y|on y va|gehen wir|los geht[’']?s|bora|vamos lá"
+        )}|行こう|가자|走吧)`,
+        'iu'
+    );
+    const GO_YES_ANYWHERE = new RegExp(GO_YES.source.replace(/^\^/, ''), 'iu');
+    /**
+     * UN6. A refusal or a delay anywhere in the answer: not a yes to going, whatever else it says.
+     * Found in the real browser: "Let's stay here a little longer" took her to the bedroom (a bare
+     * "let's" counted as yes), and "No, non andiamo", "Aspetta, andiamo dopo" and "Not yet, let's
+     * wait" would have too. "Why not" / "perché no" are yeses, and are taken out before the check.
+     */
+    const GO_NOT_NOW = new RegExp(
+        word(
+            "no|non|not|don[’']?t|never|stay|wait|later|yet|restiamo|rimaniamo|resta|aspetta|dopo|più tardi|ancora no|quedemos|quedémonos|espera|luego|todavía no|restons|attends|plus tard|pas encore|bleiben|bleib|warte|später|noch nicht|ficamos|fiquemos|depois|ainda não|nicht|pas"
+        ),
+        'iu'
+    );
+    const WHY_NOT = new RegExp(
+        word('why not|perché no|perchè no|por qué no|porque no|pourquoi pas|warum nicht|por que não'),
+        'giu'
+    );
+    function affirmsGoing(text) {
+        const said = clean(text);
+        if (!said) return false;
+        if (GO_NOT_NOW.test(said.replace(WHY_NOT, ' '))) return false;
+        WHY_NOT.lastIndex = 0;
+        if (WHY_NOT.test(said)) return true;
+        if (said.split(' ').length > 6 || NEGATED.test(said)) return affirms(text);
+        return GO_YES_ANYWHERE.test(said) || affirms(text);
+    }
+
+    /**
+     * UN9. The evening's own cues, which move no world, outfit or music: "si è fatto tardi" asks
+     * for the epilogue (she winds down, proposes nothing new — the person still decides when it
+     * ends), and "dimentica le nostre serate" asks her to forget past evenings (StoryWeaver's
+     * between-evenings history: catalogue ids, never words). Returns 'epilogue', 'forget' or null.
+     */
+    const EPILOGUE = new RegExp(
+        [
+            'si (?:è|e) fatto tardi|(?:è|e) tardi|si sta facendo tardi|ultimo ballo|ultimo bicchiere|chiudiamo (?:in bellezza|la serata)|la serata (?:sta )?(?:finendo|per finire)',
+            "it[’']?s (?:getting )?late|getting late|last dance|last drink|wind (?:it )?down|wrap (?:it )?up|the night is (?:almost )?over",
+            'se (?:está )?hac(?:e|iendo) tarde|es tarde|último baile|última copa',
+            'il se fait tard|il est tard|dernière danse|dernier verre',
+            'es wird spät|es ist spät|letzter tanz',
+            'está ficando tarde|(?:já )?é tarde|última dança',
+        ].join('|'),
+        'iu'
+    );
+    const FORGET_STORIES = new RegExp(
+        [
+            'dimentica (?:le nostre |le )?(?:serate|storie|notti)',
+            'forget (?:our |the |my |all our )?(?:evenings|nights|stories)',
+            'olvida (?:nuestras |las )?(?:noches|historias|veladas)',
+            'oublie (?:nos |les )?(?:soirées|nuits|histoires)',
+            'vergiss (?:unsere |die )?(?:abende|nächte|geschichten)',
+            'esquece (?:as nossas |as )?(?:noites|histórias|serões)',
+        ].join('|'),
+        'iu'
+    );
+    function storyCue(text) {
+        const said = clean(text);
+        if (!said || NEGATED.test(said)) return null;
+        if (FORGET_STORIES.test(said)) return 'forget';
+        if (EPILOGUE.test(said)) return 'epilogue';
+        return null;
+    }
 
     function affirms(text) {
         return YES.test(clean(text));
@@ -453,6 +711,15 @@
             !['playing', 'loading', 'searching'].includes(c.musicStatus)
         )
             return action('music.play', { query: '', again: true }, 'music');
+        // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
+        const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
+        if (posed) return posed;
+        // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
+        if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
+            return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');
+        // UN4. "Possiamo andare altrove?" is a request put as a question; going is never talk.
+        const goingFirst = travelFrom(body);
+        if (goingFirst && !NEGATED.test(body)) return goingFirst;
         // A question is talk, unless it was put as "can you …?".
         const question = /[?？]\s*$/u.test(said);
         if (question && !askedPolitely) return null;
@@ -482,7 +749,10 @@
             if (!BARE_UNDO.test(body) || c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
         }
         if (UNDRESS.test(body) || /脱いで|벗어|脱掉/u.test(body)) {
-            return action('wardrobe.wear', { style: 'lingerie', words: bare.slice(0, 120) }, 'wardrobe');
+            // UN1. One layer at a time unless they say "all of it"; the policy decides whether the
+            // evening is there yet (level 4), and the bridge picks the layer from her own looks.
+            const step = UNDRESS_ALL.test(body) ? 'all' : 'next';
+            return action('wardrobe.undress', { step, words: bare.slice(0, 120) }, 'wardrobe');
         }
         if (CHANGE_OUTFIT.test(body) || CHANGE_OUTFIT_CJK.test(body)) {
             const wanted = wardrobeFrom(bare);
@@ -581,7 +851,22 @@
         return null;
     }
 
-    const api = { parse, topic, affirms, queryFrom, stylesIn, coloursIn, garmentsIn, GARMENTS, STYLES, COLOURS };
+    const api = {
+        parse,
+        topic,
+        affirms,
+        affirmsGoing,
+        storyCue,
+        travelFrom,
+        bodyFrom,
+        queryFrom,
+        stylesIn,
+        coloursIn,
+        garmentsIn,
+        GARMENTS,
+        STYLES,
+        COLOURS,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTION_INTENT = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

@@ -55,7 +55,29 @@
             ]
         },
         "fails": 0,
-        "unzoned": []
+        "unzoned": [
+            "cinema",
+            "cinema-light",
+            "hotel-lobby",
+            "hotel-lobby-light",
+            "hotel-bathroom",
+            "restaurant",
+            "restaurant-light",
+            "cocktail-bar",
+            "swimming-pool",
+            "swimming-pool-light",
+            "sports-hall",
+            "sports-hall-light",
+            "soccer-ground",
+            "guild-tavern",
+            "guild-tavern-light",
+            "dungeon",
+            "jungle-ruins",
+            "jungle-ruins-light",
+            "shopping-street",
+            "school",
+            "school-light"
+        ]
     },
     "zones": [
         {
@@ -176,7 +198,7 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 3,
             "preview": {
                 "src": "previews/neon-street.webp",
                 "exists": true,
@@ -186,15 +208,10 @@
                 {
                     "severity": "warn",
                     "text": "neon-street: VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "neon-street: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
-                "neon-street: VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version",
-                "neon-street: no measured spots: she cannot move within this place (LW2)"
+                "neon-street: VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -215,7 +232,7 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 2,
             "preview": {
                 "src": "previews/irish-pub.webp",
                 "exists": true,
@@ -224,15 +241,10 @@
             "issues": [
                 {
                     "severity": "warn",
-                    "text": "irish-pub: no measured spots: she cannot move within this place (LW2)"
-                },
-                {
-                    "severity": "warn",
                     "text": "irish-pub-light: VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
                 }
             ],
             "next": [
-                "irish-pub: no measured spots: she cannot move within this place (LW2)",
                 "irish-pub-light: VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
             ]
         },
@@ -254,21 +266,14 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 2,
             "preview": {
                 "src": "previews/neon-discoteca.webp",
                 "exists": true,
                 "bytes": 22672
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "neon-discoteca: no measured spots: she cannot move within this place (LW2)"
-                }
-            ],
-            "next": [
-                "neon-discoteca: no measured spots: she cannot move within this place (LW2)"
-            ]
+            "issues": [],
+            "next": []
         },
         {
             "id": "office",
@@ -289,7 +294,7 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 3,
             "preview": {
                 "src": "previews/office.webp",
                 "exists": true,
@@ -299,15 +304,10 @@
                 {
                     "severity": "warn",
                     "text": "office: VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "office: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
-                "office: VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version",
-                "office: no measured spots: she cannot move within this place (LW2)"
+                "office: VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -328,7 +328,7 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 2,
             "preview": {
                 "src": "previews/creative-academy.webp",
                 "exists": true,
@@ -338,15 +338,10 @@
                 {
                     "severity": "warn",
                     "text": "creative-academy: VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "creative-academy: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
-                "creative-academy: VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version",
-                "creative-academy: no measured spots: she cannot move within this place (LW2)"
+                "creative-academy: VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -369,21 +364,14 @@
                 "mobile": true,
                 "vr": true
             },
-            "spots": 0,
+            "spots": 2,
             "preview": {
                 "src": "previews/airship-dock.webp",
                 "exists": true,
                 "bytes": 32748
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "airship-dock: no measured spots: she cannot move within this place (LW2)"
-                }
-            ],
-            "next": [
-                "airship-dock: no measured spots: she cannot move within this place (LW2)"
-            ]
+            "issues": [],
+            "next": []
         },
         {
             "id": "walled-town",
@@ -528,15 +516,10 @@
                 {
                     "severity": "warn",
                     "text": "lagoon-beach: VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
-                "lagoon-beach: VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version",
-                "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
+                "lagoon-beach: VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
             ]
         },
         {

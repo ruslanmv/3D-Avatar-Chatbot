@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/lagoon-beach.glb",
+  "sha256": "b738f026f2531c97042ca6419d5653fa13c21946a2108379d579eed4717ab436",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.3,
+  "title": {
+    "en": "the lagoon",
+    "it": "la laguna"
+  },
+  "spots": [
+    {
+      "id": "palm",
+      "label": {
+        "en": "under the palm",
+        "it": "sotto la palma"
+      },
+      "room": "beach",
+      "near": ["-coconut-palm-leaning$"],
+      "sees": {
+        "en": "a leaning coconut palm over the white sand",
+        "it": "una palma da cocco inclinata sulla sabbia bianca"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":7494,\"body\":126,\"room\":0,\"view\":0} of 7620)"
+    },
+    {
+      "id": "shore",
+      "label": {
+        "en": "at the water's edge",
+        "it": "in riva all'acqua"
+      },
+      "room": "beach",
+      "near": ["-lagoon-shallow-tile$"],
+      "sees": {
+        "en": "the clear shallow water of the lagoon",
+        "it": "l'acqua bassa e trasparente della laguna"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":6264,\"body\":27,\"room\":0,\"view\":0} of 6291)"
+    }
+  ]
+}

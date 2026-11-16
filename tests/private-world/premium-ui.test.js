@@ -119,11 +119,13 @@ describe('PUI-3. the row is the box it lives in; only the transcript gives way',
         expect(premium()).toMatch(/@media\(pointer:coarse\)\{[^}]*#nexus-playground-bar button[^}]*min-height:44px/);
     });
 
-    test('on a phone or a short screen the heading and the chip rail share one line', () => {
+    test('on a phone or a short screen the heading keeps its line and no chip rail joins it (PMA)', () => {
         view.mount({ scene: 'Private cabaret' });
         expect(premium()).toMatch(/@media\(max-height:560px\),\(max-width:767px\)\{/);
-        expect(premium()).toMatch(
-            /:has\(\.nexus-private-action-slot:not\(:empty\)\) \.nexus-private-action-slot\{grid-column:2;grid-row:1/
-        );
+        // The rail that shared the heading's line is gone: the chips live in the closed menu.
+        expect(premium()).not.toMatch(/\.nexus-private-action-slot\{grid-column:2;grid-row:1/);
+        expect(premium()).toMatch(/\.nexus-private-more\{margin-left:auto\}/);
+        const slot = document.querySelector('.nexus-private-action-slot');
+        expect(slot.closest('.nexus-private-more-panel').hidden).toBe(true);
     });
 });

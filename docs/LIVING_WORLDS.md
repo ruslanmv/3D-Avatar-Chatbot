@@ -151,3 +151,31 @@ Keep a short-lived, destination-scoped **SharedMoment** from *confirmed* world a
 - Clear/End/session exit cancels pending travel and cleans listeners; PrivacyGate unchanged.
 - Desktop/mobile and Quest checks, plus reduced-motion/seated and private-to-Copilot regression.
 - Run targeted Jest, full `npm run validate`, browser interactions, and physical-phone/headset checks when hardware is available. Report actual measurements, never inferred FPS. Do not open a pull request automatically. Keep working on this branch until the user asks otherwise.
+
+## LW6. Spots for every place
+
+LW2 measured four scenes. The places added since (VW5–VW9) and the older playgrounds had one
+position each, so "let's go to the bar" had nowhere to go. LW6 measures them.
+
+**Scenes without a floor.** `measure-spots.mjs` finds a spot by casting a ray down onto the
+scene's floor, and most downloaded scenes are furniture and walls only (the app draws their
+floor as the world's ground disk). A scene's entry in `tools/vr/spot-targets.json` can now name
+that floor: `floor` (its height in scene space, the negative of the world's `scene.at[1]`) and,
+where the scene's box is wider than the room, `floorArea` (`[x0, z0, x1, z1]`, the room's
+footprint). The tool stands a flat floor of exactly that footprint in for the missing mesh and
+runs every other check unchanged; the written file says `virtualFloor: true`. The first run
+gave the plane a margin, and the hotel lobby's fireplace spot was measured behind the
+fireplace and its door spot out in the street: the footprint is the fix.
+
+**Words.** `WorldSpots.WORDS` has one id per kind of spot (`bar`, `fireplace`, `reception`,
+`dance-floor`, …), shared by every place that has one. Only the scene that is up is searched.
+
+**Proof in the app.** `node tools/vr/spot-shots.mjs [place…] [--device mobile]` opens each place
+in the real page, loads the spots of the scene that device shows through `NEXUS_WORLD_SPOTS`,
+moves the room with the runtime's own `goToSpot`, counts scene vertices inside her body column
+(must be 0) and saves a picture per spot to `tmp/shots/spots/`.
+
+**Not everything measures.** A target that fails a check is written `verified: false` with the
+reason and is never offered; the per-place counts are in the audit
+(`quality-lab/data/3d/worlds-audit.json`). The props-built places (hotel suite, hotel bathroom,
+shopping street) have no scene file and so no spots. She still does not sit.
