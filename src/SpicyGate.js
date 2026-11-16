@@ -416,6 +416,89 @@
         return false;
     }
 
+    /**
+     * AC8. The words the consent confirmation and the Settings switch use, one pack per language.
+     *
+     * This file had no language handling at all, so the adult confirmation, the one dialog that has
+     * to be understood, was English in every session. A pack is chosen by the app's language
+     * (`AppLanguage.code`, read when the dialog opens, so a language changed in Settings applies at
+     * once); a language with no pack here falls back to English, exactly as before. English and
+     * Italian are written out in full and are not mixed: nothing in `it` is borrowed from `en`.
+     */
+    const COPY = {
+        en: {
+            title: 'Private Mode',
+            intro: 'Private Mode can make supported companion interactions more personal, romantic or sensual. It never starts automatically.',
+            allowedTitle: 'When available:',
+            allowed: [
+                'Private appears in Together after you accept this confirmation',
+                'Affectionate, Romantic and Sensual experiences remain consent-gated',
+                'You can turn Private Mode off at any time',
+            ],
+            blockedTitle: 'Always blocked:',
+            blocked: ['Content involving minors', 'Non-consensual scenarios', 'Illegal content'],
+            foot: 'Each Private experience still asks for consent and can be stopped at any time.',
+            checkbox: 'I am an adult and want Private Mode enabled on this device',
+            cancel: 'Cancel',
+            accept: 'Accept',
+            settingsTitle: 'PRIVATE MODE',
+            settingsDescription: 'More personal, romantic, and mature experiences for verified adults.',
+            settingsEnable: 'Enable Private Mode',
+            on: 'ON',
+            off: 'OFF',
+            enabled: 'Private Mode is enabled.',
+            connecting: 'Connecting to verification…',
+            verifying: 'Verifying adult access…',
+            unavailable: 'Verification unavailable. Private experiences stay locked until verification succeeds.',
+            restoring: 'Restoring verification…',
+            waiting: 'Waiting for verification…',
+        },
+        it: {
+            title: 'Modalità privata',
+            intro: 'La modalità privata può rendere più personali, romantiche o sensuali le interazioni supportate con la tua compagna. Non parte mai automaticamente.',
+            allowedTitle: 'Quando è disponibile:',
+            allowed: [
+                'Private compare in Together dopo che hai accettato questa conferma',
+                'Le esperienze Affettuoso, Romantico e Sensuale restano subordinate al tuo consenso',
+                'Puoi disattivare la modalità privata in qualsiasi momento',
+            ],
+            blockedTitle: 'Sempre bloccato:',
+            blocked: ['Contenuti che coinvolgono minori', 'Scenari non consensuali', 'Contenuti illegali'],
+            foot: 'Ogni esperienza Private chiede comunque il tuo consenso e può essere interrotta in qualsiasi momento.',
+            checkbox: 'Sono maggiorenne e voglio attivare la modalità privata su questo dispositivo',
+            cancel: 'Annulla',
+            accept: 'Accetto',
+            settingsTitle: 'MODALITÀ PRIVATA',
+            settingsDescription: 'Esperienze più personali, romantiche e mature, solo per adulti verificati.',
+            settingsEnable: 'Attiva la modalità privata',
+            on: 'ATTIVA',
+            off: 'DISATTIVA',
+            enabled: 'La modalità privata è attiva.',
+            connecting: 'Connessione alla verifica in corso…',
+            verifying: 'Verifica dell’accesso per adulti in corso…',
+            unavailable:
+                'Verifica non disponibile. Le esperienze Private restano bloccate finché la verifica non riesce.',
+            restoring: 'Ripristino della verifica…',
+            waiting: 'In attesa della verifica…',
+        },
+    };
+
+    /** The app's language, read now. English for any language without its own pack. */
+    function copy() {
+        let base = 'en';
+        try {
+            const code = (window.AppLanguage && window.AppLanguage.code) || '';
+            if (code) base = String(code).slice(0, 2).toLowerCase();
+        } catch (_) {
+            base = 'en';
+        }
+        return COPY[base] || COPY.en;
+    }
+
+    function esc(text) {
+        return String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    }
+
     function showAgeGate(onConfirm, onCancel, { force = false } = {}) {
         if (verified && !force) {
             onConfirm();
@@ -427,41 +510,53 @@
 
         const overlay = document.createElement('div');
         overlay.className = 'spicy-age-overlay';
+        const t = copy();
+        const items = (list) => list.map((item) => '<li>' + esc(item) + '</li>').join('');
         overlay.innerHTML =
             '<div class="spicy-age-modal">' +
             '  <div class="spicy-age-header">' +
             '    <span class="spicy-age-icon">♡</span>' +
-            '    <h3>Private Mode</h3>' +
+            '    <h3>' +
+            esc(t.title) +
+            '</h3>' +
             '  </div>' +
             '  <div class="spicy-age-body">' +
-            '    <p>Private Mode can make supported companion interactions more personal, romantic ' +
-            '       or sensual. It never starts automatically.</p>' +
+            '    <p>' +
+            esc(t.intro) +
+            '</p>' +
             '    <div class="spicy-age-allowed">' +
-            '      <strong>When available:</strong>' +
+            '      <strong>' +
+            esc(t.allowedTitle) +
+            '</strong>' +
             '      <ul>' +
-            '        <li>Private appears in Together after you accept this confirmation</li>' +
-            '        <li>Affectionate, Romantic and Sensual experiences remain consent-gated</li>' +
-            '        <li>You can turn Private Mode off at any time</li>' +
-            '      </ul>' +
+            items(t.allowed) +
+            '</ul>' +
             '    </div>' +
             '    <div class="spicy-age-blocked">' +
-            '      <strong>Always blocked:</strong>' +
+            '      <strong>' +
+            esc(t.blockedTitle) +
+            '</strong>' +
             '      <ul>' +
-            '        <li>Content involving minors</li>' +
-            '        <li>Non-consensual scenarios</li>' +
-            '        <li>Illegal content</li>' +
-            '      </ul>' +
+            items(t.blocked) +
+            '</ul>' +
             '    </div>' +
-            '    <p style="font-size:0.78rem;opacity:.75">Each Private experience still asks for consent ' +
-            '       and can be stopped at any time.</p>' +
+            '    <p style="font-size:0.78rem;opacity:.75">' +
+            esc(t.foot) +
+            '</p>' +
             '    <label class="spicy-age-checkbox">' +
             '      <input type="checkbox" id="spicy-age-consent" />' +
-            '      <span>I am an adult and want Private Mode enabled on this device</span>' +
+            '      <span>' +
+            esc(t.checkbox) +
+            '</span>' +
             '    </label>' +
             '  </div>' +
             '  <div class="spicy-age-actions">' +
-            '    <button class="secondary-btn" id="spicy-age-cancel">Cancel</button>' +
-            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Accept</button>' +
+            '    <button class="secondary-btn" id="spicy-age-cancel">' +
+            esc(t.cancel) +
+            '</button>' +
+            '    <button class="primary-btn" id="spicy-age-confirm" disabled>' +
+            esc(t.accept) +
+            '</button>' +
             '  </div>' +
             '</div>';
 
@@ -609,7 +704,7 @@
             for (let i = 0; i < title.childNodes.length; i++) {
                 if (title.childNodes[i].nodeType === 3 && title.childNodes[i].textContent.trim()) {
                     title.childNodes[i].textContent =
-                        '\n                            PRIVATE MODE\n                            ';
+                        '\n                            ' + copy().settingsTitle + '\n                            ';
                     break;
                 }
             }
@@ -617,12 +712,12 @@
 
         const description = title && title.nextElementSibling;
         if (description && description.tagName === 'P') {
-            description.textContent = 'More personal, romantic, and mature experiences for verified adults.';
+            description.textContent = copy().settingsDescription;
         }
 
         const row = toggle.closest ? toggle.closest('.spicy-toggle-label') : null;
         const rowText = row && row.querySelector('span:not(.spicy-toggle-slider)');
-        if (rowText) rowText.textContent = 'Enable Private Mode';
+        if (rowText) rowText.textContent = copy().settingsEnable;
 
         let detail = section.querySelector('#spicy-verification-status');
         if (!detail) {
@@ -657,7 +752,7 @@
         // user's preference was turned off.
         const label = document.getElementById('spicy-status-label');
         if (label) {
-            label.textContent = requested ? 'ON' : 'OFF';
+            label.textContent = requested ? copy().on : copy().off;
             label.className = 'spicy-status-label' + (requested ? ' spicy-status-on' : ' spicy-status-off');
         }
 
@@ -665,13 +760,13 @@
         if (detail) {
             let text = '';
             if (requested) {
-                if (active) text = 'Private Mode is enabled.';
-                else if (establishing) text = 'Connecting to verification…';
-                else if (checking) text = 'Verifying adult access…';
-                else if (state === 'unavailable' || unavailableReason) {
-                    text = 'Verification unavailable. Private experiences stay locked until verification succeeds.';
-                } else if (state === 'restoring') text = 'Restoring verification…';
-                else text = 'Waiting for verification…';
+                const t = copy();
+                if (active) text = t.enabled;
+                else if (establishing) text = t.connecting;
+                else if (checking) text = t.verifying;
+                else if (state === 'unavailable' || unavailableReason) text = t.unavailable;
+                else if (state === 'restoring') text = t.restoring;
+                else text = t.waiting;
             }
             detail.textContent = text;
             detail.hidden = !text;

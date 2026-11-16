@@ -166,3 +166,64 @@ describe('Private Settings gate', () => {
         expect(document.getElementById('spicy-verification-status').hidden).toBe(true);
     });
 });
+
+describe('AC8. the consent confirmation and the Settings switch speak the app language', () => {
+    // The gate is not changed: the same dialog, the same checkbox, the same Accept. Only the words.
+    function openDialog(code) {
+        if (code) window.AppLanguage = { code };
+        const s = loadGate({ acknowledged: false, connected: false });
+        const toggle = document.getElementById('spicy-mode-toggle');
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        return { s, overlay: document.querySelector('.spicy-age-overlay'), toggle };
+    }
+    afterEach(() => {
+        delete window.AppLanguage;
+    });
+
+    test('Italian: every line of the confirmation is Italian, and none is English', () => {
+        const { overlay } = openDialog('it-IT');
+        const text = overlay.textContent;
+        expect(text).toContain('Modalità privata');
+        expect(text).toContain('Sono maggiorenne e voglio attivare la modalità privata su questo dispositivo');
+        expect(text).toContain('Contenuti che coinvolgono minori');
+        expect(overlay.querySelector('#spicy-age-cancel').textContent).toBe('Annulla');
+        expect(overlay.querySelector('#spicy-age-confirm').textContent).toBe('Accetto');
+        for (const english of ['I am an adult', 'Always blocked', 'Cancel', 'Accept', 'Non-consensual']) {
+            expect(text).not.toContain(english);
+        }
+    });
+
+    test('English is what it always said', () => {
+        const { overlay } = openDialog('en-US');
+        const text = overlay.textContent;
+        expect(text).toContain('I am an adult and want Private Mode enabled on this device');
+        expect(text).toContain('Always blocked:');
+        expect(overlay.querySelector('#spicy-age-cancel').textContent).toBe('Cancel');
+        expect(overlay.querySelector('#spicy-age-confirm').textContent).toBe('Accept');
+    });
+
+    test('a language without its own words keeps the English, as before', () => {
+        const { overlay } = openDialog('fr-FR');
+        expect(overlay.textContent).toContain('I am an adult and want Private Mode enabled on this device');
+    });
+
+    test('the gate itself is unchanged: Accept stays disabled until the box is ticked, and nothing is enabled before', () => {
+        const { s, overlay } = openDialog('it-IT');
+        const accept = overlay.querySelector('#spicy-age-confirm');
+        expect(accept.disabled).toBe(true);
+        expect(s.gate.isRequested()).toBe(false);
+        overlay.querySelector('#spicy-age-consent').click();
+        expect(accept.disabled).toBe(false);
+        accept.click();
+        expect(s.gate.isRequested()).toBe(true);
+    });
+
+    test('Italian Settings copy: the status word and the explanation', () => {
+        const { overlay } = openDialog('it-IT');
+        overlay.querySelector('#spicy-age-consent').click();
+        overlay.querySelector('#spicy-age-confirm').click();
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ATTIVA');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('La modalità privata è attiva.');
+    });
+});
