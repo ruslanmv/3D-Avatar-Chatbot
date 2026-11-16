@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/dungeon-rooms.glb",
+  "sha256": "b475ad7b5754dffbcae8b84dd5e6cbd8e3abcb55dd9708113cafb9498393a8d9",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.26,
+  "title": {
+    "en": "the dungeon",
+    "it": "il sotterraneo"
+  },
+  "spots": [
+    {
+      "id": "chest",
+      "label": {
+        "en": "by the treasure chest",
+        "it": "vicino al forziere"
+      },
+      "room": "store-room",
+      "near": ["-treasure-chest$"],
+      "sees": {
+        "en": "a treasure chest on the cobbled floor of the store room",
+        "it": "un forziere sul pavimento di ciottoli del magazzino"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.2, 0.25, 0.28],
+      "facingDeg": -160,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.3,
+        "viewOpenM": 4.289,
+        "thingOffBehindDeg": 5,
+        "framing": "fullBody",
+        "candidates": 939
+      }
+    },
+    {
+      "id": "barrels",
+      "label": {
+        "en": "by the barrels",
+        "it": "vicino ai barili"
+      },
+      "room": "store-room",
+      "near": ["-barrel-rack$"],
+      "sees": {
+        "en": "a rack of barrels and a torch on its stand",
+        "it": "una rastrelliera di barili e una torcia sul suo sostegno"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.65, 0.25, -2],
+      "facingDeg": -90,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 0,
+        "framing": "fullBody",
+        "candidates": 1110
+      }
+    },
+    {
+      "id": "desk",
+      "label": {
+        "en": "at the study table",
+        "it": "al tavolo dello studio"
+      },
+      "room": "study",
+      "near": ["-study-table$"],
+      "sees": {
+        "en": "a study table with a stool, a bookcase and a lectern",
+        "it": "un tavolo da studio con uno sgabello, una libreria e un leggio"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [12.1, 0.25, 0.9],
+      "facingDeg": 50,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.412,
+        "viewOpenM": 4.434,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 1098
+      }
+    },
+    {
+      "id": "shrine",
+      "label": {
+        "en": "at the shrine",
+        "it": "al santuario"
+      },
+      "room": "shrine",
+      "near": ["-shrine$", "-ritual-circle$"],
+      "sees": {
+        "en": "a shrine above a ritual circle, with a brazier burning",
+        "it": "un santuario sopra un cerchio rituale, con un braciere acceso"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":7344,\"body\":0,\"room\":0,\"view\":0} of 7344)"
+    }
+  ]
+}
