@@ -120,7 +120,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (315 files on 2026-11-16, nested ones
+Jest, jsdom, `tests/**/*.test.js` (320 files on 2026-11-16, nested ones
 included), setup in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -161,7 +161,7 @@ Know the coverage gaps, because they are not intuitive:
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
 — lint clean, format clean, **6318 tests in 290 suites, all passing**
-(2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317).
+(2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317, then 6978 in 320 with `NL`).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -236,9 +236,10 @@ adult experience configuration
 undressing and poses in Private (same doc, §14), `PMA` for Private's
 more-actions menu (the Playground chips behind one ⋯), `BI` for private
 body-state assets (Forge import and read grants, wear cancellation;
-`docs/qa/BODY_STATE_ACCEPTANCE.md`) and `MO` for the motion runtime fixes (the
-body doing what the conversation says;
-`docs/audits/animation-runtime-audit.md`). Commit subjects match:
+`docs/qa/BODY_STATE_ACCEPTANCE.md`), `MO` for the motion runtime fixes (the body
+doing what the conversation says; `docs/audits/animation-runtime-audit.md`) and
+`NL` for positions and animations asked for in words
+(`docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 
@@ -306,6 +307,7 @@ feature, and fix it there if it is wrong.
 | Feature                                           | Rules you must not miss                                                                                                                                                                                                                                                                                                                                                  | Notes                                                       |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
 | Quality Lab (AX7–AX16)                            | Read `hub.json` first; never hand-edit lab data — regenerate with `tools/qa/` (`world-audit.mjs`, `animation-audit.mjs`, `hub.mjs`, `lab-publish.mjs --rescore-all`); the MCP server stays dependency-free (Playwright only lazily, in `lab_screenshot` / `--play`)                                                                                                      | `quality-lab/README.md`                                     |
+| Positions and animations in words (NL)            | One entry, `NEXUS_MOTION.onUserUtterance` (typed, mic, VR voice); words resolve against Pose Studio's catalogue and `NEXUS_MOTION_CLIPS.registry()`, never a second list; one table per language, never mixed; nothing is done before `confirmed` (rendered skeleton); no phrases for adult presets                                                                      | `docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`             |
 | Animations / motion UX (AX16, MO)                 | `npm run audit:motion` before and after any motion change (`audits/motion/AGENT.md`); look at the frames — hips height missed a tilt and a leg flip; every offered gesture needs a `MotionClipMap.USE` hint; failed clips are tagged in `develop/NEEDS_FIX.md`, never shipped                                                                                            | `docs/claude/animations-and-motion.md`                      |
 | Adult experience, Private presentation            | Intensity is only ConsentFlow's, moved by the person; ceiling only narrows; care mode is never configurable; client checks are not authorization                                                                                                                                                                                                                         | `docs/claude/adult-experience-and-quality-lab.md`           |
 | Private actions (PX1–PX7)                         | Every action in Private goes through `PrivateActionBridge`; never `startActivity` or `ConversationPublisher` from one; the policy reads the consent level only to open undressing at level 4 (UN1) and never moves it; a model's tag runs only if the person asked that turn; status comes from the player                                                               | `docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md` |
