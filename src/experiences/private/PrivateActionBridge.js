@@ -1659,6 +1659,17 @@
         }
     }
 
+    /**
+     * UN21. Something the person asked for is still under way (a look loading, a trip, music
+     * starting). The session's script treats that as the conversation still going: a guided line
+     * ("Che atmosfera preferisci…") arriving while their own command is executing is the filler
+     * the person read as being ignored.
+     */
+    function busy() {
+        const s = state;
+        return Boolean(s && s.log.some((a) => a.source !== 'model' && a.status === 'pending'));
+    }
+
     function snapshot() {
         const s = state;
         if (!s) return { active: false, sessionId: null, music: null, outfit: null, offer: null, last: null };
@@ -2157,6 +2168,7 @@
         snapshot,
         outfitTruth,
         whenSettled,
+        busy,
         explained,
         log,
         onChange,

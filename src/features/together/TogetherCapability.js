@@ -2617,6 +2617,13 @@
             // Somebody who has just asked for less has asked for room, not for company. The hold
             // resets the clock rather than pausing it, so the minute starts when the hold ends.
             if (this.now() < (this._guidanceHeldUntil || 0)) return true;
+            // UN21. Their command still executing is not silence (see `_lastActivityAt`).
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.busy === 'function' && actions.busy()) return true;
+            } catch (_) {
+                /* fall through: the other signals still decide */
+            }
             return false;
         }
 
@@ -2791,7 +2798,17 @@
             const api = surfaceApi(this.win);
             const state = api && typeof api.turn === 'function' ? api.turn() : null;
             const replyAt = state ? Math.max(state.assistantEndedAt || 0, state.assistantAt || 0) : 0;
-            return Math.max(this._lastTurnAt, this._composingAt, replyAt);
+            // UN21. A command of theirs still executing is activity, and the quiet is counted
+            // from when it last was. In the real page the lingerie took longer to load than the
+            // eighteen-second lull, and "Che atmosfera preferisci: giocosa o tranquilla?" arrived
+            // while "Togliti i vestiti" was still being carried out.
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.busy === 'function' && actions.busy()) this._actionBusyAt = this.now();
+            } catch (_) {
+                /* the script's own clock still applies */
+            }
+            return Math.max(this._lastTurnAt, this._composingAt, replyAt, this._actionBusyAt || 0);
         }
 
         /**

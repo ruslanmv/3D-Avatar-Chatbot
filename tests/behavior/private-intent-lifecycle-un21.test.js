@@ -600,3 +600,29 @@ describe('UN21. the lifecycle: wait, then, twice, and who may stop', () => {
         expect(Intent.affirms('Sì, ma prima dimmi una cosa')).toBe(false);
     });
 });
+
+describe('UN21. no scripted line while their command is still executing', () => {
+    test('a slow change keeps the guided beats and the idle clock quiet, then quiet counts from its end', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Mettiti il vestito da cocktail nero');
+        await flush(30);
+        slowApply(w, 400);
+        await say('Togliti i vestiti.');
+        await flush();
+        expect(Actions.busy()).toBe(true);
+        const session = w.session;
+        // Long past the lull the script waits for: still not quiet, and the idle clock is busy.
+        const realNow = session.now.bind(session);
+        session.now = () => realNow() + 10 * 60 * 1000;
+        expect(session._quietEnough()).toBe(false);
+        expect(session._idleBusy()).toBe(true);
+        session.now = realNow;
+        await new Promise((r) => setTimeout(r, 600));
+        await flush(30);
+        expect(Actions.busy()).toBe(false);
+        // Quiet is counted from the last moment their command was still running, not from her reply.
+        const seen = session._actionBusyAt;
+        expect(seen).toBeGreaterThan(0);
+        expect(session._lastActivityAt()).toBeGreaterThanOrEqual(seen);
+    });
+});

@@ -33,18 +33,148 @@ const SIZE = arg('size', 'desktop');
 const OUT = path.resolve(arg('out', path.join(ROOT, 'audits/private/runs/change-requests')));
 fs.mkdirSync(OUT, { recursive: true });
 
-const SAY = {
-    'it-IT': [
-        ['wear', 'Mettiti il prendisole giallo', 'Ecco, me lo metto per te.'],
-        ['undress', 'poi togliete i vestiti', 'Va bene, li tolgo per te.'],
-        ['all', 'Toglili tutti', 'Le tolgo tutte per te.'],
-    ],
-    'en-US': [
-        ['wear', 'Put on the yellow sundress', "There, I'm putting it on for you."],
-        ['undress', 'Take off your clothes', "Okay, I'm taking them off for you."],
-        ['all', 'Take them all off', "I'm taking everything off for you."],
-    ],
-}[LANG];
+const SCRIPT = arg('script', 'reported');
+/**
+ * Each step: [label, the person's words, the model stand-in's draft, expectations].
+ * `expect.action/status/why` are checked against the newest action; `noAction` means none may
+ * be added; `send` means the next step is sent without waiting for this one to settle (UN21:
+ * "Aspetta" while the lingerie is still downloading, through the real controller's cancel()).
+ */
+const SCRIPTS = {
+    reported: {
+        'it-IT': [
+            [
+                'wear',
+                'Mettiti il prendisole giallo',
+                'Ecco, me lo metto per te.',
+                { action: 'wardrobe.wear', status: 'completed' },
+            ],
+            ['undress', 'poi togliete i vestiti', 'Va bene, li tolgo per te.', { action: 'wardrobe.undress' }],
+            [
+                'all',
+                'Toglili tutti',
+                'Le tolgo tutte per te.',
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+        ],
+        'en-US': [
+            [
+                'wear',
+                'Put on the yellow sundress',
+                "There, I'm putting it on for you.",
+                { action: 'wardrobe.wear', status: 'completed' },
+            ],
+            ['undress', 'Take off your clothes', "Okay, I'm taking them off for you.", { action: 'wardrobe.undress' }],
+            [
+                'all',
+                'Take them all off',
+                "I'm taking everything off for you.",
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+        ],
+    },
+    // UN21. The adult directive's transcript, with a "wait" sent while a change is downloading.
+    directive: {
+        'it-IT': [
+            [
+                'wear',
+                'Mettiti il prendisole giallo',
+                'Ecco, me lo metto per te.',
+                { action: 'wardrobe.wear', status: 'completed' },
+            ],
+            ['undress-1', 'Togliti i vestiti.', 'Va bene, me li tolgo.', { action: 'wardrobe.undress', send: true }],
+            [
+                'wait',
+                'Aspetta un momento.',
+                'Va bene, me li tolgo lo stesso.',
+                { action: 'wardrobe.cancel', status: 'completed', cancelled: true },
+            ],
+            [
+                'undress-2',
+                'Togliti i vestiti.',
+                'Va bene, me li tolgo.',
+                { action: 'wardrobe.undress', status: 'completed', state: 'lingerie' },
+            ],
+            [
+                'then-all',
+                'Poi togli tutto.',
+                'Tolgo tutto per te.',
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+            [
+                'all',
+                'Toglili tutti.',
+                'Le tolgo tutte per te.',
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+            [
+                'correct-1',
+                'Non intendevo un vestito più leggero.',
+                'Va bene, mi tolgo tutto.',
+                { action: 'wardrobe.undress', why: 'no-bare-look', correction: true, reason: true },
+            ],
+            [
+                'correct-2',
+                'Intendevo tutti i vestiti.',
+                'Ecco, tolgo tutto.',
+                { action: 'wardrobe.undress', why: 'no-bare-look', correction: true, reason: true },
+            ],
+            ['yes', 'Sì, fallo.', 'Mm, sono qui con te.', { noAction: true }],
+        ],
+        'en-US': [
+            [
+                'wear',
+                'Put on the yellow sundress',
+                "There, I'm putting it on for you.",
+                { action: 'wardrobe.wear', status: 'completed' },
+            ],
+            [
+                'undress-1',
+                'Take your clothes off.',
+                "Okay, I'm taking them off.",
+                { action: 'wardrobe.undress', send: true },
+            ],
+            [
+                'wait',
+                'Wait a moment.',
+                "I'm taking them off anyway.",
+                { action: 'wardrobe.cancel', status: 'completed', cancelled: true },
+            ],
+            [
+                'undress-2',
+                'Take your clothes off.',
+                "Okay, I'm taking them off.",
+                { action: 'wardrobe.undress', status: 'completed', state: 'lingerie' },
+            ],
+            [
+                'then-all',
+                'Then take everything off.',
+                "I'm taking everything off for you.",
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+            [
+                'all',
+                'Take them all off.',
+                "I'm taking them all off.",
+                { action: 'wardrobe.undress', why: 'no-bare-look', reason: true },
+            ],
+            [
+                'correct-1',
+                'Not just a lighter outfit.',
+                "Okay, I'm taking everything off.",
+                { action: 'wardrobe.undress', why: 'no-bare-look', correction: true, reason: true },
+            ],
+            [
+                'correct-2',
+                'I mean everything.',
+                "I'm taking everything off.",
+                { action: 'wardrobe.undress', why: 'no-bare-look', correction: true, reason: true },
+            ],
+            ['yes', 'Yes, do it.', "Mm, I'm right here with you.", { noAction: true }],
+        ],
+    },
+};
+const SAY = SCRIPTS[SCRIPT][LANG];
 const CHOICES = LANG === 'it-IT' ? ['Sì, fallo', 'Aspetta un momento'] : ['Yes, do it', 'Wait a moment'];
 
 const D = await import(pathToFileURL(path.join(ROOT, 'tools/vr/page-driver.mjs')).href);
@@ -146,29 +276,55 @@ try {
         );
     const card = async (label) => {
         const el = await page.$('#nexus-private-conversation-row');
-        const file = path.join(OUT, `${SIZE}-${LANG}-${label}.png`);
+        const file = path.join(OUT, `${SCRIPT}-${SIZE}-${LANG}-${label}.png`);
         if (el) await el.screenshot({ path: file }).catch(() => page.screenshot({ path: file }));
         else await page.screenshot({ path: file });
         return path.basename(file);
     };
 
-    for (const [label, said, draft] of SAY) {
+    // The session's own scripted lines, which must not arrive while a command is executing (UN21).
+    const SCRIPTED =
+        LANG === 'it-IT'
+            ? ['Che atmosfera preferisci', 'Non devi rispondere']
+            : ['What kind of mood should we keep', 'You do not have to answer'];
+    const vague =
+        LANG === 'it-IT'
+            ? ['Per ora resto come sono.', 'Per ora resto così.']
+            : ['For now I’m staying as I am.', 'I’m staying as I am, for now.'];
+    let previous = null;
+    for (const [label, said, draft, expect] of SAY) {
         draftFor = () => draft;
         const before = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.log().length);
         const shownBefore = (await herLines()).length;
         await page.fill('#speech-text', said);
         await page.click('#speak-btn');
-        await page
-            .waitForFunction(
-                (n) => {
-                    const log = window.NEXUS_PRIVATE_ACTIONS.log();
-                    const w = log[log.length - 1];
-                    return log.length > n && w && w.status !== 'pending';
-                },
-                before,
-                { timeout: 120000 }
-            )
-            .catch(() => fail(label, 'no action settled'));
+        if (expect.send) {
+            // Sent on: wait only until it is under way.
+            await page
+                .waitForFunction((n) => window.NEXUS_PRIVATE_ACTIONS.log().length > n, before, { timeout: 30000 })
+                .catch(() => fail(label, 'no action started'));
+            const started = await page.evaluate(() => {
+                const a = window.NEXUS_PRIVATE_ACTIONS.log().slice(-1)[0] || {};
+                return { action: a.name, status: a.status, turnId: a.turnId };
+            });
+            report.steps.push({ label, said, ...started });
+            console.log(`${label}: ${started.action} ${started.status} (sent on without waiting)`);
+            if (started.status !== 'pending') fail(label, `expected a change still under way, got ${started.status}`);
+            previous = started;
+            continue;
+        }
+        if (!expect.noAction)
+            await page
+                .waitForFunction(
+                    (n) => {
+                        const log = window.NEXUS_PRIVATE_ACTIONS.log();
+                        const w = log[log.length - 1];
+                        return log.length > n && w && w.status !== 'pending';
+                    },
+                    before,
+                    { timeout: 180000 }
+                )
+                .catch(() => fail(label, 'no action settled'));
         await page
             .waitForFunction(
                 (n) => document.querySelectorAll('[data-private-turn="her"] .nexus-private-copy').length > n,
@@ -177,22 +333,27 @@ try {
             )
             .catch(() => {});
         await page.waitForTimeout(2500);
-        const facts = await page.evaluate(() => {
-            const A = window.NEXUS_PRIVATE_ACTIONS;
-            const last = A.log().slice(-1)[0] || {};
-            return {
-                action: last.name,
-                status: last.status,
-                why: last.why || null,
-                params: last.params || {},
-                outfitState: A.snapshot().outfitState,
-                wearing: (A.snapshot().outfit && A.snapshot().outfit.name) || null,
-                wearingPrivate: Boolean(window.NEXUS_WARDROBE?.service?.controller?.activeLook?.private),
-                rendererUrl: String(window.NEXUS_VIEWER.avatarManager.currentUrl || '')
-                    .split('?')[0]
-                    .slice(-60),
-            };
-        });
+        const facts = await page.evaluate(
+            (prevTurn) => {
+                const A = window.NEXUS_PRIVATE_ACTIONS;
+                const log = A.log();
+                const last = log.slice(-1)[0] || {};
+                const earlier =
+                    prevTurn == null ? null : log.find((a) => a.turnId === prevTurn && a.family === 'wardrobe');
+                return {
+                    count: log.length,
+                    action: last.name,
+                    status: last.status,
+                    why: last.why || null,
+                    params: last.params || {},
+                    earlierStatus: earlier ? earlier.status : null,
+                    outfitState: A.snapshot().outfitState,
+                    wearing: (A.snapshot().outfit && A.snapshot().outfit.name) || null,
+                    level: window.NEXUS_BD.adult.level,
+                };
+            },
+            previous ? previous.turnId : null
+        );
         const lines = await herLines();
         // Everything said after the person's line: every turn after the last "you" turn.
         const after = await page.evaluate(() => {
@@ -219,26 +380,31 @@ try {
         console.log(
             `${label}: ${facts.action} ${facts.status}${facts.why ? ` (${facts.why})` : ''} → “${step.shown}” [${step.choices.join(' | ')}]`
         );
-    }
-    // What must hold for the reported pair.
-    const all = report.steps.find((s) => s.label === 'all');
-    // The two vague lines of the report: the reply check's catch-all and the generic follow-up.
-    const vague =
-        LANG === 'it-IT'
-            ? ['Per ora resto come sono.', 'Per ora resto così.']
-            : ['For now I’m staying as I am.', 'I’m staying as I am, for now.'];
-    if (!all || all.action !== 'wardrobe.undress') fail('all', `not a request to undress: ${all && all.action}`);
-    if (all && all.why !== 'no-bare-look') fail('all', `refused for ${all.why}, expected no-bare-look`);
-    for (const s of report.steps) {
-        if (s.after.some((l) => vague.some((v) => l.includes(v)))) fail(s.label, 'a vague line is shown');
-        if (s.choices.some((c) => CHOICES.includes(c)))
-            fail(s.label, `the draft's yes/wait chips under no offer: ${s.choices.join(' | ')}`);
-    }
-    // A refusal: her false claim is not shown, and the reason is, exactly once.
-    if (all) {
-        const reason = all.after.filter((l) => l.length > 40 && /\b(?:nuda|bare)\b/i.test(l));
-        if (all.after.some((l) => l.includes(all.modelDraft))) fail('all', 'her false claim is shown');
-        if (reason.length !== 1) fail('all', `the no-bare-look reason is shown ${reason.length} times`);
+        // What must hold for this step.
+        if (expect.noAction && facts.count !== before) fail(label, `an action ran: ${facts.action}`);
+        if (expect.action && facts.action !== expect.action) fail(label, `${facts.action}, expected ${expect.action}`);
+        if (expect.status && facts.status !== expect.status) fail(label, `${facts.status}, expected ${expect.status}`);
+        if (expect.why && facts.why !== expect.why) fail(label, `refused for ${facts.why}, expected ${expect.why}`);
+        if (expect.state && facts.outfitState !== expect.state)
+            fail(label, `she is ${facts.outfitState}, expected ${expect.state}`);
+        if (expect.correction && !facts.params.correction) fail(label, 'not read as a correction');
+        if (expect.cancelled) {
+            if (facts.earlierStatus !== 'cancelled')
+                fail(label, `the change under way is ${facts.earlierStatus}, not cancelled`);
+            if (facts.outfitState === 'lingerie') fail(label, 'the cancelled lingerie reached her');
+        }
+        if (expect.reason) {
+            const reason = after.filter((l) => l.length > 40 && /\b(?:nuda|bare)\b/i.test(l));
+            if (after.some((l) => l.includes(draft))) fail(label, 'her false claim is shown');
+            if (reason.length !== 1) fail(label, `the no-bare-look reason is shown ${reason.length} times`);
+        }
+        if (after.some((l) => vague.some((v) => l.includes(v)))) fail(label, 'a vague line is shown');
+        if (after.some((l) => SCRIPTED.some((v) => l.includes(v))))
+            fail(label, 'a scripted line arrived with the answer');
+        if (step.choices.some((c) => CHOICES.includes(c)))
+            fail(label, `the draft's yes/wait chips under no offer: ${step.choices.join(' | ')}`);
+        if (facts.level !== 4) fail(label, `the consent level moved to ${facts.level}`);
+        previous = null;
     }
     report.errors = errors;
     await ctx.close();
@@ -246,6 +412,6 @@ try {
     await browser.close();
     server.stop();
 }
-fs.writeFileSync(path.join(OUT, `${SIZE}-${LANG}-report.json`), JSON.stringify(report, null, 1));
+fs.writeFileSync(path.join(OUT, `${SCRIPT}-${SIZE}-${LANG}-report.json`), JSON.stringify(report, null, 1));
 console.log(report.failures.length ? `FAIL\n- ${report.failures.join('\n- ')}` : 'PASS');
 process.exit(report.failures.length ? 1 : 0);
