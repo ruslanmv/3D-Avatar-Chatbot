@@ -300,18 +300,19 @@ try {
             )
         );
     const card = async (label) => {
-        const el = await page.$('#nexus-private-conversation-row');
+        // A clipped page capture, never an element capture: an element capture waits for the live
+        // canvas behind the card to stop changing, which it never does — every step then sat idle
+        // for its full timeout, and that silence was long enough for the session's lull lines.
         const file = path.join(OUT, `${SCRIPT}-${SIZE}-${LANG}-${label}.png`);
-        if (el) await el.screenshot({ path: file }).catch(() => page.screenshot({ path: file }));
-        else await page.screenshot({ path: file });
+        const box = await page
+            .locator('#nexus-private-conversation-row')
+            .first()
+            .boundingBox()
+            .catch(() => null);
+        await page.screenshot({ path: file, ...(box && box.width && box.height ? { clip: box } : {}) });
         return path.basename(file);
     };
 
-    // The session's own scripted lines, which must not arrive while a command is executing (UN21).
-    const SCRIPTED =
-        LANG === 'it-IT'
-            ? ['Che atmosfera preferisci', 'Non devi rispondere']
-            : ['What kind of mood should we keep', 'You do not have to answer'];
     const vague =
         LANG === 'it-IT'
             ? ['Per ora resto come sono.', 'Per ora resto così.']
@@ -424,8 +425,6 @@ try {
             if (reason.length !== 1) fail(label, `the no-bare-look reason is shown ${reason.length} times`);
         }
         if (after.some((l) => vague.some((v) => l.includes(v)))) fail(label, 'a vague line is shown');
-        if (after.some((l) => SCRIPTED.some((v) => l.includes(v))))
-            fail(label, 'a scripted line arrived with the answer');
         if (step.choices.some((c) => CHOICES.includes(c)))
             fail(label, `the draft's yes/wait chips under no offer: ${step.choices.join(' | ')}`);
         if (facts.level !== 4) fail(label, `the consent level moved to ${facts.level}`);
@@ -444,6 +443,27 @@ try {
         })),
         levelEvents: (window.__levels || []).slice(),
     }));
+    // UN21. A scripted line (one drawn with its text, not a reply placeholder filled later) is a
+    // defect only inside the lull: less than 18 s after the person's last line or after an action
+    // of theirs settled. After that it is the designed "the evening has gone quiet" line.
+    {
+        const LULL_MS = 18000;
+        const turns = report.timeline.turns;
+        const begun = turns.findIndex((t) => t.who === 'you');
+        const marks = [
+            ...turns.filter((t) => t.who === 'you').map((t) => t.at),
+            ...report.timeline.actions.filter((a) => a.source !== 'model' && a.settledAt).map((a) => a.settledAt),
+        ];
+        report.scripted = [];
+        for (const t of turns.slice(Math.max(0, begun))) {
+            if (t.who !== 'her' || !t.text) continue;
+            const before = marks.filter((m) => m <= t.at);
+            const since = before.length ? t.at - Math.max(...before) : Infinity;
+            report.scripted.push({ text: t.text, sinceActivityMs: since });
+            if (since < LULL_MS)
+                fail('timeline', `a scripted line ${Math.round(since / 1000)} s after activity: ${t.text}`);
+        }
+    }
     report.errors = errors;
     await ctx.close();
 } finally {
