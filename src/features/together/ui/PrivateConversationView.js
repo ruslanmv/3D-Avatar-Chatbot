@@ -258,7 +258,20 @@ const PrivateConversationView = (() => {
   #${ROW_ID} .nexus-private-choices{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
   #${ROW_ID} .nexus-private-choice{flex:0 0 auto;white-space:nowrap}
   #${ROW_ID} .nexus-private-bar{flex-wrap:nowrap}
-  #${ROW_ID} .nexus-private-controls{flex-wrap:nowrap;margin-left:auto}
+  #${ROW_ID} .nexus-private-controls{flex-wrap:nowrap;margin-left:auto;flex:0 0 auto}
+  /* AC7. Closer and End are what the footer is for; the words beside them give way. Measured in a
+     real browser at 390px: the transient status ("Pace softened" / "Ritmo attenuato", 1.8 s after
+     Ease) is nowrap and did not shrink, so it pushed End to x=424-472 against a card edge at 378 and
+     the shell's overflow clipped it. The level text and the status now truncate instead. */
+  #${ROW_ID} .nexus-private-level{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #${ROW_ID} .nexus-private-status{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+/* AC7. On the narrowest phones (320-360px) the four-step ladder, Closer and End do not fit on one
+   line in Italian ("Fine" starts at x=319 against a 308px edge at 320px), so the controls take the
+   second line, whole, instead of being cut. */
+@media(max-width:360px){
+  #${ROW_ID} .nexus-private-bar{flex-wrap:wrap}
+  #${ROW_ID} .nexus-private-controls{flex:1 1 100%;justify-content:flex-end}
 }
 /* Touch: 44 px for every control a finger uses, the chips, the replies and Closer / End. */
 @media(pointer:coarse){

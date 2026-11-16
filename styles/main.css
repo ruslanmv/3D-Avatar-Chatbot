@@ -4055,6 +4055,14 @@ html.is-mobile .status-badge {
     width: 100%;
     padding: 28px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    /* AC7. The confirmation is 611px tall at 390px wide and had no height limit, so on a short
+       screen (390x568, or any phone in landscape) its top was cut off and Accept was off the
+       bottom with no way to scroll to it. It scrolls inside the overlay's padding instead. */
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .spicy-age-header {
