@@ -121,12 +121,18 @@ the draft's yes/wait chips are gone (the local set stands in).
 
 ## Real browser
 
-| Size | Language | Result |
-|---|---|---|
-| desktop 1440×900 | it-IT | PASS (transcript above) |
-| desktop 1440×900 | en-US | running when this was committed — see the PR |
-| phone 390×844 | it-IT | running when this was committed — see the PR |
-| phone 390×844 | en-US | running when this was committed — see the PR |
+| Size | Language | One layer ("poi togliete i vestiti" / "Take off your clothes") | Everything ("Toglili tutti" / "Take them all off") | Result |
+|---|---|---|---|---|
+| desktop 1440×900 | it-IT | completed → lingerie | failed · no-bare-look, reason shown once | PASS |
+| desktop 1440×900 | en-US | completed → lingerie | failed · no-bare-look, reason shown once | PASS |
+| phone 390×844 | it-IT | completed → lingerie | failed · no-bare-look, reason shown once | PASS |
+| phone 390×844 | en-US | completed → lingerie | failed · no-bare-look, reason shown once | PASS |
+
+In every run: ConsentFlow at level 4 by three taps on its own control; four model calls (one per
+turn plus the AX19 check); no page errors; the one-layer change put on the lingerie look the page
+already has ("Black Guêpière + Black Thigh-High Stockings + Black Suspender Straps"); no vague line,
+no false claim, no yes/wait chips after any request. The session's own beats still followed the
+replies (see below).
 
 Driver: `node tools/qa/private-change-requests.mjs --lang it-IT|en-US --size desktop|phone --out <dir>`.
 The page, Private, ConsentFlow (three taps on its own Closer control), the composer, the bridge,
@@ -141,3 +147,8 @@ model's HTTP answer. Screenshots were kept out of the repository.
   Ero solo curiosa.") still appear after a reply; they are not about an outfit action.
 - `OUTFIT_CLAIM` still treats "indosso …" as a claim; a true description of what she wears is
   taken out when no outfit action ran, and nothing is put in its place.
+
+## Test counts
+
+`npm run validate`: exit 0, 7004 tests in 322 suites, none failing. `private-change-requests-un20.test.js`:
+22 tests; 20 of them fail against the source before this change.
