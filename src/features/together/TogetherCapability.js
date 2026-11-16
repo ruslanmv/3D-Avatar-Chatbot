@@ -1155,19 +1155,81 @@
             const kept = parts.map((p) => p.trim()).filter((p) => p && !NAKED_CLAIM.test(p));
             return kept.join(' ').trim() || value;
         }
-        if (!OUTFIT_CLAIM.test(value) && !NAKED_CLAIM.test(value)) return value;
-        const kept = parts.map((p) => p.trim()).filter((p) => p && !OUTFIT_CLAIM.test(p) && !NAKED_CLAIM.test(p));
-        const locale = localeModel();
-        const key =
-            truth.state === 'offer'
-                ? 'outfit.say.offer'
-                : truth.state === 'failed'
-                  ? 'outfit.say.failed'
-                  : 'outfit.say.none';
-        const line = locale && typeof locale.t === 'function' ? locale.t(key, null, language) : '';
-        if (line && line !== key) kept.push(line);
-        return kept.join(' ').trim() || value;
+        const claims = OUTFIT_CLAIM.test(value) || NAKED_CLAIM.test(value);
+        // UN20. A request of theirs that did not happen is answered with its reason even when her
+        // reply made no claim: "Va bene. Ti piace?" under a refused "Toglili tutti" reads as yes.
+        const refused = truth.state === 'failed' && truth.asked !== false;
+        if (!claims && !refused) return value;
+        const kept = claims
+            ? parts.map((p) => p.trim()).filter((p) => p && !OUTFIT_CLAIM.test(p) && !NAKED_CLAIM.test(p))
+            : [value.trim()];
+        const key = outfitLineKey(truth);
+        // UN20. Never two answers: when what is left of her reply already says why it did not
+        // happen, it stands and no fixed line is added. When it does not, it was answering a change
+        // that never happened ("Va bene. Ti piace?" under a refused request is a yes), so the
+        // reason is said instead of it, not after it.
+        if (refused && kept.length && GIVES_REASON.test(kept.join(' '))) return kept.join(' ').trim();
+        const line = key ? outfitLine(key, language) : '';
+        if (refused && line) return line;
+        if (line) kept.push(line);
+        // Nothing true left and nothing to say instead (nobody asked about her clothes): empty,
+        // so `privateRevise` asks once more rather than show the false sentence or a stray line.
+        return kept.join(' ').trim();
     }
+
+    /**
+     * UN20. Which fixed line answers this outcome, or none. One string used to stand for "no bare
+     * look", "last layer already", "not at this pace", "already dressed" and "nothing ran" alike,
+     * and a person who asked for one specific change heard "Per ora resto come sono." twice and
+     * read it as censorship. Each outcome now has its own line; an outcome nobody asked about has
+     * none at all (the stray opening line).
+     */
+    const OUTFIT_LINE = {
+        'no-bare-look': 'outfit.say.noBare',
+        // CG1. The same outcome, with Forge's reason for her exact file: her line is the same.
+        'bare-needs-review': 'outfit.say.noBare',
+        'bare-blocked': 'outfit.say.noBare',
+        'last-layer': 'outfit.say.lastLayer',
+        pace: 'outfit.say.pace',
+        'already-dressed': 'outfit.say.alreadyDressed',
+        'nothing-to-undo': 'outfit.say.nothingToUndo',
+    };
+    function outfitLineKey(truth) {
+        if (!truth) return null;
+        if (truth.state === 'offer') return 'outfit.say.offer';
+        if (truth.state === 'failed') return OUTFIT_LINE[truth.why] || 'outfit.say.failed';
+        // Nothing ran: a line only when they were talking about her clothes.
+        if (truth.state === 'none') return truth.asked ? 'outfit.say.none' : null;
+        return null;
+    }
+    function outfitLine(key, language) {
+        const locale = localeModel();
+        if (!locale || typeof locale.t !== 'function') return '';
+        // The pace line names the control that moves the evening closer, as it reads on screen;
+        // she points at it and never moves it herself (intensity is only ConsentFlow's).
+        const control = String(locale.t('controls.closer', null, language) || '')
+            .replace(/\s*[→>]+\s*$/u, '')
+            .trim();
+        const line = locale.t(key, { control }, language);
+        return line && line !== key ? line : '';
+    }
+
+    /**
+     * UN20. Her own words already give the reason: a "can't", "not yet", "not available" in any of
+     * the app's languages. Broad on purpose — a reason said twice is the failure this prevents.
+     */
+    const GIVES_REASON = new RegExp(
+        [
+            "\\b(?:can(?:'|’)?t|cannot|not (?:yet|available|possible)|isn(?:'|’)?t (?:available|possible)|no (?:bare|way)|as far as)\\b",
+            '\\bnon (?:posso|riesco|ancora|è (?:ancora )?(?:possibile|disponibile))\\b|\\bnon si può\\b|\\bancora no\\b',
+            '\\bno (?:puedo|está disponible|es posible)\\b|\\btodavía no\\b|\\baún no\\b',
+            '\\bje ne peux pas\\b|\\bpas encore\\b|\\bpas (?:disponible|possible)\\b',
+            '\\b(?:kann|darf) (?:ich )?(?:noch )?nicht\\b|\\bnoch nicht\\b|\\bnicht (?:verfügbar|möglich)\\b',
+            '\\bnão (?:posso|consigo|está disponível|é possível)\\b|\\bainda não\\b',
+            'できない|まだ|できません|못 해|아직|안 돼|不能|还不行|还没|没办法',
+        ].join('|'),
+        'iu'
+    );
 
     async function privateRevise(text, options) {
         const o = options || {};
@@ -1204,9 +1266,43 @@
             // avatar wore what she had on was the reported failure. No model call — the sentence
             // that claims is taken out and the truth is said in the app's language.
             const actions = actionBridge();
-            const truth = actions && typeof actions.outfitTruth === 'function' ? actions.outfitTruth() : null;
+            let truth = actions && typeof actions.outfitTruth === 'function' ? actions.outfitTruth() : null;
+            // UN20. Checked against what happened, not against "in progress": a refusal (no bare
+            // look, last layer, pace) is known within moments, and in the real page "Le tolgo
+            // tutte per te." passed while it was still being decided. Bounded; a look that is
+            // really loading stays `pending`, which is the truth.
+            if (truth && truth.state === 'pending' && typeof actions.whenSettled === 'function')
+                truth = (await actions.whenSettled(Number(o.settleMs) || 4000)) || truth;
             const language = (w && w.AppLanguage && w.AppLanguage.code) || undefined;
-            const shaped = outfitTruthful(shape(draft), truth, language);
+            const drafted = shape(draft);
+            const shaped = outfitTruthful(drafted, truth, language);
+            if (truth && truth.state !== 'none') {
+                // UN20. "Sì, fallo / Aspetta un momento" stood under a refusal, and under a change
+                // that had already happened: the draft's buttons answered an offer nobody made.
+                // When an outfit action ran this turn the draft's choices go; a real offer has its
+                // own yes / not now on the outfit chip, and the local set stands in for the rest.
+                if (session && typeof session._stashChoices === 'function') session._stashChoices([]);
+            }
+            // UN20. Tell the bridge whether this reply carries the refusal's reason, so its
+            // follow-up line is said only if it does not — never twice.
+            if (actions && typeof actions.explained === 'function')
+                actions.explained(
+                    Boolean(
+                        truth && truth.state === 'failed' && shaped && (shaped !== drafted || GIVES_REASON.test(shaped))
+                    )
+                );
+            // UN20. Her whole reply was a false outfit sentence and nobody asked about her
+            // clothes: ask her once more (the prompt says what is true), rather than show it or a
+            // line about an outfit action that never was.
+            if (!shaped && drafted.trim()) {
+                const said = String(o.userText || '').trim();
+                if (said && llm && typeof llm.sendMessage === 'function') {
+                    const raw = await Promise.race([Promise.resolve(llm.sendMessage(said, system(), [])), timeout()]);
+                    const fresh = outfitTruthful(clean(raw), truth, language);
+                    if (fresh && !privateReplyProblems(fresh).length) return fresh;
+                }
+                return draft.trim() && !OUTFIT_CLAIM.test(drafted) && !NAKED_CLAIM.test(drafted) ? drafted : '';
+            }
             const problems = privateReplyProblems(shaped);
             if (!problems.length) return shaped;
             if (!llm || typeof llm.sendMessage !== 'function') return shaped;
@@ -1215,7 +1311,9 @@
                 'Rewrite this reply of yours so it sounds like you — their companion tonight — and not like an assistant or a service.',
                 `What is wrong with it: ${problems.join('; ')}.`,
                 `Keep its meaning and its language. At most ${Math.min(3, Math.max(1, sentences))} short sentences, no emoji, no offers of help, no list of topics.`,
-                'If it was declining something, decline in one warm sentence in your own voice, without apologising or mentioning rules.',
+                // UN20. "Without mentioning rules" was read as "without the reason", and the
+                // rewrite turned "that isn't available for this body yet" into a vague no.
+                'If it was declining something, keep its real reason and say it in one warm sentence in your own voice, without apologising or lecturing.',
                 'Return only the rewritten reply.',
                 '',
                 `Your draft: ${draft}`,

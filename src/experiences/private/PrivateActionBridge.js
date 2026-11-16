@@ -557,8 +557,27 @@
         }
     }
 
+    /** UN20. The outcome lines shared with the reply check (TogetherCapability.outfitLineKey). */
+    const FOLLOW_OUTFIT = {
+        'no-bare-look': 'outfit.say.noBare',
+        // CG1. The same outcome, with Forge's reason for her exact file: her line is the same.
+        'bare-needs-review': 'outfit.say.noBare',
+        'bare-blocked': 'outfit.say.noBare',
+        'last-layer': 'outfit.say.lastLayer',
+        pace: 'outfit.say.pace',
+        'already-dressed': 'outfit.say.alreadyDressed',
+        'nothing-to-undo': 'outfit.say.nothingToUndo',
+    };
+
     function followUp(s, action) {
         if (!action || action.source === 'model' || !action.told || action.toldFailure || action.followed) return;
+        // UN20. Her reply to this very turn is still being written and checked: the check says the
+        // reason if it is needed (`explained`), so the follow-up waits for it rather than saying
+        // it a second time.
+        if (action.family === 'wardrobe' && s.replyDue === action.turnId) {
+            action.heldForReply = true;
+            return;
+        }
         if (!['failed', 'blocked'].includes(action.status) || action.why === 'stale') return;
         if (action.status === 'blocked' && action.why !== 'autoplay-blocked' && action.why !== 'needs-approval') return;
         if (action.why === 'needs-approval') return; // the chip is already asking
@@ -568,10 +587,11 @@
                 ? action.why === 'autoplay-blocked'
                     ? 'followup.tap'
                     : 'followup.music'
-                : 'followup.outfit';
+                : // UN20. A refusal says its own reason, as the reply check would have.
+                  FOLLOW_OUTFIT[action.why] || 'followup.outfit';
         try {
             const loc = s.win.NEXUS_PRIVATE_LOCALE;
-            const line = loc && typeof loc.t === 'function' ? loc.t(key) : '';
+            const line = loc && typeof loc.t === 'function' ? loc.t(key, { control: closerLabel(s) }) : '';
             if (line && line !== key && typeof s.session._speak === 'function' && !s.session._stopped)
                 s.session._speak(line);
         } catch (_) {
@@ -1045,6 +1065,25 @@
         }
     }
 
+    /**
+     * UN20. The control that moves the evening closer, as the person sees it ("Più vicino"), for
+     * the lines where she tells them how undressing opens. Pointing at it is hers; moving it is
+     * only ever theirs (intensity is ConsentFlow's alone).
+     */
+    function closerLabel(s) {
+        try {
+            const loc = s && s.win && s.win.NEXUS_PRIVATE_LOCALE;
+            const label = loc && typeof loc.t === 'function' ? String(loc.t('controls.closer') || '') : '';
+            const clean = label.replace(/\s*[→>]+\s*$/u, '').trim();
+            return clean && clean !== 'controls.closer' ? clean : 'Closer';
+        } catch (_) {
+            return 'Closer';
+        }
+    }
+    function closerControl(s) {
+        return `the “${closerLabel(s)}” control`;
+    }
+
     /** UN19. What the wardrobe reports on her right now, for a line that must not be wrong. */
     function currentName(s) {
         try {
@@ -1478,20 +1517,88 @@
     function outfitTruth() {
         const s = state;
         if (!s) return { state: 'none' };
+        // UN20. Whether the person's own turn was about her clothes. "Per ora resto come sono."
+        // opened a transcript where nobody had asked anything about them: the reply check put an
+        // outfit line under a reply that was not about an outfit action. It now speaks only when
+        // the person asked, or an action of theirs ran.
+        const talked = s.topicTurn === s.turnId && s.topic === 'wardrobe';
         const w = s.wardrobe;
         if (!w || w.turnId !== s.turnId) {
             const offer = s.offer && s.offer.turnId === s.turnId;
-            return { state: offer ? 'offer' : 'none' };
+            return { state: offer ? 'offer' : 'none', asked: talked };
         }
+        const asked = w.source !== 'model';
         if (w.status === 'completed')
             return {
                 state: 'changed',
                 name: (w.result && w.result.name) || '',
                 bare: Boolean(w.result && w.result.bare),
+                asked,
             };
-        if (w.status === 'pending') return { state: 'pending' };
-        if (w.why === 'needs-approval') return { state: 'offer' };
-        return { state: 'failed', why: w.why };
+        if (w.status === 'pending') return { state: 'pending', asked };
+        if (w.why === 'needs-approval') return { state: 'offer', asked };
+        // A request overtaken by a newer turn is not an answer to give.
+        if (w.why === 'stale') return { state: 'none', asked: false };
+        return {
+            state: 'failed',
+            why: w.why,
+            action: w.name,
+            naked: Boolean(w.params && (w.params.naked || w.params.step === 'all')),
+            asked,
+        };
+    }
+
+    /**
+     * UN20. Wait, briefly, for this turn's outfit action to stop being `pending`.
+     *
+     * In the real page, "Toglili tutti" was still pending — her looks were being listed — when the
+     * reply was checked, so "Le tolgo tutte per te." passed as an action in progress, and the
+     * refusal arrived after it as a generic follow-up ("Mm, non è andata. Per ora resto così.").
+     * A refusal for no bare look, the last layer or the pace is known within moments: the reply
+     * check waits for it, bounded, so she is checked against what happened. A real change (a look
+     * loading) outlasts the bound and is still reported as in progress, which is true.
+     */
+    function whenSettled(ms) {
+        const s = state;
+        const limit = Math.max(0, Number(ms) || 0);
+        if (!s) return Promise.resolve(outfitTruth());
+        const turn = s.turnId;
+        const busy = () =>
+            state === s &&
+            s.turnId === turn &&
+            s.wardrobe &&
+            s.wardrobe.turnId === turn &&
+            s.wardrobe.status === 'pending';
+        if (!busy() || !limit) return Promise.resolve(outfitTruth());
+        return new Promise((resolve) => {
+            const started = Date.now();
+            const tick = () => {
+                if (!busy() || Date.now() - started >= limit) return resolve(outfitTruth());
+                setTimeout(tick, 50);
+            };
+            setTimeout(tick, 50);
+        });
+    }
+
+    /**
+     * UN20. The reply check is done with this turn: `said` is whether the reply shown carries the
+     * outcome's reason. If it does, the follow-up line is not spoken; if it does not, and the
+     * action has since been refused, it is spoken now — once.
+     */
+    function explained(said) {
+        const s = state;
+        if (!s) return;
+        const w = s.wardrobe;
+        s.replyDue = null;
+        if (!w || w.turnId !== s.turnId) return;
+        if (said && ['failed', 'blocked'].includes(w.status)) {
+            w.toldFailure = true;
+            return;
+        }
+        if (w.heldForReply) {
+            w.heldForReply = false;
+            followUp(s, w);
+        }
     }
 
     function snapshot() {
@@ -1672,7 +1779,9 @@
                     else lines.push('  Take something off only when they ask.');
                 } else
                     lines.push(
-                        `- Undressing is not open yet: the evening is at ${at || 1} of ${UNDRESS_AT}. If they ask, say "not yet" warmly and playfully — it opens when they bring the evening closer. Never describe yourself undressing before then.`
+                        // UN20. "Not yet", teased, with no way forward read as a refusal. She says
+                        // why and names the control the person moves it with; she never moves it.
+                        `- Undressing is not open yet: the evening is at ${at || 1} of ${UNDRESS_AT}. If they ask, say plainly and warmly: not yet, it is not open at this level, and it opens when they bring the evening closer with ${closerControl(s)}. Never describe yourself undressing before then.`
                     );
             }
         }
@@ -1680,7 +1789,7 @@
         // solo mutande e reggiseno." while the avatar wore exactly what she had on. Her clothes are
         // the wardrobe's to change; her words follow it. Said whether or not a wardrobe exists here.
         lines.push(
-            '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it, tease about it, or say you will see what you have.'
+            '- What you wear changes ONLY when the app changes it. Never say you are taking something off, putting something on, or now wearing something different unless RIGHT NOW below says it has happened. Until then you may want it or tease about it — but when they asked for a change, say what RIGHT NOW below says happened, never a vague "maybe later".'
         );
         lines.push('- Dancing: when they ask you to dance, you do.');
         // UN5. Positions and dressing again, as the app can do them.
@@ -1701,6 +1810,12 @@
         );
         lines.push(
             'An executable request is never answered with "tell me more" or a list of options: acknowledge it in one short sentence, as something you are doing.'
+        );
+        // UN20. The other half: a request that cannot happen. "Per ora resto come sono.", twice,
+        // under a clear request at the level they chose, read as censorship. The reason is a fact
+        // the app gives her below; she says it, she does not hint at it.
+        lines.push(
+            'When they ask for a change and RIGHT NOW says it could not happen, say that exact reason once, in plain words and in your own warm voice, then what you can do instead. Never a vague "not now", "maybe later" or "I\'m staying as I am" without the reason.'
         );
 
         const now = [];
@@ -1752,6 +1867,15 @@
             const name = (w.result && w.result.name) || '';
             w.told = true;
             if (['failed', 'blocked'].includes(w.status)) w.toldFailure = true;
+            // UN20. Still pending as her reply is written: hold the follow-up until the reply
+            // check has run (`explained`), or for 15 s if it never does.
+            else if (w.status === 'pending' && s.replyDue !== s.turnId) {
+                const turn = s.turnId;
+                s.replyDue = turn;
+                setTimeout(() => {
+                    if (state === s && s.replyDue === turn) explained(false);
+                }, 15000);
+            }
             if (w.name === 'wardrobe.redress') {
                 // UN5. Told in its own words below.
             } else if (w.name === 'wardrobe.undress') {
@@ -1768,7 +1892,7 @@
                     // UN19. Everything was asked for and this body has no bare look: nothing was
                     // changed and no lingerie was put on in its place. She says exactly that.
                     now.push(
-                        `They asked you to take everything off. Being fully bare is not available for this body in your wardrobe, so nothing was changed: you are still wearing ${currentName(s)}. Say so once, warmly and honestly, and never say you are naked or that you took anything off. You may ask whether they would like you in lingerie instead — a question, not a change.`
+                        `They asked you to take everything off. Being fully bare is not available for this body in your wardrobe, so nothing was changed: you are still wearing ${currentName(s)}. Say so once, warmly and honestly — that being fully bare is not available for this body yet — and never say you are naked or that you took anything off. Then say what you can do instead, as a choice for them: stay like this with them, ${wardrobeState(s) === 'lingerie' ? 'another of your looks' : 'your lingerie or another of your looks'}, or a position they like — a suggestion, not a change.`
                     );
                 else if (w.status === 'completed') {
                     // UN14. Forge swaps her whole look in one change; it does not peel garments off
@@ -1779,12 +1903,18 @@
                         `You have just changed into lingerie${name ? `: you are now wearing “${name}”` : ''}${covers ? ` (it covers your ${covers}; nothing of your earlier outfit shows)` : ''}. You are in lingerie, not naked. It was one change, all at once: say what you wear now, in a few words, in the moment — not a piece-by-piece undressing.`
                     );
                 } else if (w.status === 'pending')
-                    now.push('You are changing into something lighter right now — say so in one short sentence.');
+                    // UN20. "Everything off" is never "something lighter": it ends in her bare body or
+                    // in a refusal. Reported: "Mi metto qualcosa di più leggero adesso." under "Toglili tutti".
+                    now.push(
+                        askedNaked || (w.params && w.params.step === 'all')
+                            ? 'They asked you to take everything off. The app is checking whether that is possible for this body right now: say only that you heard them, in a few words. Do not say you are taking anything off, and never offer something lighter instead.'
+                            : 'You are changing into something lighter right now — say so in one short sentence.'
+                    );
                 else if (w.why === 'pace' && w.source === 'model')
                     now.push('Undressing is not open yet. Stay as you are and do not describe taking anything off.');
                 else if (w.why === 'pace')
                     now.push(
-                        'They asked you to undress, but the evening is not that close yet. Say "not yet" warmly, teasing — it opens when they bring the evening closer. Stay dressed and do not describe undressing.'
+                        `They asked you to undress, but the evening is not that close yet (undressing opens at ${UNDRESS_AT} of ${UNDRESS_AT}, and it is at ${levelOf(s) || 1}). Say so plainly and warmly, once: not yet, not at this level, and it opens when they bring the evening closer with ${closerControl(s)}. Stay dressed and do not describe undressing.`
                     );
                 else if (w.why === 'needs-approval')
                     now.push('You offered to take something off; the app is asking them. Wait for their answer.');
@@ -1794,7 +1924,7 @@
                     );
                 else if (w.why === 'last-layer')
                     now.push(
-                        'They asked you to undress, and you are already down to the last layer you have here. Say so playfully; nothing changes.'
+                        'They asked you to undress, and you are already down to the last layer you have here. Say plainly, in your own playful voice, that this is as far as your wardrobe goes; nothing changes.'
                     );
                 else
                     now.push(
@@ -1902,7 +2032,7 @@
                 now.push(`Your body is in that position now (${named}). Stay in it until they ask you to stand.`);
             else if (body.why === 'pace')
                 now.push(
-                    'They asked for a position the evening is not close enough for yet. Say "not yet", warmly and teasing.'
+                    `They asked for a position the evening is not close enough for yet. Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`
                 );
             else if (body.why === 'unsupported-pose')
                 now.push(
@@ -1955,6 +2085,8 @@
         declineOffer,
         snapshot,
         outfitTruth,
+        whenSettled,
+        explained,
         log,
         onChange,
         promptLines,
