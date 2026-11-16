@@ -1623,6 +1623,9 @@
             this._idle = null;
             this._stopSoundtrack();
             this._restoreScene();
+            // AC6. A place the person asked to change opened the model's window for two minutes; the
+            // next evening must not start with it still open.
+            resetChangeWindow();
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
             const modes = this.director && this.director.modes;
             if (this._modeEntered && modes && modes.activeId === 'adult' && typeof modes.deactivate === 'function') {
@@ -3178,11 +3181,17 @@
          * evening never leaks into the rest of the app.
          */
         _enterScene() {
-            if (!this.scene || !this.win) return false;
+            if (!this.win) return false;
             const controller = this.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
             if (!controller || typeof controller.apply !== 'function') return false;
             try {
+                // AC6. The place is snapshotted whether or not the evening chose one. "Keep this
+                // place" left `this.scene` empty, this returned before the snapshot, and a place the
+                // person later asked for in words (the change window above) was then never put back:
+                // Private ended in a room it had not started in. Restoring a place that did not change
+                // is a no-op (`apply` answers `already-showing`).
                 if (typeof controller.currentScene === 'function') this._sceneBefore = controller.currentScene();
+                if (!this.scene) return false;
                 const result = controller.apply(this.scene, { source: 'private' });
                 return Boolean(result && result.changed);
             } catch (_) {
@@ -3198,6 +3207,11 @@
             const controller = this.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
             if (!controller || typeof controller.apply !== 'function') return false;
             try {
+                // AC6. An evening that kept the place it began in writes nothing unless the place
+                // moved during it (the person asked, in words, within the change window).
+                if (!this.scene && typeof controller.currentScene === 'function') {
+                    if (controller.currentScene() === previous) return false;
+                }
                 controller.apply(previous, { source: 'private' });
                 return true;
             } catch (_) {
@@ -3461,7 +3475,17 @@
             if (!result || result.ok === false) return result;
             const started = session.start();
             if (!started || started.ok === false) {
-                originalStop.call(this, 'private runtime failed');
+                // AC6. The same three steps a normal stop takes, in the same order. `session.start()`
+                // had already set the blackboard's activity to 'intimate' and entered the adult mode
+                // before it failed to mount (Conversation not open), and only the activity half of
+                // this ran: the blackboard kept saying 'intimate' (SessionAdapter reads it) and the
+                // mode stack kept a frame for an evening that never began.
+                try {
+                    session.beforeActivityStop('private runtime failed');
+                } finally {
+                    originalStop.call(this, 'private runtime failed');
+                    session.afterActivityStop('private runtime failed');
+                }
                 return started || { ok: false, why: 'Private experience could not start' };
             }
             this._privateExperience = session;

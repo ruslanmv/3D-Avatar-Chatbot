@@ -2305,3 +2305,55 @@ describe('AC5. Italian positions are positions, not wardrobe', () => {
         expect(Intent.parse('mettiti il vestito rosso')).toMatchObject({ name: 'wardrobe.wear' });
     });
 });
+
+describe('AC6. the evening gives back the place it began in, and does not leak its permissions', () => {
+    /** A controller that behaves like the real one: `apply` is a no-op for the place already showing. */
+    function ambience(start) {
+        let current = start;
+        const writes = [];
+        window.NEXUS_SCENE_AMBIENCE_CONTROLLER = {
+            currentScene: () => current,
+            apply: jest.fn((id, opts) => {
+                if (id === current) return { changed: false, why: 'already-showing' };
+                writes.push({ id, ...opts });
+                current = id;
+                return { changed: true, id };
+            }),
+        };
+        return { writes, now: () => current };
+    }
+    afterEach(() => {
+        delete window.NEXUS_SCENE_AMBIENCE_CONTROLLER;
+    });
+
+    test('"keep this place" and a place asked for in words: Private ends where it began', async () => {
+        const place = ambience('garden');
+        const w = await begin();
+        expect(place.writes).toEqual([]); // keeping the place writes nothing at the start
+        // Later in the evening the person asks, in words, for another place (inside the change window).
+        window.NEXUS_SCENE_AMBIENCE_CONTROLLER.apply('ocean', { source: 'user' });
+        expect(place.now()).toBe('ocean');
+        w.activity.stop('user');
+        expect(place.now()).toBe('garden');
+    });
+
+    test('an evening that never moved the place writes nothing at the end either', async () => {
+        const place = ambience('garden');
+        const w = await begin();
+        w.activity.stop('user');
+        expect(place.writes).toEqual([]);
+    });
+
+    test('a granted change window does not carry into the next evening', async () => {
+        ambience('garden');
+        const Capability = require('../../src/features/together/TogetherCapability.js');
+        const w = await begin();
+        Capability.noteUserTurn('change the place please');
+        expect(Capability.privateChangeAllowed()).toBe(true);
+        w.activity.stop('user');
+        const again = await begin();
+        // Started fresh: the person has not asked in THIS evening.
+        expect(Capability.privateChangeAllowed()).toBe(false);
+        again.activity.stop('user');
+    });
+});
