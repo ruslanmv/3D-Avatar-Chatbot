@@ -1943,6 +1943,7 @@
 
             this._advances += 1;
             this.energy = next.energy;
+            this._present(false);
             // An explicit forward request is the one thing allowed to leave the quiet state. Not a
             // timer, not a warm turn, not the model's reading of the mood.
             this._styleLocked = false;
@@ -2000,6 +2001,8 @@
 
             this._letGoOfPose('eased', { adultOnly: true, level: next.level });
             this.energy = next.energy;
+            // AC10. An energy-only step (no level event follows) still changes her face.
+            this._present(false);
             if (next.atFloor) {
                 // At the bottom of both dials the register is a request rather than a suggestion, and
                 // the classifier must not drift back out of it on the next chatty turn.
@@ -2086,6 +2089,7 @@
             if (level > 1 && this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
             this._letGoOfPose('eased');
             this.energy = 'quiet';
+            this._present(false);
             this.style = 'quiet';
             this._styleLocked = true;
             this._withdrawOffers();
@@ -2183,6 +2187,7 @@
          */
         _choseQuiet() {
             this.energy = (paceModel() && paceModel().normaliseEnergy('quiet')) || 'quiet';
+            this._present(false);
             this.style = 'quiet';
             this._paintLevel();
             this._status(t('status.quiet'));
@@ -2312,6 +2317,7 @@
                 this.bus.on('adult:exit', (event) => {
                     if (!event || event.kind !== 'soft') return;
                     this.energy = 'quiet';
+                    this._present(false);
                     this._paintLevel();
                 })
             );
@@ -2937,6 +2943,7 @@
                 this._presentation = presentation.apply(this.preset.id, this._level(), {
                     first: first === true,
                     care: this._care === true,
+                    energy: this.energy,
                     global: this.win || global,
                 });
             } catch (_) {

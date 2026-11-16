@@ -173,3 +173,60 @@ describe('Mature has its own voice in the written beats', () => {
         for (const l of lines) expect(Beats.line(l)).toBe(l);
     });
 });
+
+describe('AC10. the person’s energy reaches her face', () => {
+    const at = (style, level, energy) => Presentation.compute(style, level, { profile: Profile, energy });
+
+    test('the default energy is exactly what every session had', () => {
+        expect(at('romantic', 2).expression).toEqual({
+            emotion: 'happy',
+            intensity: at('romantic', 2, 'present').expression.intensity,
+        });
+        expect(at('romantic', 2, 'present').expression.emotion).toBe('happy');
+        expect(at('romantic', 2).energy).toBe('present');
+    });
+
+    test('quiet is a settled, relaxed face; playful is a brighter one; the level still sets the warmth', () => {
+        const quiet = at('romantic', 3, 'quiet').expression;
+        const present = at('romantic', 3, 'present').expression;
+        const playful = at('romantic', 3, 'playful').expression;
+        expect(quiet.emotion).toBe('relaxed');
+        expect(playful.emotion).toBe('happy');
+        expect(playful.intensity).toBeGreaterThan(present.intensity);
+        // Warmer at a higher step, whatever the energy.
+        expect(at('romantic', 3, 'playful').expression.intensity).toBeGreaterThan(
+            at('romantic', 1, 'playful').expression.intensity
+        );
+        // And bounded: a resting face never becomes a performance.
+        for (const level of [1, 2, 3, 4])
+            for (const energy of ['quiet', 'present', 'playful']) {
+                expect(at('romantic', level, energy).expression.intensity).toBeLessThanOrEqual(0.4);
+            }
+    });
+
+    test('an energy that is not one of the three is the default, never an error', () => {
+        expect(at('romantic', 2, 'loud').expression).toEqual(at('romantic', 2, 'present').expression);
+    });
+
+    test('care mode wins over energy: neutral, whatever was chosen', () => {
+        expect(
+            Presentation.compute('romantic', 3, { profile: Profile, care: true, energy: 'playful' }).expression
+        ).toEqual({
+            emotion: 'neutral',
+            intensity: 0,
+        });
+    });
+
+    test('apply() puts the energy’s face on the VRM through the loader that exists', () => {
+        const setEmotion = jest.fn();
+        const g = {
+            NEXUS_PRIVATE_EXPERIENCE_PROFILE: Profile,
+            NEXUS_VIEWER: { avatarManager: { vrmLoader: { setEmotion } } },
+        };
+        Presentation.apply('romantic', 2, { global: g, energy: 'quiet' });
+        expect(setEmotion).toHaveBeenLastCalledWith('relaxed', expect.any(Number));
+        Presentation.apply('romantic', 2, { global: g, energy: 'playful' });
+        expect(setEmotion).toHaveBeenLastCalledWith('happy', expect.any(Number));
+        Presentation.reset({ global: g });
+    });
+});

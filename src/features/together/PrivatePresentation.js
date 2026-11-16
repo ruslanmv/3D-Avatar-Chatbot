@@ -70,11 +70,22 @@
         const steps = Math.max(0, pres.level - 1);
         const rate = Math.max(MIN_RATE_FACTOR, Math.min(1, Number(pres.voiceRate || 1) + STEP_RATE * steps));
         const intensity = Math.min(0.32, 0.1 + STEP_WARMTH * steps);
+        // AC10. The person's energy reaches her face, not only the prompt: `quiet` is a softer,
+        // settled expression (relaxed), `playful` a brighter one, `present` (the default, and what
+        // every session had) is unchanged. The level still sets how warm it is.
+        const energy = o.energy === 'quiet' || o.energy === 'playful' ? o.energy : 'present';
+        const expression =
+            energy === 'quiet'
+                ? { emotion: 'relaxed', intensity: Math.min(0.32, intensity + 0.04) }
+                : energy === 'playful'
+                  ? { emotion: 'happy', intensity: Math.min(0.4, intensity + 0.08) }
+                  : { emotion: 'happy', intensity };
         return {
             style: styleId,
             level: pres.level,
+            energy,
             rate: Math.round(rate * 100) / 100,
-            expression: { emotion: 'happy', intensity: Math.round(intensity * 100) / 100 },
+            expression: { emotion: expression.emotion, intensity: Math.round(expression.intensity * 100) / 100 },
             light: pres.mood || null,
             care: false,
         };
@@ -87,7 +98,7 @@
     function apply(styleId, level, options) {
         const o = options || {};
         const g = o.global || global;
-        const next = compute(styleId, level, { profile: profile(g), care: o.care === true });
+        const next = compute(styleId, level, { profile: profile(g), care: o.care === true, energy: o.energy });
         if (!next) return { ok: false, why: 'no-profile', applied: { ...applied } };
         current = next;
         applied = { voice: true, expression: false, light: applied.light && !o.first };
