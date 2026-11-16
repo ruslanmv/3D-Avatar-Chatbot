@@ -110,6 +110,15 @@
         const o = options || {};
         if (state) end(state.session);
         const win = o.win || (session && session.win) || global;
+        // NL3. A position asked for in ordinary chat is not brought into Private: this session
+        // keeps its own controller and its own history of positions, and a hold it does not know
+        // about is one it could never let go of. She starts Private standing.
+        try {
+            if (win && win.NEXUS_BODY_POSES && typeof win.NEXUS_BODY_POSES.release === 'function')
+                win.NEXUS_BODY_POSES.release('private-started');
+        } catch (_) {
+            /* Private still begins */
+        }
         const Media = pick(win, 'NEXUS_PRIVATE_MEDIA_CONTROLLER', './PrivateMediaController.js');
         const Wardrobe = pick(win, 'NEXUS_IN_SCENE_WARDROBE', './InSceneWardrobe.js');
         seq += 1;
@@ -487,6 +496,30 @@
         return Boolean(state && state.session && !state.session._stopped);
     }
 
+    /**
+     * NL5. The reply waits for her body: resolves when the position asked for this turn has
+     * settled (completed, failed or blocked), and at `maxMs` at the latest. `null` when no
+     * position is in flight. Only positions: a search or a download is not waited for.
+     */
+    function whenPoseSettled(maxMs) {
+        const pending = () => {
+            const last = state && state.log.length ? state.log[state.log.length - 1] : null;
+            return Boolean(last && last.name === 'avatar.pose' && last.status === 'pending');
+        };
+        if (!pending()) return null;
+        const win = state.win || global;
+        const limit = Number.isFinite(maxMs) ? maxMs : 3000;
+        return new Promise((resolve) => {
+            let waited = 0;
+            const tick = () => {
+                if (!pending() || waited >= limit) return resolve();
+                waited += 50;
+                (win.setTimeout || setTimeout)(tick, 50);
+            };
+            tick();
+        });
+    }
+
     function settle(action, status, why, result) {
         action.status = status;
         action.why = why || null;
@@ -827,26 +860,66 @@
             const out = s.poses.back();
             return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
         }
-        const out = s.poses.apply(action.params.pose);
+        // NL1. A position that was asked for and that this build does not have: nothing runs, and
+        // the reply is told so. `ask` is set when the words fit more than one preset.
+        if (action.params.pose === 'unknown')
+            return settle(action, 'failed', action.params.ask ? 'ambiguous-pose' : 'unsupported-pose', {
+                name: action.params.said || '',
+                ask: action.params.ask || '',
+            });
+        // NL1. A Pose Studio preset by name goes the same way as the keyed ones: one controller.
+        const key =
+            action.params.pose === 'preset' && typeof s.poses.presetKey === 'function'
+                ? s.poses.presetKey(action.params.preset || '')
+                : action.params.pose;
+        const named = (typeof s.poses.describe === 'function' && s.poses.describe(key)) || null;
+        const shown = named && action.params.pose === 'preset' ? named.label : action.params.pose;
+        const out = s.poses.apply(key);
         if (!out.ok || typeof s.poses.confirm !== 'function')
             return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, {
-                name: action.params.pose,
+                name: shown,
             });
         // UN6. Success only once the renderer shows it. A pose that did not land is taken back:
         // she returns to the position she held before (or stands), and the reply says it failed.
-        return s.poses.confirm(action.params.pose).then((seen) => {
+        return s.poses.confirm(key).then((seen) => {
             if (state !== s) return settle(action, 'blocked', 'stale');
-            if (seen && seen.ok) return settle(action, 'completed', null, { name: action.params.pose });
+            // NL1. Another position was asked for while this one was being checked: it is not
+            // a failure of this one, and the newer request owns her body.
+            if (seen && seen.why === 'superseded') return settle(action, 'blocked', 'stale');
+            if (seen && seen.ok) return settle(action, 'completed', null, { name: shown, seen: seen.seen || null });
             try {
                 s.poses.back();
             } catch (_) {
                 /* she keeps whatever she shows; the failure is still reported */
             }
-            return settle(action, 'failed', 'not-rendered', {
-                name: action.params.pose,
+            return settle(action, 'failed', (seen && seen.why) || 'not-rendered', {
+                name: shown,
                 measured: seen && seen.measured,
             });
         });
+    }
+
+    /** NL1. What the parser needs to read a position request: the live catalogue, the language. */
+    function poseContext(s) {
+        const Commands = pick(s.win, 'NEXUS_POSE_COMMANDS', '../../xr/PoseCommands.js');
+        let catalogue = [];
+        let hit = false;
+        try {
+            catalogue = Commands && typeof Commands.catalogueFrom === 'function' ? Commands.catalogueFrom(s.win) : [];
+        } catch (_) {
+            catalogue = [];
+        }
+        try {
+            const fast = s.win && s.win.NEXUS_INTENT_FASTPATH;
+            hit = Boolean(fast && typeof fast.match === 'function' && fast.match(s.turnText || ''));
+        } catch (_) {
+            hit = false;
+        }
+        return {
+            poseCatalogue: catalogue,
+            lang: Commands && typeof Commands.langKey === 'function' ? Commands.langKey(localeOf(s.win)) : 'en',
+            fastPathHit: hit,
+        };
     }
 
     /**
@@ -1324,6 +1397,7 @@
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
             poseHeld: Boolean(s.poses && typeof s.poses.held === 'function' && s.poses.held()),
             undressed: Boolean(s.dressedLook),
+            ...poseContext(s),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -1363,8 +1437,11 @@
             const parsed = Intent.parse(String(text == null ? '' : text), {
                 poseHeld: Boolean(typeof s.poses.held === 'function' && s.poses.held()),
                 undressed: Boolean(s.dressedLook),
+                ...poseContext(Object.assign({}, s, { turnText: String(text == null ? '' : text) })),
             });
-            return Boolean(parsed && parsed.name === 'avatar.pose');
+            // NL1. A request that will only be refused (`unknown`) moves nothing: the fast path
+            // need not stand aside for it.
+            return Boolean(parsed && parsed.name === 'avatar.pose' && parsed.params.pose !== 'unknown');
         } catch (_) {
             return false;
         }
@@ -1768,9 +1845,34 @@
         // UN5. What her body and her clothes just did.
         const body = [...s.log].reverse().find((a) => a.name === 'avatar.pose' && a.turnId === s.turnId);
         if (body) {
-            const named = String(body.params.pose || '').replace(/-/g, ' ');
             const result = (body.result && body.result.name) || body.params.pose;
-            if (body.status === 'completed' && result === 'stand') now.push('You are standing again.');
+            // NL1. A preset asked for by name is named by its Pose Studio label, not by "preset".
+            const named = String(
+                body.params.pose === 'preset'
+                    ? (body.result && body.result.name) || body.params.preset || ''
+                    : body.params.pose || ''
+            ).replace(/-/g, ' ');
+            // NL1. Checked first: at the moment the reply is asked for, a position just requested
+            // is usually still being taken (the blend, then the check against her rendered
+            // skeleton). There was no line for that, so the last `else` below told her she could
+            // not take a position she was in the middle of taking; and nothing may be called done
+            // before the renderer has shown it.
+            if (body.status === 'pending')
+                now.push(
+                    `You are moving into that position right now (${named}); it is not confirmed on screen yet. Say you are getting into it, in a few words. Do not say it is done.`
+                );
+            else if (body.why === 'ambiguous-pose')
+                now.push(
+                    `They named a position that could be more than one of yours (${(body.result && body.result.ask) || 'several'}). You have not moved. Ask which one, in a few words.`
+                );
+            else if (
+                body.status === 'failed' &&
+                ['not-rendered', 'not-held', 'not-applied', 'pose-failed'].includes(body.why)
+            )
+                now.push(
+                    'You tried to take that position and it did not show on your body: you are still as you were. Say plainly that you could not take it. Never say you are in it.'
+                );
+            else if (body.status === 'completed' && result === 'stand') now.push('You are standing again.');
             else if (body.status === 'completed' && result === 'turned')
                 now.push('You have turned round, holding your position: they see your back now.');
             else if (body.status === 'completed' && result === 'front')
@@ -1827,6 +1929,7 @@
         request,
         onUserTurn,
         ownsBody,
+        whenPoseSettled,
         fromModel,
         consumeTravel,
         approveOffer,
