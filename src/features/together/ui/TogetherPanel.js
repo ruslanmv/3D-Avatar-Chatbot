@@ -725,10 +725,7 @@ const TogetherPanel = (() => {
 
             // The failure view carries its own actions — one of which is Back — so a second
             // Back underneath it would be the same word twice with different behaviour.
-            // AC2. Private's own setup screens carry a Back in the person's language that does the same
-            // thing; a second, English one under it was the same word twice.
-            const ownsBack = this.view === 'setup' && this.pending === 'intimate' && this.contractFor('intimate');
-            if (this.view !== 'failure' && !ownsBack) {
+            if (this.view !== 'failure') {
                 this.root.appendChild(
                     this._button(this.view === 'chooser' ? 'Cancel' : 'Back', 'nexus-bd-together-cancel', () => {
                         if (this.view === 'chooser') this.close();
@@ -780,26 +777,7 @@ const TogetherPanel = (() => {
                     icon.textContent = activity.icon || '✦';
                     tile.append(icon, name);
                 }
-                // AC2. Private is listed before its switch is on. Say so on the tile, so it reads as
-                // a door that is shut for a reason rather than one that is broken.
-                if (activity.id === 'intimate') {
-                    let locked = false;
-                    try {
-                        const gate = typeof activity.availability === 'function' ? activity.availability() : null;
-                        locked = Boolean(gate && gate.ok === false && /disabled in settings/i.test(gate.why || ''));
-                    } catch (_) {
-                        locked = false;
-                    }
-                    if (locked) {
-                        tile.dataset.locked = '1';
-                        const badge = this.doc.createElement('span');
-                        badge.className = 'nexus-bd-together-badge';
-                        badge.textContent = '🔒 18+';
-                        tile.appendChild(badge);
-                        tile.title = `${name.textContent} · 18+`;
-                    }
-                }
-                if (!tile.title) tile.title = name.textContent;
+                tile.title = name.textContent;
                 grid.appendChild(tile);
             }
 
@@ -1026,10 +1004,7 @@ const TogetherPanel = (() => {
          */
         _paintPrivateMood(contract, activity) {
             const doc = this.doc;
-            // AC2. A locked screen (no styles to choose from) has no question to ask and no second
-            // step to count, only the reason and the way to fix it.
-            const presetsNow = contract ? contract.inputs() : [];
-            const shell = this._privateShell(presetsNow.length ? 1 : 0);
+            const shell = this._privateShell(1);
             const last = activity && typeof activity.lastSetup === 'function' ? activity.lastSetup() : null;
 
             // A returning person gets two taps to the thing they already liked. The wizard is
@@ -1073,12 +1048,10 @@ const TogetherPanel = (() => {
                 shell.appendChild(or);
             }
 
-            if (presetsNow.length) {
-                const lead = doc.createElement('p');
-                lead.className = 'nexus-private-setup-lead';
-                lead.textContent = this._privateWord('setup.question', 'How should this feel?');
-                shell.appendChild(lead);
-            }
+            const lead = doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.textContent = this._privateWord('setup.question', 'How should this feel?');
+            shell.appendChild(lead);
 
             const grid = doc.createElement('div');
             grid.className = 'nexus-private-preset-grid';
@@ -1135,29 +1108,11 @@ const TogetherPanel = (() => {
                 const locked = doc.createElement('p');
                 locked.className = 'nexus-private-locked';
                 locked.dataset.privateLocked = '1';
-                // AC2. The one reason a person can act on - the switch in Settings is off - is said in
-                // the app's language and comes with the way to it. Other reasons are a wait, not a
-                // decision, and keep their sentence.
-                const reason = activity && typeof activity.lockedReason === 'function' ? activity.lockedReason() : null;
                 locked.textContent =
-                    reason === 'settings'
-                        ? this._privateWord(
-                              'setup.locked.settings',
-                              'Private is for adults (18+). Turn on Private Mode in Settings to use it; you will confirm your age there.'
-                          )
-                        : (activity && activity.prompt) ||
-                          (contract && contract.prompt) ||
-                          this._privateWord('setup.unavailable', 'Private is unavailable.');
+                    (activity && activity.prompt) ||
+                    (contract && contract.prompt) ||
+                    this._privateWord('setup.unavailable', 'Private is unavailable.');
                 shell.appendChild(locked);
-                if (reason === 'settings') {
-                    const open = this._button(
-                        this._privateWord('setup.openSettings', 'Open Settings'),
-                        'nexus-private-begin',
-                        () => this._openPrivateSettings()
-                    );
-                    open.dataset.action = 'private-open-settings';
-                    shell.appendChild(open);
-                }
             }
 
             const safety = doc.createElement('div');
@@ -1368,36 +1323,6 @@ const TogetherPanel = (() => {
          * assuming it loaded: the wizard can be painted on a page where the boot list has not
          * finished, and a checklist reading `preflight.voice` would be worse than one in English.
          */
-        /**
-         * AC2. Take the person to the Private Mode switch, and nowhere past it.
-         *
-         * This presses the app's own Settings button - `openSettings` lives in `main.js` and has
-         * one owner - and then puts focus on the switch. It never flips the switch: turning Private
-         * Mode on is what shows the adult confirmation, and that dialog is the gate. Together
-         * closes first so the chooser is not left open behind the Settings panel.
-         */
-        _openPrivateSettings() {
-            const doc = this.doc;
-            if (!doc) return false;
-            try {
-                this.close();
-            } catch (_) {
-                /* Settings still opens */
-            }
-            const button = doc.getElementById('settings-btn') || doc.getElementById('drawer-settings-btn');
-            if (button && typeof button.click === 'function') button.click();
-            const win = this.win || (typeof window !== 'undefined' ? window : null);
-            const focusSwitch = () => {
-                const toggle = doc.getElementById('spicy-mode-toggle');
-                if (!toggle) return;
-                if (typeof toggle.scrollIntoView === 'function') toggle.scrollIntoView({ block: 'center' });
-                if (typeof toggle.focus === 'function') toggle.focus();
-            };
-            if (win && typeof win.setTimeout === 'function') win.setTimeout(focusSwitch, 200);
-            else focusSwitch();
-            return Boolean(button);
-        }
-
         _privateWord(key, fallback) {
             try {
                 const w = this.win || (typeof window !== 'undefined' ? window : null);
