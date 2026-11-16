@@ -136,8 +136,8 @@ momento" chips. A timeline records every turn, action and level event.
 |---|---|---|---|---|---|
 | desktop 1440×900, it-IT | **PASS** | sent while the lingerie loaded → `wardrobe.cancel` completed, the change `cancelled`, never reached her | `failed · no-bare-look`, reason shown once each, corrections read as corrections | 4 throughout | no page errors |
 | desktop 1440×900, en-US | **PASS** | same | same | 4 throughout | no page errors |
-| phone 390 px, it-IT | PHONE_IT | PHONE_IT_WAIT | same as desktop | 4 throughout | no page errors |
-| phone 390 px, en-US | PHONE_EN | PHONE_EN_WAIT | same as desktop | 4 throughout | no page errors |
+| phone 390 px, it-IT | **PASS** | the change had landed before the words arrived (typing on the phone took seconds) → no action, correctly; her reply was the true “In questo momento indosso …” / “Right now I’m wearing …”, not the stand-in's false claim | same as desktop | 4 throughout | no page errors |
+| phone 390 px, en-US | **PASS** | same | same as desktop | 4 throughout | no page errors |
 
 What the earlier runs of this driver found, and what was fixed for each (all in this branch):
 
@@ -154,7 +154,11 @@ settled action (the design's 18 s lull), never inside it.
 
 ## 9. Tests
 
-TEST_COUNTS
+- `npm run validate`: exit 0, **7028 tests in 324 suites**, none failing.
+- `tests/behavior/private-intent-lifecycle-un21.test.js`: 15 tests. On `06407c2` the first 10 gave
+  8 failing; each later test (level decay, yes/wait chips, never-empty reply) fails without its fix.
+- `tests/behavior/private-change-requests-un20.test.js` (UN20, merged in #175): 22, unchanged.
+- Real browser: four configurations, all PASS (section 8).
 
 ## 10. Known limitations
 
