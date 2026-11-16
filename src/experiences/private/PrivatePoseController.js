@@ -57,7 +57,28 @@
             }
         };
 
+        /**
+         * AC4. What the animator was doing BEFORE the first pose took it, or null while not in pose mode.
+         *
+         * `setPoseMode(true)` also switches edit mode on, and `setPoseMode(false)` leaves it on - an
+         * animator in edit mode and not in pose mode returns early every frame and never moves her
+         * again (ProceduralAnimator, the `editMode && !poseMode` guard). `claimBones()` snapshots
+         * the animator's flags too, but it runs AFTER this has already switched both on, so the
+         * snapshot it hands back at release says "pose mode on, edit mode on": Private's exit
+         * returned her bones and left her without idle breathing, blinking or sway until a page
+         * reload. The flags are taken here, before anything changes, and put back exactly.
+         */
+        let before = null;
+        const animatorFlags = () => {
+            const a = win.NEXUS_PROCEDURAL_ANIMATOR;
+            return {
+                poseMode: !!(a && typeof a.isPoseMode === 'function' && a.isPoseMode()),
+                editMode: !!(a && typeof a.isEditMode === 'function' && a.isEditMode()),
+            };
+        };
+
         function enterPoseMode() {
+            if (!before) before = animatorFlags();
             call(() => win.NEXUS_CLIP_LOADER && win.NEXUS_CLIP_LOADER.stopClip({ fadeOut: 0.25 }));
             call(() => win.NEXUS_ANIMATION_RESOLVER && win.NEXUS_ANIMATION_RESOLVER.stop());
             call(() => win.NEXUS_PROCEDURAL_ANIMATOR && win.NEXUS_PROCEDURAL_ANIMATOR.setPoseMode(true));
@@ -82,8 +103,20 @@
                     st.laying = false;
                 }
             });
-            call(() => win.NEXUS_PROCEDURAL_ANIMATOR && win.NEXUS_PROCEDURAL_ANIMATOR.setPoseMode(false));
-            call(() => win.NEXUS_MOTION && win.NEXUS_MOTION.holdForPoseStudio(false));
+            const prior = before || { poseMode: false, editMode: false };
+            before = null;
+            call(() => {
+                const a = win.NEXUS_PROCEDURAL_ANIMATOR;
+                if (!a) return;
+                if (prior.poseMode) {
+                    // Pose Studio itself had her in pose mode: that is not Private's to end.
+                    a.setPoseMode(true);
+                } else {
+                    a.setPoseMode(false);
+                    if (typeof a.setEditMode === 'function') a.setEditMode(prior.editMode);
+                }
+            });
+            call(() => win.NEXUS_MOTION && win.NEXUS_MOTION.holdForPoseStudio(prior.poseMode));
             call(() => {
                 const vrm =
                     win.NEXUS_VIEWER && win.NEXUS_VIEWER.avatarManager && win.NEXUS_VIEWER.avatarManager._currentVRM;
@@ -154,7 +187,10 @@
                 if (!(options && options.keepHistory)) history.length = 0;
                 const vps = system();
                 call(() => vps && typeof vps.releaseBones === 'function' && vps.releaseBones({ blendSeconds: 0.5 }));
-                if (was) exitPoseMode();
+                // AC4. Leave pose mode if a pose took it, not only if one was HELD: a first pose that
+                // failed (`not-applied`, or the pose system threw) released with nothing held and
+                // so left the animator in pose mode and the chat motion stack on hold.
+                if (was || before) exitPoseMode();
                 return Boolean(was);
             },
             held() {
