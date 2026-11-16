@@ -237,10 +237,11 @@ undressing and poses in Private (same doc, §14), `PMA` for Private's
 more-actions menu (the Playground chips behind one ⋯), `BI` for private
 body-state assets (Forge import and read grants, wear cancellation;
 `docs/qa/BODY_STATE_ACCEPTANCE.md`) and `MO` for the motion runtime fixes (the
-body doing what the conversation says;
-`docs/audits/animation-runtime-audit.md`). Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+body doing what the conversation says; `docs/audits/animation-runtime-audit.md`)
+and `AC` for the adult-experience completion batches (safe words, pose and place
+restore, mobile layout; `docs/qa/ADULT_EXPERIENCE_COMPLETION.md`). Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
