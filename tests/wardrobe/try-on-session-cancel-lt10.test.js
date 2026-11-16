@@ -118,6 +118,58 @@ describe('LT10 a superseded wear is cancelled', () => {
         expect(controller.pending).toBe(false);
         expect(session.state().look.id).toBe('dress');
     });
+
+    // Review finding on the LT10 change: one look, then another, then the first again, faster
+    // than the first cancellation settles. The first look's wear had been cancelled by the
+    // session itself, and its rejection arrived when that look was the target once more, so
+    // the loop read it as "somebody stopped this look" and gave up: her own outfit on stage,
+    // the session naming the look, no error. The look wanted last is the one she ends up in.
+    test('back to a look whose wear the session has just cancelled: it is worn after all', async () => {
+        const { session, controller, loaded, aborted, land, looks } = haul();
+        const [jeans, dress] = looks;
+        session.wear(jeans);
+        await flush();
+        session.wear(dress);
+        const again = session.wear(jeans);
+        await flush();
+        expect(aborted).toEqual(['jeans']);
+        expect(controller.pending).toBe(true);
+        land('jeans');
+        expect(await again).toBe(true);
+        expect(loaded).toEqual(['blob:jeans#look.vrm']);
+        expect(controller.activeLook.id).toBe('jeans');
+        expect(session.state().look.id).toBe('jeans');
+        expect(session.error).toBeNull();
+    });
+
+    test('and on to the other look again: only the look wanted last is loaded', async () => {
+        const { session, controller, loaded, land, looks } = haul();
+        const [jeans, dress] = looks;
+        session.wear(jeans);
+        await flush();
+        session.wear(dress);
+        session.wear(jeans);
+        const last = session.wear(dress);
+        await flush();
+        land('dress');
+        expect(await last).toBe(true);
+        expect(loaded).toEqual(['blob:dress#look.vrm']);
+        expect(controller.activeLook.id).toBe('dress');
+        expect(session.state().look.id).toBe('dress');
+    });
+
+    test('a wear somebody else cancels is still given up, not started again', async () => {
+        const { session, controller, loaded, aborted, looks } = haul();
+        const wearing = session.wear(looks[0]);
+        await flush();
+        controller.cancel();
+        expect(await wearing).toBe(false);
+        await flush();
+        expect(aborted).toEqual(['jeans']);
+        expect(loaded).toEqual([]);
+        expect(controller.pending).toBe(false);
+        expect(session.error).toBeNull();
+    });
 });
 
 describe('LT10 ending the haul stops a look on its way', () => {

@@ -107,7 +107,15 @@ one takes over (`InSceneWardrobe.cancelPending()`), and that call ends `stale`, 
 First scene run, before the fix: *"Stale request handling: the superseded look reached the
 renderer (1 loads)"*.
 
-Tests: `tests/wardrobe/try-on-session-cancel-lt10.test.js` (5, with the real controller),
+**LT10d. Back to a look the session had just cancelled (found in review of LT10a).** One look,
+then another, then the first again before the first cancellation had settled: the rejection of
+the cancelled wear arrived when that look was the target once more, the loop read it as
+somebody else stopping the look and gave up: her own outfit on stage, the session naming the
+look, no error. The session now notes which wear it cancelled itself and starts that look again
+when it is still the one wanted; a wear somebody else cancels is still given up. Reproduced in
+Jest with the real controller before the fix (not in the browser matrix, which was not re-run).
+
+Tests: `tests/wardrobe/try-on-session-cancel-lt10.test.js` (8, with the real controller),
 `tests/private-world/wardrobe-supersede-lt10.test.js` (4).
 
 ## 4. Account-scoped access, the app's half (BI5)
@@ -154,7 +162,7 @@ deployed Space.
 
 ## 6. The gate
 
-`npm run validate` on this branch (Node 24): exit 0. Lint clean, format clean, **6740 tests in
+`npm run validate` on this branch (Node 24): exit 0. Lint clean, format clean, **6743 tests in
 315 suites, all passing**.
 
 ## How to run

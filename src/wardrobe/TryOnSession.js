@@ -92,6 +92,7 @@
             this.error = null;
             this.restorePoint = null;
             this._flying = null; // LT10: the look whose applyLook is in flight, if any
+            this._stopped = null; // LT10: that look, once this session has cancelled its wear
             this.landed = 0; // counts arrivals, so a view can play a reveal for each
             this.lastLanding = null; // {look, cause}
             this.playing = false;
@@ -299,7 +300,15 @@
             // this is the session using it. The loop below reads a cancelled wear as "she kept
             // what she had on" and goes on to the newest target. A restore in flight is not a
             // wear and is left to finish (there is nothing to cancel it to).
-            if (this.busy && this._flying && keyOf(this._flying) !== keyOf(look)) this.cancelPending();
+            //
+            // The session remembers that the cancellation was its own. A cancelled wear rejects
+            // a moment later, and by then the same look may be wanted again (one look, another,
+            // the first again, quickly): without the note the loop took that rejection for
+            // somebody else stopping the look and gave up on it, leaving her own outfit on
+            // stage under the look's name, with no error.
+            if (this.busy && this._flying && keyOf(this._flying) !== keyOf(look) && this.cancelPending()) {
+                this._stopped = this._flying;
+            }
             this.target = look;
             this._cause = cause;
             this.error = null;
@@ -324,15 +333,20 @@
                                 if (isOriginal(want)) await this._wearOriginal();
                                 else {
                                     this._flying = want; // LT10: what a newer tap or End may cancel
+                                    this._stopped = null;
                                     await this.controller.applyLook(want);
                                 }
                             } catch (error) {
                                 this._flying = null;
                                 // BI3. Cancelled is not failed: she kept what she had on. If
-                                // something else is wanted by now, go and wear that; otherwise
+                                // something else is wanted by now, go and wear that. If this
+                                // session cancelled it for another look and it is wanted again
+                                // (LT10), start it again. Otherwise somebody else stopped it:
                                 // stop wanting the cancelled look.
                                 if (error && error.reason === 'wear_cancelled') {
-                                    if (this.target !== want) continue;
+                                    var ours = this._stopped === want;
+                                    this._stopped = null;
+                                    if (this.target !== want || ours) continue;
                                     this.target = this.worn;
                                     return false;
                                 }
@@ -356,6 +370,7 @@
                     return false;
                 } finally {
                     this._flying = null;
+                    this._stopped = null;
                     this.busy = false;
                     this._changed();
                 }
