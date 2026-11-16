@@ -4023,6 +4023,8 @@ async function _handleStreamingResponse(text) {
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // PM1. Private Mode: adult content with hard limits; '' when off (prompt unchanged).
+            (window.NEXUS_PRIVATE_MODE_CONTENT?.systemPromptSuffix?.() || '') +
             // A11. Where you both are, and that she may change it. Empty unless the user has
             // turned scene ambience on AND the catalogue can actually answer something, so a
             // chat with it off sends byte-for-byte the prompt it sent before the feature
@@ -4586,6 +4588,7 @@ async function callLLM(userMessage) {
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_PRIVATE_MODE_CONTENT?.systemPromptSuffix?.() || '') +
             // A11. Where you both are, and that she may change it. Empty unless the user has
             // turned scene ambience on AND the catalogue can actually answer something, so a
             // chat with it off sends byte-for-byte the prompt it sent before the feature
@@ -6453,6 +6456,7 @@ function __nexusMediaSuffix() {
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_PRIVATE_MODE_CONTENT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
             (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
             (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '')

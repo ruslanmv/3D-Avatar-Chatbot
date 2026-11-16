@@ -711,7 +711,13 @@
             // The one line that is not negotiable and was never actually written down. Everything
             // below it — the gate, the ladder, the safeword — assumes it, and an assumption is not
             // an instruction.
-            'Everyone in this is a consenting adult and it is fiction. Never write anyone underage, and never a real, identifiable person.',
+            'Everyone in this is a consenting adult and it is fiction.',
+            // PM1. The hard limits, from the one place they are written, in every Private session
+            // whatever its tier: no minors (or anyone who reads as one), nothing non-consensual,
+            // nothing illegal, no real person. Inline fallback if the module is missing.
+            ...((global && global.NEXUS_PRIVATE_MODE_CONTENT && global.NEXUS_PRIVATE_MODE_CONTENT.HARD_LIMITS) || [
+                'Never write anyone underage or anyone who reads as a minor, nothing non-consensual, nothing illegal, and never a real, identifiable person.',
+            ]),
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
             // AX6. The model's half of the wellbeing rule, in every language. The app's half —

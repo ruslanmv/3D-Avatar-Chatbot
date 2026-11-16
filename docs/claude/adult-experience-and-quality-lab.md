@@ -15,10 +15,23 @@ TogetherCapability) owns style data and capability resolution;
   site's tier (`window.NEXUS_ADULT_EXPERIENCE_CONFIG`, set by the deployment,
   never storage or a setting). Nothing above `mature` without
   `blackboard.adultVerified`; an unreadable declaration resolves to `sensual`.
-  No build sets the config, so every build resolves to `mature`.
-- **Undeclared, NEXUS adds no content rule of its own** (an earlier product
-  decision, pinned in `tests/behavior/private-register.test.js`); she is told
-  only how to meet a boundary in her own voice. A declared tier is stated.
+  No build sets the config, so every build resolves to `mature` — **unless
+  Private Mode is on (PM1)**.
+- **PM1. Private Mode on = `explicit`.** The person's own Settings toggle with
+  its adult confirmation (`SpicyGate`) counts as the attestation; no second age
+  gate. She is told plainly that sexual, erotic and explicit content between
+  consenting adults is allowed, without refusals, fades to black or
+  disclaimers. A deployment that declares less still narrows it. Private Mode
+  off: nothing changes. One flag and one wording:
+  `src/features/chat/PrivateModeContent.js` (`isOn()`, `ALLOWED`,
+  `HARD_LIMITS`), sent at main.js's three prompt sites and inside Private.
+- **Hard limits, never configurable (PM1):** nobody under 18 or who reads as a
+  minor, nothing non-consensual, nothing illegal, no real identifiable person.
+  Sent in every Private session whatever its tier.
+- **Undeclared and Private Mode off, NEXUS adds no content rule of its own**
+  (an earlier product decision, pinned in
+  `tests/behavior/private-register.test.js`); she is told only how to meet a
+  boundary in her own voice. A declared tier is stated.
 - **Mature** (shown as "Intenso"/"Intense", AX21) is the fourth style and is
   offered wherever Private is (AX22, the owner's decision: Private's own gate
   is the lock). A site takes it away by declaring `contentTier: 'sensual'`; the

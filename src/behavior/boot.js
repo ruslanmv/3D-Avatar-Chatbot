@@ -105,6 +105,9 @@
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
         'src/features/chat/ReplyClean.js',
+        // PM1. Private Mode's content paragraph and hard limits. Before PrivateExperienceProfile and
+        // TogetherCapability, which read it.
+        'src/features/chat/PrivateModeContent.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;

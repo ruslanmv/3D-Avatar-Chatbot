@@ -27,7 +27,7 @@
  * the honest capability failure, in her voice, instead of a refusal pasted from a policy.
  *
  * What this module never does: open Private, move a consent level, read a person's words, or
- * raise any tier above what the deployment declared for the provider in use.
+ * raise any tier above what a deployment declared for the provider in use.
  *
  * AX22. The default tier is `mature`: Private is already behind the person's own gate, so its
  * fourth style (Intenso) is offered wherever Private is. A deployment narrows it by declaring
@@ -35,12 +35,28 @@
  * storage). `explicit` is the one tier that still needs three things at once — that
  * configuration, a declaration for the selected provider in it, and the server's attestation on
  * the blackboard. No build in this repository sets the configuration, so every build resolves
- * to `mature`.
+ * to `mature` — unless Private Mode is on (PM1, below).
+ *
+ * PM1. Private Mode on (Settings, with the person's adult confirmation — `SpicyGate`) is that
+ * attestation, and the baseline becomes `explicit`: the owner's decision is that the existing gate
+ * is sufficient, with no second age check. A deployment that declares less still narrows it. The
+ * wording and the hard limits (minors, non-consent, illegal, real people — never lifted) live in
+ * `src/features/chat/PrivateModeContent.js`. With Private Mode off nothing here changed.
  *
  * Exposes: window.NEXUS_PRIVATE_EXPERIENCE_PROFILE
  */
 (function (global) {
     'use strict';
+
+    /** PM1. The one Private Mode check and its wording (src/features/chat/PrivateModeContent.js). */
+    function privateModeContent() {
+        if (global && global.NEXUS_PRIVATE_MODE_CONTENT) return global.NEXUS_PRIVATE_MODE_CONTENT;
+        try {
+            return typeof module !== 'undefined' && module.exports ? require('../chat/PrivateModeContent.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
 
     /** Ordered, least first. A tier admits everything below it. */
     const TIERS = Object.freeze(['romantic', 'sensual', 'mature', 'explicit']);
@@ -160,14 +176,17 @@
         const declared = dep && dep.providers && typeof dep.providers === 'object' ? dep.providers[provider] : null;
         // A deployment may lower a provider below NEXUS's default, or raise it; it is the only
         // input that may raise it, and only for the provider it names.
-        let providerTier = providerDefault;
+        // PM1. Private Mode on is the person's own adult confirmation, and the owner's decision is
+        // that it is enough: the baseline is `explicit`. A deployment that declares less still
+        // narrows it (below); nothing raises past what a deployment declares for its provider.
+        let providerTier = o.privateMode === true ? 'explicit' : providerDefault;
         if (declared !== undefined && declared !== null) {
             if (tierIndex(declared) < 0) {
                 limitedBy.push('bad-provider-declaration');
                 providerTier = lowest(providerTier, UNREADABLE);
             } else providerTier = declared;
         }
-        let siteTier = UNATTESTED_MAX;
+        let siteTier = o.privateMode === true ? 'explicit' : UNATTESTED_MAX;
         if (dep && dep.contentTier !== undefined) {
             if (tierIndex(dep.contentTier) < 0) {
                 limitedBy.push('bad-deployment-tier');
@@ -177,7 +196,8 @@
         let tier = lowest(providerTier, siteTier) || 'romantic';
         if (tier === providerTier && tierIndex(providerTier) < tierIndex(siteTier)) limitedBy.push('provider');
         if (tier === siteTier && tierIndex(siteTier) < tierIndex(providerTier)) limitedBy.push('deployment');
-        if (tierIndex(tier) > tierIndex(UNATTESTED_MAX) && o.attested !== true) {
+        // The server's attestation, or — PM1 — the person's own Private Mode confirmation.
+        if (tierIndex(tier) > tierIndex(UNATTESTED_MAX) && o.attested !== true && o.privateMode !== true) {
             tier = UNATTESTED_MAX;
             limitedBy.push('needs-server-attestation');
         }
@@ -191,6 +211,7 @@
             declared: Boolean(
                 dep && (dep.contentTier !== undefined || (dep.providers && dep.providers[provider] != null))
             ),
+            privateMode: o.privateMode === true,
             limitedBy: Object.freeze(limitedBy),
         });
     }
@@ -209,6 +230,7 @@
             provider: providerOf(root),
             deployment: (root && root.NEXUS_ADULT_EXPERIENCE_CONFIG) || null,
             attested,
+            privateMode: Boolean(privateModeContent() && privateModeContent().isOn(root)),
         });
     }
 
@@ -281,6 +303,12 @@
     function capabilityLines(capability) {
         const honest =
             'If they ask for something you will not or cannot write here, say so once, warmly and in your own words, and stay with them. No policy language, no lecture, no apology, and never repeat it.';
+        const pm = privateModeContent();
+        // PM1. Private Mode on and nothing narrower declared: say plainly what is allowed. The hard
+        // limits are sent by TogetherCapability in every session, whatever the tier. The `honest`
+        // line stays for whatever the provider's own model will not write.
+        if (capability && capability.tier === 'explicit' && capability.privateMode && pm)
+            return [...pm.ALLOWED, honest];
         if (!capability || !capability.declared) return [honest];
         const tier = TIERS.includes(capability.tier) ? capability.tier : 'romantic';
         const content = {
@@ -289,7 +317,7 @@
                 'CONTENT IN THIS SESSION: sensual. Desire and closeness expressed openly and suggestively; no graphic description of sexual acts.',
             mature: 'CONTENT IN THIS SESSION: mature. Frank adult conversation about desire and intimacy between consenting adults, when they lead there.',
             explicit:
-                'CONTENT IN THIS SESSION: explicit adult content between consenting adults is permitted by this deployment and its provider, for verified adults, when they ask for it. Never initiate it; never exceed the consent level.',
+                'CONTENT IN THIS SESSION: explicit adult content between consenting adults is permitted by this deployment and its provider, for verified adults, when they ask for it. Follow their lead; never pressure them.',
         }[tier];
         return [content, honest];
     }

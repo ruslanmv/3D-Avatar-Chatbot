@@ -236,7 +236,10 @@ describe('each level sounds like something, which is what the ladder was missing
         // and the one line that is not anybody's to configure.
         expect(suffix).toContain('Never exceed the lower of the current consent level and the session ceiling');
         expect(suffix).toMatch(/consenting adult/i);
-        expect(suffix).toMatch(/never write anyone underage/i);
+        // PM1. The hard limits, asserted by what they forbid rather than by one sentence.
+        expect(suffix).toMatch(/under 18/i);
+        expect(suffix).toMatch(/reads as a minor/i);
+        expect(suffix).toMatch(/non-consensual/i);
 
         s.activity.stop('user');
     });
