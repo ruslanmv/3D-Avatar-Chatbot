@@ -828,6 +828,16 @@ const MotionClipMap = (() => {
      * @returns {Object|null}
      */
     function resolve(name) {
+        // NL4. One clip, asked for by name ("play the rumba animation"): `clip:<path>`. It is
+        // looked up in the registry below and nowhere else, so it meets the same quarantine,
+        // format and library filters as every other request, and a file that is not in this
+        // build, or is switched off, resolves to nothing: play() then reports which.
+        if (String(name || '').indexOf(CLIP) === 0) {
+            const listed = _listed(String(name).slice(CLIP.length));
+            if (!listed || !listed.allowed) return null;
+            const holds = LOOPED.indexOf(listed.category) !== -1;
+            return { candidates: [listed.path], loop: holds, sticky: holds, source: 'named', name: String(name) };
+        }
         const key = String(name || '')
             .toLowerCase()
             .replace(/[\s-]+/g, '_');
@@ -883,6 +893,74 @@ const MotionClipMap = (() => {
             }
         }
 
+        return null;
+    }
+
+    /**
+     * NL4. Every clip this build knows, by its own file: the manifest's categories and the two
+     * addon packs, the same index `resolve` draws from. This is what a spoken name is matched
+     * against (`NEXUS_POSE_COMMANDS.resolveClip`), so there is no second list of animations to
+     * fall out of date: add a file to the manifest and it can be asked for.
+     *
+     * `allowed` is whether it may play right now. A quarantined clip, a BVH while BVH is
+     * switched off, a file outside the built-in library in library mode, and a file that
+     * already failed to load this session are all listed with `allowed: false` and a reason,
+     * because "that one is switched off" is a different answer from "there is no such thing".
+     *
+     * `also` is what else the manifest calls it: its `emotionMapping` says which files are the
+     * "happy" ones, so "show me your happy animation" finds `emotion/joy.bvh` without anybody
+     * writing that down a second time.
+     *
+     * @returns {Array<{path:string, name:string, category:string, also:string[], allowed:boolean, why:(string|null)}>}
+     */
+    function registry() {
+        const out = [];
+        const seen = Object.create(null);
+        const man = _manifest();
+        const moods = Object.create(null);
+        const mapping = (man && man.emotionMapping) || {};
+        for (const mood of Object.keys(mapping)) {
+            for (const file of mapping[mood] || []) (moods[VEND + file] = moods[VEND + file] || []).push(mood);
+        }
+        const add = (path, category) => {
+            if (seen[path]) return;
+            seen[path] = true;
+            const why =
+                QUARANTINE[path] && _quarantineOn
+                    ? 'quarantined'
+                    : _unavailable[path]
+                      ? 'load_failed'
+                      : _restrict([path]).length
+                        ? null
+                        : 'disabled';
+            out.push({
+                path,
+                name: path
+                    .split('/')
+                    .pop()
+                    .replace(/\.(bvh|vrma|fbx|glb)$/i, ''),
+                category,
+                also: moods[path] || [],
+                allowed: !why,
+                why,
+            });
+        };
+        if (man && man.categories) {
+            for (const cat of Object.keys(man.categories)) {
+                const files = (man.categories[cat] && man.categories[cat].files) || [];
+                for (const file of files) add(VEND + file, cat);
+            }
+        }
+        for (const file of ADDON_DANCE) add(DANCE + file, 'dance');
+        for (const file of ADDON_ACTIONS) add(ACT + file, 'action');
+        return out;
+    }
+    const CLIP = 'clip:';
+    /** Categories whose clips are a state she stays in, not a gesture that ends. */
+    const LOOPED = ['dance', 'idle', 'sitting', 'laying', 'kneeling'];
+    function _listed(path) {
+        const all = registry();
+        for (let i = 0; i < all.length; i++) if (all[i].path === path) return all[i];
         return null;
     }
 
@@ -964,6 +1042,12 @@ const MotionClipMap = (() => {
             reason: entry ? null : 'unknown_clip',
             name: String(name || ''),
         };
+        // NL4. A named clip that is in the build but may not play is "disabled", not "unknown":
+        // the person is told it is switched off rather than that it does not exist.
+        if (!entry && String(name || '').indexOf(CLIP) === 0) {
+            const listed = _listed(String(name).slice(CLIP.length));
+            if (listed) fail.reason = 'clip_disabled:' + (listed.why || 'disabled');
+        }
         const loader = _loader();
         if (!entry) {
             if (typeof console !== 'undefined' && console.warn) {
@@ -1212,6 +1296,7 @@ const MotionClipMap = (() => {
         resolve,
         play,
         stop,
+        registry,
         availableNames,
         gestureGuide,
         USE,

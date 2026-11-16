@@ -3944,6 +3944,24 @@ async function handleUserMessage(text) {
 
     setStatus('listening', 'THINKING...');
 
+    // NL5. A position or an animation she was just asked for is confirmed on her body, or has
+    // failed, before the reply is asked for: the prompt then says which, instead of "not yet".
+    // Nothing in flight means nothing to wait for (both return null). The turn's epoch is taken
+    // first, so a CLEAR pressed during the wait still ends the turn.
+    const settling = [
+        window.NEXUS_MOTION?.whenBodySettled?.(3000),
+        window.NEXUS_PRIVATE_ACTIONS?.whenPoseSettled?.(3000),
+    ].filter(Boolean);
+    if (settling.length) {
+        const asked = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
+        try {
+            await Promise.all(settling);
+        } catch (_) {
+            /* the reply is still asked for; the prompt says what is known */
+        }
+        if (!_turnIsCurrent(asked)) return;
+    }
+
     // Try streaming first, fallback to non-streaming
     const canStream =
         window._nexusLLM &&
@@ -5475,6 +5493,14 @@ window.addEventListener('nexus-motion:action', (e) => {
     // swallows the only signal the user gets — which is the whole bug this
     // notice exists to expose. They also replace the echo rather than stack
     // on it, so there is no burst to guard against.
+    // NL5. The status of a position or a named animation asked for in words: "Changing pose…",
+    // then "Pose applied." or the failure, each from the lifecycle itself. The second line
+    // follows the first inside the throttle window by design, and replaces it.
+    if (d.source === 'body_status') {
+        _lastMotionToastAt = now;
+        if (d.text) _showMotionEcho((d.failed ? '⚠️ ' : '') + d.text);
+        return;
+    }
     const isFailure = d.source === 'clip_failed' || d.source === 'policy';
     if (!isFailure && now - _lastMotionToastAt < 1500) return;
     _lastMotionToastAt = now;

@@ -298,3 +298,6 @@ develop/verification/scratch-candidates/
 # tens of megabytes each. The matrix, the reports' summary and the clothed evidence sheets are
 # committed under docs/qa/wardrobe-clothed/.
 audits/wardrobe/runs/
+# Natural-language motion acceptance runs (tools/qa/natural-language-motion-acceptance.mjs).
+# The summary and the evidence frames are committed under docs/qa/natural-language-motion/.
+audits/nl-motion/runs/

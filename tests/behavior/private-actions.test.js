@@ -1485,6 +1485,107 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(w.controller.avatarManager.getCurrent().url).toBe('base.vrm');
     });
 
+    // NL1. The report: "Please change your position to On all fours." / "Getting on all fours for
+    // you now, exactly how you asked." / still standing. The words for the position were only
+    // read at the very start of a message, so with a lead-in in front of them there was no
+    // action at all, and nothing told the model that nothing had moved.
+    test.each([
+        ['Please change your position to On all fours.', 'en-US'],
+        ['Cambia posizione, mettiti a quattro zampe.', 'it-IT'],
+        ['Can you get into the on all fours position?', 'en-US'],
+    ])('NL1: "%s" is the same request as the bare words, through the same gate', async (said, lang) => {
+        const w = await at(4);
+        // NL2. Each language's lead-ins are read in a session of that language.
+        window.AppLanguage = { code: lang };
+        await say(said);
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:handsKnees']);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+        expect(prompt()).toMatch(/Your body is in that position now/);
+        expect(w.adult.level).toBe(4);
+    });
+
+    test('NL1: the lead-in opens no gate: below level 4 the same sentence waits, and says so', async () => {
+        const w = await at(2);
+        await say('Please change your position to On all fours.');
+        await flush();
+        expect(w.pose.calls).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'blocked', why: 'pace' });
+        expect(prompt()).toMatch(/not close enough for yet/);
+        expect(prompt()).not.toMatch(/Your body is in that position now/);
+        expect(w.adult.level).toBe(2);
+    });
+
+    test('NL5: while the position is still being confirmed the reply is told it is not done yet', async () => {
+        const w = await at(4);
+        w.pose.isSettling = () => true; // the pose system is still moving her
+        expect(Actions.whenPoseSettled(3000)).toBeNull();
+        await say('Please, can you kneel down for me?');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'pending' });
+        expect(prompt()).toMatch(/not confirmed on screen yet/);
+        expect(prompt()).not.toMatch(/Your body is in that position now/);
+        const settled = Actions.whenPoseSettled(3000);
+        expect(settled).toBeTruthy();
+        w.pose.isSettling = () => false;
+        await settled;
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+        expect(prompt()).toMatch(/Your body is in that position now/);
+    });
+
+    test('NL5: a position that did not take is told to the reply as a failure, never as done', async () => {
+        const w = await at(4);
+        w.pose.applyPreset = (name) => w.pose.calls.push(`apply:${name}`); // asked, and nothing changes
+        await say('Please, can you kneel down for me?');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'failed' });
+        expect(prompt()).toMatch(/did not show on your body/);
+        expect(prompt()).not.toMatch(/Your body is in that position now/);
+    });
+
+    test('NL1: a position nobody can find is said to be one she cannot take, not left to the model', async () => {
+        const w = await at(4);
+        await say('Change your position to a handstand.');
+        await flush();
+        expect(w.pose.calls).toEqual([]);
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'avatar.pose',
+            status: 'failed',
+            why: 'unsupported-pose',
+        });
+        expect(prompt()).not.toMatch(/Your body is in that position now/);
+    });
+
+    test('NL1: a Pose Studio preset the session offers is reachable in Private by its everyday words', async () => {
+        const w = await at(2);
+        window.NEXUS_POSE_STUDIO_PANEL = {
+            catalogue: () => [{ name: 'sittingCrossed', label: 'Crossed', category: 'Sitting', adult: false }],
+        };
+        w.pose.getPresetList = () => [{ name: 'sittingCrossed' }];
+        let now = 'standing';
+        w.pose.applyPreset = (name) => {
+            w.pose.calls.push(`apply:${name}`);
+            now = name;
+        };
+        w.pose.getCurrentPreset = () => now;
+        try {
+            await say('Sit with your legs crossed.');
+            await flush();
+            expect(w.pose.calls).toEqual(['claim', 'apply:sittingCrossed']);
+            expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+        } finally {
+            delete window.NEXUS_POSE_STUDIO_PANEL;
+        }
+    });
+
+    test('NL1: "the previous position" is a position, and "the previous outfit" is still the wardrobe', () => {
+        expect(Intent.parse('Go back to the previous position.', { lang: 'en' })).toMatchObject({
+            name: 'avatar.pose',
+            params: { pose: 'back' },
+        });
+        expect(Intent.parse('Go back to the previous outfit', { lang: 'en' })).toMatchObject({ name: 'wardrobe.undo' });
+    });
+
     test('ending the evening in a position gives her body back', async () => {
         const w = await at(4);
         await say('sdraiati sulla schiena');

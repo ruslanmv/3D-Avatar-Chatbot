@@ -801,6 +801,15 @@ export class VRChatIntegration {
         // Add to VR panel
         this.vrChatPanel.appendMessage('user', text);
 
+        // NL7. Words spoken in the headset reach her body the way typed and spoken words do on
+        // the desktop: one entry, NEXUS_MOTION.onUserUtterance. This path had none, so in VR
+        // "kneel down" or "dance for me" went to the model alone and the model said it had.
+        try {
+            window.NEXUS_MOTION?.onUserUtterance?.(text);
+        } catch (_) {
+            /* a motion stack that cannot answer must not cost her the reply */
+        }
+
         // Add to desktop chat manager (if available)
         if (this.chatManager) {
             this.chatManager.addMessage(text, 'user');
@@ -841,9 +850,17 @@ export class VRChatIntegration {
 
             // 2) Get settings and send message to configured AI provider
             const settings = window._nexusLLM.getSettings();
+            // NL7. The reply is asked for once her body has answered (confirmed, or failed), and
+            // is told which. Only the fact: this panel does not run the motion contract's blocks.
+            try {
+                await window.NEXUS_MOTION?.whenBodySettled?.(3000);
+            } catch (_) {
+                /* the prompt still says what is known */
+            }
             const systemPrompt =
-                settings.system_prompt ||
-                'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.';
+                (settings.system_prompt ||
+                    'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.') +
+                (window.NEXUS_MOTION?.bodyFact?.() || '');
 
             // ✅ Get conversation history for context
             const history = window.chatHistory ? window.chatHistory.getHistory() : [];

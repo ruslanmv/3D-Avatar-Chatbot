@@ -1774,6 +1774,27 @@
             window.NEXUS_POSE_SHEET.init(this.rootEl);
         }
 
+        // NL6. The navigator shows the position she is actually in. A position asked for in
+        // chat ("kneel down") is held by the same pose system; opening the studio then used to
+        // show "Lecturer 1 / 26" over a kneeling avatar and, on first open, replace her position
+        // with it. If the pose system is holding one of the navigator's presets, that is the
+        // one selected, and nothing is applied over it.
+        var holding = null;
+        try {
+            var held = window.vrPoseSystem;
+            if (held && held.isHoldingBones && held.isHoldingBones() && held.getCurrentPreset) {
+                var listed = getFilteredPresets();
+                for (var hi = 0; hi < listed.length; hi++) {
+                    if (listed[hi].name === held.getCurrentPreset()) holding = hi;
+                }
+            }
+        } catch (_) {}
+        if (holding !== null) {
+            this._navIndex = holding;
+            this._hasAppliedInitialPose = true;
+            this._updateNavDisplay();
+        }
+
         // On first open, apply the first pose (Lecturer) to the character
         if (!this._hasAppliedInitialPose) {
             this._hasAppliedInitialPose = true;
@@ -1795,6 +1816,18 @@
     PoseStudioPanel.prototype.hide = function () {
         this.rootEl.classList.add('hidden');
         this._exitPoseMode();
+    };
+
+    /**
+     * NL1. The navigator's catalogue, for whoever needs to name a pose without opening the
+     * panel (src/xr/PoseCommands.js resolves spoken and typed requests against it). The same
+     * list the panel shows, filtered the same way: with Spicy mode off the adult presets are
+     * not in it. Copies, so a caller cannot edit the navigator's own entries.
+     */
+    PoseStudioPanel.catalogue = function () {
+        return getFilteredPresets().map(function (p) {
+            return { name: p.name, label: p.label, category: p.category, adult: Boolean(p.adult) };
+        });
     };
 
     window.NEXUS_POSE_STUDIO_PANEL = PoseStudioPanel;
