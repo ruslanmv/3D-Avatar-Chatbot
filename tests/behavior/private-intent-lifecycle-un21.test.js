@@ -626,3 +626,51 @@ describe('UN21. no scripted line while their command is still executing', () => 
         expect(session._lastActivityAt()).toBeGreaterThanOrEqual(seen);
     });
 });
+
+describe('UN21. the level the person chose does not decay while they are typing', () => {
+    test('typed turns are activity for ConsentFlow’s cool-down; real silence still cools it', async () => {
+        const w = await at(4, 'it-IT');
+        const flow = w.adult;
+        const start = flow.lastInputAt === null ? Date.now() : flow.lastInputAt;
+        // Six minutes of typed conversation, one line a minute: no decay.
+        for (let i = 1; i <= 6; i += 1) {
+            const t = start + i * 60000;
+            flow.now = () => t;
+            await say(`Ti racconto una cosa, parte ${i}.`);
+            await flush();
+            expect(flow.tick(t)).toBeNull();
+            expect(flow.level).toBe(4);
+        }
+        // Then five minutes and more of nothing: the cool-down applies exactly as before.
+        const later = start + 6 * 60000 + 300001;
+        expect(flow.tick(later)).toMatchObject({ action: 'decayed', from: 4 });
+        expect(flow.level).toBe(1);
+    });
+
+    test('noteActivity moves no level and reads no words — exits stay hear()’s', () => {
+        const flow = ConsentFlow.attach({
+            bus: null,
+            blackboard: {},
+            modes: { activate: () => true, deactivate: () => true },
+            profile: AdultProfile,
+            recorder: null,
+            say: null,
+        });
+        expect(flow.noteActivity()).toBe(false); // not active: nothing to keep alive
+    });
+});
+
+describe('UN21. yes / wait chips only under a real offer', () => {
+    test('with nothing offered, "Sì, fallo" and "Aspetta un momento" leave her choices', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Ciao, come stai?');
+        await flush();
+        w.session._stashChoices(['Sì, fallo', 'Aspetta un momento', 'Raccontami di più', 'Mi piace']);
+        await Capability.privateRevise('Bene, sono qui con te.', { win: window, userText: 'Ciao, come stai?' });
+        expect(w.session._pendingChoices).toEqual(['Raccontami di più', 'Mi piace']);
+        // Only yes / wait left: the local set stands in rather than a lone button.
+        w.session._stashChoices(['Yes, do it', 'Wait a moment']);
+        await Capability.privateRevise('Mm.', { win: window, userText: 'Ciao, come stai?' });
+        expect(w.session._pendingChoices).toEqual([]);
+    });
+});

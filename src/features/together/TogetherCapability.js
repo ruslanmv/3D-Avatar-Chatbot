@@ -1282,6 +1282,22 @@
                 // own yes / not now on the outfit chip, and the local set stands in for the rest.
                 if (session && typeof session._stashChoices === 'function') session._stashChoices([]);
             }
+            // UN21. A "yes" or "wait" button answers an offer. With none pending — the reported
+            // "Sì, fallo / Aspetta un momento" under a reply that offered nothing — those buttons
+            // would send words that approve or stop nothing; they are taken out of her set.
+            try {
+                const Intent = global && global.NEXUS_PRIVATE_ACTION_INTENT;
+                const pendingOffer = actions && typeof actions.snapshot === 'function' && actions.snapshot().offer;
+                const list = session && Array.isArray(session._pendingChoices) ? session._pendingChoices : null;
+                if (!pendingOffer && list && list.length && Intent && typeof Intent.affirms === 'function') {
+                    const kept = list.filter(
+                        (c) => !Intent.affirms(c) && !(typeof Intent.waits === 'function' && Intent.waits(c))
+                    );
+                    if (kept.length !== list.length) session._stashChoices(kept.length >= 2 ? kept : []);
+                }
+            } catch (_) {
+                /* the choices stand as they were */
+            }
             // UN20. Tell the bridge whether this reply carries the refusal's reason, so its
             // follow-up line is said only if it does not — never twice.
             if (actions && typeof actions.explained === 'function')
@@ -1811,6 +1827,13 @@
             const at = this.now();
             this._turns += 1;
             this._lastTurnAt = at;
+            // UN21. A typed turn is activity for ConsentFlow's cool-down (its own clock); it
+            // moves no level. See `ConsentFlow.noteActivity`.
+            try {
+                if (this.adult && typeof this.adult.noteActivity === 'function') this.adult.noteActivity();
+            } catch (_) {
+                /* the cool-down keeps its last reading */
+            }
             const td = turnDirector();
             const turn = td && typeof td.classify === 'function' ? td.classify(text) : null;
             this._turn = turn;

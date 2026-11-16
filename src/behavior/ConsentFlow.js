@@ -274,6 +274,22 @@ const ConsentFlow = (() => {
         }
 
         /**
+         * UN21. The person is here and talking: their typed turns count as activity for the
+         * inactivity cool-down, as their spoken ones already do (`voice:final` → `hear`).
+         *
+         * Only `voice:final` reached this file, so in a Private evening carried on by typing the
+         * level the person had chosen decayed to 1 five minutes after their last tap on Closer —
+         * mid-conversation, while they were writing — and the next request was refused for the
+         * pace. This moves no level, up or down, and reads no words: it only says "not idle".
+         * Exits are still `hear`'s, and still read first from any state.
+         */
+        noteActivity(at = this.now()) {
+            if (!this.active) return false;
+            this.lastInputAt = at;
+            return true;
+        }
+
+        /**
          * An answer, or any other user utterance. The only input this file has.
          *
          * Exits are read **before** anything else, from any state, including mid-check-in:

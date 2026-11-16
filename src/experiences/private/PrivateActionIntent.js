@@ -992,6 +992,11 @@
         return null;
     }
 
+    /** UN21. "Aspetta", "Wait a moment": a request to hold, in the app's languages. */
+    function waits(text) {
+        return WAIT.test(clean(text));
+    }
+
     /** UN21. The message asks for the next thing, after what is under way ("poi …", "then …"). */
     function sequential(text) {
         return AFTER.test(clean(text));
@@ -999,6 +1004,7 @@
 
     const api = {
         sequential,
+        waits,
         parse,
         topic,
         affirms,

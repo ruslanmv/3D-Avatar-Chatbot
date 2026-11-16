@@ -260,6 +260,31 @@ try {
     }
     await page.waitForTimeout(1500);
     report.level = await page.evaluate(() => window.NEXUS_BD.adult.level);
+    // Every turn as it appears, with its time, so a scripted line can be placed against the
+    // person's lines and the actions' own times (what was running when it arrived).
+    await page.evaluate(() => {
+        window.__turns = [];
+        const seen = new WeakSet();
+        const note = () => {
+            for (const t of document.querySelectorAll('[data-private-turn]')) {
+                if (seen.has(t)) continue;
+                seen.add(t);
+                const copy = t.querySelector('.nexus-private-copy');
+                window.__turns.push({
+                    at: Date.now(),
+                    who: t.dataset.privateTurn,
+                    text: copy ? copy.textContent.trim() : '',
+                });
+            }
+        };
+        note();
+        new MutationObserver(note).observe(document.body, { childList: true, subtree: true });
+        window.__levels = [];
+        const bus = window.NEXUS_BD && window.NEXUS_BD.bus;
+        if (bus && typeof bus.on === 'function')
+            for (const name of ['adult:level', 'adult:exit'])
+                bus.on(name, (e) => window.__levels.push({ event: name, now: Date.now(), ...(e || {}) }));
+    });
     if (report.level !== 4) fail('level', `ConsentFlow is at ${report.level}, not 4`);
 
     const herLines = () =>
@@ -406,6 +431,19 @@ try {
         if (facts.level !== 4) fail(label, `the consent level moved to ${facts.level}`);
         previous = null;
     }
+    report.timeline = await page.evaluate(() => ({
+        turns: window.__turns,
+        actions: window.NEXUS_PRIVATE_ACTIONS.log().map((a) => ({
+            name: a.name,
+            status: a.status,
+            why: a.why || null,
+            turnId: a.turnId,
+            source: a.source,
+            at: a.at || a.createdAt || null,
+            settledAt: a.settledAt || null,
+        })),
+        levelEvents: (window.__levels || []).slice(),
+    }));
     report.errors = errors;
     await ctx.close();
 } finally {
