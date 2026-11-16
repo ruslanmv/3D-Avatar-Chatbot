@@ -318,8 +318,23 @@ try {
             ? ['Per ora resto come sono.', 'Per ora resto così.']
             : ['For now I’m staying as I am.', 'I’m staying as I am, for now.'];
     let previous = null;
-    for (const [label, said, draft, expect] of SAY) {
+    for (const [label, said, draft, planned] of SAY) {
         draftFor = () => draft;
+        let expect = planned;
+        // "Aspetta" stops a change only while it is under way. On a fast device the change may
+        // have landed before the words were sent: then there is nothing to stop, and the right
+        // outcome is no action at all (and she must not claim one).
+        if (planned.cancelled && previous) {
+            const stillPending = await page.evaluate(
+                (turnId) =>
+                    window.NEXUS_PRIVATE_ACTIONS.log().some((a) => a.turnId === turnId && a.status === 'pending'),
+                previous.turnId
+            );
+            if (!stillPending) {
+                expect = { noAction: true, landedFirst: true };
+                console.log(`${label}: the change had already landed when it was said; expecting no action`);
+            }
+        }
         const before = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.log().length);
         const shownBefore = (await herLines()).length;
         await page.fill('#speech-text', said);
@@ -394,6 +409,7 @@ try {
         const step = {
             label,
             said,
+            expected: expect,
             modelDraft: draft,
             ...facts,
             shown: after.join(' / '),
@@ -408,6 +424,7 @@ try {
         );
         // What must hold for this step.
         if (expect.noAction && facts.count !== before) fail(label, `an action ran: ${facts.action}`);
+        if (expect.landedFirst && after.some((l) => l.includes(draft))) fail(label, 'her false claim is shown');
         if (expect.action && facts.action !== expect.action) fail(label, `${facts.action}, expected ${expect.action}`);
         if (expect.status && facts.status !== expect.status) fail(label, `${facts.status}, expected ${expect.status}`);
         if (expect.why && facts.why !== expect.why) fail(label, `refused for ${facts.why}, expected ${expect.why}`);

@@ -674,3 +674,22 @@ describe('UN21. yes / wait chips only under a real offer', () => {
         expect(w.session._pendingChoices).toEqual([]);
     });
 });
+
+describe('UN21. a reply that was only a false outfit sentence is never shown (found on the phone)', () => {
+    test('nothing true left, asking again gives the same: she says what she really has on', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Mettiti il vestito da cocktail nero');
+        await flush(30);
+        await say('Aspetta un momento.'); // nothing under way: conversation, not a cancel
+        await flush();
+        expect(Actions.outfitTruth()).toMatchObject({ state: 'none', asked: false });
+        const draft = 'Va bene, me li tolgo lo stesso.';
+        window._nexusLLM = { sendMessage: async () => draft }; // the model insists
+        const shown = await Capability.privateRevise(draft, { win: window, userText: 'Aspetta un momento.' });
+        expect(shown).not.toBe('');
+        expect(shown).not.toMatch(/tolgo/);
+        expect(shown).toBe(Locale.t('outfit.say.current', { name: 'Black Cocktail Dress' }, 'it-IT'));
+        delete window._nexusLLM;
+        expect(w.adult.level).toBe(4);
+    });
+});

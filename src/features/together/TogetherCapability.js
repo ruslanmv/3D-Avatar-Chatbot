@@ -1213,6 +1213,23 @@
         return line && line !== key ? line : '';
     }
 
+    /** UN21. "Right now I'm wearing …", from the wardrobe's record of what is on her. */
+    function currentOutfitLine(actions, language) {
+        try {
+            const now = actions && typeof actions.snapshot === 'function' ? actions.snapshot() : null;
+            const outfit = now && now.outfit;
+            // While a change is loading, `name` is where she is going, not what she has on.
+            if (!outfit || ['changing', 'creating'].includes(outfit.status)) return '';
+            const name = outfit.name;
+            const locale = localeModel();
+            if (!name || !locale || typeof locale.t !== 'function') return '';
+            const line = locale.t('outfit.say.current', { name }, language);
+            return line && line !== 'outfit.say.current' ? line : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
     /**
      * UN20. Her own words already give the reason: a "can't", "not yet", "not available" in any of
      * the app's languages. Broad on purpose — a reason said twice is the failure this prevents.
@@ -1316,7 +1333,12 @@
                     const fresh = outfitTruthful(clean(raw), truth, language);
                     if (fresh && !privateReplyProblems(fresh).length) return fresh;
                 }
-                return draft.trim() && !OUTFIT_CLAIM.test(drafted) && !NAKED_CLAIM.test(drafted) ? drafted : '';
+                if (draft.trim() && !OUTFIT_CLAIM.test(drafted) && !NAKED_CLAIM.test(drafted)) return drafted;
+                // UN21. Never empty: `main.js` reads an empty result as "no change" and showed the
+                // false sentence after all (real page, phone: "Va bene, me li tolgo lo stesso."
+                // after a change that had already landed). She says what is true instead: what
+                // she has on right now, from the wardrobe's own record.
+                return currentOutfitLine(actions, language) || outfitLine('outfit.say.none', language) || '…';
             }
             const problems = privateReplyProblems(shaped);
             if (!problems.length) return shaped;
