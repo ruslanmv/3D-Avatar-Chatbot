@@ -15,9 +15,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -60,43 +62,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 173451,
-        "sha256": "c7f303b5aa924480f0d5f878e7d035c3305b6fbabaad062d9534ad0722bd1ccc"
+        "bytes": 176563,
+        "sha256": "6d3adb39b7bc06b63b26dc28fc0b691e9b18ae9988c5909499d10a089d662dae"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 370853,
-        "sha256": "e38924eceb0b68bf9403b032da41c02752601c80f407a18b64e791043d4899f0"
+        "bytes": 371068,
+        "sha256": "5a2b43b66ee3879fe3bb6f024965501cb2be516a0a7bf36268d054f9b66b0bb5"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 347432,
-        "sha256": "8801c5a4372cfeaf61a3b11ca62c8e581ea4993ee0f1ccd1b0f4d6a41a23937c"
+        "bytes": 346226,
+        "sha256": "ac13062d9661c23cd3b3253936b9f86c03edd0d91da2da97f25d8ac8a264c9b7"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 340913,
-        "sha256": "ff3b079c356df87d0acc268b311aa6e3d69385618aaa15ed889e1765d7146ab8"
+        "bytes": 341812,
+        "sha256": "9e829b8bc372e790a8b783a39e78fa16e3fa8694dcf085ebe513f353c7b008d8"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 340231,
-        "sha256": "9d687eaccb65495c8dbf21f93403e962c3d461a4fc91080a5b552960d0fb3c61"
+        "bytes": 341975,
+        "sha256": "c483ff36038f069f23e3fd0aac5e18d9d4d6ee4673061e4a579b8802ccad2f88"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 339082,
-        "sha256": "3a918172994bf41219b6fd09c6c7e37aa08edbea0c6f61e09a4bb14371905c75"
+        "bytes": 340096,
+        "sha256": "798abadef1e59ada48cd25da931019366d5d9fac8325ac8087b842b6ff3fb842"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 346348,
+        "sha256": "99d3c3120fd4680e13f565d57b49bc1936a2150a0508350533f8ad8bb6719ccc"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 172039,
-        "sha256": "b81aadc89c6871da84b015e4d1e4f2f45fdb1a4862db934b58e9a3eb4ce4d20f"
+        "bytes": 171438,
+        "sha256": "c3ab1199148946ab294f36aa4b990a723ee378c0560a2d1b864672d9d1822890"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 174144,
-        "sha256": "da1ed77da5e8993132ef7254d11a2573d871c0996211564d8ab60db83d2c6dbe"
+        "bytes": 171992,
+        "sha256": "bdfb10d8a05b3b29b28829cecde8541c5daea3dbff3d162e9855cabdf87d1e60"
       }
     ]
   },
@@ -116,9 +123,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -161,43 +170,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 174370,
-        "sha256": "ccbed1db52e45020ddd2a9f90c4b761866d983a7bd1b4a0e65011c3925329e5b"
+        "bytes": 175164,
+        "sha256": "2e3fec1410ef55c8ee2e8ed25f1e831fbff92656f854739ef3353ac15e30b88a"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 374147,
-        "sha256": "1febf6fc1108706b67b78c10b401ad066d4e35aab81d9dbd6b1b4fd2856e2185"
+        "bytes": 373139,
+        "sha256": "ce6d67d31634568ffbe840c3a493f532b44c6aef30ccc457de467bc256a73098"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 349103,
-        "sha256": "6bd71d3354265928dcb7f36be2e263646a0d58efc4c275dfd555caea12a34e8c"
+        "bytes": 347232,
+        "sha256": "da1ecf7de2345e642dc258ee8a912413cf6e45dadd3ef0b17df95e7dd274a649"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 343693,
-        "sha256": "419322abd1adb4665347a415d27ad056a49428d46630ff754615c7aaba09d252"
+        "bytes": 343441,
+        "sha256": "7bc2f1d98da77541f456d545677bbfbf0e47b1f6f8e35dca57d2641167e8dc15"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 341536,
-        "sha256": "e385dc45f7ff97c950a964ccc9f0b2ea5dac34c2b12fdd4534fdb239b66aded9"
+        "bytes": 344272,
+        "sha256": "9dabea7157d233acaa766f813fba33f2c2af2bc80ede62125dfd91d7893c68a3"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 342485,
-        "sha256": "100420753601a9fbaac71a3ad8d490f25fc88011e02e88c7b807d9caecdcc13e"
+        "bytes": 341370,
+        "sha256": "38a0f2cfe2d4a7852e8c057564425727bb69966345bf079c9c90ec952e705786"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 348160,
+        "sha256": "b9c67f1eb56a0c846907041b1cef6853537e2684e7f92558f02e0b889efabfb1"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 172189,
-        "sha256": "81cdec884eed428e377a68e4f702cdc2cbab8241f384abbecfa60391db89dbd2"
+        "bytes": 173200,
+        "sha256": "145c786ce932d30a557f29338b1b74f3525a98c661fd4f76f9cbb519866890d2"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 172939,
-        "sha256": "02814fd4f55d558bc36a9d7ecc04fccd36b13f0446f004592c926f3556fd6cef"
+        "bytes": 172402,
+        "sha256": "60b95f96e864371a69fb97bef7427c4064cdd525f870c15916136bcf579658ca"
       }
     ]
   },
@@ -217,9 +231,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -262,144 +278,156 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 61475,
-        "sha256": "5d35e696b96189b472719cf7a71dad2fde751bb8297793db83c20814f19a6af8"
+        "bytes": 61376,
+        "sha256": "a3f3da90b53f232da4ac8200697d0413bc9b156e9a7335ead70a839799bebc18"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 99559,
-        "sha256": "5c6d6fc404db91f52a91aec5b5c9ed4880355f14c9c7a6ef79ae0771797e1ee5"
+        "bytes": 99004,
+        "sha256": "13c1c09f17e78dcb8e2284e078bed6117d0e71323678b958dc23439a313ee8e7"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 92978,
-        "sha256": "8e60b14451e66bfcf78e3e95177132287e040908b3ceb797cbcafa57e4974f1d"
+        "bytes": 93161,
+        "sha256": "2b50f07c6594bc6107133bb4f98001a81dc0af110968e076350d265d031acd35"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 88034,
-        "sha256": "995d177977f826b5918205b8bfbc1f402ef758559ce02b40dfcb1bf34563f2ed"
+        "bytes": 88149,
+        "sha256": "03daf54dd2ad879107c996088078e87b748e7f3733a6457df14eb676e5e769dd"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 88102,
-        "sha256": "ec9d6b0a48b3d0de7218554d5386d2ea4420093430f7a4aa65b168ab4d854494"
+        "bytes": 88088,
+        "sha256": "0f7c3a581cd3f24044b844bb1e0122f3512761d50cdca455435250d7b9adb3d0"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 88140,
-        "sha256": "2b8551b6e801157cde0a989f9fa71e024709affd74457ec9806cfd0d0ca80da7"
+        "bytes": 88221,
+        "sha256": "061f75d426a9f4e31ffc9d9a3c1bcf27e5bfe59424029db6eb19a9fb24e97c63"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 93109,
+        "sha256": "9c022fbf036a668296944734171ed5a9ff9bbdf87dd013340ea1f6d52df68988"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 60395,
-        "sha256": "42f39e536d17c3f3defbfafaa834adba75bffc28785c7ea5a385c5ff02c99466"
+        "bytes": 60236,
+        "sha256": "a0a98fffe36b18ab76d892d09bec552c375c78e8868ddee471a1fa6fea563009"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 60344,
+        "sha256": "9f40169f29c4eda73d64998db42f6a7aef9af0fb7af38bb2e2434aaf81d28a8b"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-b",
+    "size": "phone",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_B.vrm",
+        "bytes": 15433736,
+        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 15614800,
+        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 15649556,
+        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 61421,
+        "sha256": "9c2499e7c4dc5bcfe6306743b15857949cc5edf3533675b88b9a1ad29edbc7ce"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 99506,
+        "sha256": "f4e048b89a4733fde79afa2cbf0ec6317585705bcad64e4ec8d153ce89ce3379"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 93621,
+        "sha256": "f7216d8ea50be5977a72f47b987e32f15a5b96e2e8c7808ff10459791d4a694a"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 88748,
+        "sha256": "9699145de082d23abc0c1ef20bbac8bedc517905464202bf8ae2690eb7591a54"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 88629,
+        "sha256": "b3d076459a660cb77bf360ee4c6ed5b1112b4aeea0688a15dc7025f846a2e476"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 88743,
+        "sha256": "516aa081a8dac0dfc4e9386e40cf047da3edbf7d3600305447e7280ac23d2f43"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 93783,
+        "sha256": "ca9e20fbccf1edc7c51503644b60e65cadb9e1a9de92d99909f66f785a33f39d"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 60509,
+        "sha256": "5ed617119fcb70ab0f048283f7c686033cb19b6244bd9eb00a7bf46eaab60b65"
       },
       {
         "file": "09-cancelled-original.png",
         "bytes": 60368,
-        "sha256": "47c09f4d6c0f7d7b05e96bd71cd572b89119d36aaf1c297afa083ff6e1dec86a"
-      }
-    ]
-  },
-  {
-    "character": "avatar-sample-b",
-    "size": "phone",
-    "lang": "it-IT",
-    "passed": true,
-    "failures": [],
-    "checks": {
-      "File integrity (SHA-256)": true,
-      "Correct asset selection": true,
-      "Italian": true,
-      "Actual loaded renderer root": true,
-      "Skeleton retention": true,
-      "Expression retention": true,
-      "Face and hair preservation": true,
-      "Failed download rollback": true,
-      "Stale request handling": true,
-      "Original outfit restoration": true,
-      "Camera unmoved": true,
-      "Cancellation": true,
-      "390 px viewport": true,
-      "No Forge request (pack only)": true,
-      "No page errors": true
-    },
-    "files": {
-      "avatar": {
-        "file": "AvatarSample_B.vrm",
-        "bytes": 15433736,
-        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
-        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
-        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
-      }
-    },
-    "looks": [
-      {
-        "id": "crop-top-jeans",
-        "name": "Crop top & jeans",
-        "rating": "general",
-        "garments": [
-          "top-crop-tee-v1",
-          "jeans-straight-v1"
-        ],
-        "bytes": 15614800,
-        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
-        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
-      },
-      {
-        "id": "maxi-sundress",
-        "name": "Yellow sundress",
-        "rating": "general",
-        "garments": [
-          "shorts-slip-v1",
-          "dress-maxi-sundress-v1"
-        ],
-        "bytes": 15649556,
-        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
-        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
-      }
-    ],
-    "screenshots": [
-      {
-        "file": "01-original.png",
-        "bytes": 61411,
-        "sha256": "7fd00cd6c54b499a049ca32c2a7e126045ed220440e6efdc2f03f307c049302b"
-      },
-      {
-        "file": "02-try-on-open.png",
-        "bytes": 99625,
-        "sha256": "739ffefcbfa1176bbaa48922313977857984c8877e1cbed6470e7b6f205d5931"
-      },
-      {
-        "file": "03-look-1.png",
-        "bytes": 93554,
-        "sha256": "29832c88e07ba1478ac18e3ced5f30d644a826a82dc19e05b6163e3772647745"
-      },
-      {
-        "file": "04-look-2.png",
-        "bytes": 88825,
-        "sha256": "22336064fee973c933c79ad555598e2f006ce70e9b0a29659726b3822dc1c7ed"
-      },
-      {
-        "file": "05-failed-download-kept-look-2.png",
-        "bytes": 88585,
-        "sha256": "424bed54c7b2ce7ee85d39e8f47a61df0391265be9e0beb4db6902832961177b"
-      },
-      {
-        "file": "07-stale-request-kept-look-2.png",
-        "bytes": 88821,
-        "sha256": "867a701e970a8c654ae4e8b017f42c2e4bc548d1b43fbc7a7a10afe556d72a1f"
-      },
-      {
-        "file": "08-restored-original.png",
-        "bytes": 60451,
-        "sha256": "e95135c939fb540d00355fd4a91493665d3dbca1742552c8004dd5f6f5e14a39"
-      },
-      {
-        "file": "09-cancelled-original.png",
-        "bytes": 60449,
-        "sha256": "d7d947e2a1eae19568619d57aaf732cfd3d1552e1d6c3c04a6199fd5f738ca4a"
+        "sha256": "0b6e977f9bd04e2bdb28bf7a1531c6850a8dfbace60ee16b8a7c1a4a182c0e84"
       }
     ]
   },
@@ -419,9 +447,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -464,43 +494,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 151823,
-        "sha256": "7dc513a9f0406ec5c80727196f86572d8e9283d72a0fa6cfd27f78b7ad6e1fd8"
+        "bytes": 150279,
+        "sha256": "e67ff1ca9268096b24bc47d37e3eb4a992cf27a54ec703b3570a1a09db590a4a"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 347855,
-        "sha256": "291d5d09038954a13c9ce1463e2e5022fab3e438528327f2e1786155feef7e75"
+        "bytes": 349277,
+        "sha256": "7281d25ccd25c39190544045c56965d00f625a26be713d10edea9007cb9c5147"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 331049,
-        "sha256": "f079c432f179bab5da791509daeba34d13a79ad44fb40c2f400934710bb8aa64"
+        "bytes": 329699,
+        "sha256": "aba710102ba4d7edd11f86a9764d96328509e3775981dfba7d50f3a5ac09c100"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 331998,
-        "sha256": "79149fce7296cd8cd29efc39db5926a2af3756ed52021fa93f8fe04c33ee64aa"
+        "bytes": 331115,
+        "sha256": "8809d84cc15b88784bd005e2dfd7017aabf313ecabffa5405c99af0f5ecff97a"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 331714,
-        "sha256": "3b2762beeb5ea1d539c3657427144d9de94eeb07a9229283ad8fad5722cb9764"
+        "bytes": 330134,
+        "sha256": "6737f1a3074fc29bc5f4c821b37702d67075ae70355d0a0fb4fabba3622c3619"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 331457,
-        "sha256": "b46df55625cd815512b5568fa5c6cf72659f0197c12834bfd89cd53cfe2016dd"
+        "bytes": 331819,
+        "sha256": "b4c93992a104f949bcc5972671d1c1abf71a40f47b1e6770f69272c1eb8f0fb2"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 329892,
+        "sha256": "36b0819740d2226486c8e45534140c06f19e1ee9e77b3e7fc13d654c48b22d3f"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 149737,
-        "sha256": "2718fda7093b1cc9f69bde783d1bca2efdf32774fdeedc5c7f803a76c864ce7e"
+        "bytes": 150955,
+        "sha256": "e7ef02f71033d8410a94fdc0e563c6faa85b75e92de43ecbc5c76660384eef10"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 151200,
-        "sha256": "bdff77fe0905cfd5e7cb7b7006deea9fd20a8e438d418e78ed8579445690e8bd"
+        "bytes": 149873,
+        "sha256": "dfe0968e79a5f20deb68b993b77b7cfebe7bdeb390e29101e8d09e001a52c83e"
       }
     ]
   },
@@ -520,9 +555,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -565,43 +602,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 150922,
-        "sha256": "6586f7bd6351403c658e779a1361b13dd83565a1383945b9b863efbe0feb11d5"
+        "bytes": 150465,
+        "sha256": "d3020e8558086e6228d295398663dd25edf604414edaf7370dff2c992b5a82bf"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 349749,
-        "sha256": "146e7946548b4f6896e8769774331df46bd55ce18d92ad6ccc5547701783b15a"
+        "bytes": 351170,
+        "sha256": "1bd4caed9ab9f457eac097f518f16ba0c53991c2b58cb4a32c70253f302e6726"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 332912,
-        "sha256": "e7166c02739fdd755105b042d1e43bdf8e1c7f2f20867082655051ae07c79316"
+        "bytes": 331698,
+        "sha256": "9bf57a98277d990916e582054354303df7ff88deba158e74e695faaa74d3fc05"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 332290,
-        "sha256": "bf422e703c9c26bc60244d80fbc85d51392ad8cdf53f4f9af5fbcf797e5e9d77"
+        "bytes": 334468,
+        "sha256": "2be8240429f40a8f5957bb49260bf12a8ca727e8aba6d74f22aed0dd9a84e824"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 333754,
-        "sha256": "6e6fbf521e67e6ca6eb32eacbcd1aca122d02379217011ba7ddea8b17382746e"
+        "bytes": 331657,
+        "sha256": "f55e30a1f507e9cf88fe072ea09acd02a85a1be9b4d5fda26b72c85a2c68aace"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 332607,
-        "sha256": "66e40b08cc9e96852316a10e0e15491d3ed8bbd4e6f1dd941dac3563b630935b"
+        "bytes": 332169,
+        "sha256": "518275acd601e9c9c10fea463abaa03e07139235f4a9c517cc5bfa605159fb70"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 332360,
+        "sha256": "066b1a8e24680a37547996077bbf72f22e79e57e75ad7845be5ed4d5f5663b8b"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 149918,
-        "sha256": "e752bc8004f36f4758eeffb09e1398d0b3db79264718f07a44f1abead102315d"
+        "bytes": 149875,
+        "sha256": "d6ea01bd45ac8f5ad1ecb3a5dfde79124da7a64e87cc2a203e36b1741f5a539f"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 151205,
-        "sha256": "3a945404aed90b75914d0cd00207f986ee2e7e9fdb26d7a2b4f297f0a9c5fd04"
+        "bytes": 151571,
+        "sha256": "455a4e1d4dc1a14c8713fd69d6e7602d5a76ffc7f4941934dc6e9f6b0ae93836"
       }
     ]
   },
@@ -621,9 +663,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -666,43 +710,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 49869,
-        "sha256": "7488ce410392cb4e86ff4c2eb65f78b335dd15dfe0019dffb25354de942cbfb1"
+        "bytes": 49775,
+        "sha256": "b949f36626c65fb1642c0e404345a0c32ab46780286d0151064dfba3869829e2"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 88425,
-        "sha256": "ae31960829c3c1184f9f9a6aeac10575614ec188a21dcc90bde9a6310ef35533"
+        "bytes": 88656,
+        "sha256": "4a674a48fbfd36857aca8e8adc8a8ec1428fa588406ccfe6ea9b12722d02418f"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 84837,
-        "sha256": "e755f9521136f5214f105736aaa9a514723e4d27dd68bcbe1926564fe12337ce"
+        "bytes": 84702,
+        "sha256": "cf283b6f656d496dfad1e2742822740d16619fbbf6db50c0a2865a2b56574d20"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 86314,
-        "sha256": "460d68e517274943c40e424ebb9803662ec57fe546ff1ec561d193f67933c7c3"
+        "bytes": 86565,
+        "sha256": "a63a9ea402c0e85e2c554c5d0492e90b0564b7c437d63cc5a9fbd060ef1e9156"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 86305,
-        "sha256": "33dfdfe7f736bc2e950f3f87bf6e32308c7e690fbfa2f170e3931930352c7efd"
+        "bytes": 86293,
+        "sha256": "7f8ff33a1affe3a42decce88b44d8dcdb04ccb1c75a4f53031a181cb0153c16c"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 86508,
-        "sha256": "588dfa772ba8384b7c3b4191d454c0f461ab1f7d5ee94e9b42e8491d20a7ee00"
+        "bytes": 86475,
+        "sha256": "eb58403ab73b1427180ef12c6f33ad03231ce34c8aa2a1a3245143b90c6f66ed"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 84411,
+        "sha256": "ab2220dff0768e13b8bc3811c476aa62cc62d68ccdf330412c5d148947c1d40f"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 49234,
-        "sha256": "c6c4c6637f25cd7faf89702bdcb02145b7e70182798f126fa2ce61af9938c58b"
+        "bytes": 49115,
+        "sha256": "8a3d1c1a3507cc89a5ee7ba87536ceb85422683c9899acd6d49183783a6b3b03"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 49573,
-        "sha256": "9079b623fe120ff05ad756ef04acffaec80c035300ce8d4a95f72b9b74bd219e"
+        "bytes": 49469,
+        "sha256": "3b4133a1f70994fb87f642e8b7f2e9ee253cb10aff62ed515e38c088a5e73144"
       }
     ]
   },
@@ -722,9 +771,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -767,43 +818,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 49816,
-        "sha256": "6f1a412b5445e6d221c810584cc1f8bddde9a7337220f13393d217233cfcd934"
+        "bytes": 49901,
+        "sha256": "7b35434e53629bdf673b0640de30749feb91706e71723c330ec440f6905b4541"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 88502,
-        "sha256": "fa0bbeebec3f89d34d8da4560fa32497468f1df4e81672755bae3cd3ff698128"
+        "bytes": 88495,
+        "sha256": "4518d8d23ebee9453b8060300c1f8cad226c02e945f90f0499b57130284ebe4a"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 85064,
-        "sha256": "22430c88800b03a086bdc14cc7b085b01094cf90b82769876a26fc9a4436e9bf"
+        "bytes": 85096,
+        "sha256": "c9b3b971349ff201b6ce8ee845b1b4c5446909b41410903eed67e5be311dcdde"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 87175,
-        "sha256": "87099300866a801c0384430aeacd14302f1715fa469c9ba1e3b951e4b1d20f6e"
+        "bytes": 87184,
+        "sha256": "64c74508e309779a7ef64e18ed4a3ab2d7ffd0f60417ec36b3f8640e02400740"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 87110,
-        "sha256": "dd3f33d0b7db72a5a07d95b91c0c7fd695cab92bbcfa7d7bcb0d8aab8c0d8d72"
+        "bytes": 86934,
+        "sha256": "6f6e9c73514a82225d7b5b6b48ea7178fb2d4be6c554748dd219915f726bc508"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 87145,
-        "sha256": "2c435d13b4fadcead0328d56bc50779751eb805557fd4ac5212a367e71dd0196"
+        "bytes": 87289,
+        "sha256": "fa6547953f78ca6ec3884c03c6ada3b4106c638ccb999e63d595747cf0aab4d8"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 84958,
+        "sha256": "cc51bd9ff0334e1c54ee4b6b2474d96eda9a66226ea4f7e845deec97502caafb"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 49389,
-        "sha256": "3db863737d426e4ae2ecf6f79ed013f2153f69d6be633d86e916f5f085dce1ee"
+        "bytes": 49469,
+        "sha256": "bd4b96c6661f1adb081db61e0a2b773de59904ea8b50ce1591fc040e82f802ea"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 49415,
-        "sha256": "c90767e62ccbafeeaf48e63b6ac30e63070b0583b02f6f9d1125a6e8aebc7313"
+        "bytes": 49251,
+        "sha256": "8cd1eac83927e8c9a6bdd5d0fdaaef10cbecdd5491a988f8bbac243fd10d1418"
       }
     ]
   },
@@ -823,9 +879,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -867,43 +925,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 128280,
-        "sha256": "0b3ae1d248fddfe4954e55b95893e8ee1bce2f7fa83054126cb8e0f5ea15e1bb"
+        "bytes": 128492,
+        "sha256": "5d07587242b7d07f414cec49e41ea7d29ad70e451cca08738ca65dec5085fb17"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 323402,
-        "sha256": "9d2b6aca1d1ac4a1aef32d844dc4eda432bbf127b32c19e9325d186901bc9025"
+        "bytes": 323925,
+        "sha256": "545b0533934b51921a1575a42e4ee87353a6528c6982854671701f352bf5c966"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 325270,
-        "sha256": "829d50fb3af1e7cbfd19b5ee74b58ad14772b72f59ac9b77eed38018387a0115"
+        "bytes": 325856,
+        "sha256": "3d196ec9c4058ebec23707b113fc40309dfb36a3e96cf74ee983e7a97f0b9f91"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 318810,
-        "sha256": "4be2235a6e3899ed243d089ea431ae0a1e4dabcee0caf200bbdd59bdc1594ab6"
+        "bytes": 317151,
+        "sha256": "3bd0952b44ec264f552a579fe3fe51f4078183a5d39f8c09a812fc8bb5da7eda"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 319518,
-        "sha256": "10cfcac5f7f5c6535701df4ec42c14f71375d05db67af6deb1e26253d0a3351f"
+        "bytes": 318032,
+        "sha256": "1c79597c900e9d6eba6c5a66c9b8b888fcfd0fe508238e296214eb1739a82777"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 320137,
-        "sha256": "d632bf6b8edc24082d97ce53415dea2760da947e55d64fd1c22b81669955ee25"
+        "bytes": 318894,
+        "sha256": "1ad13caa6d65f84aac8761c99f8425afabc15644b30d48a634952de64d56b906"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 324933,
+        "sha256": "1508adb21bb1f3288891cf0d24d1f4add19fb8e255f900388b3c1413a2c14e44"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 126883,
-        "sha256": "9b6bc709764ce3b47362e4a6fdf4efc0d45a422db86358746bde113eb0f1a43a"
+        "bytes": 126318,
+        "sha256": "d9dc0e428bc6552525e0cd728eed42b2e754b71aae520e9c79a38a9ba5126a81"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 126277,
-        "sha256": "76feef82b6d7fc5001c833873e4e531b064b4fc7712ea03f81d8faa2198bcc75"
+        "bytes": 127411,
+        "sha256": "3dc5ae45f4d4fd70dbbc38d93b282eacfe8fe7da8cdfdf4fd218bbb780c3f400"
       }
     ]
   },
@@ -923,9 +986,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -967,43 +1032,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 131298,
-        "sha256": "587081d2baed42347962bf2328d79add25d945b4acf5b68368eb211a53ceb3a7"
+        "bytes": 133331,
+        "sha256": "cfc3d801042afd8096b9b988f2661f49ee03f518e34e7c0f904024eb27efdd85"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 326449,
-        "sha256": "d7b2b57a5afff618f0759e49fe0db80e5b5e47e5a0d76a06937b86c5cde1d1a6"
+        "bytes": 325741,
+        "sha256": "1eb845fde7ee54e850f351009abf2ae4e77dbd6dc39fa5302cff427d17631e07"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 325329,
-        "sha256": "7e1e91b8bae221e1065b37f256d14b384fc8bfa0332a4d486329d4df56febb37"
+        "bytes": 327375,
+        "sha256": "f7909920d23fcd29937c4f86e3d3335a0b060ed56e7090aa36f230ba9769d5ee"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 319593,
-        "sha256": "ae5b40b67e6c47edcc5aa82b581f899f8d04c1ad64f135a9491c94038f378d47"
+        "bytes": 320172,
+        "sha256": "f0830fb97485317932979acaa94ff9533518e75700b97071c3b75dd8688f08d8"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 320457,
-        "sha256": "7fbee3ca1f6a9a707d4405d94d8c79dece28db597c9970cfade7fd5ae1e0dc56"
+        "bytes": 320049,
+        "sha256": "2e0f6a570f71363505d3a8021a46bce77fc75069c33726e4387614892bfbe01c"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 320770,
-        "sha256": "15e1a63ec7368e42259fb52a64908cccd7b65c66238bd2efec585cea9d7c617e"
+        "bytes": 320554,
+        "sha256": "119df9024d1002e301ca1b83676daf239d8cae2b659c0779a6685f4cc35e7a8f"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 325922,
+        "sha256": "50fa6b296535e773db9a2d150c333b114c73cae6da6c4a03754dea6bc317cfcc"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 127081,
-        "sha256": "0ac7f6cd5a31e34be411e57d4ea15c275c8cc7deadf0fd1b9139fab125db990a"
+        "bytes": 126003,
+        "sha256": "cc4042fa3601f8ea82af063ec9aea23aa383c32bd68f9827d2e4d47bbe5a5bca"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 127176,
-        "sha256": "11199b9f72999a98f6e46251f0a72d413ec971f30e9fd16f4a974eda36d5772d"
+        "bytes": 127100,
+        "sha256": "ce4f941273c4aa28a343135eeb5968124dc1ed0b38b6c0b481e31b43753be4c4"
       }
     ]
   },
@@ -1023,9 +1093,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -1067,43 +1139,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 37387,
-        "sha256": "707b87b09f6d2a108d5587187410cd8f24c9edccad87ef3728bb193a90022be3"
+        "bytes": 37291,
+        "sha256": "241f6b9adcdac75b37f1ac70cbdaed492b4a680efb23d0fa0eafc3ea99684ddc"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 76940,
-        "sha256": "08ee1024a8bff4d5584d159d8aa08de66f13315ec765e86c4296c80e17ba65b5"
+        "bytes": 76817,
+        "sha256": "ec30ef12fc517b013506e7149c43611619102346c7c3b3e853addb73b5178f4d"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 82193,
-        "sha256": "d88871c315a770978d02a619c21871c8acdbf4dcd0a53aa86535c2124e5cbe3c"
+        "bytes": 82512,
+        "sha256": "1b969b202a771e8ac549cc3f686e7bf2d46f27d06a5a051608e21b8eabd5f87e"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 76402,
-        "sha256": "2fd1a2e1796cd28309e4fe46676bf501fcf1c6cf2f5ce2005ddfc4c202e17be1"
+        "bytes": 76662,
+        "sha256": "d8eaeb93cad243c1199f91eace1f186e49dc5edad579a4d476563963b0c56822"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 76272,
-        "sha256": "f6f0fff9b3102f84ca02f810d1101c654bc2451aa502b8a940240fed51505708"
+        "bytes": 76478,
+        "sha256": "446118e9a7617353a3a084bff69c16bbec878f136a66cd5bb14c719e53feac1b"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 76167,
-        "sha256": "8d80eb08760cc65697b97657e7086a84e2b089657ad0d3a876c767072d78c06e"
+        "bytes": 76406,
+        "sha256": "0925150a2e1535b44b9db9198505df9732cdf3cca46a50711b031b9a9bab7746"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 82501,
+        "sha256": "b48ddd137737218e515c294a1e7eda24ed1812f8f8463ebc637fba8cb792ca98"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 37032,
-        "sha256": "c2cbb1a9c9cbe9d017e4a7993f22e19b531c112eb82ef0dcdc2e82b25fb8a60f"
+        "bytes": 37058,
+        "sha256": "bfc13d8c2e1141dc8e5fd3af9773e01879e9fe437bbfb2657b900fe29e0cb9d1"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 37190,
-        "sha256": "05e525462cb57df7a367c5c860a01a59ed87416a04cc3f4633a186db285ed19b"
+        "bytes": 36924,
+        "sha256": "2b27d7b5c10e0242e6c56db411cf555b1c44284cb7878051b8f353c58ad7ce85"
       }
     ]
   },
@@ -1123,9 +1200,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -1167,43 +1246,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 37309,
-        "sha256": "817e4c37a2a335999af6ae237fa41b2868025146bf03eeb5d6b2208057816784"
+        "bytes": 37404,
+        "sha256": "375f77c2762096219c2259ec810d31a601c5e3767e20df8b0faf258cbf1384a8"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 76714,
-        "sha256": "4f1d5e4fdd6216266d23d6f1cead6456c83c28d239c09cd8e7f03a8e2a79d939"
+        "bytes": 76487,
+        "sha256": "1d606fc8cbfbd18229600a78121be3563e8bc5a0c5546d17c489208995aabea9"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 82908,
-        "sha256": "8a3e094c6cf644fa57fe92ecf67b1447d03a4e805f1ea3bb79da5a7d68b83bff"
+        "bytes": 82804,
+        "sha256": "fc460cef91bdddc11645ce53d539fd8dc9cd49750cbf3e3c1127c80103488eb2"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 77032,
-        "sha256": "c4951b9b9833f0335f75ad108e25c87ac116003c123103017a39c397f2c0fdcd"
+        "bytes": 77078,
+        "sha256": "55b5171e97ffde3c26859b08ea27734903d33e3e5b54ed627f4df8008af580d5"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 77151,
-        "sha256": "064ec9ea4c97dc54b7b1a10256d2d40fd14eff88dc4cf03af82668c9f29563fc"
+        "bytes": 77088,
+        "sha256": "41c05309d199b472b9b398012c768bf069350eb30ae70ffaeec9a66eb2b2efb5"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 77356,
-        "sha256": "4d7c14ba7a8be52cd14814d7ec781ed21c14153cf42816190ed48726632a50c4"
+        "bytes": 76914,
+        "sha256": "bd47e60e068cb905bd5041fa1aaa0543f35aeb4102bcb56dfbf840e7144bfb25"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 82787,
+        "sha256": "e16c140cf3a5d23499c8f8b434ad6f07294b0857e8df9fe1d1a35d493a2c2fff"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 37148,
-        "sha256": "7b9390e5fd3bdf7d9203a131c8c2af8c74505a482121eb0403eb2f67ba618dba"
+        "bytes": 37172,
+        "sha256": "9f6d8fa820cd5d728c23de93fa4b5990fd2c9056989c7c673feaee92630fc0c0"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 36990,
-        "sha256": "2d7dbb512181aab0a328b1ef63753e23e0e7bb2255e01423c4f7abffd6cdc20b"
+        "bytes": 36962,
+        "sha256": "8421ab6151574ebcac79d6b4adadeb8456ca193e1bb213915748ae9741457e6e"
       }
     ]
   },
@@ -1223,110 +1307,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
-      "Desktop viewport (1440x900)": true,
-      "No Forge request (pack only)": true,
-      "No page errors": true
-    },
-    "files": {
-      "avatar": {
-        "file": "masc_vroid.vrm",
-        "bytes": 11844156,
-        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
-        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
-        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
-      }
-    },
-    "looks": [
-      {
-        "id": "tee-trousers",
-        "name": "White tee & trousers",
-        "rating": "general",
-        "garments": [
-          "top-tee-v1",
-          "trousers-straight-v1"
-        ],
-        "bytes": 12075960,
-        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
-        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
-      },
-      {
-        "id": "tee-jeans",
-        "name": "Black tee & jeans",
-        "rating": "general",
-        "garments": [
-          "top-tee-v1",
-          "jeans-straight-v1"
-        ],
-        "bytes": 12075804,
-        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
-        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
-      }
-    ],
-    "screenshots": [
-      {
-        "file": "01-original.png",
-        "bytes": 127855,
-        "sha256": "3aa5017a34833be220cafb3e79b7fdfe517802096e461b0c279f6d82de34ff34"
-      },
-      {
-        "file": "02-try-on-open.png",
-        "bytes": 325226,
-        "sha256": "d311921d0a68fce01aec7c25e99ccd30cd05de87248f2aad809a38b0edbacef5"
-      },
-      {
-        "file": "03-look-1.png",
-        "bytes": 321751,
-        "sha256": "7751d673523bb8897a1cdab26b3704248ae39fabd0265140f42f1d7a2712bf50"
-      },
-      {
-        "file": "04-look-2.png",
-        "bytes": 322284,
-        "sha256": "991c3e5b58a1044388bc9798acde15884d0d5b1374d73d97409b7a8b7b4ecd95"
-      },
-      {
-        "file": "05-failed-download-kept-look-2.png",
-        "bytes": 323197,
-        "sha256": "8063806b0fd8606674d3267763239d50ef5ad5a9883c60a99dc419dada10927b"
-      },
-      {
-        "file": "07-stale-request-kept-look-2.png",
-        "bytes": 322491,
-        "sha256": "01e18dff4e75195a125ad86d51f74ef733d383295fc8ade239ecef1db11c06f1"
-      },
-      {
-        "file": "08-restored-original.png",
-        "bytes": 125979,
-        "sha256": "0cb5e3cbc163e8ac06ce1af44878a0c712678b452455de3cc2766695b66bf274"
-      },
-      {
-        "file": "09-cancelled-original.png",
-        "bytes": 128274,
-        "sha256": "a593be0c6cf3769cfb56c8804b4b51955b5ba932cffdbf271e462bb3f0028e42"
-      }
-    ]
-  },
-  {
-    "character": "masc-vroid",
-    "size": "desktop",
-    "lang": "it-IT",
-    "passed": true,
-    "failures": [],
-    "checks": {
-      "File integrity (SHA-256)": true,
-      "Correct asset selection": true,
-      "Italian": true,
-      "Actual loaded renderer root": true,
-      "Skeleton retention": true,
-      "Expression retention": true,
-      "Face and hair preservation": true,
-      "Failed download rollback": true,
-      "Stale request handling": true,
-      "Original outfit restoration": true,
-      "Camera unmoved": true,
-      "Cancellation": true,
+      "Stage names the look on stage": true,
       "Desktop viewport (1440x900)": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -1369,43 +1354,156 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 128244,
-        "sha256": "9f861c48e707db595fc4a5e98cf82ef380c603c4dcfcb66f5015bb0acf833f04"
+        "bytes": 131856,
+        "sha256": "abf0fff5f3ae81abfde76ad68ccaec0227fd5082306c631f9824a743af1e5ba2"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 325315,
-        "sha256": "4a57e57015f854899d0b547399347434fa562a2c345f3c365cc6bedf7030fc5a"
+        "bytes": 324589,
+        "sha256": "99f23ffd5e7a98835397060370d68b748e360bba81a851ec9a176b0ce36bf074"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 324066,
-        "sha256": "49a91feadadfab01998117f4a39b2b9ef81a31863731f434f52aba43adea2810"
+        "bytes": 323397,
+        "sha256": "01f6103de28cbec1480ed5ac40bf4cddb10fb96a0292f390bebe048656067221"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 322617,
-        "sha256": "291976879d5e1de123a386ba481382c3faf2525b8e3d6846502fde1989b7d937"
+        "bytes": 321966,
+        "sha256": "d78ac969baa431f2def60da5712ed505bbaeb1a3ac8c2b0d75a335934adef8e3"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 324736,
-        "sha256": "20476ef968ab55fcfd13fcad036fcf86ee7634a2b90bcf1f164b9b923c5946d7"
+        "bytes": 322555,
+        "sha256": "2e848af131b0066da04285bc4881195fba00ffbdc81c385f490065c15b2628f3"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 324447,
-        "sha256": "f0460828d94cb48863b04893c93f79c7170987ff304a6ed6184831a92e0fff6e"
+        "bytes": 322479,
+        "sha256": "c52351ef8ad2b1c1973d619cefe4d0b0b62eb4e4f136db9cf992399343fda0f5"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 322501,
+        "sha256": "f51e08f8d606aaf5184c69568b403583c7e861298a118de7f602e546b0db0f69"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 127799,
-        "sha256": "b5c60f7560eb966aa7c5b65898e4c8e4ef3d4c970663edef930f926f8a4dbd62"
+        "bytes": 127794,
+        "sha256": "8d8efb8162b639a13189c2a9c3698799b67a72a27c2596d452a749665f516697"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 127472,
-        "sha256": "1ec14b119377c1a7e3f0b26976c738b49d6eec1277db728ae0cb4bd7a5454d11"
+        "bytes": 127377,
+        "sha256": "3964d507cb8811f13dd916da7ad044e2d6ae830a79bd29b41feaa8b6a1e54599"
+      }
+    ]
+  },
+  {
+    "character": "masc-vroid",
+    "size": "desktop",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "masc_vroid.vrm",
+        "bytes": 11844156,
+        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 12075960,
+        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12075804,
+        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 133156,
+        "sha256": "2ea5fdcf8cc4bdc07fe7ee1fb9defa313de2d2fa3e40e1b41889c33c6757e155"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 325991,
+        "sha256": "778fcd4a94a271cb605afcf19d0dfe8fca5effa358124533807bd4d1b10befb8"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 325218,
+        "sha256": "82974d42fdd1ec42b072c6a369889567b94674679580e92ffad72a266e4e93e5"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 322584,
+        "sha256": "893e591ffdf047d99ee6bb8cc86ec0327447fedcaee4a5c63e052a1a27beb556"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 323066,
+        "sha256": "900121ec6b43286ce6520c85b74e6eefa3d4aa50cf461b979f30d6f38d76500b"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 323364,
+        "sha256": "85eba95f69985c1ec14d531396783bab02ccfade63600bb3f9eca7edd30aa008"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 323084,
+        "sha256": "6a014257dcdc21f3052aa01fdac4d0bf4687b22665a13917419f18f7416397d6"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 126632,
+        "sha256": "ed4a1739a5739bd9c09247bf61e3fd5edb00f570aaab675cffd552e943c3dc52"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 127023,
+        "sha256": "1c7ce68c3c7410ba8b352c4bdd624df18113e8eec9e0588b49cbce8b70329ed9"
       }
     ]
   },
@@ -1425,9 +1523,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -1470,43 +1570,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 37673,
-        "sha256": "6323b1070e6f6f957d8af6210bc3d451c06fa8e67303639b801fcab6ed96c928"
+        "bytes": 37973,
+        "sha256": "d3f02f983f6cc6a1e63467947b62da3f3952342b3947ef89fb49ef15af5935d4"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 77164,
-        "sha256": "0eaa9b0cda3a2e213f11acdab79ab470c675a231da34820173a54f1117a33071"
+        "bytes": 77220,
+        "sha256": "9aff56f7a331e053cfd2d051a4990a7f53c0617fdbe603d8f37da6bacade8f59"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 80418,
-        "sha256": "4f090155dc232aeb72ec7014a6ab35c97a58557995dec0bd6b60f5cc937de8cc"
+        "bytes": 80117,
+        "sha256": "4576e298b51103a290435c0bb55de3f7512c32e17e8ac5bd6d8b8c6380469623"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 81232,
-        "sha256": "415363eb125f40387648e19a1c52838fa394b1019ad93f789966988ddf2f4575"
+        "bytes": 80965,
+        "sha256": "ac35e4eac6af8bdbca2da571e5f72375e35e05018bb0144588cdd19e21907a09"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 81230,
-        "sha256": "1967df9518609a2506bb4e06f7b0b2fb9ec1a9dd50a9dc4600967504a4e56c01"
+        "bytes": 81141,
+        "sha256": "a44b4ee8e06343a9dac17d6c2e235ad602932a015799f671f0f102d1ee0cf60d"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 80978,
-        "sha256": "c13a0b355cf7c2c2703ed43349d64cf74346a99d135a17a085d4265f1b94bc0f"
+        "bytes": 81416,
+        "sha256": "3a7d6db42418a9c9f11511d6fefaf109c3a916e2dd6688565f48185993747d34"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 80110,
+        "sha256": "3dedb884c13343ac3345d9d2be6374ce2347c17cf6cc4ae15ab6c34ec311b132"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 37641,
-        "sha256": "d5b5a55657dfc30e76bf82247811e7394ab846127f56e66cbfc7e06b81877bfd"
+        "bytes": 37575,
+        "sha256": "e893149d6272a7522398b9a05cb4a5da3b7a57deef48baa2b535d584498490f4"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 37486,
-        "sha256": "e6ea8e5725aa295f16fda04e9fdd6cb2a25eba947b2f09346931684c2383fc40"
+        "bytes": 37574,
+        "sha256": "91ad9a29a677b052c39f85b3c975996e170ce1db1eea8607f9c5594bcfe10194"
       }
     ]
   },
@@ -1526,9 +1631,11 @@
       "Face and hair preservation": true,
       "Failed download rollback": true,
       "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
       "Original outfit restoration": true,
       "Camera unmoved": true,
       "Cancellation": true,
+      "Stage names the look on stage": true,
       "390 px viewport": true,
       "No Forge request (pack only)": true,
       "No page errors": true
@@ -1571,43 +1678,48 @@
     "screenshots": [
       {
         "file": "01-original.png",
-        "bytes": 38047,
-        "sha256": "5ad912035f2cf38b066c5d0dc0e48cd075cd9a103309ab07c7ee92f5848a6fd4"
+        "bytes": 38286,
+        "sha256": "2d291f5888c23e54d66ecfc5b6e4af5e69a17e0d34713aabdf0a84c31c09956f"
       },
       {
         "file": "02-try-on-open.png",
-        "bytes": 77020,
-        "sha256": "45b7f602562af9fa7865bd6bc5d826e38ec45ce7f0a46dfee7d8330af6806904"
+        "bytes": 77044,
+        "sha256": "925746c5e9355461020b1c9e05758c9092a4f37d6bc016f0973ef13428727c0b"
       },
       {
         "file": "03-look-1.png",
-        "bytes": 80459,
-        "sha256": "3b6960418557619fca469b9f8e84af25806a223dcf103f9d1ee37967575147d6"
+        "bytes": 80505,
+        "sha256": "a40d11ca7fa5369b947be4d26b955d49c49b8f0317c4f6f79e79f09402799719"
       },
       {
         "file": "04-look-2.png",
-        "bytes": 82007,
-        "sha256": "cc602962cd4b78b8319803afd93583c10c2c9999c0cf5187ce7b0c6377db7c89"
+        "bytes": 81752,
+        "sha256": "8d3c151aaf00d4ccfc1f57d6ee6736fe8a7dd68e0ced995af6f50300631686f5"
       },
       {
         "file": "05-failed-download-kept-look-2.png",
-        "bytes": 81960,
-        "sha256": "c965799b0028dedd24ca256329b3ffc77b7e511a5d3485ad26ff6d4337d4d3fd"
+        "bytes": 81964,
+        "sha256": "ba34eb282d0dcb568d5935d3e9b0941fe682f16f42f1fd7775133cedd350dca8"
       },
       {
         "file": "07-stale-request-kept-look-2.png",
-        "bytes": 81892,
-        "sha256": "201ca406084dd7ed21a6df2da9430c871d28ca0f348ec5a526de279fe2eb42b0"
+        "bytes": 81773,
+        "sha256": "dc0bf0de8e2e89ab89c8fb9c9343efc7f6321efc7484d95329ca35b9c66716ab"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 80540,
+        "sha256": "094935cb2c451b9d0e13cac9ef97f9e43b920369e50f6553f98ae13f0228f97b"
       },
       {
         "file": "08-restored-original.png",
-        "bytes": 37612,
-        "sha256": "b47c3e3ed06c72224b0bf44a1e45c770070baa110cee89e403975176043f2264"
+        "bytes": 37601,
+        "sha256": "c8e446eace380ac9d7b320741cf60ca262f6fc370a594eef09094b1edc7d15d4"
       },
       {
         "file": "09-cancelled-original.png",
-        "bytes": 37678,
-        "sha256": "6350be3e284743034d23dfb1465c02020c2afc103514ab3ac65e6231434c7df3"
+        "bytes": 37402,
+        "sha256": "2ed607de75130c6f93c13e41142a8a52655170fbf7f6c11df9e9986c745e0897"
       }
     ]
   }

@@ -161,7 +161,7 @@ Know the coverage gaps, because they are not intuitive:
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
 — lint clean, format clean, **6318 tests in 290 suites, all passing**
-(2026-11-15: 6705 in 311; 2026-11-16: 6743 in 315).
+(2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a

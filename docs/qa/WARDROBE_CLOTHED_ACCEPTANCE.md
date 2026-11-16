@@ -10,7 +10,9 @@ verified pack (`vendor/wardrobe`, W11), which Forge fitted to each character's e
 
 ## 1. The matrix: 4 characters x 2 viewports x 2 languages
 
-`node tools/qa/wardrobe-clothed-acceptance.mjs --matrix` — **16 runs, 16 pass**. The full table is
+`node tools/qa/wardrobe-clothed-acceptance.mjs --matrix` — **16 runs, 16 pass**, run again on the
+merged code (`ultimate` @ `919799c`) with the two checks added after review (the last two rows
+below): 17 checks per run. The full table is
 `docs/qa/wardrobe-clothed/matrix.md` (and `matrix.json`, with every file hash and every
 screenshot's SHA-256).
 
@@ -31,6 +33,8 @@ screenshot's SHA-256).
 | Desktop 1440x900 / 390 px | no horizontal overflow at any step; the phone viewport is 390 px wide | pass | pass | pass | pass |
 | English / Italian | the stage's strings are the locale's (`+ More` / `+ Altro`, `Try …` / `Prova …`) | pass | pass | pass | pass |
 | No Forge request, no page errors | no request to any Forge; no uncaught error | pass | pass | pass | pass |
+| Changed mind and back (1, 2, 1) | look 1 held and tapped, then look 2 and look 1 again in one turn of the page: she wears look 1, loaded once (LT10d) | pass | pass | pass | pass |
+| Stage names the look on stage | at every settled step the look the rail marks is the look the renderer shows; none in her own outfit | pass | pass | pass | pass |
 
 Each cell is all four runs of that character (desktop EN, desktop IT, phone EN, phone IT).
 
@@ -162,8 +166,8 @@ deployed Space.
 
 ## 6. The gate
 
-`npm run validate` on this branch (Node 24): exit 0. Lint clean, format clean, **6743 tests in
-315 suites, all passing**.
+`npm run validate` (Node 24): exit 0, lint clean, format clean. CI on the merged head counted
+**6851 tests in 317 suites** (Node 22 and 24).
 
 ## How to run
 
@@ -173,6 +177,22 @@ node tools/qa/wardrobe-clothed-acceptance.mjs --matrix            # 16 runs, abo
 node tools/qa/wardrobe-scene-acceptance.mjs --size desktop --lang it-IT
 node tools/qa/look-turntable.mjs --vrm look.vrm --out <dir>       # a file, from four sides
 ```
+
+## The body-state driver takes a character and a state (BI6)
+
+`tools/qa/private-body-state-acceptance.mjs` was written for AvatarSample A and a lingerie
+import, with a step asserting that a request for everything off is refused because no bare
+state exists. It now takes `--character` (one of the five characters this app ships and pins
+to a Forge slug), `--state lingerie|bare`, and `--sha256` (the reviewed file the import must
+be), and records the SHA-256 of her own file and of the import in its report. With `--state
+bare` the refusal step does not apply and is recorded as skipped.
+
+Checked: its arguments, and that it opens on the chosen character (AvatarSample B: her file,
+54 bones, her pinned hash) and fails cleanly when Forge holds no import. **Not run end to end
+for any character in this change, and never with a bare state:** that needs an imported file,
+which needs the reviews and the asset described in Forge `docs/qa/body-state-specs/`. Model
+Girl, Rinna and AvatarSample_O are Forge library characters this app does not ship; the driver
+refuses them by name.
 
 ## Not covered
 
