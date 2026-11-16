@@ -130,7 +130,29 @@ Tests: `tests/wardrobe/wardrobe-capability-bi5.test.js` (11). **Outstanding:** t
 server endpoint, and the identity provider behind it, do not exist in either repository; with
 no `capabilityUrl` configured the app behaves exactly as before.
 
-## 5. The gate
+## 5. This app's clients against a Forge built from the same session's branch
+
+`node tools/qa/forge-contract-check.mjs --forge http://127.0.0.1:8093 --admin-password-file … --identity-secret-file …`
+runs the page's own `WardrobeClient` and `ForgeLibraryClient` (the same files, in Node) against
+a local Forge started from Forge `claude/busy-hamilton-m2vq2f` (WD1 withdrawal, AC1
+capabilities, KL3 fitting): **18 checks, 18 pass.**
+
+| Check | Result |
+|---|---|
+| `GET /v1/library` lists her with her pinned hash; `GET /v1/wardrobes/{slug}` answers `looks[]`; no private look to a public caller | pass |
+| A clothed look made on the library route as `TryOnGenerator` asks (`blue straight jeans`, `ensureFoundation`) for AvatarSample B: completed, valid VRM, rig, weights, skeleton, clipping passed | pass |
+| Her kept top: the fit report's `keptTopTuck` is the current rules (`version 3`, `noRoom 0`) | pass |
+| The look downloads as a GLB (16.1 MB); her wardrobe then lists it | pass |
+| `GET /v1/access` says whether capabilities are issued; a made-up grant changes nothing; no identity, no capability (401) | pass |
+| An operator grant is accepted; it goes to a download on that Forge and to no other origin | pass |
+| Through a stand-in for the site's `forge.capabilityUrl`: the client is issued a capability for the avatar on stage, bound to the account, 300 s; Forge accepts it; the site is asked once for two requests | pass |
+| The account is revoked: it is issued nothing, and the wardrobe still answers | pass |
+
+In checks 6 to 8 the script plays the operator and the site's server (it holds the admin
+password and the identity secret of a local Forge); the page never does. Not run against the
+deployed Space.
+
+## 6. The gate
 
 `npm run validate` on this branch (Node 24): exit 0. Lint clean, format clean, **6740 tests in
 315 suites, all passing**.
