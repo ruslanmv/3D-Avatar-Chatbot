@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/pub-bar-room-light.glb",
+  "sha256": "2d1e3c466df7ea0ee63fbcbf10b39c2df3105c0788a3228d0a0156919030711d",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0,
+  "virtualFloor": true,
+  "title": {
+    "en": "the pub",
+    "it": "il pub"
+  },
+  "spots": [
+    {
+      "id": "bar",
+      "label": {
+        "en": "at the bar",
+        "it": "al bancone"
+      },
+      "room": "bar-room",
+      "near": ["-bar-stool-with-back$", "-bar-counter-module$"],
+      "sees": {
+        "en": "the bar with its stools and the mirrored back bar",
+        "it": "il bancone con gli sgabelli e lo specchio dietro"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-0.932, 0, 1.33],
+      "facingDeg": -15,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.322,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 0,
+        "framing": "fullBody",
+        "candidates": 2450
+      }
+    },
+    {
+      "id": "dining-table",
+      "label": {
+        "en": "by a table",
+        "it": "vicino a un tavolo"
+      },
+      "room": "bar-room",
+      "near": ["-pub-table-round-pedestal$"],
+      "sees": {
+        "en": "a round pub table with spindle-back chairs",
+        "it": "un tavolo rotondo da pub con sedie di legno"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.068, 0, 2.732],
+      "facingDeg": -80,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.307,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 5,
+        "framing": "fullBody",
+        "candidates": 934
+      }
+    }
+  ]
+}
