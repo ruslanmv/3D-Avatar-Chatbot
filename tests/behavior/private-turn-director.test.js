@@ -162,3 +162,49 @@ describe('the response budget', () => {
         expect(Director.budgetFor({ intent: 'not-a-real-intent' })).toBe(Director.BUDGET.conversation);
     });
 });
+
+describe('AC3. each language has its own safe words, and they are never mixed', () => {
+    const asked = (text, lang) => Director.classify(text, { lang }).intent;
+
+    test('a language answers to its own words', () => {
+        expect(asked('fermati', 'it-IT')).toBe('end');
+        expect(asked('rallenta un po', 'it-IT')).toBe('pace-down');
+        expect(asked('arrête', 'fr-FR')).toBe('end');
+        expect(asked('plus doucement', 'fr-FR')).toBe('pace-down');
+        expect(asked('hör auf', 'de-DE')).toBe('end');
+        expect(asked('やめて', 'ja-JP')).toBe('end');
+        expect(asked('천천히', 'ko-KR')).toBe('pace-down');
+        expect(asked('慢一点', 'zh-CN')).toBe('pace-down');
+    });
+
+    test('and only to its own: another language’s words are conversation here', () => {
+        expect(asked('fermati', 'fr-FR')).toBe('conversation');
+        expect(asked('arrête', 'it-IT')).toBe('conversation');
+        expect(asked('rallenta', 'de-DE')).toBe('conversation');
+        expect(asked('basta', 'en-US')).toBe('conversation');
+    });
+
+    test('English is the baseline everywhere: "stop" and "slow down" work in every session', () => {
+        for (const lang of ['en-US', 'it-IT', 'fr-FR', 'ja-JP', 'zh-CN']) {
+            expect(asked('stop', lang)).toBe('end');
+            expect(asked('slow down', lang)).toBe('pace-down');
+        }
+    });
+
+    test('words that are also everyday words in their language stay conversation', () => {
+        expect(asked('para ti', 'es-ES')).toBe('conversation');
+        expect(asked('assez bien', 'fr-FR')).toBe('conversation');
+        expect(asked('che bella serata', 'it-IT')).toBe('conversation');
+        expect(asked('troppo bello', 'it-IT')).toBe('conversation');
+    });
+
+    test('the language is read from the app when none is given', () => {
+        window.AppLanguage = { code: 'it-IT' };
+        try {
+            expect(Director.classify('basta così').intent).toBe('end');
+        } finally {
+            delete window.AppLanguage;
+        }
+        expect(Director.classify('basta così').intent).toBe('conversation');
+    });
+});

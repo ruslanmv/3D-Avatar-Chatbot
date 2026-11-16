@@ -74,11 +74,11 @@
     /**
      * Whole-word matching that works outside ASCII. `\b` in a JS regex is ASCII-only, so it cannot see
      * the edge of "arrête" or "più"; this asks for no letter or digit on either side instead. CJK has
-     * no spaces, so those languages are plain substring patterns beside it.
+     * no spaces, so those languages are plain substring patterns.
      */
     function unicodeWords(list) {
         const escaped = list.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        return [new RegExp('(?<![\\p{L}\\p{N}])(?:' + escaped.join('|') + ')(?![\\p{L}\\p{N}])', 'u')];
+        return new RegExp('(?<![\\p{L}\\p{N}])(?:' + escaped.join('|') + ')(?![\\p{L}\\p{N}])', 'u');
     }
 
     /**
@@ -87,49 +87,11 @@
      * `ConsentFlow` already owns `stop` and `exit` as hard-exit words and `cozy` as the soft
      * one; these are the same idea reached through ordinary phrasing, and they are first so that
      * no amount of surrounding sentence can outvote them.
+     *
+     * English is the baseline and is exactly what it always was: it applies in every session,
+     * because "stop" has always ended Private whatever language the app is in.
      */
-    const END = [
-        /\bstop\b/,
-        /\bexit\b/,
-        /\bend (?:this|it|the session)\b/,
-        /\bi(?:'m| am) done\b/,
-        /\bgoodnight\b/,
-        // AC3. The same two safe ideas in the languages the app speaks. They were English only, so an
-        // Italian "basta" or "fermati" typed to her was read as small talk and only the End button
-        // worked. Whole words only, and only words that mean "stop" or "good night" and nothing else
-        // in any of the nine languages: Spanish and Portuguese "para" and French "assez" are left
-        // out on purpose, because they are also everyday words ("for", "quite") and this check runs
-        // on every language at once.
-        ...unicodeWords([
-            // it
-            'basta',
-            'fermati',
-            'smettila',
-            'buonanotte',
-            'buona notte',
-            // es
-            'detente',
-            'ya basta',
-            'buenas noches',
-            // fr
-            'arrête',
-            'arrete',
-            'arrête-toi',
-            'bonne nuit',
-            // de
-            'hör auf',
-            'hoer auf',
-            'aufhören',
-            'stopp',
-            'gute nacht',
-            // pt
-            'pare',
-            'boa noite',
-        ]),
-        /やめて|やめろ|ストップ|おやすみ|終わりにして|止めて/,
-        /그만|멈춰|중지|잘 자/,
-        /停止|停下|别说了|够了|结束吧|晚安/,
-    ];
+    const END = [/\bstop\b/, /\bexit\b/, /\bend (?:this|it|the session)\b/, /\bi(?:'m| am) done\b/, /\bgoodnight\b/];
     const PACE_DOWN = [
         /\bslow(?:er)? down\b/,
         /\bslow it down\b/,
@@ -140,46 +102,88 @@
         /\bless intense\b/,
         /\btoo (?:much|fast|intense)\b/,
         /\bback off\b/,
-        // AC3. Slow down / too much / calm down, in the languages the app speaks. A person who says
-        // this gets the pace all the way down, so the words are the ones that unambiguously ask for
-        // it; looser ones ("calma", "troppo" on its own) stay conversation.
-        ...unicodeWords([
-            // it
-            'rallenta',
-            'più piano',
-            'piu piano',
-            'troppo veloce',
-            'troppo intenso',
-            'è troppo',
-            'calmati',
-            // es
-            'más despacio',
-            'mas despacio',
-            'más lento',
-            'demasiado rápido',
-            'demasiado rapido',
-            'baja el ritmo',
-            // fr
-            'plus doucement',
-            'ralentis',
-            'trop vite',
-            'trop intense',
-            'calme-toi',
-            // de
-            'langsamer',
-            'zu schnell',
-            'zu viel',
-            'beruhige dich',
-            // pt
-            'mais devagar',
-            'muito rápido',
-            'muito rapido',
-            'mais calmo',
-        ]),
-        /ゆっくり|速すぎ|早すぎ|落ち着いて/,
-        /천천히|너무 빨라|진정해/,
-        /慢一点|慢点|太快了|太多了|冷静一点/,
     ];
+
+    /**
+     * AC3. Each language's own words for the same two ideas, kept apart: a language's pack applies
+     * only while the app is in that language (`AppLanguage.code`), and never mixes into another's.
+     * They were English only, so a typed Italian "basta" or "fermati" was read as small talk and only
+     * the End button worked.
+     *
+     * What goes in a pack: words that mean "stop" / "good night" (end) or "slow down" / "too much"
+     * (pace down) in that language and are not also everyday words there. Italian "troppo" or
+     * "calma" on their own, Spanish "para" ("for"), French "assez" ("quite") and Portuguese
+     * "chega" ("arrives") stay conversation: this check can end an evening, so a false positive is
+     * paid for by the person.
+     */
+    const PACKS = Object.freeze({
+        it: {
+            end: [unicodeWords(['basta', 'basta così', 'fermati', 'smettila', 'buonanotte', 'buona notte'])],
+            paceDown: [
+                unicodeWords([
+                    'rallenta',
+                    'più piano',
+                    'piu piano',
+                    'troppo veloce',
+                    'troppo intenso',
+                    'è troppo',
+                    'calmati',
+                ]),
+            ],
+        },
+        es: {
+            end: [unicodeWords(['detente', 'ya basta', 'buenas noches'])],
+            paceDown: [
+                unicodeWords([
+                    'más despacio',
+                    'mas despacio',
+                    'más lento',
+                    'demasiado rápido',
+                    'demasiado rapido',
+                    'baja el ritmo',
+                ]),
+            ],
+        },
+        fr: {
+            end: [unicodeWords(['arrête', 'arrete', 'arrête-toi', 'bonne nuit'])],
+            paceDown: [unicodeWords(['plus doucement', 'ralentis', 'trop vite', 'trop intense', 'calme-toi'])],
+        },
+        de: {
+            end: [unicodeWords(['hör auf', 'hoer auf', 'aufhören', 'stopp', 'gute nacht'])],
+            paceDown: [unicodeWords(['langsamer', 'zu schnell', 'zu viel', 'beruhige dich'])],
+        },
+        pt: {
+            end: [unicodeWords(['pare', 'pára', 'boa noite'])],
+            paceDown: [unicodeWords(['mais devagar', 'muito rápido', 'muito rapido', 'mais calmo'])],
+        },
+        ja: {
+            end: [/やめて|やめろ|ストップ|おやすみ|終わりにして|止めて/],
+            paceDown: [/ゆっくり|速すぎ|早すぎ|落ち着いて/],
+        },
+        ko: {
+            end: [/그만|멈춰|중지|잘 자/],
+            paceDown: [/천천히|너무 빨라|진정해/],
+        },
+        zh: {
+            end: [/停止|停下|别说了|够了|结束吧|晚安/],
+            paceDown: [/慢一点|慢点|太快了|太多了|冷静一点/],
+        },
+    });
+
+    /** `it-IT` -> `it`. The app's own language, read at call time like `PrivateLocale` does. */
+    function activeLanguage(override) {
+        const raw = override || (global && global.AppLanguage && global.AppLanguage.code) || 'en-US';
+        return String(raw).slice(0, 2).toLowerCase();
+    }
+
+    /** English always; the app language's own pack on top of it when it has one. */
+    function safeWords(lang) {
+        const own = PACKS[activeLanguage(lang)] || null;
+        return {
+            end: own ? END.concat(own.end) : END,
+            paceDown: own ? PACE_DOWN.concat(own.paceDown) : PACE_DOWN,
+        };
+    }
 
     const PACE_UP = [
         /\b(?:a little |a bit )?(?:more|closer)\b.*\b(?:intense|flirty|sensual|close)\b/,
@@ -252,13 +256,14 @@
      * Returns the intent plus what the runtime needs to act without re-parsing: which way a
      * pace request pointed, and a length bucket for choosing a response budget.
      */
-    function classify(raw) {
+    function classify(raw, options) {
         const text = normalise(raw);
         if (!text) return shape('conversation', text);
 
         // Safety words first, and unconditionally. See the header.
-        if (any(END, text)) return shape('end', text);
-        if (any(PACE_DOWN, text)) return shape('pace-down', text);
+        const safe = safeWords(options && options.lang);
+        if (any(safe.end, text)) return shape('end', text);
+        if (any(safe.paceDown, text)) return shape('pace-down', text);
 
         if (any(QUIET, text)) return shape('quiet', text);
         if (any(MUSIC, text)) return shape('music-request', text);
@@ -382,7 +387,7 @@
         return Math.max(MIN, base);
     }
 
-    const api = { INTENTS, STYLES, BUDGET, MIN, classify, styleFor, budgetFor, normalise, lengthOf };
+    const api = { INTENTS, STYLES, BUDGET, MIN, PACKS, classify, styleFor, budgetFor, normalise, lengthOf };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_TURN_DIRECTOR = api;

@@ -224,6 +224,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    delete window.AppLanguage;
     const live = window.NEXUS_BD && window.NEXUS_BD.intimate;
     try {
         if (live && live.active) live.stop('user');
@@ -2075,35 +2076,92 @@ describe('AC3. easing, stopping and care reach the body, in every language', () 
     }
     const lastCall = (w) => w.pose.calls[w.pose.calls.length - 1];
 
-    test.each([
-        ['Italian', 'basta così'],
-        ['Italian', 'fermati'],
-        ['French', 'arrête'],
-        ['German', 'hör auf'],
-        ['Portuguese', 'pare agora'],
-        ['Japanese', 'やめて'],
-        ['Korean', '그만해'],
-        ['Chinese', '停止'],
-    ])('%s: "%s" typed to her ends the evening, as "stop" does', async (_language, words) => {
-        const w = await atLevel(2);
-        expect(w.session._stopped).toBeFalsy();
-        await say(words);
-        await flush();
-        // The same property the English "stop" test holds: the session asked the panel to end it.
-        expect(w.session._stopped || w.panel.stopActivity.mock.calls.length > 0).toBe(true);
-    });
+    /** A session in one language: the app's language is what picks the safe-word pack. */
+    const inLanguage = async (code, run) => {
+        window.AppLanguage = { code };
+        try {
+            await run();
+        } finally {
+            delete window.AppLanguage;
+        }
+    };
+    const ended = (w) => w.session._stopped || w.panel.stopActivity.mock.calls.length > 0;
+    /** The mock panel only records the request; a test that starts another evening must end this one. */
+    const finish = (w) => {
+        try {
+            w.activity.stop('user');
+        } finally {
+            Actions.end();
+        }
+    };
 
-    test('an everyday phrase in another language ends nothing', async () => {
-        const w = await atLevel(2);
-        for (const words of ['para ti', 'assez bien', 'Che bella serata', 'gracias por esto']) {
+    test.each([
+        ['it-IT', 'basta così'],
+        ['it-IT', 'fermati'],
+        ['fr-FR', 'arrête'],
+        ['de-DE', 'hör auf'],
+        ['pt-BR', 'pare agora'],
+        ['ja-JP', 'やめて'],
+        ['ko-KR', '그만해'],
+        ['zh-CN', '停止'],
+    ])('a %s session: "%s" typed to her ends the evening, as "stop" does', async (code, words) => {
+        await inLanguage(code, async () => {
+            const w = await atLevel(2);
+            expect(w.session._stopped).toBeFalsy();
             await say(words);
             await flush();
+            // The same property the English "stop" test holds: the session asked the panel to end it.
+            expect(ended(w)).toBe(true);
+        });
+    });
+
+    test('languages are kept apart: each pack works only in its own language', async () => {
+        // Italian words in a French session, French words in an Italian one: conversation.
+        await inLanguage('fr-FR', async () => {
+            const w = await atLevel(2);
+            await say('basta così');
+            await flush();
+            expect(ended(w)).toBe(false);
+            finish(w);
+        });
+        await inLanguage('it-IT', async () => {
+            const w = await atLevel(2);
+            await say('arrête');
+            await flush();
+            expect(ended(w)).toBe(false);
+            finish(w);
+        });
+    });
+
+    test('English is the baseline in every language: "stop" ends an Italian evening too', async () => {
+        await inLanguage('it-IT', async () => {
+            const w = await atLevel(2);
+            await say('stop');
+            await flush();
+            expect(ended(w)).toBe(true);
+        });
+    });
+
+    test('an everyday phrase in its own language ends nothing', async () => {
+        const cases = [
+            ['es-ES', 'para ti'],
+            ['fr-FR', 'assez bien'],
+            ['it-IT', 'Che bella serata'],
+            ['es-ES', 'gracias por esto'],
+        ];
+        for (const [code, words] of cases) {
+            await inLanguage(code, async () => {
+                const w = await atLevel(2);
+                await say(words);
+                await flush();
+                expect(ended(w)).toBe(false);
+                finish(w);
+            });
         }
-        expect(w.session._stopped).toBeFalsy();
-        expect(w.panel.stopActivity).not.toHaveBeenCalled();
     });
 
     test('"rallenta" takes the pace all the way down and lets go of an adult position she held', async () => {
+        window.AppLanguage = { code: 'it-IT' };
         const w = await atLevel(4);
         await say('mettiti a quattro zampe');
         await flush();
