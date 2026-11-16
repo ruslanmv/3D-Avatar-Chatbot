@@ -28,7 +28,7 @@
                 "vr": 42
             },
             "fails": 0,
-            "warns": 35,
+            "warns": 19,
             "animations": {
                 "avatars": 17,
                 "clips": 163,
@@ -127,8 +127,8 @@
             "id": "3d-spots",
             "area": "3d",
             "priority": 2,
-            "title": "Measure spots in 18 places",
-            "why": "She cannot move within lagoon-beach, office, airship-dock, neon-street, roadside-motel, irish-pub, neon-discoteca, creative-academy, hotel-lobby, restaurant, cocktail-bar, swimming-pool, sports-hall, soccer-ground, guild-tavern, dungeon, jungle-ruins, school (LW2).",
+            "title": "Measure spots in 2 places",
+            "why": "She cannot move within roadside-motel, school (LW2).",
             "command": "add targets to tools/vr/spot-targets.json, then node tools/vr/measure-spots.mjs <scene>",
             "files": [
                 "tools/vr/spot-targets.json",

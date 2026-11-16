@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/jungle-ruins-light.glb",
+  "sha256": "a72918b99adc3450bab1d5c2ef85e4a8abb4fa9c7fb78e6962301ac5a01965bc",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.1,
+  "virtualFloor": true,
+  "title": {
+    "en": "the jungle ruins",
+    "it": "le rovine nella giungla"
+  },
+  "spots": [
+    {
+      "id": "gate",
+      "label": {
+        "en": "by the gate tower",
+        "it": "vicino alla torre del cancello"
+      },
+      "room": "compound",
+      "near": ["-stone-gate-tower$"],
+      "sees": {
+        "en": "a stone gate tower in the ruined wall",
+        "it": "una torre di pietra nel muro in rovina"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-9.55, 0.1, 4.97],
+      "facingDeg": -140,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 5.782,
+        "thingOffBehindDeg": 0,
+        "framing": "fullBody",
+        "candidates": 1442
+      }
+    },
+    {
+      "id": "arch",
+      "label": {
+        "en": "by the arch",
+        "it": "vicino all'arco"
+      },
+      "room": "compound",
+      "near": ["-corbel-arch-doorway$"],
+      "sees": {
+        "en": "a corbelled stone doorway between fallen walls",
+        "it": "un portale di pietra tra muri crollati"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-12.66, 0.1, 1.27],
+      "facingDeg": 85,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.48,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 0,
+        "framing": "fullBody",
+        "candidates": 1256
+      }
+    },
+    {
+      "id": "colonnade",
+      "label": {
+        "en": "by the colonnade",
+        "it": "vicino al colonnato"
+      },
+      "room": "compound",
+      "near": ["-colonnade-section$"],
+      "sees": {
+        "en": "a row of stone columns still standing",
+        "it": "una fila di colonne di pietra ancora in piedi"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": false,
+      "why": "no node matches -colonnade-section$"
+    }
+  ]
+}

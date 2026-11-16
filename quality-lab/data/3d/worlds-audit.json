@@ -13,9 +13,9 @@
         "worlds": 59,
         "places": 27,
         "standIns": 16,
-        "withSpots": 7,
+        "withSpots": 31,
         "fails": 0,
-        "warns": 35,
+        "warns": 19,
         "offered": {
             "desktop": 43,
             "mobile": 41,
@@ -979,7 +979,13 @@
                     "metres": 0
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/lagoon-beach.json",
+                "total": 2,
+                "verified": 0,
+                "ids": [],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -1003,10 +1009,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -1046,7 +1048,17 @@
                     "metres": 0.9
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/downtown-office.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "desk",
+                    "meeting-table",
+                    "lounge"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -1070,10 +1082,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -1137,7 +1145,16 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/airship-dock.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "gondola",
+                    "mast"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -1157,12 +1174,7 @@
                     "why": "loads its light stand-in airship-dock-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "airship-dock-light",
@@ -1183,7 +1195,17 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/airship-dock-light.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "gondola",
+                    "mast",
+                    "crates"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -1233,7 +1255,17 @@
                     "metres": 0.57
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/neon-dispatch.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "arcade",
+                    "vending",
+                    "street-bench"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -1257,10 +1289,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -1424,7 +1452,16 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/pub-bar-room.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "bar",
+                    "dining-table"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "irish-pub",
                 "actions": [
@@ -1452,12 +1489,7 @@
                     "why": "loads its light stand-in irish-pub-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "irish-pub-light",
@@ -1491,7 +1523,16 @@
                     "metres": 0.91
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/pub-bar-room-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "bar",
+                    "dining-table"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "irish-pub",
                 "actions": [
@@ -1549,7 +1590,16 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/club-main-room.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "dj-booth",
+                    "booth"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "neon-discoteca",
                 "actions": [
@@ -1577,12 +1627,7 @@
                     "why": "loads its light stand-in neon-discoteca-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "neon-discoteca-light",
@@ -1603,7 +1648,16 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/club-main-room-light.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "dj-booth",
+                    "booth"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "neon-discoteca",
                 "actions": [
@@ -1874,7 +1928,16 @@
                     "metres": 0.92
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/academy-seminar.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "whiteboard",
+                    "seminar-table"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "creative-academy",
                 "actions": [
@@ -1906,10 +1969,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -1932,7 +1991,16 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/academy-seminar-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "whiteboard",
+                    "seminar-table"
+                ],
+                "matchesScene": true
+            },
             "template": {
                 "id": "creative-academy",
                 "actions": [
@@ -2103,7 +2171,17 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/hotel-lobby.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "reception",
+                    "fireplace",
+                    "entrance"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2123,12 +2201,7 @@
                     "why": "loads its light stand-in hotel-lobby-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "hotel-lobby-light",
@@ -2149,7 +2222,17 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/hotel-lobby-light.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "reception",
+                    "fireplace",
+                    "entrance"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2235,7 +2318,16 @@
             },
             "props": 27,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/restaurant-dining-room.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "dining-table",
+                    "bar"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2255,12 +2347,7 @@
                     "why": "loads its light stand-in restaurant-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "restaurant-light",
@@ -2281,7 +2368,16 @@
             "preview": null,
             "props": 11,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/restaurant-dining-room-light.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "dining-table",
+                    "banquette"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2326,7 +2422,16 @@
             },
             "props": 11,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/cocktail-bar.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "bar",
+                    "wine-cabinet"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2346,12 +2451,7 @@
                     "why": "loads itself"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "swimming-pool",
@@ -2376,7 +2476,16 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/swimming-pool.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "starting-blocks",
+                    "lifeguard"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2396,12 +2505,7 @@
                     "why": "loads its light stand-in swimming-pool-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "swimming-pool-light",
@@ -2422,7 +2526,16 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/swimming-pool-light.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "starting-blocks",
+                    "lifeguard"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2476,7 +2589,15 @@
                     "metres": 0.83
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/sports-hall-court.json",
+                "total": 3,
+                "verified": 1,
+                "ids": [
+                    "wall-bars"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2500,10 +2621,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 2 scene parts within 1 m of her spot (097-gym-bench 0.8 m, 077-retractable-basketball-unit 0.83 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -2526,7 +2643,13 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/sports-hall-court-light.json",
+                "total": 3,
+                "verified": 0,
+                "ids": [],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2576,7 +2699,17 @@
                     "metres": 0
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/soccer-ground.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "goal",
+                    "stand",
+                    "dugout"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2600,10 +2733,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 1 scene part within 1 m of her spot (001-full-size-goal 0 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -2630,7 +2759,17 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/guild-tavern.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "fireplace",
+                    "bar",
+                    "quest-board"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2650,12 +2789,7 @@
                     "why": "loads its light stand-in guild-tavern-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "guild-tavern-light",
@@ -2676,7 +2810,17 @@
             "preview": null,
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/guild-tavern-light.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "fireplace",
+                    "bar",
+                    "quest-board"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2730,7 +2874,17 @@
                     "metres": 0.97
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/dungeon-rooms.json",
+                "total": 4,
+                "verified": 3,
+                "ids": [
+                    "chest",
+                    "barrels",
+                    "desk"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2754,10 +2908,6 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 2 scene parts within 1 m of her spot (004-wall-plain 0 m, 052-torch-stand 0.97 m) — check in a headset or leave out of the VR version"
-                },
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
         },
@@ -2784,7 +2934,17 @@
             },
             "props": 0,
             "vrNear": [],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/jungle-ruins.json",
+                "total": 3,
+                "verified": 3,
+                "ids": [
+                    "gate",
+                    "arch",
+                    "colonnade"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
@@ -2804,12 +2964,7 @@
                     "why": "loads its light stand-in jungle-ruins-light"
                 }
             },
-            "issues": [
-                {
-                    "severity": "warn",
-                    "text": "no measured spots: she cannot move within this place (LW2)"
-                }
-            ]
+            "issues": []
         },
         {
             "id": "jungle-ruins-light",
@@ -2835,7 +2990,16 @@
                     "metres": 0.5
                 }
             ],
-            "spots": null,
+            "spots": {
+                "file": "assets/vr-worlds/spots/jungle-ruins-light.json",
+                "total": 3,
+                "verified": 2,
+                "ids": [
+                    "gate",
+                    "arch"
+                ],
+                "matchesScene": true
+            },
             "template": null,
             "privateConfig": null,
             "devices": {
