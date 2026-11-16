@@ -48,6 +48,9 @@
  *      the held download is released. Look 1 never reaches the renderer; look 2 is what she wears.
  *   8. End haul: her own file is the renderer's root again, the controller records no look, she
  *      is the same character, the camera has not moved.
+ *   7b. Changed mind and back: look 1 held and tapped, then look 2 and look 1 again in one turn
+ *      of the page; released. She wears look 1, loaded once, and the rail marks look 1.
+ *   At every settled step the look the rail marks is the look the renderer shows.
  *   9. Cancellation: Try-On again, look 1 held and tapped, End haul while it waits, then
  *      released. The look never reaches the renderer; she is in her own outfit.
  *
@@ -428,6 +431,10 @@ try {
                 loads: window.__loads.slice(),
                 verified: window.__verified.slice(),
                 overflowX: document.documentElement.scrollWidth - window.innerWidth,
+                // What the stage tells the person she has on: the rail's marked look.
+                railPressed: Array.from(document.querySelectorAll('.nexus-look-rail-item[aria-pressed="true"]'), (n) =>
+                    n.getAttribute('data-look-key')
+                ),
             };
         }, label);
     const shoot = async (label) => {
@@ -576,6 +583,22 @@ try {
             fail('Camera unmoved', `${step}: the camera moved`);
     };
 
+    /**
+     * LT10. The look the stage marks as hers is the look the renderer shows (none, in her own
+     * outfit). Read only when nothing is on its way: while a look loads the rail marks where
+     * she is going and says so (it is greyed out).
+     */
+    const NAMED = 'Stage names the look on stage';
+    const expectNamed = (state, look, step) => {
+        const marked = state.railPressed.map((key) => String(key).split(':').pop());
+        const wanted = look ? [look.id] : [];
+        if (JSON.stringify(marked) !== JSON.stringify(wanted))
+            fail(
+                NAMED,
+                `${step}: the rail marks ${JSON.stringify(marked)}, the renderer shows ${look ? look.id : 'her own outfit'}`
+            );
+    };
+
     // ---- 3. Look 1, from her own outfit ----------------------------------------------------------
     await tap(lookA);
     await wearing(lookA).catch(() => fail('Correct asset selection', `look 1 (${lookA.id}) never landed`));
@@ -583,6 +606,7 @@ try {
     const s3 = await renderer('03-look-1');
     report.steps.push(s3);
     expectWorn(s3, lookA, s1, 'look 1');
+    expectNamed(s3, lookA, 'look 1');
     const shotA = await shoot('03-look-1');
     if (Buffer.compare(shotA, shotOriginal) === 0)
         fail('Actual loaded renderer root', 'look 1: the picture did not change');
@@ -594,6 +618,7 @@ try {
     const s4 = await renderer('04-look-2');
     report.steps.push(s4);
     expectWorn(s4, lookB, s3, 'look 2');
+    expectNamed(s4, lookB, 'look 2');
     const shotB = await shoot('04-look-2');
     if (Buffer.compare(shotB, shotA) === 0) fail('Actual loaded renderer root', 'look 2: the picture did not change');
     ok('Actual loaded renderer root');
@@ -636,6 +661,7 @@ try {
         if (after.loads.length !== loadsBefore)
             fail(check, `${step}: something was loaded (${after.loads.slice(loadsBefore).length} loads)`);
         if (after.loadedSha256 !== lookB.sha256) fail(check, `${step}: what is on stage is no longer look 2's bytes`);
+        expectNamed(after, lookB, step);
         if (step === '05-failed-download') await shoot('05-failed-download-kept-look-2');
     }
     ok('Failed download rollback');
@@ -681,8 +707,66 @@ try {
             fail('Stale request handling', `she wears ${JSON.stringify(after.activeLook)}, not look 2`);
         if (after.loadedSha256 !== lookB.sha256) fail('Stale request handling', 'what is on stage is not look 2');
         if (after.pending) fail('Stale request handling', 'a wear is still pending');
+        expectNamed(after, lookB, 'stale request');
         ok('Stale request handling');
         await shoot('07-stale-request-kept-look-2');
+    }
+
+    // ---- 7b. Changed mind, and back again: look 1, look 2, look 1, faster than a cancel settles ----
+    // Review finding on LT10: the first look's wear is cancelled for the second, and the first is
+    // asked for again in the same instant. Before the fix its cancellation arrived while it was
+    // the target once more and the session gave it up: she stayed as she was and the stage
+    // named look 1. She must end up in look 1, loaded once, and the stage must say look 1.
+    {
+        const BACK = 'Changed mind and back (1, 2, 1)';
+        let release;
+        const held = new Promise((r) => (release = r));
+        await page.route(lookPath(lookA), async (route) => {
+            await held;
+            await route.continue().catch(() => {});
+        });
+        const before = await renderer('07b-before');
+        await tap(lookA);
+        await page
+            .waitForFunction(() => window.NEXUS_WARDROBE.service.controller.pending, null, { timeout: 20000 })
+            .catch(() => fail(BACK, 'the held wear was never pending'));
+        // Both taps in one turn of the page: the second arrives before the first cancel has settled.
+        // (The rail is greyed out while a look loads; the buttons are re-enabled as in step 7.)
+        report.backAgain = await page.evaluate(
+            ([second, first]) => {
+                const press = (suffix) => {
+                    const button = Array.from(document.querySelectorAll('.nexus-look-rail-item[data-look-key]')).find(
+                        (n) => n.getAttribute('data-look-key').endsWith(suffix)
+                    );
+                    if (!button) return false;
+                    button.disabled = false;
+                    button.click();
+                    return true;
+                };
+                return { second: press(second), first: press(first) };
+            },
+            [`:${lookB.id}`, `:${lookA.id}`]
+        );
+        if (!report.backAgain.second || !report.backAgain.first) fail(BACK, 'a look was not on the rail to tap');
+        await page.waitForTimeout(1500);
+        release();
+        await wearing(lookA).catch(() => fail(BACK, 'look 1 never landed'));
+        await page.waitForTimeout(2500);
+        const after = await renderer('07b-back-again');
+        report.steps.push(after);
+        await page.unroute(lookPath(lookA));
+        const fresh = after.loads.slice(before.loads.length);
+        const ofA = fresh.filter((url) => lookOf(after, url) === lookA.id);
+        if (ofA.length !== 1) fail(BACK, `look 1 was loaded ${ofA.length} times, not once`);
+        if (fresh.length !== ofA.length) fail(BACK, `something else was loaded (${fresh.length - ofA.length} loads)`);
+        if (!after.activeLook || after.activeLook.id !== lookA.id)
+            fail(BACK, `she wears ${JSON.stringify(after.activeLook)}, not look 1`);
+        if (after.loadedSha256 !== lookA.sha256) fail(BACK, 'what is on stage is not look 1');
+        if (after.managerUrl !== after.wornUrl) fail(BACK, "the renderer's file is not the worn look");
+        if (after.pending) fail(BACK, 'a wear is still pending');
+        expectNamed(after, lookA, 'back again');
+        ok(BACK);
+        await shoot('07b-back-to-look-1');
     }
 
     // ---- 8. End haul: her own outfit ------------------------------------------------------------------
@@ -710,6 +794,7 @@ try {
         fail('Original outfit restoration', 'not the same character');
     if (JSON.stringify(s8.camera) !== JSON.stringify(s1.camera))
         fail('Camera unmoved', 'the camera moved across the restore');
+    expectNamed(s8, null, 'restored');
     ok('Original outfit restoration');
     ok('Camera unmoved');
     await shoot('08-restored-original');
@@ -746,7 +831,9 @@ try {
         if (after.managerUrl !== s1.managerUrl)
             fail('Cancellation', `the renderer's file is ${after.managerUrl}, not hers`);
         if (after.loadedSha256 !== avatarSha) fail('Cancellation', 'what is on stage is not her pinned file');
+        expectNamed(after, null, 'cancelled');
         ok('Cancellation');
+        ok(NAMED);
         await shoot('09-cancelled-original');
     }
 

@@ -347,7 +347,11 @@
                                     var ours = this._stopped === want;
                                     this._stopped = null;
                                     if (this.target !== want || ours) continue;
-                                    this.target = this.worn;
+                                    // Given up without an error: the history must still say
+                                    // what she has on. Before, its head stayed on the look
+                                    // that never arrived, so the stage named a look she was
+                                    // not wearing until the next tap.
+                                    this._backToWorn();
                                     return false;
                                 }
                                 this._failed((error && error.message) || 'That look could not be put on.');
@@ -378,13 +382,18 @@
             return this._settled;
         }
 
-        /** A load failed: she is still in `worn`, so the history and the target say that again. */
-        _failed(message) {
+        /** She is still in `worn` (a load failed, or was stopped): the history and the target say that again. */
+        _backToWorn() {
             if (this._pending && this.history.length > 1) this.history.pop();
             this._pending = false;
             if (this.worn && keyOf(this.head()) !== keyOf(this.worn) && !this.comparing) this.history.push(this.worn);
             this.comparing = null;
             this.target = this.worn;
+        }
+
+        /** A load failed: back to what she has on, and the reason is shown. */
+        _failed(message) {
+            this._backToWorn();
             this.pause();
             this._fail(message);
         }
