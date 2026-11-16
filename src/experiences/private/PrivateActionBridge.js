@@ -702,6 +702,8 @@
                 }
                 // UN21. "Aspetta": the person stopped it. Recorded as theirs, and final.
                 if (action.name === 'wardrobe.cancel') {
+                    // Codex review on #176: "wait" stops what is queued behind it too.
+                    s.queued = null;
                     settle(earlier, 'cancelled', 'cancelled');
                     earlier.locked = true;
                     action.result = { stopped: earlier.name, wearing: currentName(s) };
@@ -1503,13 +1505,22 @@
             Intent.sequential(s.turnText)
         ) {
             const turnId = s.turnId;
-            s.queued = { turnId, name: parsed.name };
-            return waitIdle(s, 90000).then(() => {
+            // Codex review on #176: a queued request must die with a cancel or a newer request.
+            // It carries a generation; whatever clears `s.queued` (a "wait", a direct outfit
+            // request) makes it stale, and it is dispatched only if it is still the one queued.
+            const gen = (s.queueGen = (s.queueGen || 0) + 1);
+            const queued = { turnId, name: parsed.name, gen, promise: null };
+            s.queued = queued;
+            queued.promise = waitIdle(s, 90000).then(() => {
                 if (state !== s || s.session._stopped) return null;
-                if (s.queued && s.queued.turnId === turnId) s.queued = null;
+                if (!s.queued || s.queued.gen !== gen) return null; // cancelled or replaced meanwhile
+                s.queued = null;
                 return request(parsed.name, parsed.params, { source: 'user', turnId });
             });
+            return queued.promise;
         }
+        // A direct outfit request (not "poi …") replaces anything queued behind the current change.
+        if (parsed.family === 'wardrobe' && s.queued) s.queued = null;
         return request(parsed.name, parsed.params, { source: 'user', turnId: s.turnId });
     }
 
@@ -1557,6 +1568,11 @@
     /** A tag she wrote, routed here instead of to the app-wide executor. */
     function fromModel(name, params) {
         if (!state) return Promise.resolve(null);
+        // Codex review on #176: her tag for a turn whose outfit request is queued ("poi …") is
+        // that request. Without this it had no record yet for the turn, ran at once, and
+        // superseded the change "poi" was meant to wait for.
+        const q = state.queued;
+        if (q && q.turnId === state.turnId && String(name || '').startsWith('wardrobe.') && q.promise) return q.promise;
         return request(name, params, { source: 'model', turnId: state.turnId });
     }
 

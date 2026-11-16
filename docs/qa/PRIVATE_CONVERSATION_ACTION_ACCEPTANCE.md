@@ -154,8 +154,8 @@ settled action (the design's 18 s lull), never inside it.
 
 ## 9. Tests
 
-- `npm run validate`: exit 0, **7028 tests in 324 suites**, none failing.
-- `tests/behavior/private-intent-lifecycle-un21.test.js`: 15 tests. On `06407c2` the first 10 gave
+- `npm run validate`: exit 0, **7031 tests in 324 suites**, none failing (after the two Codex review fixes on #176: a queued "poi" request dies with a cancel or a newer request, and her tag for a queued turn is that request).
+- `tests/behavior/private-intent-lifecycle-un21.test.js`: 18 tests (3 for the review fixes, each failing without them). On `06407c2` the first 10 gave
   8 failing; each later test (level decay, yes/wait chips, never-empty reply) fails without its fix.
 - `tests/behavior/private-change-requests-un20.test.js` (UN20, merged in #175): 22, unchanged.
 - Real browser: four configurations, all PASS (section 8).

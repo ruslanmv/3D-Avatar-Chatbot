@@ -163,7 +163,7 @@ Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
 — lint clean, format clean, **6318 tests in 290 suites, all passing**
 (2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317, then 6978 in 320 with `NL`,
 6982 in 321 with `RP2`, 7004 in 322 with `UN20`, 7014 in 323 with `UN21`, 7028
-in 324 with `PM1`).
+in 324 with `PM1`, 7031 with the #176 review fixes).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a

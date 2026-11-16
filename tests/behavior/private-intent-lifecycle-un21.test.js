@@ -693,3 +693,60 @@ describe('UN21. a reply that was only a false outfit sentence is never shown (fo
         expect(w.adult.level).toBe(4);
     });
 });
+
+describe('UN21. a queued "poi" request (Codex review on #176)', () => {
+    test('"Aspetta" stops what is queued behind the change too', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Mettiti il vestito da cocktail nero');
+        await flush(30);
+        slowApply(w, 300);
+        await say('Togliti i vestiti.');
+        await flush();
+        await say('Poi togli tutto.');
+        await flush();
+        await say('Aspetta un momento.');
+        await flush();
+        await new Promise((r) => setTimeout(r, 900));
+        await flush(30);
+        expect(wardrobeLog().map((a) => [a.name, a.status])).toEqual([
+            ['wardrobe.wear', 'completed'],
+            ['wardrobe.undress', 'cancelled'],
+            ['wardrobe.cancel', 'completed'],
+        ]);
+    });
+
+    test('a direct request replaces the queued one', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Mettiti il vestito da cocktail nero');
+        await flush(30);
+        slowApply(w, 300);
+        await say('Togliti i vestiti.');
+        await flush();
+        await say('Poi togli tutto.');
+        await flush();
+        await say('Rivestiti.');
+        await new Promise((r) => setTimeout(r, 1500));
+        await flush(30);
+        expect(wardrobeLog().filter((a) => a.name === 'wardrobe.undress' && a.params.step === 'all')).toHaveLength(0);
+    });
+
+    test('her tag for the queued turn is that request: it does not supersede the change under way', async () => {
+        const w = await at(4, 'it-IT');
+        await say('Mettiti il vestito da cocktail nero');
+        await flush(30);
+        slowApply(w, 300);
+        await say('Togliti i vestiti.');
+        await flush();
+        const first = last();
+        await say('Poi togli tutto.');
+        await flush();
+        const tag = Actions.fromModel('wardrobe.undress', { step: 'all' });
+        await new Promise((r) => setTimeout(r, 900));
+        await flush(30);
+        await tag;
+        expect(first.status).toBe('completed');
+        const all = wardrobeLog().filter((a) => a.name === 'wardrobe.undress' && a.params.step === 'all');
+        expect(all).toHaveLength(1);
+        expect(all[0]).toMatchObject({ source: 'user', why: 'no-bare-look' });
+    });
+});
