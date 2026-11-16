@@ -319,6 +319,8 @@
             // UN18. The reported session: "Togliete vestiti" (plural imperative, no article) moved
             // nothing and she said "li tolgo". Clothes named, so "togli la musica" stays music.
             'togliete(?:vi)? (?:(?:i |tutti i )?(?:vestiti|abiti))|toglietevi|togli (?:i |tutti i )?(?:vestiti|abiti)|spogliatevi|svestitevi|levatevi (?:i )?(?:vestiti|abiti)|' +
+                // UN21. "Poi togli tutto", "Remove all your clothes": the object is everything.
+                'togli(?:ti)? tutto|leva(?:ti)? tutto|remove (?:all (?:of )?)?(?:your |the )?clothes|remove everything|take it all off|' +
                 'togliti|toglierti|levati|spogliati|svestiti|take off|take (?:\\S+ ){0,3}?\\S+ off|undress|get undressed|quítate|quitate|desnúdate|desvístete|enlève|déshabille-toi|zieh(?:e)? dich aus|zieh .{1,20} aus|tira (?:a|o|sua)|despe-te'
         )})`,
         'iu'
@@ -341,11 +343,51 @@
         'iu'
     );
 
+    /**
+     * UN21. A correction of the undressing they just asked for. Reported, verbatim:
+     *   "Toglili tutti." → "Non intendevo un vestito più leggero." → "Intendevo tutti i vestiti."
+     * Each correction parsed as nothing, so the request they were correcting was lost and the
+     * conversation went on about clothes in general. After an undress request these mean "all of
+     * them": the same `wardrobe.undress {step: all}`, marked as a correction. Without an undress
+     * before it they mean nothing here — "tutti" alone is not a request.
+     */
+    const CORRECTS_TO_ALL = new RegExp(
+        [
+            '^(?:no[,.!]?\\s+)?(?:intendevo|volevo dire|voglio dire|dicevo|i mean|i meant|i said|quiero decir|je veux dire|ich meine|quero dizer)\\s+(?:proprio\\s+|really\\s+)?(?:tutt[oiae](?:\\s+i\\s+vestiti)?|everything|all of (?:it|them)|all (?:your |the )?clothes|todo|tout|alles|tudo)',
+            "^(?:non intendevo|non volevo|non ho detto|i didn[’']?t mean|i did not mean|no,? not|not)\\s+(?:just\\s+|solo\\s+)?(?:un |una |a |something |qualcosa(?: di)? )?(?:vestito|abito|outfit|look|completo)?\\s*(?:più leggero|lighter|different|diverso|altro|another)",
+            "^(?:non cambiare|non metterti|don[’']?t (?:change|switch|put on)|do not (?:change|switch|put on))(?:\\s+(?:to|in|into))?\\s+(?:outfit|vestito|abito|look|a different (?:outfit|look)|another (?:outfit|look)|your outfit|un altro (?:vestito|outfit|look)|qualcos[’'a] (?:altro|di diverso))",
+            '^(?:all of them|all of it|everything|tutti|tutte|tutto|tutti quanti|todo|tout|alles|tudo)[\\s.!]*$',
+        ].join('|'),
+        'iu'
+    );
+
+    /**
+     * UN21. "Aspetta un momento", "Fermati", "Wait a moment", "Hold on": while a change is under
+     * way, it is stopped and she stays as she is. With nothing under way they are conversation.
+     * "Stop" and "exit" are not here: they are ConsentFlow's hard exit and end the session.
+     */
+    const WAIT = new RegExp(
+        '^(?:aspetta|aspetti|un attimo|un momento|fermati|fermo|ferma|wait|hold on|one (?:moment|sec(?:ond)?)|just a (?:moment|sec(?:ond)?)|espera|attends|warte|espera aí)(?:[\\s,]+(?:un (?:momento|attimo|secondo)|a (?:moment|sec(?:ond)?|minute)|un poco|un instant|kurz))?[\\s.!]*$',
+        'iu'
+    );
+
+    /** UN21. "Torna come eri prima", "go back to how you were": her clothes as before. */
+    const AS_YOU_WERE = new RegExp(
+        word(
+            "torna(?:re)? com[e’' ]\\s*eri(?: prima)?|torna come prima|go back to how you were|back to how you were|as you were|put (?:your|the) (?:previous|old|earlier|other) (?:outfit|clothes|dress|look) back on|vuelve a como estabas|redeviens comme avant|wie vorher|volta a ser como antes"
+        ),
+        'iu'
+    );
+
+    /** UN21. "Poi …", "then …": the next thing, after what is under way — not instead of it. */
+    const AFTER =
+        /^(?:e\s+)?(?:poi|dopo|and then|then|after that|y luego|luego|después|et puis|puis|ensuite|und dann|dann|e depois|depois)\b/iu;
+
     /** UN1. "All of it": straight to the last layer she has, not one at a time. */
     const UNDRESS_ALL = new RegExp(
         `${word(
             // UN20. "Toglili tutti": the plural "all" counts as much as "everything".
-            'everything|all of it|all of them|them all|completely|all the way|tutto|tutta|tutti|tutte|completamente|del tutto|todo|toda|todos|todas|completamente|tout|tous|toutes|complètement|entièrement|alles|ganz|komplett|tudo|toda'
+            'everything|all of it|all of them|them all|all (?:of )?(?:your |the )?clothes|completely|all the way|tutto|tutta|tutti|tutte|completamente|del tutto|todo|toda|todos|todas|completamente|tout|tous|toutes|complètement|entièrement|alles|ganz|komplett|tudo|toda'
         )}|全部|すべて|全部脱|다 벗|모두|全部脱|都脱`,
         'iu'
     );
@@ -434,8 +476,14 @@
     }
 
     /** "yes" to something she offered, in the app's languages — a short message and nothing else. */
-    const YES =
-        /^(?:yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|volentieri|oui|d[’']accord|vas-y|ja|klar|gern|mach das|sim|claro|pode|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行)(?:[\s,]+(?:please|per favore|por favor|bitte|grazie|thanks))?[\s.!]*$/iu;
+    // UN21. "Sì, fallo", "Yes, do it", "Fallo adesso", "Do it now": two yes-words, or a yes and a
+    // "now", are still a yes. Only one word (plus "please") used to count, so the reported "Sì,
+    // fallo" under a real offer was read as talk and nothing was approved.
+    const YES_WORD =
+        "yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|fallo pure|volentieri|oui|d[’']accord|vas-y|fais-le|ja|klar|gern|mach das|mach es|sim|claro|pode|faz isso|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行";
+    const YES_TAIL =
+        'please|per favore|por favor|bitte|grazie|thanks|now|right now|adesso|ora|subito|pure|ahora|maintenant|jetzt|agora|ya';
+    const YES = new RegExp(`^(?:${YES_WORD})(?:[\\s,.!]+(?:${YES_WORD}|${YES_TAIL}))*[\\s.!]*$`, 'iu');
 
     /**
      * UN4. Going somewhere else, in their words. A verb of going (or "take me") must start the
@@ -783,6 +831,16 @@
         const askedPolitely = Boolean(lead && lead[1]);
         const body = said.slice(lead ? lead[0].length : 0).trim();
         if (!body) return null;
+        // UN21. Corrections and "wait", before the negation guard: "Non cambiare outfit, toglilo"
+        // and "Don't switch to a different outfit" open with a negation and are still requests.
+        if (c.lastUndress && (CORRECTS_TO_ALL.test(body) || CORRECTS_TO_ALL.test(said)))
+            return action('wardrobe.undress', { step: 'all', correction: true, words: body.slice(0, 120) }, 'wardrobe');
+        if (c.wardrobePending && (WAIT.test(body) || WAIT.test(said))) return action('wardrobe.cancel', {}, 'wardrobe');
+        // A held position has its own "as before" (UN5): it is the pose that goes back, not the clothes.
+        if (AS_YOU_WERE.test(body) && !NEGATED.test(body) && !c.poseHeld) {
+            if (c.undressed) return action('wardrobe.redress', {}, 'wardrobe');
+            if (c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
+        }
         // Waiting for music asked for a moment ago is asking for it again — even as a question.
         if (
             WAITING.test(said) &&
@@ -934,7 +992,13 @@
         return null;
     }
 
+    /** UN21. The message asks for the next thing, after what is under way ("poi …", "then …"). */
+    function sequential(text) {
+        return AFTER.test(clean(text));
+    }
+
     const api = {
+        sequential,
         parse,
         topic,
         affirms,

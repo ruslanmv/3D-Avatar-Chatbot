@@ -1190,6 +1190,8 @@
         pace: 'outfit.say.pace',
         'already-dressed': 'outfit.say.alreadyDressed',
         'nothing-to-undo': 'outfit.say.nothingToUndo',
+        // UN21. They said "wait" and the change was stopped.
+        cancelled: 'outfit.say.cancelled',
     };
     function outfitLineKey(truth) {
         if (!truth) return null;

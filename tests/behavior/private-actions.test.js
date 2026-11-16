@@ -299,8 +299,10 @@ describe('PX2. permission is separate from intent', () => {
 
     test('only the sixteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(16);
+        // wardrobe.redress; UN21 wardrobe.cancel (the owner asked that "aspetta / wait" stop a
+        // change under way); nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(17);
+        expect(Policy.ACTIONS['wardrobe.cancel']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.undress']).toBeTruthy();

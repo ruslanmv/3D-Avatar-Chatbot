@@ -521,6 +521,9 @@
     }
 
     function settle(action, status, why, result) {
+        // UN21. A change the person stopped stays `cancelled`: its handler, still unwinding, must
+        // not report it later as `stale`, `failed` or — worse — `completed`.
+        if (action.locked) return;
         action.status = status;
         action.why = why || null;
         if (result !== undefined) action.result = result;
@@ -606,6 +609,8 @@
     /** ConsentFlow's current level for this session (UN1), or 0 when there is none. */
     /** UN1. Kept equal to `PrivateActionPolicy.UNDRESS_LEVEL`; a test holds them together. */
     const UNDRESS_AT = 4;
+    /** UN21. Identical words within this window are one request (voice + composer, double submit). */
+    const DUPLICATE_MS = 2000;
 
     function levelOf(s) {
         try {
@@ -695,6 +700,12 @@
                 } catch (error) {
                     console.warn('[PrivateActions] could not stop the earlier outfit change', error);
                 }
+                // UN21. "Aspetta": the person stopped it. Recorded as theirs, and final.
+                if (action.name === 'wardrobe.cancel') {
+                    settle(earlier, 'cancelled', 'cancelled');
+                    earlier.locked = true;
+                    action.result = { stopped: earlier.name, wearing: currentName(s) };
+                }
             }
             s.wardrobe = action;
         }
@@ -760,6 +771,12 @@
                 return undress(s, action, alive);
             case 'wardrobe.redress':
                 return redress(s, action, alive);
+            case 'wardrobe.cancel':
+                // UN21. Stopped above, before this ran; with nothing under way there was nothing
+                // to stop (the parser only asks when something is).
+                return action.result && action.result.stopped
+                    ? settle(action, 'completed')
+                    : settle(action, 'failed', 'nothing-pending');
             case 'avatar.pose':
                 return pose(s, action);
             case 'wardrobe.undo': {
@@ -1377,8 +1394,26 @@
     function onUserTurn(text, turn) {
         const s = state;
         if (!s || s.session._stopped) return null;
+        // UN21. One instruction, one turn. The same words arriving twice while the first copy is
+        // still being acted on — the voice recogniser's final result and the composer, or a
+        // double submit — are one request; the second copy would otherwise be a turn of its own
+        // and run again. Once the first has settled, the same words again are a new request
+        // ("spogliati" twice is two layers).
+        const said = String(text == null ? '' : text);
+        const norm = said
+            .trim()
+            .toLowerCase()
+            .replace(/[\s.!?…,]+/gu, ' ')
+            .trim();
+        const now = Date.now();
+        const prev = s.lastSaid;
+        if (norm && prev && prev.norm === norm && now - prev.at < DUPLICATE_MS) {
+            const acted = s.log.filter((a) => a.turnId === prev.turnId);
+            if (acted.some((a) => a.status === 'pending')) return null;
+        }
         s.turnId += 1;
-        s.turnText = String(text == null ? '' : text);
+        s.lastSaid = { norm, at: now, turnId: s.turnId };
+        s.turnText = said;
         touched(s);
         const intent = turn && turn.intent;
         if (intent === 'end' || intent === 'pace-down') return null;
@@ -1433,6 +1468,10 @@
             lastFamily: s.offer ? 'wardrobe' : s.lastFamily,
             poseHeld: Boolean(s.poses && typeof s.poses.held === 'function' && s.poses.held()),
             undressed: Boolean(s.dressedLook),
+            // UN21. What corrections and "wait" refer to: the last outfit request this evening,
+            // and whether a change is under way right now.
+            lastUndress: Boolean(s.wardrobe && s.wardrobe.name === 'wardrobe.undress'),
+            wardrobePending: Boolean(s.wardrobe && s.wardrobe.status === 'pending'),
             ...poseContext(s),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
@@ -1452,7 +1491,39 @@
             const before = [...s.log].reverse().find((a) => a.name === 'music.play' && a.source !== 'model');
             parsed.params = { query: (before && before.params.query) || '' };
         }
+        // UN21. "Poi togli tutto" while a change is still under way: it is the next thing, not a
+        // replacement. A new outfit request supersedes the pending one (LT10), which is right for
+        // "no, the red one" and wrong for "and then…": that waits for the current change to land.
+        if (
+            parsed.family === 'wardrobe' &&
+            parsed.name !== 'wardrobe.cancel' &&
+            s.wardrobe &&
+            s.wardrobe.status === 'pending' &&
+            typeof Intent.sequential === 'function' &&
+            Intent.sequential(s.turnText)
+        ) {
+            const turnId = s.turnId;
+            s.queued = { turnId, name: parsed.name };
+            return waitIdle(s, 90000).then(() => {
+                if (state !== s || s.session._stopped) return null;
+                if (s.queued && s.queued.turnId === turnId) s.queued = null;
+                return request(parsed.name, parsed.params, { source: 'user', turnId });
+            });
+        }
         return request(parsed.name, parsed.params, { source: 'user', turnId: s.turnId });
+    }
+
+    /** UN21. Resolves once no outfit change is under way (or after `ms`). */
+    function waitIdle(s, ms) {
+        const started = Date.now();
+        return new Promise((resolve) => {
+            const tick = () => {
+                const busy = state === s && s.wardrobe && s.wardrobe.status === 'pending';
+                if (!busy || Date.now() - started >= ms) return resolve();
+                setTimeout(tick, 100);
+            };
+            tick();
+        });
     }
 
     /**
@@ -1509,6 +1580,12 @@
             return { state: offer ? 'offer' : 'none', asked: talked };
         }
         const asked = w.source !== 'model';
+        // UN21. They said "wait" and the change was stopped: nothing changed on her, by their
+        // choice. Reported to the reply check as its own outcome, so she says she stopped.
+        if (w.name === 'wardrobe.cancel')
+            return w.status === 'completed'
+                ? { state: 'failed', why: 'cancelled', action: w.name, asked }
+                : { state: 'none', asked: false };
         if (w.status === 'completed')
             return {
                 state: 'changed',
@@ -1854,7 +1931,12 @@
                     if (state === s && s.replyDue === turn) explained(false);
                 }, 15000);
             }
-            if (w.name === 'wardrobe.redress') {
+            if (w.name === 'wardrobe.cancel') {
+                // UN21. "Aspetta": what was under way was stopped, and nothing else happened.
+                now.push(
+                    `They asked you to wait, so the change under way was stopped: nothing changed, you are still wearing ${currentName(s)}. Say so in a few words, warmly, and wait for what they want next.`
+                );
+            } else if (w.name === 'wardrobe.redress') {
                 // UN5. Told in its own words below.
             } else if (w.name === 'wardrobe.undress') {
                 // UN1. What the layer step did, in the words the reply must not contradict.
@@ -1862,6 +1944,12 @@
                 // only thing she may say she wears — naked only when the bare look is the one shown.
                 const bare = Boolean(w.result && w.result.bare);
                 const askedNaked = Boolean(w.params && w.params.naked);
+                // UN21. "Non intendevo un vestito più leggero. Intendevo tutti i vestiti." She
+                // says she understood the correction before anything else.
+                if (w.params && w.params.correction)
+                    now.push(
+                        'They corrected you: they meant taking off every piece of clothing, not changing into something lighter. Show in a few words that you understood exactly that.'
+                    );
                 if (w.status === 'completed' && bare)
                     now.push(
                         'You have just taken everything off: you are naked now, as they asked. Say it in a few words, in the moment.'
@@ -1931,6 +2019,11 @@
                     `They asked you to change and it did not happen: ${WHY_OUTFIT[w.why] || 'it could not be done'}. Tell them so once, in your own voice, and stay as you are.`
                 );
         }
+        // UN21. "Poi …" while a change is still landing: the next one waits for it.
+        if (s.queued && s.queued.turnId === s.turnId)
+            now.push(
+                'They asked for the next change after the one under way: it follows as soon as this one lands. Say so in a few words; do not describe it as done.'
+            );
         // PX14. They talked about her clothes and nothing ran: say so, so the reply cannot invent it.
         if (!(w && w.turnId === s.turnId) && s.topicTurn === s.turnId && s.topic === 'wardrobe')
             now.push('Nothing about your outfit has changed this turn. You are still wearing the same thing.');

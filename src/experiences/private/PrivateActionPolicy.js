@@ -146,8 +146,12 @@
                 words: (v) => text(v, 120) || undefined,
                 // UN7. They asked to see her naked (not only "take a layer off").
                 naked: (v) => (v === true ? true : undefined),
+                // UN21. "Intendevo tutti i vestiti": it corrects the undressing just asked for.
+                correction: (v) => (v === true ? true : undefined),
             },
         },
+        // UN21. "Aspetta", "Wait": the change under way is stopped and she stays as she is.
+        'wardrobe.cancel': { family: 'wardrobe', params: {} },
         'avatar.dance': { family: 'avatar', params: {} },
         // UN5. A held position from Pose Studio's presets (PrivatePoseController.POSES), or
         // `stand` to let go of it.
@@ -182,7 +186,8 @@
     /** Makes a new asset: slow, and on a paid Forge not free. */
     const GENERATES = Object.freeze(['wardrobe.create', 'wardrobe.change']);
     /** Allowed while the session is in care mode. */
-    const QUIETING = Object.freeze(['music.pause', 'music.stop']);
+    // UN21. Stopping a change is always allowed: it only ever leaves her as she is.
+    const QUIETING = Object.freeze(['music.pause', 'music.stop', 'wardrobe.cancel']);
 
     /**
      * The parameters this action may carry, or `{ ok: false }`. Unknown keys are dropped rather
@@ -267,6 +272,8 @@
             case 'wardrobe': {
                 // UN5. Putting her clothes back on is never a risk: hers to do whenever.
                 if (action.name === 'wardrobe.redress') return { allow: true };
+                // UN21. Only the person stops a change they asked for; her tag never does.
+                if (action.name === 'wardrobe.cancel') return { allow: false, why: 'user-only' };
                 if (GENERATES.includes(action.name))
                     return asked ? { allow: true } : { allow: false, why: 'needs-approval', suggest: true };
                 if (asked) return { allow: true };
