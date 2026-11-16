@@ -53,6 +53,24 @@ creating looks (WF1)** — see the Forge bullet below.
   failure in `TryOnSession`. Evidence and the blocked bare step:
   `docs/qa/BODY_STATE_ACCEPTANCE.md`.
 
+- **A look nobody wants any more is cancelled, not landed and undone (LT10).** `TryOnSession._go`
+  cancels the wear in flight when a different look is asked for, `_end` cancels it before
+  restoring, and in Private the bridge stops the earlier wardrobe action's wear when a newer one
+  takes over (`InSceneWardrobe.cancelPending()`, which ends that call `stale`, not `failed`). All
+  three were found in the browser: the superseded look reached the renderer first. Keep
+  `_flying` in step with `applyLook` if the loop changes. Drivers:
+  `tools/qa/wardrobe-clothed-acceptance.mjs` (four characters, `--matrix`),
+  `tools/qa/wardrobe-scene-acceptance.mjs` (the bridge across places),
+  `tools/qa/look-turntable.mjs` (a file from four sides). Results:
+  `docs/qa/WARDROBE_CLOTHED_ACCEPTANCE.md`.
+- **A signed-in person holds a capability; a public page holds no long-lived grant (BI5).**
+  `WardrobeConfig.siteGrant` refuses a `forge.grant` from the page's own configuration unless its
+  claims say it lives at most 15 minutes (a page's configuration is every visitor's). The grant in
+  Settings on one device is not judged. `forge.capabilityUrl` names the site's own endpoint;
+  `WardrobeClient.currentGrant()` asks it for the avatar on stage, holds the answer in memory, and
+  renews it before it expires. Never store a capability, and never send one off the Forge's origin
+  (`downloadHeaders` decides that, as for BI2).
+
 - **The whole feature ends at
   `AvatarManager.setAvatarByUrl(url, name, index)`.** A look is a VRM URL.
   Nothing here touches Three.js, the renderer, or the ambience background — a

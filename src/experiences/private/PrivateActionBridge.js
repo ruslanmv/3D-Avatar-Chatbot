@@ -633,7 +633,21 @@
         }
         if (source !== 'control') s.byTurn.set(key, action);
         if (action.family === 'music' && ['music.play', 'music.search'].includes(action.name)) s.music = action;
-        if (action.family === 'wardrobe') s.wardrobe = action;
+        if (action.family === 'wardrobe') {
+            // LT10. This request replaces the one before it (`alive()` below turns false for
+            // that one). If its look is still downloading, it is stopped now: before, it landed
+            // on her first and was undone afterwards, so an outfit she no longer wanted (in
+            // Private, possibly a state she had just asked to leave) was shown for a moment.
+            const earlier = s.wardrobe;
+            if (earlier && earlier !== action && earlier.status === 'pending') {
+                try {
+                    if (s.closet && typeof s.closet.cancelPending === 'function') s.closet.cancelPending();
+                } catch (error) {
+                    console.warn('[PrivateActions] could not stop the earlier outfit change', error);
+                }
+            }
+            s.wardrobe = action;
+        }
         emit();
 
         const alive = () =>
