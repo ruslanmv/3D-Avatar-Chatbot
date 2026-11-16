@@ -2265,6 +2265,13 @@ const PlaygroundActivity = (() => {
                     why: 'This kind of evening isn’t available here: this site or the selected AI provider doesn’t allow it.',
                 };
             const ceiling = P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel;
+            // AC11. Only now, with every gate above passed: a Private evening starts on a clean
+            // stage. Nothing in the panel ended an activity that was already running when another
+            // began (only Playground leaving Private was handled), so a Scene Tale story kept its
+            // timers, its soundtrack and its composer ("Talk to the story…") underneath a Private
+            // evening, and a Music or Meeting session would have too. A start that was refused
+            // above never reaches this line, so it never ends anything of the person's.
+            this._endOtherActivity();
             this._installCeiling(ceiling);
             const entered = this.adult.enter();
             if (!entered || entered.ok === false) {
@@ -2283,6 +2290,22 @@ const PlaygroundActivity = (() => {
             // VW3. The room, only now: after the gates above have all passed.
             if (this.worldChoice) this._requestWorld(this.worldChoice);
             return { ok: true, why: preset.id, preset: preset.id, maxLevel: ceiling };
+        }
+        /** AC11. End whatever else Together is running; the panel records the new one after `start()`. */
+        _endOtherActivity() {
+            const win = globalObject();
+            const director = win && win.NEXUS_BD;
+            const panel = director && director.togetherPanel;
+            if (!panel || typeof panel.stopActivity !== 'function') return false;
+            const running = panel.active || panel.activeActivity;
+            if (!running || running === 'intimate') return false;
+            try {
+                panel.stopActivity('private starts');
+                return true;
+            } catch (error) {
+                console.warn('[Private] could not end the running activity first', error);
+                return false;
+            }
         }
         stop(why = 'user') {
             const wasActive = this.active || Boolean(this.adult && this.adult.active);

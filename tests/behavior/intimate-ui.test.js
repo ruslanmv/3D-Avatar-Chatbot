@@ -286,6 +286,65 @@ describe('Private tile invariant', () => {
         bridge.detach();
     });
 
+    /** A running Together activity that is not Private: the shape every contract activity has. */
+    function otherActivity(id = 'music') {
+        return {
+            __contract: true,
+            id,
+            title: id,
+            icon: '♪',
+            order: 10,
+            inputs: () => [{ id: 'go' }],
+            availability: () => ({ ok: true }),
+            start: jest.fn(async () => ({ ok: true })),
+            stop: jest.fn(),
+            status: () => ({ label: id, detail: id }),
+        };
+    }
+
+    test('AC11: an activity that is already running is ended when Private begins, not left running underneath', async () => {
+        const s = setup({ requested: true, verified: true, withAdult: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        const music = otherActivity('music');
+        s.panel.register(music);
+        await s.panel.startActivity('music', { id: 'go' });
+        expect(s.panel.activeActivity).toBe('music');
+
+        const started = await s.panel.startActivity('intimate', { id: 'romantic' });
+
+        expect(started.ok).toBe(true);
+        expect(music.stop).toHaveBeenCalledTimes(1);
+        expect(music.stop).toHaveBeenCalledWith('private starts');
+        expect(s.panel.activeActivity).toBe('intimate');
+        bridge.detach();
+    });
+
+    test('AC11: a Private start that is refused ends nothing of the person’s', async () => {
+        window.NEXUS_AVATAR_ADULT = { check: async () => ({ ok: false, why: 'not declared adult' }) };
+        const s = setup({ requested: true, verified: true, withAdult: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        const music = otherActivity('music');
+        s.panel.register(music);
+        await s.panel.startActivity('music', { id: 'go' });
+
+        const refused = await s.panel.startActivity('intimate', { id: 'romantic' });
+
+        expect(refused.ok).toBe(false);
+        expect(music.stop).not.toHaveBeenCalled();
+        expect(s.panel.activeActivity).toBe('music');
+        expect(s.adult.enter).not.toHaveBeenCalled();
+        bridge.detach();
+    });
+
+    test('AC11: with nothing running, starting Private stops nothing', async () => {
+        const s = setup({ requested: true, verified: true, withAdult: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        const stop = jest.spyOn(s.panel, 'stopActivity');
+        await s.panel.startActivity('intimate', { id: 'romantic' });
+        expect(stop).not.toHaveBeenCalled();
+        bridge.detach();
+    });
+
     test('PW: Private never starts with an avatar that is not declared adult, and says why', async () => {
         window.NEXUS_AVATAR_ADULT = {
             check: async () => ({ ok: false, why: 'Private is off for Model Girl: it has not been declared adult.' }),
