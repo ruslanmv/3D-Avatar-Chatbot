@@ -629,7 +629,9 @@ const MotionIntegration = (() => {
     function playAnimation(name) {
         const clips = _clips();
         if (!clips) return;
-        const key = String(name || '').toLowerCase();
+        // NL4. `clip:<path>` names one file, and file names are case-sensitive (Relax.vrma).
+        const raw = String(name || '');
+        const key = raw.indexOf('clip:') === 0 ? raw : raw.toLowerCase();
         if (key === 'walk' || key === 'walk_backward' || key === 'run') return; // locomotion owns gait
         // Snapshot the pre-animation skeleton ONCE per sequence, so a stop or
         // a natural finish settles her back to exactly how she stood —
@@ -674,6 +676,7 @@ const MotionIntegration = (() => {
                 if (res && res.ok) {
                     asked.status = res.loop ? 'playing' : 'started';
                     asked.clip = res.resolved || null;
+                    asked.path = res.path || null;
                 } else {
                     asked.status = 'failed';
                     asked.reason = (res && (res.reason || res.procedural)) || 'did_not_play';
@@ -683,6 +686,10 @@ const MotionIntegration = (() => {
             }
             if (res.ok) {
                 state.lastActivity = key;
+                // NL5. What "repeat that" and "the next one" are about: the last thing she was
+                // asked to do, never the idle or the talking loop that followed it.
+                if (AMBIENT_ACTIVITIES.indexOf(key) === -1 && !/(^|_)idle$/.test(key))
+                    _lastAsked = { name: key, path: res.path || null };
                 if (res.then && !res.loop) {
                     setTimeout(() => clips.play(res.then), Math.max(300, (res.duration || 1.2) * 900));
                 } else if (!res.loop && !res.sticky) {
@@ -1210,6 +1217,436 @@ const MotionIntegration = (() => {
         dsl.execute(plan, { integration: 'nexus-motion' });
     }
 
+    // ── NL3. Positions and named animations asked for in words ───────────
+    //
+    // The report: "Please change your position to On all fours." / "Getting on all fours for you
+    // now" / still standing. In ordinary chat there was nothing between a sentence like that and
+    // the model: the fast path below knows a handful of clips, Pose Studio's presets could only
+    // be picked in the panel, and a clip could only be asked for by one of the fast path's
+    // words. So the model answered alone, and it answers "of course".
+    //
+    // Every way words reach her body already ends in onUserUtterance (typed text in main.js,
+    // the desktop microphone and the VR voice loop through the same sendMessage, CompanionMode,
+    // the research boxes), so this is the one place the request is read:
+    //
+    //   words → NEXUS_POSE_COMMANDS (the live Pose Studio catalogue, the clip map's registry,
+    //           in the app's language) → NEXUS_BODY_POSES (the lifecycle, on the controller
+    //           Pose Studio and Private use) or playAnimation → what the renderer shows →
+    //           the status line and the fact the reply is given.
+    //
+    // The model is never asked whether she moved. `_bodyFact()` tells it, from the player and
+    // the rendered skeleton, and until those confirm it says "not yet".
+
+    /** The last named animation or gesture she was asked for: `{name, path}`. */
+    let _lastAsked = null;
+    /** What happened to the last named animation, for the reply: `{label, status, reason, at}`. */
+    let _clipAsk = null;
+
+    function _poseCommands() {
+        return typeof window !== 'undefined' ? window.NEXUS_POSE_COMMANDS : null;
+    }
+    function _bodyPoses() {
+        const svc = typeof window !== 'undefined' ? window.NEXUS_BODY_POSES : null;
+        return svc && typeof svc.request === 'function' ? svc : null;
+    }
+    function _privateActive() {
+        try {
+            const pa = window.NEXUS_PRIVATE_ACTIONS;
+            return Boolean(pa && typeof pa.active === 'function' && pa.active());
+        } catch (_e) {
+            return false;
+        }
+    }
+
+    /** The one-line status under the header: "Changing pose…", "Pose applied.", or the failure. */
+    function _status(key, label, failed) {
+        const cmd = _poseCommands();
+        const text = cmd && cmd.say ? cmd.say(cmd.langOf(window), key, label) : key;
+        _emitAction({ source: 'body_status', status: key, failed: !!failed, label: label || '', text });
+    }
+
+    /** Hand a resolved position to the lifecycle and report each step of it. */
+    function _askPose(found, text) {
+        const svc = _bodyPoses();
+        _clipAsk = null; // a position is the newest thing she was asked for
+        _suppressNextPlan = _now() + 20;
+        _status(found.kind === 'stand' ? 'standing-up' : 'changing', found.label || found.said || '');
+        const asked = { action: 'pose:' + (found.preset || found.kind), status: 'requested', clip: null, reason: null };
+        asked.at = _now();
+        state.execution = asked;
+        let going;
+        try {
+            going = svc.request(found, { text, source: 'user' });
+        } catch (_e) {
+            going = Promise.resolve({ state: 'failed', why: 'pose-failed' });
+        }
+        Promise.resolve(going)
+            .then((done) => {
+                const r = done || { state: 'failed', why: 'pose-failed' };
+                const label = r.label || found.label || found.said || '';
+                if (state.execution === asked) {
+                    asked.status = r.state === 'confirmed' ? 'confirmed' : r.state;
+                    asked.reason = r.why || null;
+                }
+                state.lastAction = { type: asked.action, result: r.state === 'confirmed' ? 'confirmed' : r.why };
+                if (r.state === 'confirmed') _status(label === 'standing' ? 'stood' : 'applied', label);
+                else if (r.state === 'cancelled') return;
+                else if (r.why === 'ambiguous-pose') _status('ambiguous', label, true);
+                else if (r.why === 'unsupported-pose') _status('unsupported', label, true);
+                else _status('failed', label, true);
+            })
+            .catch(() => {
+                /* the request reports its own failures; a listener must not undo that */
+            });
+    }
+
+    /**
+     * NL4. Did the clip the player started actually play, on the body? The loader's own state,
+     * and then her rendered hands, head and hips a moment apart: a mixer that reports a clip
+     * while nothing on screen moves is the failure this whole change is about.
+     */
+    function _confirmClip(asked, path, label) {
+        const bones = () => {
+            const vps = typeof window !== 'undefined' ? window.vrPoseSystem : null;
+            const THREE = typeof window !== 'undefined' ? window.THREE : null;
+            if (!vps || typeof vps.getVisualBone !== 'function' || !THREE) return null;
+            const out = [];
+            for (const name of ['hips', 'head', 'leftHand', 'rightHand', 'leftFoot', 'rightFoot']) {
+                try {
+                    const node = vps.getVisualBone(name);
+                    if (node && node.getWorldPosition) out.push(node.getWorldPosition(new THREE.Vector3()));
+                } catch (_e) {
+                    /* a bone this avatar lacks is simply not sampled */
+                }
+            }
+            return out.length ? out : null;
+        };
+        const playing = () => {
+            const loader = typeof window !== 'undefined' ? window.NEXUS_CLIP_LOADER : null;
+            const st = loader && loader.getCurrentPlaybackState ? loader.getCurrentPlaybackState() : null;
+            return st ? Boolean(st.isPlaying && st.clip === path) : null;
+        };
+        const first = bones();
+        const mine = _clipAsk;
+        let checks = 0;
+        const check = () => {
+            if (_clipAsk !== mine) return; // something newer owns her now
+            checks += 1;
+            const on = playing();
+            const now = bones();
+            let moved = null;
+            if (first && now && first.length === now.length) {
+                moved = 0;
+                for (let i = 0; i < now.length; i++) moved = Math.max(moved, first[i].distanceTo(now[i]));
+            }
+            const seen = { playing: on, moved_m: moved == null ? null : Math.round(moved * 1000) / 1000 };
+            if (on === false) {
+                asked.status = 'failed';
+                asked.reason = 'not_playing';
+                _clipAsk = { label, status: 'failed', reason: 'not_playing', at: _now(), seen };
+                _status('clip-failed', label, true);
+                _scheduleIdle(0.4);
+                return;
+            }
+            if (moved != null && moved < 0.004 && checks < 3) {
+                setTimeout(check, 600);
+                return;
+            }
+            if (moved != null && moved < 0.004) {
+                asked.status = 'failed';
+                asked.reason = 'not_rendered';
+                _clipAsk = { label, status: 'failed', reason: 'not_rendered', at: _now(), seen };
+                _status('clip-failed', label, true);
+                _scheduleIdle(0.4);
+                return;
+            }
+            asked.status = 'confirmed';
+            _clipAsk = { label, status: 'confirmed', reason: null, at: _now(), seen, path };
+            _status('clip-playing', label);
+        };
+        // Soon enough that a one-second gesture is still playing when it is looked at.
+        setTimeout(check, 400);
+    }
+
+    /** Play one named clip or gesture and follow it until the body confirms or refuses. */
+    function _askClip(name, label, after) {
+        _suppressNextPlan = _now() + 20;
+        const mine = { label, status: 'requested', reason: null, at: _now() };
+        _clipAsk = mine;
+        _status('clip-starting', label);
+        const start = () => {
+            if (_clipAsk !== mine) return; // overtaken while the held position was being let go
+            // An idle queued before this (after the last gesture, or by the release just above)
+            // would start over the clip a moment after it began, and take the record of this
+            // request with it. This request schedules its own idle when it ends or fails.
+            if (_idleTimer) clearTimeout(_idleTimer);
+            _idleTimer = null;
+            playAnimation(name);
+            const asked = state.execution;
+            const clips = _clips();
+            if (!asked || !clips) return;
+            // playAnimation settles `asked` when the clip map answers; watch for that answer.
+            let waited = 0;
+            const watch = () => {
+                if (_clipAsk !== mine) return;
+                if (asked.status === 'requested' && waited < 15000) {
+                    waited += 100;
+                    setTimeout(watch, 100);
+                    return;
+                }
+                if (asked.status === 'failed' || asked.status === 'requested' || asked.status === 'superseded') {
+                    const reason = asked.reason || 'did_not_play';
+                    _clipAsk = { label, status: 'failed', reason, at: _now() };
+                    _scheduleIdle(0.4);
+                    _status(/^clip_disabled/.test(reason) ? 'clip-disabled' : 'clip-unavailable', label, true);
+                    return;
+                }
+                if (asked.path) _confirmClip(asked, asked.path, label);
+                else {
+                    // A procedural stand-in (a nod, a reach) has no clip to check.
+                    _clipAsk = { label, status: 'confirmed', reason: null, at: _now() };
+                    _status('clip-playing', label);
+                }
+            };
+            setTimeout(watch, 100);
+        };
+        if (after) setTimeout(start, after);
+        else start();
+    }
+
+    /** A request that names something this build does not have, or has switched off. */
+    function _refuseClip(label, reason) {
+        _suppressNextPlan = _now() + 20;
+        _clipAsk = { label, status: 'failed', reason, at: _now() };
+        state.execution = { action: 'clip:' + label, status: 'failed', clip: null, reason, at: _now() };
+        state.lastAction = { type: 'gesture:' + label, result: reason };
+        _status(/^clip_disabled/.test(reason) ? 'clip-disabled' : 'clip-unavailable', label, true);
+        return 'handled';
+    }
+
+    /**
+     * Read a sentence for a position or a named animation.
+     * @returns {'handled'|'released'|null} `handled`: this took the request, nothing else runs;
+     *   `released`: a held position was let go so the fast path's own motion can play (give the
+     *   release its half second first); `null`: not ours.
+     */
+    function _bodyWords(text, hit) {
+        const cmd = _poseCommands();
+        const svc = _bodyPoses();
+        if (!cmd || !svc || _privateActive()) return null;
+        const lang = cmd.langOf(window);
+        const chatHeld = Boolean(svc.held());
+        const held = chatHeld || _heldByPoseStudio;
+        let found = null;
+        try {
+            found = cmd.resolve(text, { catalogue: cmd.catalogueFrom(window), held, lang });
+        } catch (_e) {
+            found = null;
+        }
+        if (found) {
+            const seated = state.sitting || state.laying;
+            // "Stand up" with no held position is the fast path's: it ends the sit or lie clip.
+            // Said so explicitly that the fast path has no rule for it, it still means that.
+            const nothingToLeave = !held && (found.kind === 'stand' || (found.kind === 'previous' && !svc.canGoBack()));
+            if (nothingToLeave) {
+                if (hit) return null;
+                if (seated) {
+                    _emitAction({ source: 'fastpath', label: 'stand' });
+                    _suppressNextPlan = _now() + 20;
+                    execute({ commands: [{ type: 'stand' }], interruptible: true, priority: 'high' });
+                    return 'handled';
+                }
+            }
+            // "crouch like a cat" is a position nobody can find; "sit down here" is the fast path's.
+            if (found.kind === 'unknown-position' && found.loose && hit) return null;
+            _askPose(found, text);
+            return 'handled';
+        }
+
+        const clips = _clips();
+        let named = null;
+        try {
+            named = clips
+                ? cmd.resolveClip(text, {
+                      registry: clips.registry ? clips.registry() : [],
+                      gestures: clips.availableNames ? clips.availableNames() : [],
+                      lang,
+                  })
+                : null;
+        } catch (_e) {
+            named = null;
+        }
+        // The fast path's own words win over a loose reading ("do the peace sign" is its rule,
+        // not a clip called "peace sign"); a clip asked for as an animation wins over it.
+        const explicit = named && (named.kind !== 'clip' || named.explicit) && named.kind !== 'gesture';
+        if (named && hit && !explicit) named = null;
+        if (named && hit && (named.kind === 'unknown-clip' || named.kind === 'idle')) named = null;
+        if (!named) {
+            // An ordinary motion while she holds a position asked for in chat: the animation
+            // takes over, so the position is let go first. Looking at the person is not a motion.
+            if (hit && chatHeld && hit.label !== 'look_at_me') {
+                svc.release('animation');
+                return 'released';
+            }
+            return null;
+        }
+        const wait = chatHeld ? 650 : 0;
+        const letGo = () => {
+            if (chatHeld) svc.release('animation');
+        };
+        if (named.kind === 'clip') {
+            if (!named.allowed) return _refuseClip(named.name, 'clip_disabled:' + (named.why || 'disabled'));
+            letGo();
+            _askClip('clip:' + named.path, named.name, wait);
+        } else if (named.kind === 'gesture') {
+            letGo();
+            _askClip(named.name, named.name.replace(/_/g, ' '), wait);
+        } else if (named.kind === 'unknown-clip') {
+            // The clip map's own ladder gets the last word (aliases, a near name).
+            const entry = clips.resolve ? clips.resolve(named.said.replace(/\s+/g, '_')) : null;
+            if (!entry || !entry.candidates || !entry.candidates.length) return _refuseClip(named.said, 'unknown_clip');
+            letGo();
+            _askClip(named.said.replace(/\s+/g, '_'), named.said, wait);
+        } else if (named.kind === 'clip-repeat') {
+            if (!_lastAsked) return _refuseClip('', 'nothing_to_repeat');
+            letGo();
+            // The clip that is looping is "already playing" to the player: stop it so it restarts.
+            if (clips.stop) clips.stop({ fadeOut: 0.15 });
+            _askClip(
+                _lastAsked.path ? 'clip:' + _lastAsked.path : _lastAsked.name,
+                _clipLabel(_lastAsked),
+                wait || 200
+            );
+        } else if (named.kind === 'clip-next') {
+            const next = _nextClip(clips);
+            if (!next) return _refuseClip('', 'unknown_clip');
+            letGo();
+            _askClip('clip:' + next.path, _clipLabel(next), wait);
+        } else if (named.kind === 'idle') {
+            if (chatHeld) return null; // "stop the animation" while posed is not about the pose
+            _suppressNextPlan = _now() + 20;
+            _clipAsk = null;
+            _emitAction({ source: 'fastpath', label: 'stop' });
+            execute({ commands: [{ type: 'stop' }], interruptible: true, priority: 'high' });
+        }
+        return 'handled';
+    }
+
+    const _clipLabel = (clip) =>
+        String((clip && (clip.path || clip.name)) || '')
+            .replace(/^clip:/, '')
+            .split('/')
+            .pop()
+            .replace(/\.(bvh|vrma)$/i, '')
+            .replace(/^(action|dance|exercise|emotion)_/i, '')
+            .replace(/_/g, ' ');
+
+    /** The clip after the last one asked for, in its own category, among those that may play. */
+    function _nextClip(clips) {
+        const all = (clips.registry ? clips.registry() : []).filter((c) => c.allowed);
+        if (!all.length) return null;
+        const last = _lastAsked && _lastAsked.path ? all.find((c) => c.path === _lastAsked.path) : null;
+        const pool = all.filter((c) => c.category === (last ? last.category : 'dance'));
+        if (!pool.length) return all[0];
+        const at = last ? pool.indexOf(last) : -1;
+        return pool[(at + 1) % pool.length];
+    }
+
+    /**
+     * NL5. What the reply is told about the last position or animation she was asked for.
+     * From the lifecycle and the player, never from the conversation: "not confirmed yet" while
+     * it is under way, "confirmed on screen" once it is, "you could not" when it failed.
+     */
+    function _bodyFact() {
+        const lines = [];
+        const svc = _bodyPoses();
+        if (svc && !_privateActive()) {
+            try {
+                const fact = svc.fact();
+                if (fact) lines.push(fact);
+            } catch (_e) {
+                /* no fact is better than a wrong one */
+            }
+        }
+        const c = _clipAsk;
+        if (c && !c.told && _now() - c.at < 90) {
+            const name = c.label ? '"' + c.label + '"' : 'they asked for';
+            if (c.status === 'requested')
+                lines.push(
+                    'They asked for the animation ' +
+                        name +
+                        ' and it is starting; it is not confirmed on screen yet. Do not say it is playing.'
+                );
+            else if (c.status === 'confirmed')
+                lines.push('The animation ' + name + ' is playing on your body now, confirmed on screen.');
+            else if (/^clip_disabled/.test(c.reason || ''))
+                lines.push(
+                    'They asked for the animation ' +
+                        name +
+                        ', which is switched off for this character. Nothing played. Say plainly that it is not available; never say you are doing it.'
+                );
+            else if (c.reason === 'nothing_to_repeat')
+                lines.push(
+                    'They asked you to repeat an animation, and there is none to repeat. Nothing played. Say so.'
+                );
+            else
+                lines.push(
+                    'They asked for an animation ' +
+                        name +
+                        " that isn't available for this character. Nothing played. Say plainly that it isn't available; never say you are doing it."
+                );
+        }
+        return lines.length ? '\n\nYOUR BODY, RIGHT NOW (measured, not assumed): ' + lines.join(' ') : '';
+    }
+
+    /**
+     * NL5. The reply waits for her body. A position takes a second or two to be confirmed
+     * (the blend, then half a second of holding it), and the prompt used to be built in the
+     * same tick the request was made, so the best the model could be told was "not yet". Each
+     * conversation path awaits this before it builds its prompt: it resolves as soon as the
+     * request in flight is confirmed, failed or cancelled, and at `maxMs` at the latest, when
+     * the prompt truthfully says "not confirmed yet" instead.
+     *
+     * @returns {Promise<void>|null} `null` when nothing is in flight: nobody waits for nothing.
+     */
+    function whenBodySettled(maxMs) {
+        const pending = () => {
+            const svc = _bodyPoses();
+            const cur = svc && svc.current ? svc.current() : null;
+            const posing = Boolean(cur && ['requested', 'validated', 'started', 'applied'].indexOf(cur.state) !== -1);
+            return posing || Boolean(_clipAsk && _clipAsk.status === 'requested');
+        };
+        if (typeof window === 'undefined' || !pending()) return null;
+        const limit = Number.isFinite(maxMs) ? maxMs : 3000;
+        return new Promise((resolve) => {
+            let waited = 0;
+            const tick = () => {
+                if (!pending() || waited >= limit) return resolve();
+                waited += 50;
+                setTimeout(tick, 50);
+            };
+            tick();
+        });
+    }
+
+    /** NL5. The last position request and the last named animation, as they stand: for audits. */
+    function bodyStatus() {
+        const svc = _bodyPoses();
+        return {
+            pose: svc && svc.current ? svc.current() : null,
+            clip: _clipAsk ? Object.assign({}, _clipAsk) : null,
+        };
+    }
+
+    /**
+     * NL5. The fact alone, for a conversation path that does not carry the motion contract
+     * (the VR panel's): what her body did about the last request, or that it cannot move.
+     */
+    function bodyFact() {
+        if (typeof window === 'undefined') return '';
+        return _enabled() ? _bodyFact() : BODY_OFF_LINE;
+    }
+
     /**
      * Fast path: fire instant motion for recognized commands and let the LLM
      * still produce the verbal reply. The LLM's duplicate plan (for the same
@@ -1218,6 +1655,15 @@ const MotionIntegration = (() => {
      */
     function onUserUtterance(text) {
         if (!_enabled() || typeof window === 'undefined') return;
+        // NL5. What her body did about the last request was news for that turn. This is a new
+        // one: only what is still true (a position she holds) is carried into it.
+        try {
+            const svc = _bodyPoses();
+            if (svc && svc.turnOver) svc.turnOver();
+        } catch (_e) {
+            /* the fact is rebuilt from this turn's request either way */
+        }
+        if (_clipAsk && _clipAsk.status !== 'requested') _clipAsk.told = true;
         // UN5. A held pose is the body's answer for now; its owner decides what words do to it.
         // UN6. So are words Private is about to turn into a held pose: a sit or lie clip started
         // here first is what the pose system would claim her from, and what release went back to.
@@ -1228,13 +1674,22 @@ const MotionIntegration = (() => {
         } catch (_e) {
             privateBody = false;
         }
-        if (_heldByPoseStudio || privateBody) {
+        const fp = window.NEXUS_INTENT_FASTPATH;
+        const hit = fp && fp.match ? fp.match(text) : null;
+        // NL3. A position or a named animation, read before anything else may answer for it.
+        let body = null;
+        if (!privateBody) {
+            try {
+                body = _bodyWords(text, hit);
+            } catch (_e) {
+                body = null; // a resolver that throws must not cost her the ordinary motion
+            }
+        }
+        if (body === 'handled' || ((_heldByPoseStudio || privateBody) && body !== 'released')) {
             const at = getUserPosition();
             if (at) setLookAtTarget(at);
             return;
         }
-        const fp = window.NEXUS_INTENT_FASTPATH;
-        const hit = fp && fp.match ? fp.match(text) : null;
         const user = getUserPosition();
         if (user) setLookAtTarget(user); // acknowledge instantly, always
         _telemetry.utterances++;
@@ -1274,9 +1729,15 @@ const MotionIntegration = (() => {
             _lastActionLabel = hit.label;
         }
         _log('fast-path:', hit.label);
+        // NL4. The fast path's motion is now the newest thing she was asked for: a named clip
+        // still being confirmed has been overtaken, and must not report on what replaced it.
+        if (hit.label !== 'look_at_me') _clipAsk = null;
         _emitAction({ source: 'fastpath', label: hit.label });
         _suppressNextPlan = _now() + 20;
-        execute(hit.plan);
+        // NL3. A held position was just let go for this: its release blends for half a second,
+        // and a clip started inside that blend is fought over bone by bone.
+        if (body === 'released') setTimeout(() => execute(hit.plan), 650);
+        else execute(hit.plan);
     }
 
     /**
@@ -1376,7 +1837,7 @@ const MotionIntegration = (() => {
     function systemPromptSuffix() {
         if (typeof window === 'undefined') return '';
         if (!_enabled()) return BODY_OFF_LINE;
-        if (!window.NEXUS_MOTION_CONTRACT) return '';
+        if (!window.NEXUS_MOTION_CONTRACT) return _bodyFact();
         const clips = _clips() ? _clips().availableNames() : [];
 
         // SEAM 1 — the vocabulary. Telling the model only about commands that
@@ -1390,7 +1851,7 @@ const MotionIntegration = (() => {
         }
 
         const guide = _clips() && _clips().gestureGuide ? _clips().gestureGuide(clips) : [];
-        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips, types, guide);
+        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips, types, guide) + _bodyFact();
     }
 
     // ── Lifecycle ───────────────────────────────────────────────────────
@@ -1401,6 +1862,16 @@ const MotionIntegration = (() => {
         _vrm = vrm || null;
         state.sitting = false;
         state.laying = false;
+        // NL3. A position asked for on the avatar that just left is not carried to this one: the
+        // request in flight is cancelled and the hold on the old skeleton released.
+        try {
+            const svc = _bodyPoses();
+            if (svc && svc.onAvatarChanged) svc.onAvatarChanged();
+        } catch (_e) {
+            /* the new avatar still loads */
+        }
+        _clipAsk = null;
+        _lastAsked = null;
         if (_ik()) _ik().attach(_vrm);
         if (_vrm && _vrm.lookAt && _lookProxy) _vrm.lookAt.target = _lookProxy;
         _log('avatar attached');
@@ -1638,6 +2109,9 @@ const MotionIntegration = (() => {
         playAnimation,
         getTelemetry,
         holdForPoseStudio,
+        whenBodySettled,
+        bodyFact,
+        bodyStatus,
         setDebug,
         debugMotion,
         _faceTarget,

@@ -550,9 +550,38 @@
     );
     const DONE_CJK = /^(?:終わった|終わり|끝났어|다\s?했어|我好了|结束了)/u;
 
+    /** NL1. Pose Studio presets that already have a key here (PrivatePoseController.POSES). */
+    const KEY_OF_PRESET = {
+        kneeling: 'kneel',
+        kneelingUp: 'kneel-up',
+        lyingBack: 'lie-back',
+        lyingFront: 'lie-front',
+        lyingSide: 'lie-side',
+        standingBendForward: 'bend-forward',
+        standingBentBackward: 'arch-back',
+        sittingLegsUp: 'lounge',
+    };
+    function poseCommands() {
+        if (global && global.NEXUS_POSE_COMMANDS) return global.NEXUS_POSE_COMMANDS;
+        if (typeof module !== 'undefined' && module.exports) {
+            try {
+                return require('../../xr/PoseCommands.js');
+            } catch (_) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     function bodyFrom(body, context) {
         const c = context || {};
         const rest = body.replace(DONE, '').trim();
+        // NL1. "Please change your position to …" in front of a position's words: the words
+        // below matched only at the very start, so the frame made the whole request invisible
+        // (reported: she said she had moved and stood still). The frame comes off first, in the
+        // session's own language.
+        const Commands = poseCommands();
+        const inner = Commands ? Commands.stripFrame(body, c.lang).body : body;
         if (REDRESS.test(rest)) return action('wardrobe.redress', {}, 'wardrobe');
         if (
             c.undressed &&
@@ -561,14 +590,46 @@
             !REDRESS.test(rest)
         )
             return action('wardrobe.redress', {}, 'wardrobe');
-        for (const [key, words, cjk] of POSE_WORDS)
-            if (new RegExp(`^(?:${word(words)})`, 'iu').test(body) || cjk.test(body))
+        for (const [key, words, cjk] of POSE_WORDS) {
+            const re = new RegExp(`^(?:${word(words)})`, 'iu');
+            if (re.test(body) || re.test(inner) || cjk.test(body))
                 return action('avatar.pose', { pose: key }, 'avatar');
+        }
         if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
         if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
         // While she holds a position, turning keeps it (her whole body turns in place).
         if (c.poseHeld && (TURN_WORDS.test(body) || TURN_CJK.test(body)))
             return action('avatar.pose', { pose: 'turn' }, 'avatar');
+        return presetFrom(body, c, Commands);
+    }
+
+    /**
+     * NL1. Everything else Pose Studio offers, asked for in words: the resolver reads the live
+     * catalogue the bridge hands in (`context.poseCatalogue`), so a preset added to the
+     * navigator is reachable here without a line in this file. A position that was asked for
+     * and is not there is an action too (`pose: 'unknown'`): the bridge fails it, and the reply
+     * is told she did not move, where before nothing was said and the model was left to invent.
+     */
+    function presetFrom(body, c, Commands) {
+        if (!Commands || typeof Commands.resolve !== 'function') return null;
+        const found = Commands.resolve(body, { catalogue: c.poseCatalogue || [], held: c.poseHeld, lang: c.lang });
+        if (!found) return null;
+        if (found.kind === 'pose') {
+            const key = KEY_OF_PRESET[found.preset];
+            return action('avatar.pose', key ? { pose: key } : { pose: 'preset', preset: found.preset }, 'avatar');
+        }
+        if (found.kind === 'stand') return action('avatar.pose', { pose: 'stand' }, 'avatar');
+        if (found.kind === 'previous') return action('avatar.pose', { pose: 'back' }, 'avatar');
+        if (found.kind === 'ambiguous')
+            return action(
+                'avatar.pose',
+                { pose: 'unknown', said: found.said, ask: found.options.map((o) => o.label).join(' / ') },
+                'avatar'
+            );
+        // A loose posture request the motion fast path will answer itself ("sit on the sofa") is
+        // its to answer; anything else that named a position gets an honest "I can't".
+        if (found.kind === 'unknown-position' && !(found.loose && c.fastPathHit))
+            return action('avatar.pose', { pose: 'unknown', said: String(found.said || '').slice(0, 80) }, 'avatar');
         return null;
     }
 

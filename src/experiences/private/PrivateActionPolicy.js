@@ -72,7 +72,14 @@
         'stand',
         'back',
         'turn',
+        // NL1. A Pose Studio preset by name (`preset`), and a position that was asked for and
+        // is not in this build (`unknown`: it never runs, it is how the reply learns she did
+        // not move).
+        'preset',
+        'unknown',
     ];
+    /** NL1. A Pose Studio preset's own name: `sittingCrossed`. Never free text. */
+    const PRESET_NAME = /^[A-Za-z][A-Za-z0-9]{1,39}$/;
     const ADULT_POSES = ['all-fours'];
 
     const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
@@ -144,7 +151,16 @@
         'avatar.dance': { family: 'avatar', params: {} },
         // UN5. A held position from Pose Studio's presets (PrivatePoseController.POSES), or
         // `stand` to let go of it.
-        'avatar.pose': { family: 'avatar', params: { pose: oneOf(POSE_KEYS) }, required: ['pose'] },
+        'avatar.pose': {
+            family: 'avatar',
+            params: {
+                pose: oneOf(POSE_KEYS),
+                preset: (v) => (PRESET_NAME.test(String(v || '')) ? String(v) : undefined),
+                said: (v) => text(v, 80),
+                ask: (v) => text(v, 160),
+            },
+            required: ['pose'],
+        },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
