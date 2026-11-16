@@ -293,3 +293,8 @@ __pycache__/
 # Local VRMA download/test scratch (BOOTH terms forbid redistributing extractables)
 develop/verification/scratch-candidates/
 
+
+# Wardrobe acceptance runs (tools/qa/wardrobe-*-acceptance.mjs): every screenshot of every run,
+# tens of megabytes each. The matrix, the reports' summary and the clothed evidence sheets are
+# committed under docs/qa/wardrobe-clothed/.
+audits/wardrobe/runs/

@@ -1196,6 +1196,17 @@ const MotionIntegration = (() => {
             plan = res.plan;
         }
 
+        // UN5. While a held pose owns her skeleton (Pose Studio, or a position she took in
+        // Private), only her face moves: an expression or a look. A turn, a gesture or a walk
+        // through the motion stack took the body back from the pose system — measured: after
+        // "girati" while kneeling she walked round, and every later preset was reported applied
+        // while she stood. Turning while posed goes through the root instead (PrivateActionBridge).
+        if (_heldByPoseStudio && plan && Array.isArray(plan.commands)) {
+            const face = plan.commands.filter((c) => c && (c.type === 'expression' || c.type === 'look_at'));
+            if (!face.length) return;
+            plan = Object.assign({}, plan, { commands: face });
+        }
+
         dsl.execute(plan, { integration: 'nexus-motion' });
     }
 
@@ -1207,6 +1218,21 @@ const MotionIntegration = (() => {
      */
     function onUserUtterance(text) {
         if (!_enabled() || typeof window === 'undefined') return;
+        // UN5. A held pose is the body's answer for now; its owner decides what words do to it.
+        // UN6. So are words Private is about to turn into a held pose: a sit or lie clip started
+        // here first is what the pose system would claim her from, and what release went back to.
+        let privateBody = false;
+        try {
+            const pa = window.NEXUS_PRIVATE_ACTIONS;
+            privateBody = Boolean(pa && typeof pa.ownsBody === 'function' && pa.ownsBody(text));
+        } catch (_e) {
+            privateBody = false;
+        }
+        if (_heldByPoseStudio || privateBody) {
+            const at = getUserPosition();
+            if (at) setLookAtTarget(at);
+            return;
+        }
         const fp = window.NEXUS_INTENT_FASTPATH;
         const hit = fp && fp.match ? fp.match(text) : null;
         const user = getUserPosition();

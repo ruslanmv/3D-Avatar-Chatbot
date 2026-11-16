@@ -216,7 +216,13 @@ async function main() {
         }
         const shot = `${clip.category}--${clip.id}.jpg`;
         if (run.play)
-            await page.screenshot({ path: path.join(SHOTS, shot), clip: { x: 16, y: 80, width: 474, height: 650 }, type: 'jpeg', quality: 60, scale: 'css' });
+            await page.screenshot({
+                path: path.join(SHOTS, shot),
+                clip: { x: 16, y: 80, width: 474, height: 650 },
+                type: 'jpeg',
+                quality: 60,
+                scale: 'css',
+            });
 
         const problems = [];
         if (!fileOk)

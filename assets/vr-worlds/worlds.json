@@ -2030,6 +2030,1344 @@
         "radius": 6
       },
       "lightFor": "creative-academy"
+    },
+    {
+      "id": "cinema",
+      "title": "Cinema",
+      "note": "An auditorium with rows of seats and the big screen.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 98472,
+      "activities": [],
+      "sky": {
+        "top": "#0b0a12",
+        "horizon": "#1a1420",
+        "bottom": "#060508"
+      },
+      "fog": {
+        "color": "#120e18",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#b9a8d8",
+        "ground": "#1a1218",
+        "hemi": 0.6,
+        "key": "#ffe9c8",
+        "keyIntensity": 0.85,
+        "fill": "#8fb4ff",
+        "fillIntensity": 0.5,
+        "rim": "#ff9a6b",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cinema-auditorium.glb",
+        "at": [12.567, -0.02, 1.473],
+        "turn": -15
+      },
+      "ground": {
+        "color": "#2b2730",
+        "radius": 9
+      },
+      "preview": "previews/cinema.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "cinema-light",
+      "title": "Cinema",
+      "note": "The screen and the front rows, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 27168,
+      "activities": [],
+      "sky": {
+        "top": "#0b0a12",
+        "horizon": "#1a1420",
+        "bottom": "#060508"
+      },
+      "fog": {
+        "color": "#120e18",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#b9a8d8",
+        "ground": "#1a1218",
+        "hemi": 0.6,
+        "key": "#ffe9c8",
+        "keyIntensity": 0.85,
+        "fill": "#8fb4ff",
+        "fillIntensity": 0.5,
+        "rim": "#ff9a6b",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cinema-auditorium-light.glb",
+        "at": [12.567, -0.02, 1.473],
+        "turn": -15
+      },
+      "ground": {
+        "color": "#2b2730",
+        "radius": 9
+      },
+      "lightFor": "cinema"
+    },
+    {
+      "id": "hotel-lobby",
+      "title": "Hotel lobby",
+      "note": "The reception desk, the fireplace and the lounge by the revolving door.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 52298,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c22",
+        "horizon": "#6b5340",
+        "bottom": "#2a2019"
+      },
+      "fog": {
+        "color": "#4a3a2c",
+        "near": 12,
+        "far": 36
+      },
+      "light": {
+        "sky": "#ffe8cc",
+        "ground": "#4a382a",
+        "hemi": 0.85,
+        "key": "#ffd9a8",
+        "keyIntensity": 1.0,
+        "fill": "#ffe9d6",
+        "fillIntensity": 0.55,
+        "rim": "#ffc890",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/hotel-lobby.glb",
+        "at": [-0.206, 0, 0.291],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#6e5a48",
+        "radius": 11
+      },
+      "preview": "previews/hotel-lobby.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "hotel-lobby-light",
+      "title": "Hotel lobby",
+      "note": "The reception desk and one lounge, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29752,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c22",
+        "horizon": "#6b5340",
+        "bottom": "#2a2019"
+      },
+      "fog": {
+        "color": "#4a3a2c",
+        "near": 12,
+        "far": 36
+      },
+      "light": {
+        "sky": "#ffe8cc",
+        "ground": "#4a382a",
+        "hemi": 0.85,
+        "key": "#ffd9a8",
+        "keyIntensity": 1.0,
+        "fill": "#ffe9d6",
+        "fillIntensity": 0.55,
+        "rim": "#ffc890",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/hotel-lobby-light.glb",
+        "at": [-0.206, 0, 0.291],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#6e5a48",
+        "radius": 11
+      },
+      "lightFor": "hotel-lobby"
+    },
+    {
+      "id": "hotel-bathroom",
+      "title": "Hotel bathroom",
+      "note": "The suite's bathroom: a walk-in shower, a lit mirror and warm towels.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 11728,
+      "activities": [],
+      "sky": {
+        "top": "#dfe6ea",
+        "horizon": "#f2f4f5",
+        "bottom": "#9aa3a8"
+      },
+      "fog": {
+        "color": "#e9eef0",
+        "near": 10,
+        "far": 30
+      },
+      "light": {
+        "sky": "#f6fbff",
+        "ground": "#8a9499",
+        "hemi": 0.95,
+        "key": "#fff4e6",
+        "keyIntensity": 1.05,
+        "fill": "#e6f2ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.5, 0, -2.4]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, -1.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, -1.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, -0.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, -0.9],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.0, 0, 0.1],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.0, 0, 0.1],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/bath-with-screen.glb",
+          "width": 1.71,
+          "at": [-1.95, 0, -1.95]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/hotel-vanity-unit.glb",
+          "width": 1.13,
+          "at": [0, 0, -2.05]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/vanity-mirror-lit.glb",
+          "width": 0.9,
+          "at": [0, 1.2, -2.3]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/walk-in-shower-enclosure.glb",
+          "width": 1.2,
+          "at": [2.25, 0, -1.85]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/heated-towel-rail.glb",
+          "width": 0.52,
+          "at": [2.9, 0.45, -0.7],
+          "turn": -90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/towel-shelf-and-rail.glb",
+          "width": 0.7,
+          "at": [-2.85, 1.25, -0.7],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/robe-hook-rail.glb",
+          "width": 0.34,
+          "at": [-2.92, 1.6, 0.3],
+          "turn": 90
+        }
+      ],
+      "ground": {
+        "color": "#c9cfd2",
+        "radius": 7
+      },
+      "preview": "previews/hotel-bathroom.webp",
+      "category": "Romantic"
+    },
+    {
+      "id": "restaurant",
+      "title": "Restaurant",
+      "note": "A dining room laid for dinner: tables, banquettes and a bar at the back.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 105232,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c16",
+        "horizon": "#553a2a",
+        "bottom": "#1c1410"
+      },
+      "fog": {
+        "color": "#3a281e",
+        "near": 9,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe2c0",
+        "ground": "#3a2a20",
+        "hemi": 0.8,
+        "key": "#ffcf9a",
+        "keyIntensity": 1.0,
+        "fill": "#ffe6d0",
+        "fillIntensity": 0.5,
+        "rim": "#ffb070",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.746, 0, -1.621],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.246, 0, -2.487],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.746, 0, -3.353],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.246, 0, -4.219],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.746, 0, -5.085],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.246, 0, -5.951],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.746, 0, -6.817],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.246, 0, -7.683],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.746, 0, -8.549],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.246, 0, -9.415],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.746, 0, -10.281],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.613, 0, -0.851],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.747, 0, -0.351],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.881, 0, 0.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.015, 0, 0.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.149, 0, 1.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.283, 0, 1.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.417, 0, 2.149],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.551, 0, 2.649],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.013, 0, -10.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.147, 0, -10.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.281, 0, -9.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.415, 0, -9.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.451, 0, -8.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.317, 0, -8.051],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.183, 0, -7.551],
+          "turn": 150
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.049, 0, -7.051],
+          "turn": 150
+        }
+      ],
+      "scene": {
+        "src": "scenes/restaurant-dining-room.glb",
+        "at": [-2.176, 0, -3.601],
+        "turn": 60
+      },
+      "ground": {
+        "color": "#4a3628",
+        "radius": 11
+      },
+      "preview": "previews/restaurant.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "restaurant-light",
+      "title": "Restaurant",
+      "note": "The front tables and the banquettes, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28636,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c16",
+        "horizon": "#553a2a",
+        "bottom": "#1c1410"
+      },
+      "fog": {
+        "color": "#3a281e",
+        "near": 9,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe2c0",
+        "ground": "#3a2a20",
+        "hemi": 0.8,
+        "key": "#ffcf9a",
+        "keyIntensity": 1.0,
+        "fill": "#ffe6d0",
+        "fillIntensity": 0.5,
+        "rim": "#ffb070",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.746, 0, -1.621],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-8.246, 0, -2.487],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.746, 0, -3.353],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-7.246, 0, -4.219],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.746, 0, -5.085],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-6.246, 0, -5.951],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.746, 0, -6.817],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-5.246, 0, -7.683],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.746, 0, -8.549],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-4.246, 0, -9.415],
+          "turn": 60
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.746, 0, -10.281],
+          "turn": 60
+        }
+      ],
+      "scene": {
+        "src": "scenes/restaurant-dining-room-light.glb",
+        "at": [-2.176, 0, -3.601],
+        "turn": 60
+      },
+      "ground": {
+        "color": "#4a3628",
+        "radius": 11
+      },
+      "lightFor": "restaurant"
+    },
+    {
+      "id": "cocktail-bar",
+      "title": "Cocktail bar",
+      "note": "A bar counter with stools, bottles on the back bar and a wine cabinet.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 19268,
+      "activities": [],
+      "sky": {
+        "top": "#120f1c",
+        "horizon": "#2a2034",
+        "bottom": "#0a0810"
+      },
+      "fog": {
+        "color": "#1a1424",
+        "near": 8,
+        "far": 26
+      },
+      "light": {
+        "sky": "#c9b8ff",
+        "ground": "#1a1420",
+        "hemi": 0.6,
+        "key": "#ffb86b",
+        "keyIntensity": 0.95,
+        "fill": "#5fd0d8",
+        "fillIntensity": 0.5,
+        "rim": "#ff7aa8",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.709, 0, -1.814],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-3.002, 0, -2.521],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-2.295, 0, -3.228],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-1.588, 0, -3.935],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.881, 0, -4.642],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [-0.174, 0, -5.349],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [0.533, 0, -6.056],
+          "turn": -135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [3.362, 0, -3.935],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [2.655, 0, -4.642],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.948, 0, -5.349],
+          "turn": 135
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/partition-wall-module.glb",
+          "width": 1.0,
+          "at": [1.241, 0, -6.056],
+          "turn": 135
+        }
+      ],
+      "scene": {
+        "src": "scenes/cocktail-bar.glb",
+        "at": [2.973, 0, -0.647],
+        "turn": 135
+      },
+      "ground": {
+        "color": "#241c2c",
+        "radius": 8
+      },
+      "preview": "previews/cocktail-bar.webp",
+      "category": "Nightlife"
+    },
+    {
+      "id": "swimming-pool",
+      "title": "Swimming pool",
+      "note": "An indoor pool: lanes, starting blocks, a diving board and a lifeguard chair.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 67112,
+      "activities": [],
+      "sky": {
+        "top": "#cfe8f2",
+        "horizon": "#e8f4f8",
+        "bottom": "#c4d6dc"
+      },
+      "fog": {
+        "color": "#dceef4",
+        "near": 14,
+        "far": 48
+      },
+      "light": {
+        "sky": "#f2fbff",
+        "ground": "#6aa8bf",
+        "hemi": 1.0,
+        "key": "#fff8ea",
+        "keyIntensity": 1.05,
+        "fill": "#d8f0ff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/swimming-pool.glb",
+        "at": [-5.3, 0, 4.4],
+        "turn": -90
+      },
+      "preview": "previews/swimming-pool.webp",
+      "category": "Sport"
+    },
+    {
+      "id": "swimming-pool-light",
+      "title": "Swimming pool",
+      "note": "The pool, its deck and the starting blocks, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28484,
+      "activities": [],
+      "sky": {
+        "top": "#cfe8f2",
+        "horizon": "#e8f4f8",
+        "bottom": "#c4d6dc"
+      },
+      "fog": {
+        "color": "#dceef4",
+        "near": 14,
+        "far": 48
+      },
+      "light": {
+        "sky": "#f2fbff",
+        "ground": "#6aa8bf",
+        "hemi": 1.0,
+        "key": "#fff8ea",
+        "keyIntensity": 1.05,
+        "fill": "#d8f0ff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/swimming-pool-light.glb",
+        "at": [-5.3, 0, 4.4],
+        "turn": -90
+      },
+      "lightFor": "swimming-pool"
+    },
+    {
+      "id": "sports-hall",
+      "title": "Sports hall",
+      "note": "An indoor court with basketball hoops, wall bars and a scoreboard.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 34524,
+      "activities": [],
+      "sky": {
+        "top": "#d9d4c8",
+        "horizon": "#efe9dc",
+        "bottom": "#8a7f6c"
+      },
+      "fog": {
+        "color": "#e6e0d2",
+        "near": 16,
+        "far": 52
+      },
+      "light": {
+        "sky": "#fff6e2",
+        "ground": "#8a7a5c",
+        "hemi": 0.95,
+        "key": "#fff1d0",
+        "keyIntensity": 1.05,
+        "fill": "#e8f0ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/sports-hall-court.glb",
+        "at": [2.828, 0, 8.457],
+        "turn": -45
+      },
+      "preview": "previews/sports-hall.webp",
+      "category": "Sport"
+    },
+    {
+      "id": "sports-hall-light",
+      "title": "Sports hall",
+      "note": "The court and its hoops, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 25248,
+      "activities": [],
+      "sky": {
+        "top": "#d9d4c8",
+        "horizon": "#efe9dc",
+        "bottom": "#8a7f6c"
+      },
+      "fog": {
+        "color": "#e6e0d2",
+        "near": 16,
+        "far": 52
+      },
+      "light": {
+        "sky": "#fff6e2",
+        "ground": "#8a7a5c",
+        "hemi": 0.95,
+        "key": "#fff1d0",
+        "keyIntensity": 1.05,
+        "fill": "#e8f0ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/sports-hall-court-light.glb",
+        "at": [2.828, 0, 8.457],
+        "turn": -45
+      },
+      "lightFor": "sports-hall"
+    },
+    {
+      "id": "soccer-ground",
+      "title": "Soccer ground",
+      "note": "A full pitch with goals, a covered stand and floodlights.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 14020,
+      "activities": [],
+      "sky": {
+        "top": "#6fb1e8",
+        "horizon": "#cfe6f7",
+        "bottom": "#4f8a3c"
+      },
+      "fog": {
+        "color": "#cfe6f7",
+        "near": 60,
+        "far": 220
+      },
+      "light": {
+        "sky": "#eaf5ff",
+        "ground": "#5a8a48",
+        "hemi": 1.0,
+        "key": "#fff6dc",
+        "keyIntensity": 1.15,
+        "fill": "#dcecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/soccer-ground.glb",
+        "at": [35.999, 0, 35.999],
+        "turn": 45
+      },
+      "ground": {
+        "color": "#4f8a3c",
+        "radius": 90
+      },
+      "preview": "previews/soccer-ground.webp",
+      "category": "Sport"
+    },
+    {
+      "id": "guild-tavern",
+      "title": "Guild tavern",
+      "note": "A timbered hall with a fireplace, a bar, a quest board and a gallery upstairs.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 58604,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c12",
+        "horizon": "#5a3c24",
+        "bottom": "#1a120c"
+      },
+      "fog": {
+        "color": "#3a281a",
+        "near": 9,
+        "far": 28
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#3a2616",
+        "hemi": 0.75,
+        "key": "#ffb86b",
+        "keyIntensity": 1.05,
+        "fill": "#ffdcb0",
+        "fillIntensity": 0.5,
+        "rim": "#ff8a3c",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/guild-tavern.glb",
+        "at": [-1.929, -0.222, -0.301],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#4a3422",
+        "radius": 9
+      },
+      "preview": "previews/guild-tavern.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "guild-tavern-light",
+      "title": "Guild tavern",
+      "note": "The hall, the fireplace and the bar, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29344,
+      "activities": [],
+      "sky": {
+        "top": "#2a1c12",
+        "horizon": "#5a3c24",
+        "bottom": "#1a120c"
+      },
+      "fog": {
+        "color": "#3a281a",
+        "near": 9,
+        "far": 28
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#3a2616",
+        "hemi": 0.75,
+        "key": "#ffb86b",
+        "keyIntensity": 1.05,
+        "fill": "#ffdcb0",
+        "fillIntensity": 0.5,
+        "rim": "#ff8a3c",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/guild-tavern-light.glb",
+        "at": [-1.929, -0.222, -0.301],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#4a3422",
+        "radius": 9
+      },
+      "lightFor": "guild-tavern"
+    },
+    {
+      "id": "dungeon",
+      "title": "Dungeon",
+      "note": "Three stone rooms: a store with a chest, a study and a shrine up the stairs.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 10268,
+      "activities": [],
+      "sky": {
+        "top": "#0c0d14",
+        "horizon": "#1c1e2a",
+        "bottom": "#07070b"
+      },
+      "fog": {
+        "color": "#12131c",
+        "near": 7,
+        "far": 24
+      },
+      "light": {
+        "sky": "#8f98c8",
+        "ground": "#16141c",
+        "hemi": 0.85,
+        "key": "#ff9a4a",
+        "keyIntensity": 1.0,
+        "fill": "#6f8cff",
+        "fillIntensity": 0.45,
+        "rim": "#ffb060",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/dungeon-rooms.glb",
+        "at": [-1.631, -0.25, 2.125],
+        "turn": 30
+      },
+      "preview": "previews/dungeon.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "jungle-ruins",
+      "title": "Jungle ruins",
+      "note": "A ruined stone compound: a gate tower, an arch, fallen walls and a colonnade.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 70924,
+      "activities": [],
+      "sky": {
+        "top": "#8fc0e0",
+        "horizon": "#dcebd2",
+        "bottom": "#4a5e34"
+      },
+      "fog": {
+        "color": "#cfe0c4",
+        "near": 30,
+        "far": 110
+      },
+      "light": {
+        "sky": "#eef8e8",
+        "ground": "#5a6a3e",
+        "hemi": 1.0,
+        "key": "#fff2cc",
+        "keyIntensity": 1.15,
+        "fill": "#d8ecd8",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/jungle-ruins.glb",
+        "at": [6.877, -0.1, 9.511],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#5a6a3e",
+        "radius": 40
+      },
+      "preview": "previews/jungle-ruins.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "jungle-ruins-light",
+      "title": "Jungle ruins",
+      "note": "The gate tower, the arch and the walls, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 28032,
+      "activities": [],
+      "sky": {
+        "top": "#8fc0e0",
+        "horizon": "#dcebd2",
+        "bottom": "#4a5e34"
+      },
+      "fog": {
+        "color": "#cfe0c4",
+        "near": 30,
+        "far": 110
+      },
+      "light": {
+        "sky": "#eef8e8",
+        "ground": "#5a6a3e",
+        "hemi": 1.0,
+        "key": "#fff2cc",
+        "keyIntensity": 1.15,
+        "fill": "#d8ecd8",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/jungle-ruins-light.glb",
+        "at": [6.877, -0.1, 9.511],
+        "turn": -60
+      },
+      "ground": {
+        "color": "#5a6a3e",
+        "radius": 40
+      },
+      "lightFor": "jungle-ruins"
+    },
+    {
+      "id": "shopping-street",
+      "title": "Shopping street",
+      "note": "A quiet neighbourhood street: a ramen shop, a bookshop, a laundrette and a vending machine.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 17734,
+      "activities": [],
+      "sky": {
+        "top": "#7fa7d6",
+        "horizon": "#f0d9c4",
+        "bottom": "#8a8f96"
+      },
+      "fog": {
+        "color": "#e8dccf",
+        "near": 14,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f0ff",
+        "ground": "#7a7f86",
+        "hemi": 0.9,
+        "key": "#fff1dc",
+        "keyIntensity": 1.05,
+        "fill": "#dbe8ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd2a8",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/3dassets-japanese-street/street-road-section.glb",
+          "width": 8.0,
+          "at": [-4.0, -0.37, 3.4],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-japanese-street/street-road-drain-sect.glb",
+          "width": 8.0,
+          "at": [4.0, -0.37, 3.4],
+          "turn": 90
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-bookshop.glb",
+          "width": 4.0,
+          "at": [-4.0, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-ramen-shop.glb",
+          "width": 4.0,
+          "at": [0.0, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-laundrette.glb",
+          "width": 4.1,
+          "at": [4.05, 0, -2.9]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/shopfront-shutter.glb",
+          "width": 4.0,
+          "at": [8.1, 0, -2.6]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/vending-machine.glb",
+          "width": 1.05,
+          "at": [-6.6, 0, -1.9]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/bicycle-rack.glb",
+          "width": 1.9,
+          "at": [2.6, 0, -1.7]
+        },
+        {
+          "src": "kits/3dassets-japanese-street/cherry-tree-blossom.glb",
+          "width": 4.1,
+          "at": [-8.6, 0, 1.2]
+        }
+      ],
+      "ground": {
+        "color": "#8d9096",
+        "radius": 13
+      },
+      "preview": "previews/shopping-street.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "school",
+      "title": "School",
+      "note": "A Japanese school's grounds: the gate, the shoe lockers, a classroom, the covered walkway and cherry trees. Always General.",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["desktop"],
+      "triangles": 88606,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/japanese-school-grounds.glb",
+        "at": [6.996, 0, -0.863],
+        "turn": 120
+      },
+      "ground": {
+        "color": "#a39c8c",
+        "radius": 16
+      },
+      "preview": "previews/school.webp",
+      "category": "School"
+    },
+    {
+      "id": "school-light",
+      "title": "School",
+      "note": "A Japanese school's grounds: the gate, the shoe lockers, a classroom, the covered walkway and cherry trees. Always General.",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "vr"],
+      "triangles": 26466,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/japanese-school-grounds-light.glb",
+        "at": [6.996, 0, -0.863],
+        "turn": 120
+      },
+      "ground": {
+        "color": "#a39c8c",
+        "radius": 16
+      },
+      "lightFor": "school"
     }
   ]
 }

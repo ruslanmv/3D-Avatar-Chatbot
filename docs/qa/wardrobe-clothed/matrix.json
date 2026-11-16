@@ -1,0 +1,1726 @@
+[
+  {
+    "character": "avatar-sample-b",
+    "size": "desktop",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_B.vrm",
+        "bytes": 15433736,
+        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 15614800,
+        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 15649556,
+        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 176563,
+        "sha256": "6d3adb39b7bc06b63b26dc28fc0b691e9b18ae9988c5909499d10a089d662dae"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 371068,
+        "sha256": "5a2b43b66ee3879fe3bb6f024965501cb2be516a0a7bf36268d054f9b66b0bb5"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 346226,
+        "sha256": "ac13062d9661c23cd3b3253936b9f86c03edd0d91da2da97f25d8ac8a264c9b7"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 341812,
+        "sha256": "9e829b8bc372e790a8b783a39e78fa16e3fa8694dcf085ebe513f353c7b008d8"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 341975,
+        "sha256": "c483ff36038f069f23e3fd0aac5e18d9d4d6ee4673061e4a579b8802ccad2f88"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 340096,
+        "sha256": "798abadef1e59ada48cd25da931019366d5d9fac8325ac8087b842b6ff3fb842"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 346348,
+        "sha256": "99d3c3120fd4680e13f565d57b49bc1936a2150a0508350533f8ad8bb6719ccc"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 171438,
+        "sha256": "c3ab1199148946ab294f36aa4b990a723ee378c0560a2d1b864672d9d1822890"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 171992,
+        "sha256": "bdfb10d8a05b3b29b28829cecde8541c5daea3dbff3d162e9855cabdf87d1e60"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-b",
+    "size": "desktop",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_B.vrm",
+        "bytes": 15433736,
+        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 15614800,
+        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 15649556,
+        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 175164,
+        "sha256": "2e3fec1410ef55c8ee2e8ed25f1e831fbff92656f854739ef3353ac15e30b88a"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 373139,
+        "sha256": "ce6d67d31634568ffbe840c3a493f532b44c6aef30ccc457de467bc256a73098"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 347232,
+        "sha256": "da1ecf7de2345e642dc258ee8a912413cf6e45dadd3ef0b17df95e7dd274a649"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 343441,
+        "sha256": "7bc2f1d98da77541f456d545677bbfbf0e47b1f6f8e35dca57d2641167e8dc15"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 344272,
+        "sha256": "9dabea7157d233acaa766f813fba33f2c2af2bc80ede62125dfd91d7893c68a3"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 341370,
+        "sha256": "38a0f2cfe2d4a7852e8c057564425727bb69966345bf079c9c90ec952e705786"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 348160,
+        "sha256": "b9c67f1eb56a0c846907041b1cef6853537e2684e7f92558f02e0b889efabfb1"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 173200,
+        "sha256": "145c786ce932d30a557f29338b1b74f3525a98c661fd4f76f9cbb519866890d2"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 172402,
+        "sha256": "60b95f96e864371a69fb97bef7427c4064cdd525f870c15916136bcf579658ca"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-b",
+    "size": "phone",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_B.vrm",
+        "bytes": 15433736,
+        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 15614800,
+        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 15649556,
+        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 61376,
+        "sha256": "a3f3da90b53f232da4ac8200697d0413bc9b156e9a7335ead70a839799bebc18"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 99004,
+        "sha256": "13c1c09f17e78dcb8e2284e078bed6117d0e71323678b958dc23439a313ee8e7"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 93161,
+        "sha256": "2b50f07c6594bc6107133bb4f98001a81dc0af110968e076350d265d031acd35"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 88149,
+        "sha256": "03daf54dd2ad879107c996088078e87b748e7f3733a6457df14eb676e5e769dd"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 88088,
+        "sha256": "0f7c3a581cd3f24044b844bb1e0122f3512761d50cdca455435250d7b9adb3d0"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 88221,
+        "sha256": "061f75d426a9f4e31ffc9d9a3c1bcf27e5bfe59424029db6eb19a9fb24e97c63"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 93109,
+        "sha256": "9c022fbf036a668296944734171ed5a9ff9bbdf87dd013340ea1f6d52df68988"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 60236,
+        "sha256": "a0a98fffe36b18ab76d892d09bec552c375c78e8868ddee471a1fa6fea563009"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 60344,
+        "sha256": "9f40169f29c4eda73d64998db42f6a7aef9af0fb7af38bb2e2434aaf81d28a8b"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-b",
+    "size": "phone",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_B.vrm",
+        "bytes": 15433736,
+        "sha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "pin": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+        "packSource": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 15614800,
+        "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+        "expected": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 15649556,
+        "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+        "expected": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 61421,
+        "sha256": "9c2499e7c4dc5bcfe6306743b15857949cc5edf3533675b88b9a1ad29edbc7ce"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 99506,
+        "sha256": "f4e048b89a4733fde79afa2cbf0ec6317585705bcad64e4ec8d153ce89ce3379"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 93621,
+        "sha256": "f7216d8ea50be5977a72f47b987e32f15a5b96e2e8c7808ff10459791d4a694a"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 88748,
+        "sha256": "9699145de082d23abc0c1ef20bbac8bedc517905464202bf8ae2690eb7591a54"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 88629,
+        "sha256": "b3d076459a660cb77bf360ee4c6ed5b1112b4aeea0688a15dc7025f846a2e476"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 88743,
+        "sha256": "516aa081a8dac0dfc4e9386e40cf047da3edbf7d3600305447e7280ac23d2f43"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 93783,
+        "sha256": "ca9e20fbccf1edc7c51503644b60e65cadb9e1a9de92d99909f66f785a33f39d"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 60509,
+        "sha256": "5ed617119fcb70ab0f048283f7c686033cb19b6244bd9eb00a7bf46eaab60b65"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 60368,
+        "sha256": "0b6e977f9bd04e2bdb28bf7a1531c6850a8dfbace60ee16b8a7c1a4a182c0e84"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-c",
+    "size": "desktop",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_C.vrm",
+        "bytes": 13132268,
+        "sha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "pin": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "packSource": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 13368940,
+        "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+        "expected": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 13368780,
+        "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+        "expected": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 150279,
+        "sha256": "e67ff1ca9268096b24bc47d37e3eb4a992cf27a54ec703b3570a1a09db590a4a"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 349277,
+        "sha256": "7281d25ccd25c39190544045c56965d00f625a26be713d10edea9007cb9c5147"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 329699,
+        "sha256": "aba710102ba4d7edd11f86a9764d96328509e3775981dfba7d50f3a5ac09c100"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 331115,
+        "sha256": "8809d84cc15b88784bd005e2dfd7017aabf313ecabffa5405c99af0f5ecff97a"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 330134,
+        "sha256": "6737f1a3074fc29bc5f4c821b37702d67075ae70355d0a0fb4fabba3622c3619"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 331819,
+        "sha256": "b4c93992a104f949bcc5972671d1c1abf71a40f47b1e6770f69272c1eb8f0fb2"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 329892,
+        "sha256": "36b0819740d2226486c8e45534140c06f19e1ee9e77b3e7fc13d654c48b22d3f"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 150955,
+        "sha256": "e7ef02f71033d8410a94fdc0e563c6faa85b75e92de43ecbc5c76660384eef10"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 149873,
+        "sha256": "dfe0968e79a5f20deb68b993b77b7cfebe7bdeb390e29101e8d09e001a52c83e"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-c",
+    "size": "desktop",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_C.vrm",
+        "bytes": 13132268,
+        "sha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "pin": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "packSource": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 13368940,
+        "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+        "expected": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 13368780,
+        "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+        "expected": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 150465,
+        "sha256": "d3020e8558086e6228d295398663dd25edf604414edaf7370dff2c992b5a82bf"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 351170,
+        "sha256": "1bd4caed9ab9f457eac097f518f16ba0c53991c2b58cb4a32c70253f302e6726"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 331698,
+        "sha256": "9bf57a98277d990916e582054354303df7ff88deba158e74e695faaa74d3fc05"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 334468,
+        "sha256": "2be8240429f40a8f5957bb49260bf12a8ca727e8aba6d74f22aed0dd9a84e824"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 331657,
+        "sha256": "f55e30a1f507e9cf88fe072ea09acd02a85a1be9b4d5fda26b72c85a2c68aace"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 332169,
+        "sha256": "518275acd601e9c9c10fea463abaa03e07139235f4a9c517cc5bfa605159fb70"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 332360,
+        "sha256": "066b1a8e24680a37547996077bbf72f22e79e57e75ad7845be5ed4d5f5663b8b"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 149875,
+        "sha256": "d6ea01bd45ac8f5ad1ecb3a5dfde79124da7a64e87cc2a203e36b1741f5a539f"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 151571,
+        "sha256": "455a4e1d4dc1a14c8713fd69d6e7602d5a76ffc7f4941934dc6e9f6b0ae93836"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-c",
+    "size": "phone",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_C.vrm",
+        "bytes": 13132268,
+        "sha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "pin": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "packSource": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 13368940,
+        "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+        "expected": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 13368780,
+        "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+        "expected": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 49775,
+        "sha256": "b949f36626c65fb1642c0e404345a0c32ab46780286d0151064dfba3869829e2"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 88656,
+        "sha256": "4a674a48fbfd36857aca8e8adc8a8ec1428fa588406ccfe6ea9b12722d02418f"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 84702,
+        "sha256": "cf283b6f656d496dfad1e2742822740d16619fbbf6db50c0a2865a2b56574d20"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 86565,
+        "sha256": "a63a9ea402c0e85e2c554c5d0492e90b0564b7c437d63cc5a9fbd060ef1e9156"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 86293,
+        "sha256": "7f8ff33a1affe3a42decce88b44d8dcdb04ccb1c75a4f53031a181cb0153c16c"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 86475,
+        "sha256": "eb58403ab73b1427180ef12c6f33ad03231ce34c8aa2a1a3245143b90c6f66ed"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 84411,
+        "sha256": "ab2220dff0768e13b8bc3811c476aa62cc62d68ccdf330412c5d148947c1d40f"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 49115,
+        "sha256": "8a3d1c1a3507cc89a5ee7ba87536ceb85422683c9899acd6d49183783a6b3b03"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 49469,
+        "sha256": "3b4133a1f70994fb87f642e8b7f2e9ee253cb10aff62ed515e38c088a5e73144"
+      }
+    ]
+  },
+  {
+    "character": "avatar-sample-c",
+    "size": "phone",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "AvatarSample_C.vrm",
+        "bytes": 13132268,
+        "sha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "pin": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+        "packSource": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 13368940,
+        "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+        "expected": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 13368780,
+        "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+        "expected": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 49901,
+        "sha256": "7b35434e53629bdf673b0640de30749feb91706e71723c330ec440f6905b4541"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 88495,
+        "sha256": "4518d8d23ebee9453b8060300c1f8cad226c02e945f90f0499b57130284ebe4a"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 85096,
+        "sha256": "c9b3b971349ff201b6ce8ee845b1b4c5446909b41410903eed67e5be311dcdde"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 87184,
+        "sha256": "64c74508e309779a7ef64e18ed4a3ab2d7ffd0f60417ec36b3f8640e02400740"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 86934,
+        "sha256": "6f6e9c73514a82225d7b5b6b48ea7178fb2d4be6c554748dd219915f726bc508"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 87289,
+        "sha256": "fa6547953f78ca6ec3884c03c6ada3b4106c638ccb999e63d595747cf0aab4d8"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 84958,
+        "sha256": "cc51bd9ff0334e1c54ee4b6b2474d96eda9a66226ea4f7e845deec97502caafb"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 49469,
+        "sha256": "bd4b96c6661f1adb081db61e0a2b773de59904ea8b50ce1591fc040e82f802ea"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 49251,
+        "sha256": "8cd1eac83927e8c9a6bdd5d0fdaaef10cbecdd5491a988f8bbac243fd10d1418"
+      }
+    ]
+  },
+  {
+    "character": "fem-vroid",
+    "size": "desktop",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "fem_vroid.vrm",
+        "bytes": 12041088,
+        "sha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "pin": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "packSource": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12227880,
+        "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+        "expected": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 12237244,
+        "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+        "expected": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 128492,
+        "sha256": "5d07587242b7d07f414cec49e41ea7d29ad70e451cca08738ca65dec5085fb17"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 323925,
+        "sha256": "545b0533934b51921a1575a42e4ee87353a6528c6982854671701f352bf5c966"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 325856,
+        "sha256": "3d196ec9c4058ebec23707b113fc40309dfb36a3e96cf74ee983e7a97f0b9f91"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 317151,
+        "sha256": "3bd0952b44ec264f552a579fe3fe51f4078183a5d39f8c09a812fc8bb5da7eda"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 318032,
+        "sha256": "1c79597c900e9d6eba6c5a66c9b8b888fcfd0fe508238e296214eb1739a82777"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 318894,
+        "sha256": "1ad13caa6d65f84aac8761c99f8425afabc15644b30d48a634952de64d56b906"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 324933,
+        "sha256": "1508adb21bb1f3288891cf0d24d1f4add19fb8e255f900388b3c1413a2c14e44"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 126318,
+        "sha256": "d9dc0e428bc6552525e0cd728eed42b2e754b71aae520e9c79a38a9ba5126a81"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 127411,
+        "sha256": "3dc5ae45f4d4fd70dbbc38d93b282eacfe8fe7da8cdfdf4fd218bbb780c3f400"
+      }
+    ]
+  },
+  {
+    "character": "fem-vroid",
+    "size": "desktop",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "fem_vroid.vrm",
+        "bytes": 12041088,
+        "sha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "pin": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "packSource": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12227880,
+        "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+        "expected": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 12237244,
+        "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+        "expected": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 133331,
+        "sha256": "cfc3d801042afd8096b9b988f2661f49ee03f518e34e7c0f904024eb27efdd85"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 325741,
+        "sha256": "1eb845fde7ee54e850f351009abf2ae4e77dbd6dc39fa5302cff427d17631e07"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 327375,
+        "sha256": "f7909920d23fcd29937c4f86e3d3335a0b060ed56e7090aa36f230ba9769d5ee"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 320172,
+        "sha256": "f0830fb97485317932979acaa94ff9533518e75700b97071c3b75dd8688f08d8"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 320049,
+        "sha256": "2e0f6a570f71363505d3a8021a46bce77fc75069c33726e4387614892bfbe01c"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 320554,
+        "sha256": "119df9024d1002e301ca1b83676daf239d8cae2b659c0779a6685f4cc35e7a8f"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 325922,
+        "sha256": "50fa6b296535e773db9a2d150c333b114c73cae6da6c4a03754dea6bc317cfcc"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 126003,
+        "sha256": "cc4042fa3601f8ea82af063ec9aea23aa383c32bd68f9827d2e4d47bbe5a5bca"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 127100,
+        "sha256": "ce4f941273c4aa28a343135eeb5968124dc1ed0b38b6c0b481e31b43753be4c4"
+      }
+    ]
+  },
+  {
+    "character": "fem-vroid",
+    "size": "phone",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "fem_vroid.vrm",
+        "bytes": 12041088,
+        "sha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "pin": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "packSource": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12227880,
+        "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+        "expected": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 12237244,
+        "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+        "expected": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 37291,
+        "sha256": "241f6b9adcdac75b37f1ac70cbdaed492b4a680efb23d0fa0eafc3ea99684ddc"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 76817,
+        "sha256": "ec30ef12fc517b013506e7149c43611619102346c7c3b3e853addb73b5178f4d"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 82512,
+        "sha256": "1b969b202a771e8ac549cc3f686e7bf2d46f27d06a5a051608e21b8eabd5f87e"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 76662,
+        "sha256": "d8eaeb93cad243c1199f91eace1f186e49dc5edad579a4d476563963b0c56822"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 76478,
+        "sha256": "446118e9a7617353a3a084bff69c16bbec878f136a66cd5bb14c719e53feac1b"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 76406,
+        "sha256": "0925150a2e1535b44b9db9198505df9732cdf3cca46a50711b031b9a9bab7746"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 82501,
+        "sha256": "b48ddd137737218e515c294a1e7eda24ed1812f8f8463ebc637fba8cb792ca98"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 37058,
+        "sha256": "bfc13d8c2e1141dc8e5fd3af9773e01879e9fe437bbfb2657b900fe29e0cb9d1"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 36924,
+        "sha256": "2b27d7b5c10e0242e6c56db411cf555b1c44284cb7878051b8f353c58ad7ce85"
+      }
+    ]
+  },
+  {
+    "character": "fem-vroid",
+    "size": "phone",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "fem_vroid.vrm",
+        "bytes": 12041088,
+        "sha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "pin": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+        "packSource": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8"
+      }
+    },
+    "looks": [
+      {
+        "id": "crop-top-jeans",
+        "name": "Crop top & jeans",
+        "rating": "general",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12227880,
+        "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+        "expected": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176"
+      },
+      {
+        "id": "maxi-sundress",
+        "name": "Yellow sundress",
+        "rating": "general",
+        "garments": [
+          "dress-maxi-sundress-v1"
+        ],
+        "bytes": 12237244,
+        "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+        "expected": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 37404,
+        "sha256": "375f77c2762096219c2259ec810d31a601c5e3767e20df8b0faf258cbf1384a8"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 76487,
+        "sha256": "1d606fc8cbfbd18229600a78121be3563e8bc5a0c5546d17c489208995aabea9"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 82804,
+        "sha256": "fc460cef91bdddc11645ce53d539fd8dc9cd49750cbf3e3c1127c80103488eb2"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 77078,
+        "sha256": "55b5171e97ffde3c26859b08ea27734903d33e3e5b54ed627f4df8008af580d5"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 77088,
+        "sha256": "41c05309d199b472b9b398012c768bf069350eb30ae70ffaeec9a66eb2b2efb5"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 76914,
+        "sha256": "bd47e60e068cb905bd5041fa1aaa0543f35aeb4102bcb56dfbf840e7144bfb25"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 82787,
+        "sha256": "e16c140cf3a5d23499c8f8b434ad6f07294b0857e8df9fe1d1a35d493a2c2fff"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 37172,
+        "sha256": "9f6d8fa820cd5d728c23de93fa4b5990fd2c9056989c7c673feaee92630fc0c0"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 36962,
+        "sha256": "8421ab6151574ebcac79d6b4adadeb8456ca193e1bb213915748ae9741457e6e"
+      }
+    ]
+  },
+  {
+    "character": "masc-vroid",
+    "size": "desktop",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "masc_vroid.vrm",
+        "bytes": 11844156,
+        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 12075960,
+        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12075804,
+        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 131856,
+        "sha256": "abf0fff5f3ae81abfde76ad68ccaec0227fd5082306c631f9824a743af1e5ba2"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 324589,
+        "sha256": "99f23ffd5e7a98835397060370d68b748e360bba81a851ec9a176b0ce36bf074"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 323397,
+        "sha256": "01f6103de28cbec1480ed5ac40bf4cddb10fb96a0292f390bebe048656067221"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 321966,
+        "sha256": "d78ac969baa431f2def60da5712ed505bbaeb1a3ac8c2b0d75a335934adef8e3"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 322555,
+        "sha256": "2e848af131b0066da04285bc4881195fba00ffbdc81c385f490065c15b2628f3"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 322479,
+        "sha256": "c52351ef8ad2b1c1973d619cefe4d0b0b62eb4e4f136db9cf992399343fda0f5"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 322501,
+        "sha256": "f51e08f8d606aaf5184c69568b403583c7e861298a118de7f602e546b0db0f69"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 127794,
+        "sha256": "8d8efb8162b639a13189c2a9c3698799b67a72a27c2596d452a749665f516697"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 127377,
+        "sha256": "3964d507cb8811f13dd916da7ad044e2d6ae830a79bd29b41feaa8b6a1e54599"
+      }
+    ]
+  },
+  {
+    "character": "masc-vroid",
+    "size": "desktop",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "Desktop viewport (1440x900)": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "masc_vroid.vrm",
+        "bytes": 11844156,
+        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 12075960,
+        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12075804,
+        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 133156,
+        "sha256": "2ea5fdcf8cc4bdc07fe7ee1fb9defa313de2d2fa3e40e1b41889c33c6757e155"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 325991,
+        "sha256": "778fcd4a94a271cb605afcf19d0dfe8fca5effa358124533807bd4d1b10befb8"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 325218,
+        "sha256": "82974d42fdd1ec42b072c6a369889567b94674679580e92ffad72a266e4e93e5"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 322584,
+        "sha256": "893e591ffdf047d99ee6bb8cc86ec0327447fedcaee4a5c63e052a1a27beb556"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 323066,
+        "sha256": "900121ec6b43286ce6520c85b74e6eefa3d4aa50cf461b979f30d6f38d76500b"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 323364,
+        "sha256": "85eba95f69985c1ec14d531396783bab02ccfade63600bb3f9eca7edd30aa008"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 323084,
+        "sha256": "6a014257dcdc21f3052aa01fdac4d0bf4687b22665a13917419f18f7416397d6"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 126632,
+        "sha256": "ed4a1739a5739bd9c09247bf61e3fd5edb00f570aaab675cffd552e943c3dc52"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 127023,
+        "sha256": "1c7ce68c3c7410ba8b352c4bdd624df18113e8eec9e0588b49cbce8b70329ed9"
+      }
+    ]
+  },
+  {
+    "character": "masc-vroid",
+    "size": "phone",
+    "lang": "en-US",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "English": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "masc_vroid.vrm",
+        "bytes": 11844156,
+        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 12075960,
+        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12075804,
+        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 37973,
+        "sha256": "d3f02f983f6cc6a1e63467947b62da3f3952342b3947ef89fb49ef15af5935d4"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 77220,
+        "sha256": "9aff56f7a331e053cfd2d051a4990a7f53c0617fdbe603d8f37da6bacade8f59"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 80117,
+        "sha256": "4576e298b51103a290435c0bb55de3f7512c32e17e8ac5bd6d8b8c6380469623"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 80965,
+        "sha256": "ac35e4eac6af8bdbca2da571e5f72375e35e05018bb0144588cdd19e21907a09"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 81141,
+        "sha256": "a44b4ee8e06343a9dac17d6c2e235ad602932a015799f671f0f102d1ee0cf60d"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 81416,
+        "sha256": "3a7d6db42418a9c9f11511d6fefaf109c3a916e2dd6688565f48185993747d34"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 80110,
+        "sha256": "3dedb884c13343ac3345d9d2be6374ce2347c17cf6cc4ae15ab6c34ec311b132"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 37575,
+        "sha256": "e893149d6272a7522398b9a05cb4a5da3b7a57deef48baa2b535d584498490f4"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 37574,
+        "sha256": "91ad9a29a677b052c39f85b3c975996e170ce1db1eea8607f9c5594bcfe10194"
+      }
+    ]
+  },
+  {
+    "character": "masc-vroid",
+    "size": "phone",
+    "lang": "it-IT",
+    "passed": true,
+    "failures": [],
+    "checks": {
+      "File integrity (SHA-256)": true,
+      "Correct asset selection": true,
+      "Italian": true,
+      "Actual loaded renderer root": true,
+      "Skeleton retention": true,
+      "Expression retention": true,
+      "Face and hair preservation": true,
+      "Failed download rollback": true,
+      "Stale request handling": true,
+      "Changed mind and back (1, 2, 1)": true,
+      "Original outfit restoration": true,
+      "Camera unmoved": true,
+      "Cancellation": true,
+      "Stage names the look on stage": true,
+      "390 px viewport": true,
+      "No Forge request (pack only)": true,
+      "No page errors": true
+    },
+    "files": {
+      "avatar": {
+        "file": "masc_vroid.vrm",
+        "bytes": 11844156,
+        "sha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "pin": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+        "packSource": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb"
+      }
+    },
+    "looks": [
+      {
+        "id": "tee-trousers",
+        "name": "White tee & trousers",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ],
+        "bytes": 12075960,
+        "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+        "expected": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4"
+      },
+      {
+        "id": "tee-jeans",
+        "name": "Black tee & jeans",
+        "rating": "general",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ],
+        "bytes": 12075804,
+        "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+        "expected": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9"
+      }
+    ],
+    "screenshots": [
+      {
+        "file": "01-original.png",
+        "bytes": 38286,
+        "sha256": "2d291f5888c23e54d66ecfc5b6e4af5e69a17e0d34713aabdf0a84c31c09956f"
+      },
+      {
+        "file": "02-try-on-open.png",
+        "bytes": 77044,
+        "sha256": "925746c5e9355461020b1c9e05758c9092a4f37d6bc016f0973ef13428727c0b"
+      },
+      {
+        "file": "03-look-1.png",
+        "bytes": 80505,
+        "sha256": "a40d11ca7fa5369b947be4d26b955d49c49b8f0317c4f6f79e79f09402799719"
+      },
+      {
+        "file": "04-look-2.png",
+        "bytes": 81752,
+        "sha256": "8d3c151aaf00d4ccfc1f57d6ee6736fe8a7dd68e0ced995af6f50300631686f5"
+      },
+      {
+        "file": "05-failed-download-kept-look-2.png",
+        "bytes": 81964,
+        "sha256": "ba34eb282d0dcb568d5935d3e9b0941fe682f16f42f1fd7775133cedd350dca8"
+      },
+      {
+        "file": "07-stale-request-kept-look-2.png",
+        "bytes": 81773,
+        "sha256": "dc0bf0de8e2e89ab89c8fb9c9343efc7f6321efc7484d95329ca35b9c66716ab"
+      },
+      {
+        "file": "07b-back-to-look-1.png",
+        "bytes": 80540,
+        "sha256": "094935cb2c451b9d0e13cac9ef97f9e43b920369e50f6553f98ae13f0228f97b"
+      },
+      {
+        "file": "08-restored-original.png",
+        "bytes": 37601,
+        "sha256": "c8e446eace380ac9d7b320741cf60ca262f6fc370a594eef09094b1edc7d15d4"
+      },
+      {
+        "file": "09-cancelled-original.png",
+        "bytes": 37402,
+        "sha256": "2ed607de75130c6f93c13e41142a8a52655170fbf7f6c11df9e9986c745e0897"
+      }
+    ]
+  }
+]

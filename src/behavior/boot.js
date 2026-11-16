@@ -158,8 +158,14 @@
         'src/experiences/private/PrivateActionIntent.js',
         'src/experiences/private/PrivateActionPolicy.js',
         'src/experiences/private/PrivateMediaController.js',
+        'src/experiences/private/WardrobeCoverage.js',
         'src/experiences/private/OutfitDecisionEngine.js',
         'src/experiences/private/InSceneWardrobe.js',
+        // UN5. Her held positions (Pose Studio's presets), read by the bridge.
+        'src/experiences/private/PrivatePoseController.js',
+        // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.
+        'src/features/together/StoryWeaver.js',
+        'src/features/together/StoryDirector.js',
         'src/experiences/private/PrivateActionBridge.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
@@ -212,6 +218,9 @@
         // desktop and mobile, so one registration creates the tile on both surfaces.
         'src/features/together/activities/playground.js',
         'src/features/together/activities/places.js',
+        // GO1. The school is reachable from Private and only ever General: one hand-off for the
+        // room card, her invitation, a link and a saved visit. After places.js, which it starts.
+        'src/features/together/GeneralOnlyPlaces.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',

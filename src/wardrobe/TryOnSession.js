@@ -91,6 +91,8 @@
             this.busy = false;
             this.error = null;
             this.restorePoint = null;
+            this._flying = null; // LT10: the look whose applyLook is in flight, if any
+            this._stopped = null; // LT10: that look, once this session has cancelled its wear
             this.landed = 0; // counts arrivals, so a view can play a reveal for each
             this.lastLanding = null; // {look, cause}
             this.playing = false;
@@ -289,6 +291,24 @@
         }
 
         _go(look, cause) {
+            // LT10. A look still on its way that is no longer wanted is cancelled, not waited
+            // for. Before, the running load "picked the new target up" only after the old one
+            // had landed: tap one look and then another, and the first still downloaded its
+            // 15 MB, appeared on her, and was replaced a moment later by a second full load.
+            // Seen in the browser on all four characters (tools/qa/wardrobe-clothed-acceptance.mjs):
+            // the superseded look reached the renderer. BI3 gave the controller `cancel()`;
+            // this is the session using it. The loop below reads a cancelled wear as "she kept
+            // what she had on" and goes on to the newest target. A restore in flight is not a
+            // wear and is left to finish (there is nothing to cancel it to).
+            //
+            // The session remembers that the cancellation was its own. A cancelled wear rejects
+            // a moment later, and by then the same look may be wanted again (one look, another,
+            // the first again, quickly): without the note the loop took that rejection for
+            // somebody else stopping the look and gave up on it, leaving her own outfit on
+            // stage under the look's name, with no error.
+            if (this.busy && this._flying && keyOf(this._flying) !== keyOf(look) && this.cancelPending()) {
+                this._stopped = this._flying;
+            }
             this.target = look;
             this._cause = cause;
             this.error = null;
@@ -311,11 +331,33 @@
                         if (keyOf(want) !== keyOf(this.worn)) {
                             try {
                                 if (isOriginal(want)) await this._wearOriginal();
-                                else await this.controller.applyLook(want);
+                                else {
+                                    this._flying = want; // LT10: what a newer tap or End may cancel
+                                    this._stopped = null;
+                                    await this.controller.applyLook(want);
+                                }
                             } catch (error) {
+                                this._flying = null;
+                                // BI3. Cancelled is not failed: she kept what she had on. If
+                                // something else is wanted by now, go and wear that. If this
+                                // session cancelled it for another look and it is wanted again
+                                // (LT10), start it again. Otherwise somebody else stopped it:
+                                // stop wanting the cancelled look.
+                                if (error && error.reason === 'wear_cancelled') {
+                                    var ours = this._stopped === want;
+                                    this._stopped = null;
+                                    if (this.target !== want || ours) continue;
+                                    // Given up without an error: the history must still say
+                                    // what she has on. Before, its head stayed on the look
+                                    // that never arrived, so the stage named a look she was
+                                    // not wearing until the next tap.
+                                    this._backToWorn();
+                                    return false;
+                                }
                                 this._failed((error && error.message) || 'That look could not be put on.');
                                 return false;
                             }
+                            this._flying = null;
                             this.worn = want;
                             if (this.target === want) {
                                 this.landed += 1;
@@ -331,6 +373,8 @@
                     }
                     return false;
                 } finally {
+                    this._flying = null;
+                    this._stopped = null;
                     this.busy = false;
                     this._changed();
                 }
@@ -338,13 +382,18 @@
             return this._settled;
         }
 
-        /** A load failed: she is still in `worn`, so the history and the target say that again. */
-        _failed(message) {
+        /** She is still in `worn` (a load failed, or was stopped): the history and the target say that again. */
+        _backToWorn() {
             if (this._pending && this.history.length > 1) this.history.pop();
             this._pending = false;
             if (this.worn && keyOf(this.head()) !== keyOf(this.worn) && !this.comparing) this.history.push(this.worn);
             this.comparing = null;
             this.target = this.worn;
+        }
+
+        /** A load failed: back to what she has on, and the reason is shown. */
+        _failed(message) {
+            this._backToWorn();
             this.pause();
             this._fail(message);
         }
@@ -424,6 +473,15 @@
             return true;
         }
 
+        /**
+         * BI3. Stop the wear that is on its way, if any (its download is aborted; it never lands,
+         * or is rolled back if it already had). Returns whether there was one.
+         */
+        cancelPending() {
+            var controller = this.controller;
+            return Boolean(controller && typeof controller.cancel === 'function' && controller.cancel());
+        }
+
         /** End the haul. Unless she kept a look, she goes back to where the haul began — once. */
         end() {
             if (!this._ending) this._ending = this._end();
@@ -434,6 +492,15 @@
             this.pause();
             var kept = this.phase === 'kept';
             if (this.busy) {
+                // LT10. Ending the haul stops a look that is still on its way. Before, End waited
+                // for it: the download finished after the person had closed Try-On, the look
+                // appeared on her, and only then was her own outfit loaded back over it (two
+                // loads, and a look shown after she was asked to stop). The target is put back
+                // to what she has on first, so the loop does not start the cancelled look again.
+                if (this._flying) {
+                    this.target = this.worn;
+                    this.cancelPending();
+                }
                 try {
                     await this._settled;
                 } catch (_) {

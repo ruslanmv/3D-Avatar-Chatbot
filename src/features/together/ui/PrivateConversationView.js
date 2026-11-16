@@ -176,11 +176,40 @@ const PrivateConversationView = (() => {
   padding:3px 9px;border-radius:999px;
   border-color:rgba(248,172,198,.25);background:rgba(248,172,198,.09);font-size:.7rem
 }
-#${ROW_ID} .nexus-private-action-slot:empty{display:none}
-#${ROW_ID} .nexus-private-action-slot:not(:empty){
-  display:block;flex:0 0 auto;min-width:0;padding:6px 10px;
-  border-bottom:1px solid rgba(255,255,255,.055)
+/* PMA. More actions. The Playground router still docks its chips into
+   .nexus-private-action-slot, but the slot now lives in a menu that is closed until the person
+   opens it with the one ⋯ in the heading. A rail of Dance / Take a bow / … across the heading
+   on every Private start made the evening read as a game dashboard and took a line from her
+   words on a phone. Closed: nothing but the ⋯ (and not even that when the scene offers no
+   action). Open: a compact panel under the heading, over the top of the transcript, closed
+   again by Close, Escape, a tap outside, or running an action. Nothing about the session,
+   the chips or their handlers changes; only where and when they are drawn. */
+#${ROW_ID} .nexus-private-shell{position:relative}
+#${ROW_ID} .nexus-private-more{
+  order:4;flex:0 0 auto;margin-left:6px;width:32px;height:28px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(248,172,198,.25);border-radius:999px;background:transparent;
+  color:#f3bbcd;font:inherit;font-size:1rem;line-height:1;cursor:pointer
 }
+#${ROW_ID} .nexus-private-more[hidden]{display:none}
+#${ROW_ID} .nexus-private-more:hover,
+#${ROW_ID} .nexus-private-more[aria-expanded="true"]{background:rgba(248,172,198,.09)}
+#${ROW_ID} .nexus-private-more:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
+#${ROW_ID} .nexus-private-more-panel{
+  position:absolute;right:8px;top:40px;z-index:5;
+  width:min(300px,calc(100% - 16px));max-height:calc(100% - 52px);overflow-y:auto;
+  padding:6px 8px 8px;border:1px solid rgba(244,164,189,.22);border-radius:12px;
+  background:rgba(22,20,31,.97);box-shadow:0 10px 28px rgba(0,0,0,.35)
+}
+#${ROW_ID} .nexus-private-more-panel[hidden]{display:none}
+#${ROW_ID} .nexus-private-more-head{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
+#${ROW_ID} .nexus-private-more-title{flex:1;min-width:0;font-size:.7rem;letter-spacing:.06em;color:#f3bbcd;opacity:.85}
+#${ROW_ID} .nexus-private-more-close{
+  border:0;background:transparent;color:inherit;opacity:.7;font:inherit;font-size:.74rem;
+  padding:4px 6px;cursor:pointer;text-decoration:underline
+}
+#${ROW_ID} .nexus-private-more-close:focus-visible{outline:2px solid #f2aec6;outline-offset:2px;opacity:1}
+#${ROW_ID} .nexus-private-action-slot{display:block;min-width:0;padding:0;border:0}
 #${ROW_ID} #nexus-playground-bar{
   position:static;display:flex;width:100%;max-width:100%;margin:0;padding:0;
   background:none;box-shadow:none;border:0;border-radius:0;
@@ -224,7 +253,7 @@ const PrivateConversationView = (() => {
 #${ROW_ID} .nexus-private-btn:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
 #${ROW_ID} .nexus-private-btn.is-primary{background:rgba(241,158,190,.15);border-color:rgba(241,158,190,.4)}
 #${ROW_ID} .nexus-private-btn.is-secondary{opacity:.8}
-#${ROW_ID} .nexus-private-action-slot #nexus-playground-bar{overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+#${ROW_ID} .nexus-private-action-slot #nexus-playground-bar{flex-wrap:wrap;gap:6px;overflow:visible}
 @media(max-width:767px){
   #${ROW_ID} .nexus-private-choices{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
   #${ROW_ID} .nexus-private-choice{flex:0 0 auto;white-space:nowrap}
@@ -234,8 +263,11 @@ const PrivateConversationView = (() => {
 /* Touch: 44 px for every control a finger uses, the chips, the replies and Closer / End. */
 @media(pointer:coarse){
   #${ROW_ID} #nexus-playground-bar button,
+  #${ROW_ID} .nexus-private-more,
+  #${ROW_ID} .nexus-private-more-close,
   #${ROW_ID} .nexus-private-choice,
   #${ROW_ID} .nexus-private-bar .nexus-private-btn{min-height:44px}
+  #${ROW_ID} .nexus-private-more{min-width:44px}
 }
 /* A phone, or any short screen (held sideways, the keyboard up): the heading and the chip rail
    share one line, so a whole row of height goes to the transcript. The native chat sheet decides
@@ -244,9 +276,7 @@ const PrivateConversationView = (() => {
 @media(max-height:560px),(max-width:767px){
   #${ROW_ID} .nexus-private-shell{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto}
   #${ROW_ID} .nexus-private-heading{grid-column:1 / -1;grid-row:1;padding:6px 10px}
-  #${ROW_ID} .nexus-private-shell:has(.nexus-private-action-slot:not(:empty)) .nexus-private-heading{grid-column:1;border-bottom:0}
-  #${ROW_ID} .nexus-private-shell:has(.nexus-private-action-slot:not(:empty)) .nexus-private-action-slot{grid-column:2;grid-row:1;padding:4px 8px 4px 0}
-  #${ROW_ID} .nexus-private-action-slot{grid-column:1 / -1;grid-row:2}
+  #${ROW_ID} .nexus-private-more{margin-left:auto}
   #${ROW_ID} .nexus-private-place{display:none}
   #${ROW_ID} .nexus-private-card{grid-column:1 / -1;grid-row:3;min-height:0;padding:7px 11px}
   #${ROW_ID} .nexus-private-soundtrack{grid-column:1 / -1;grid-row:4}
@@ -358,7 +388,7 @@ const PrivateConversationView = (() => {
             // to show `Sensual` while the footer said `Warm` — ceiling and current, both true, and
             // read by everybody as the application insisting on a state they had not reached. The
             // ladder in the footer carries the ceiling instead, where it needs no explaining.
-            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker"></div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-action-slot"></div><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
+            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker"></div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div><button type="button" class="nexus-private-more" aria-haspopup="true" aria-expanded="false" aria-controls="nexus-private-more-panel" hidden>⋯</button></header><div class="nexus-private-more-panel" id="nexus-private-more-panel" role="group" hidden><div class="nexus-private-more-head"><span class="nexus-private-more-title"></span><button type="button" class="nexus-private-more-close"></button></div><div class="nexus-private-action-slot"></div></div><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
             row.querySelector('.nexus-private-kicker').textContent = t('card.kicker');
             // Empty when nothing is set, never a placeholder (P14). The slot used to print
             // `this place` — the sentence fragment `currentSceneLabel` returns for prose — as
@@ -372,6 +402,7 @@ const PrivateConversationView = (() => {
             this.status = row.querySelector('.nexus-private-status');
             this.controls = row.querySelector('.nexus-private-controls');
             this.title = row.querySelector('.nexus-private-heading-title');
+            this._wireMoreActions(row);
             // A floor to draw before the session paints its real state, so the card is never
             // momentarily blank. `setPace` replaces all of it on the first `_paintLevel`.
             this.setPace({ level: 1, steps: [], hasLadder: false, forwardKey: 'closer', canEase: false });
@@ -382,6 +413,8 @@ const PrivateConversationView = (() => {
             // Only presentation changes; the Playground router still owns each action.
             if (this.win && typeof this.win.Event === 'function')
                 this.win.dispatchEvent(new this.win.Event('nexus-private-view-layout'));
+            // The router docked (or did not dock) its chips just now: show the ⋯ only if it did.
+            if (this._more && this._more.sync) this._more.sync();
             this._ensureConversationVisible();
             this._bindComposer();
             this._observeHost(host);
@@ -1169,17 +1202,23 @@ const PrivateConversationView = (() => {
             let text = '';
             const buttons = [];
             if (offer) {
-                text = t(offer.kind === 'wear' ? 'outfit.offer.wear' : 'outfit.offer.create', {
-                    name: offer.name || '',
-                });
+                // UN4. A trip she invited them on uses the same yes / not now, in its own words.
+                const key =
+                    offer.kind === 'travel'
+                        ? 'travel.offer'
+                        : offer.kind === 'wear'
+                          ? 'outfit.offer.wear'
+                          : 'outfit.offer.create';
+                text = t(key, { name: offer.name || '' });
                 buttons.push(['approve', t('outfit.yes'), handlers.onApprove, false]);
                 buttons.push(['decline', t('outfit.no'), handlers.onDecline, true]);
             } else if (outfit && outfit.status === 'creating') {
                 text = t('outfit.creating');
             } else if (outfit && outfit.status === 'changing') {
-                text = t('outfit.changing');
+                // UN15. Past a few seconds, say it is still on its way rather than look stuck.
+                text = t(outfit.why === 'slow' ? 'outfit.slow' : 'outfit.changing');
             } else if (action && action.status === 'failed') {
-                const known = ['adult-ineligible', 'no-match', 'forge-unavailable'].includes(action.why)
+                const known = ['adult-ineligible', 'no-match', 'forge-unavailable', 'timeout'].includes(action.why)
                     ? action.why
                     : 'other';
                 text = t(`outfit.failed.${known}`);
@@ -1312,6 +1351,7 @@ const PrivateConversationView = (() => {
             this._hostObserver = null;
             this._unwatchScroll();
             this._unbindComposer();
+            this._unwireMoreActions();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
             if (old && this.win && typeof this.win.Event === 'function')
@@ -1330,6 +1370,126 @@ const PrivateConversationView = (() => {
             this.shell = this.status = null;
             this.row = this.card = this.level = this.log = null;
         }
+        /**
+         * PMA. The one ⋯ in the heading, and the menu it opens over the transcript.
+         *
+         * The Playground router docks its chips into `.nexus-private-action-slot` (it stays the
+         * owner of every action, its permission check and its animation); this only decides when
+         * they are drawn. The ⋯ shows only while the slot holds a visible chip, so a scene with
+         * nothing to offer shows nothing. The menu is never opened by anything but the person,
+         * and opening or closing it touches nothing but its own `hidden` and `aria-expanded`:
+         * the transcript, the pace, the replies and the session stay exactly as they were.
+         */
+        _wireMoreActions(row) {
+            this._unwireMoreActions();
+            const button = row.querySelector('.nexus-private-more');
+            const panel = row.querySelector('.nexus-private-more-panel');
+            const slot = row.querySelector('.nexus-private-action-slot');
+            if (!button || !panel || !slot) return;
+            const label = t('actions.more');
+            button.setAttribute('aria-label', label);
+            button.title = label;
+            panel.setAttribute('aria-label', label);
+            const heading = panel.querySelector('.nexus-private-more-title');
+            if (heading) heading.textContent = label;
+            const close = panel.querySelector('.nexus-private-more-close');
+            if (close) close.textContent = t('actions.close');
+            this._more = { button, panel, slot, sync: null };
+            const available = () =>
+                Array.from(slot.querySelectorAll('button')).some((b) => {
+                    for (let el = b; el && el !== slot; el = el.parentElement) if (el.hidden) return false;
+                    return true;
+                });
+            const sync = () => {
+                const on = available();
+                button.hidden = !on;
+                if (!on) this._closeMoreActions(false);
+            };
+            const onButton = () => (panel.hidden ? this._openMoreActions() : this._closeMoreActions(true));
+            const onClose = () => this._closeMoreActions(true);
+            // An action ran (its own handler on the chip already fired; this is the bubble).
+            const onSlot = (event) => {
+                const target = event.target && event.target.closest ? event.target.closest('button') : null;
+                if (target && slot.contains(target)) this._closeMoreActions(true);
+            };
+            const onOutside = (event) => {
+                if (panel.hidden) return;
+                const target = event.target;
+                if (target && (panel.contains(target) || button.contains(target))) return;
+                this._closeMoreActions(false);
+            };
+            const onKey = (event) => {
+                if (!panel.hidden && (event.key === 'Escape' || event.key === 'Esc')) {
+                    event.stopPropagation();
+                    this._closeMoreActions(true);
+                }
+            };
+            button.addEventListener('click', onButton);
+            if (close) close.addEventListener('click', onClose);
+            slot.addEventListener('click', onSlot);
+            panel.addEventListener('keydown', onKey);
+            button.addEventListener('keydown', onKey);
+            this.doc.addEventListener('pointerdown', onOutside, true);
+            let observer = null;
+            if (typeof MutationObserver !== 'undefined') {
+                observer = new MutationObserver(sync);
+                observer.observe(slot, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['hidden'],
+                });
+            }
+            this._more.sync = sync;
+            sync();
+            this._unwireMoreActions = () => {
+                button.removeEventListener('click', onButton);
+                if (close) close.removeEventListener('click', onClose);
+                slot.removeEventListener('click', onSlot);
+                panel.removeEventListener('keydown', onKey);
+                button.removeEventListener('keydown', onKey);
+                this.doc.removeEventListener('pointerdown', onOutside, true);
+                if (observer) observer.disconnect();
+                this._more = null;
+                this._unwireMoreActions = () => {};
+            };
+        }
+
+        _unwireMoreActions() {}
+
+        /** Open the menu under the heading, focus its first action. Only ever from the ⋯. */
+        _openMoreActions() {
+            const more = this._more;
+            if (!more || more.button.hidden) return false;
+            const heading = this.row && this.row.querySelector('.nexus-private-heading');
+            const footer = this.row && this.row.querySelector('.nexus-private-bar');
+            if (heading && heading.offsetHeight) {
+                const top = heading.offsetHeight + 4;
+                more.panel.style.top = top + 'px';
+                // Never over the footer: on a 320 px phone the open menu covered End. It stops
+                // above the pace and End, and scrolls inside itself if the chips need more.
+                const room = this.shell && this.shell.clientHeight - top - (footer ? footer.offsetHeight : 0) - 6;
+                if (room > 0) more.panel.style.maxHeight = room + 'px';
+            }
+            more.panel.hidden = false;
+            more.button.setAttribute('aria-expanded', 'true');
+            const first = more.slot.querySelector('button:not([disabled])');
+            if (first && typeof first.focus === 'function') first.focus();
+            return true;
+        }
+
+        /** Close it; `refocus` returns focus to the ⋯ when it was inside the menu. */
+        _closeMoreActions(refocus) {
+            const more = this._more;
+            if (!more || more.panel.hidden) return false;
+            const inside = this.doc.activeElement && more.panel.contains(this.doc.activeElement);
+            more.panel.hidden = true;
+            more.button.setAttribute('aria-expanded', 'false');
+            if ((refocus || inside) && !more.button.hidden && typeof more.button.focus === 'function')
+                more.button.focus();
+            return true;
+        }
+
         _ensureConversationVisible() {
             const panel = this.doc && this.doc.querySelector('.chat-panel');
             if (!panel || !panel.classList.contains('chat-overlay--collapsed')) return;

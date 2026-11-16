@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/guild-tavern-light.glb",
+  "sha256": "94677cc97e0e4aa16bd2a66fb6baa3ffb73ebea5cb47e46f74b3ce46ba11febd",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.22,
+  "virtualFloor": true,
+  "title": {
+    "en": "the guild tavern",
+    "it": "la taverna della gilda"
+  },
+  "spots": [
+    {
+      "id": "fireplace",
+      "label": {
+        "en": "by the fireplace",
+        "it": "vicino al camino"
+      },
+      "room": "hall",
+      "near": ["-fireplace-wall$"],
+      "sees": {
+        "en": "the stone fireplace with a long trestle table in front of it",
+        "it": "il camino di pietra con un lungo tavolo davanti"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": true,
+      "position": [-3.475, 0.222, 0.4],
+      "facingDeg": 35,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 17,
+        "framing": "fullBody",
+        "candidates": 1094
+      }
+    },
+    {
+      "id": "bar",
+      "label": {
+        "en": "at the bar",
+        "it": "al bancone"
+      },
+      "room": "hall",
+      "near": ["-bar-counter-straight$", "-keg-on-stand$"],
+      "sees": {
+        "en": "the bar counter with a keg on its stand",
+        "it": "il bancone con una botte sul suo cavalletto"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [1.15, 0.222, -2.106],
+      "facingDeg": 65,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.306,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 2,
+        "framing": "fullBody",
+        "candidates": 1406
+      }
+    },
+    {
+      "id": "quest-board",
+      "label": {
+        "en": "by the quest board",
+        "it": "vicino alla bacheca"
+      },
+      "room": "hall",
+      "near": ["-quest-board$"],
+      "sees": {
+        "en": "a board covered in notices and quests",
+        "it": "una bacheca piena di avvisi e missioni"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.91, 0.222, 2.55],
+      "facingDeg": 110,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.344,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 2,
+        "framing": "fullBody",
+        "candidates": 911
+      }
+    }
+  ]
+}

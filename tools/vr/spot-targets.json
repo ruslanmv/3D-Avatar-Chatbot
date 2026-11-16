@@ -1,5 +1,5 @@
 {
-  "note": "LW2. What each spot is FOR, per physical scene — never where it is. tools/vr/measure-spots.mjs finds the position and facing by raycasting the real GLB and writes assets/vr-worlds/spots/<scene>.json; a spot it cannot measure is written verified:false and is never offered. near = regexes over the scene's top-level node names (the thing she stands by). room = the area the name belongs to. can = what is honestly possible there today: 'stand-near' and 'look-at' need nothing but a measured spot; nothing here claims sitting, lying down or handling an object, because no seat-aligned pose or hand-held prop exists yet. rating: 'general' or 'romantic' The two cabaret scenes are private rooms (PW): only the Private World's own gated presence reads their spots; the public presence refuses any private world, whatever its spots say.",
+  "note": "LW2. What each spot is FOR, per physical scene — never where it is. tools/vr/measure-spots.mjs finds the position and facing by raycasting the real GLB and writes assets/vr-worlds/spots/<scene>.json; a spot it cannot measure is written verified:false and is never offered. near = regexes over the scene's top-level node names (the thing she stands by). room = the area the name belongs to. can = what is honestly possible there today: 'stand-near' and 'look-at' need nothing but a measured spot; nothing here claims sitting, lying down or handling an object, because no seat-aligned pose or hand-held prop exists yet. rating: 'general' or 'romantic' The two cabaret scenes are private rooms (PW): only the Private World's own gated presence reads their spots; the public presence refuses any private world, whatever its spots say. LW6: a scene with no floor mesh names its floor height (floor) and, where its box is wider than the room, the room's footprint (floorArea: x0, z0, x1, z1); measure-spots.mjs stands a flat floor in for it.",
   "scenes": {
     "scenes/pixel-flat-home.glb": {
       "title": {
@@ -343,6 +343,1404 @@
           "sees": {
             "en": "the heavy house curtain, drawn open",
             "it": "il pesante sipario, aperto"
+          },
+          "rating": "romantic"
+        }
+      ]
+    },
+    "scenes/cinema-auditorium.glb": {
+      "title": {
+        "en": "the cinema",
+        "it": "il cinema"
+      },
+      "spots": [
+        {
+          "id": "seats",
+          "label": {
+            "en": "by the front seats",
+            "it": "vicino alle prime file"
+          },
+          "room": "auditorium",
+          "near": ["^00[34]-tiered-seating-row$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of cinema seats rising towards the back, facing the big screen in the dim light",
+            "it": "file di poltrone che salgono verso il fondo, rivolte al grande schermo nella penombra"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "screen",
+          "label": {
+            "en": "in front of the screen",
+            "it": "davanti allo schermo"
+          },
+          "room": "auditorium",
+          "near": ["^018-cinema-screen-and-masking$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the cinema screen filling the wall, with the seats rising behind",
+            "it": "lo schermo del cinema che riempie la parete, con le poltrone che salgono alle spalle"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/cinema-auditorium-light.glb": {
+      "title": {
+        "en": "the cinema",
+        "it": "il cinema"
+      },
+      "spots": [
+        {
+          "id": "seats",
+          "label": {
+            "en": "by the front seats",
+            "it": "vicino alle prime file"
+          },
+          "room": "auditorium",
+          "near": ["^00[34]-tiered-seating-row$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of cinema seats rising towards the back, facing the big screen in the dim light",
+            "it": "file di poltrone che salgono verso il fondo, rivolte al grande schermo nella penombra"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "screen",
+          "label": {
+            "en": "in front of the screen",
+            "it": "davanti allo schermo"
+          },
+          "room": "auditorium",
+          "near": ["^018-cinema-screen-and-masking$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the cinema screen filling the wall, with the seats rising behind",
+            "it": "lo schermo del cinema che riempie la parete, con le poltrone che salgono alle spalle"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/hotel-lobby.glb": {
+      "title": {
+        "en": "the hotel lobby",
+        "it": "la hall dell'hotel"
+      },
+      "floor": 0,
+      "floorArea": [-4.4, -2.9, 6.0, 4.1],
+      "spots": [
+        {
+          "id": "reception",
+          "label": {
+            "en": "at the reception desk",
+            "it": "alla reception"
+          },
+          "room": "lobby",
+          "near": ["-check-in-desk-module$", "-check-in-desk-corner$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the long check-in desk with the world clocks on the wall behind it",
+            "it": "il lungo banco della reception con gli orologi del mondo sulla parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "fireplace",
+          "label": {
+            "en": "by the fireplace",
+            "it": "vicino al camino"
+          },
+          "room": "lobby",
+          "near": ["-lobby-fireplace-feature$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the fireplace with a sofa and two armchairs round a low table",
+            "it": "il camino con un divano e due poltrone attorno a un tavolino"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "entrance",
+          "label": {
+            "en": "by the revolving door",
+            "it": "vicino alla porta girevole"
+          },
+          "room": "lobby",
+          "near": ["-revolving-door-module$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the revolving door to the street",
+            "it": "la porta girevole che dà sulla strada"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/hotel-lobby-light.glb": {
+      "title": {
+        "en": "the hotel lobby",
+        "it": "la hall dell'hotel"
+      },
+      "floor": 0,
+      "floorArea": [-4.4, -2.9, 6.0, 4.1],
+      "spots": [
+        {
+          "id": "reception",
+          "label": {
+            "en": "at the reception desk",
+            "it": "alla reception"
+          },
+          "room": "lobby",
+          "near": ["-check-in-desk-module$", "-check-in-desk-corner$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the long check-in desk with the world clocks on the wall behind it",
+            "it": "il lungo banco della reception con gli orologi del mondo sulla parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "fireplace",
+          "label": {
+            "en": "by the fireplace",
+            "it": "vicino al camino"
+          },
+          "room": "lobby",
+          "near": ["-lobby-fireplace-feature$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the fireplace with a sofa and two armchairs round a low table",
+            "it": "il camino con un divano e due poltrone attorno a un tavolino"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "entrance",
+          "label": {
+            "en": "by the revolving door",
+            "it": "vicino alla porta girevole"
+          },
+          "room": "lobby",
+          "near": ["-revolving-door-module$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the revolving door to the street",
+            "it": "la porta girevole che dà sulla strada"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/restaurant-dining-room.glb": {
+      "title": {
+        "en": "the restaurant",
+        "it": "il ristorante"
+      },
+      "floor": 0,
+      "floorArea": [-5.4, -4.5, 5.4, 4.3],
+      "spots": [
+        {
+          "id": "dining-table",
+          "label": {
+            "en": "by a table",
+            "it": "vicino a un tavolo"
+          },
+          "room": "dining-room",
+          "near": ["^03[27]-table-square-4$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "tables laid for dinner with candles and glasses",
+            "it": "tavoli apparecchiati per la cena con candele e bicchieri"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "banquette",
+          "label": {
+            "en": "by the banquettes",
+            "it": "vicino alle panche imbottite"
+          },
+          "room": "dining-room",
+          "near": ["-banquette-bench-1400(-dark)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a row of upholstered banquettes with small tables for two",
+            "it": "una fila di panche imbottite con tavolini per due"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "dining-room",
+          "near": ["-bar-stool$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar counter with its stools and the wine cabinet behind",
+            "it": "il bancone con gli sgabelli e la cantinetta dei vini dietro"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/restaurant-dining-room-light.glb": {
+      "title": {
+        "en": "the restaurant",
+        "it": "il ristorante"
+      },
+      "floor": 0,
+      "floorArea": [-5.4, -4.5, 5.4, 4.3],
+      "spots": [
+        {
+          "id": "dining-table",
+          "label": {
+            "en": "by a table",
+            "it": "vicino a un tavolo"
+          },
+          "room": "dining-room",
+          "near": ["^03[27]-table-square-4$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "tables laid for dinner with candles and glasses",
+            "it": "tavoli apparecchiati per la cena con candele e bicchieri"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "banquette",
+          "label": {
+            "en": "by the banquettes",
+            "it": "vicino alle panche imbottite"
+          },
+          "room": "dining-room",
+          "near": ["-banquette-bench-1400(-dark)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a row of upholstered banquettes with small tables for two",
+            "it": "una fila di panche imbottite con tavolini per due"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "dining-room",
+          "near": ["-bar-stool$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar counter with its stools and the wine cabinet behind",
+            "it": "il bancone con gli sgabelli e la cantinetta dei vini dietro"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/cocktail-bar.glb": {
+      "title": {
+        "en": "the cocktail bar",
+        "it": "il cocktail bar"
+      },
+      "floor": 0,
+      "floorArea": [0.5, -4.4, 5.5, 2.5],
+      "spots": [
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "bar",
+          "near": ["-bar-stool$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar counter with four stools and the back bar behind it",
+            "it": "il bancone con quattro sgabelli e la bottigliera dietro"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "wine-cabinet",
+          "label": {
+            "en": "by the wine cabinet",
+            "it": "vicino alla cantinetta"
+          },
+          "room": "bar",
+          "near": ["-wine-display-cabinet$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a tall wine display cabinet at the end of the bar",
+            "it": "un'alta cantinetta dei vini in fondo al bancone"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/swimming-pool.glb": {
+      "title": {
+        "en": "the swimming pool",
+        "it": "la piscina"
+      },
+      "spots": [
+        {
+          "id": "starting-blocks",
+          "label": {
+            "en": "by the starting blocks",
+            "it": "vicino ai blocchi di partenza"
+          },
+          "room": "pool-hall",
+          "near": ["-swimming-starting-block$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the starting blocks at the end of the lanes",
+            "it": "i blocchi di partenza in fondo alle corsie"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "lifeguard",
+          "label": {
+            "en": "by the lifeguard chair",
+            "it": "vicino alla sedia del bagnino"
+          },
+          "room": "pool-hall",
+          "near": ["-lifeguard-high-chair$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the tall lifeguard chair and the pace clock on the wall",
+            "it": "l'alta sedia del bagnino e l'orologio contasecondi sulla parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "diving-board",
+          "label": {
+            "en": "by the diving board",
+            "it": "vicino al trampolino"
+          },
+          "room": "pool-hall",
+          "near": ["-poolside-diving-board$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the diving board over the deep end",
+            "it": "il trampolino sopra la parte profonda"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/swimming-pool-light.glb": {
+      "title": {
+        "en": "the swimming pool",
+        "it": "la piscina"
+      },
+      "spots": [
+        {
+          "id": "starting-blocks",
+          "label": {
+            "en": "by the starting blocks",
+            "it": "vicino ai blocchi di partenza"
+          },
+          "room": "pool-hall",
+          "near": ["-swimming-starting-block$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the starting blocks at the end of the lanes",
+            "it": "i blocchi di partenza in fondo alle corsie"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "lifeguard",
+          "label": {
+            "en": "by the lifeguard chair",
+            "it": "vicino alla sedia del bagnino"
+          },
+          "room": "pool-hall",
+          "near": ["-lifeguard-high-chair$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the tall lifeguard chair and the pace clock on the wall",
+            "it": "l'alta sedia del bagnino e l'orologio contasecondi sulla parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "diving-board",
+          "label": {
+            "en": "by the diving board",
+            "it": "vicino al trampolino"
+          },
+          "room": "pool-hall",
+          "near": ["-poolside-diving-board$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the diving board over the deep end",
+            "it": "il trampolino sopra la parte profonda"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/sports-hall-court.glb": {
+      "title": {
+        "en": "the sports hall",
+        "it": "la palestra"
+      },
+      "spots": [
+        {
+          "id": "bench",
+          "label": {
+            "en": "by the bench",
+            "it": "vicino alla panca"
+          },
+          "room": "hall",
+          "near": ["-gym-bench$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a low gym bench along the padded wall",
+            "it": "una panca bassa lungo la parete imbottita"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "wall-bars",
+          "label": {
+            "en": "by the wall bars",
+            "it": "vicino alla spalliera"
+          },
+          "room": "hall",
+          "near": ["-wall-bar-unit$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "wooden wall bars and the scoreboard above",
+            "it": "la spalliera di legno e il tabellone in alto"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "court",
+          "label": {
+            "en": "on the court",
+            "it": "in campo"
+          },
+          "room": "hall",
+          "near": ["-wall-padding-module(-red)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the marked wooden court under the high windows",
+            "it": "il campo in legno con le linee, sotto le finestre alte"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/sports-hall-court-light.glb": {
+      "title": {
+        "en": "the sports hall",
+        "it": "la palestra"
+      },
+      "spots": [
+        {
+          "id": "bench",
+          "label": {
+            "en": "by the bench",
+            "it": "vicino alla panca"
+          },
+          "room": "hall",
+          "near": ["-gym-bench$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a low gym bench along the padded wall",
+            "it": "una panca bassa lungo la parete imbottita"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "wall-bars",
+          "label": {
+            "en": "by the wall bars",
+            "it": "vicino alla spalliera"
+          },
+          "room": "hall",
+          "near": ["-wall-bar-unit$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "wooden wall bars and the scoreboard above",
+            "it": "la spalliera di legno e il tabellone in alto"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "court",
+          "label": {
+            "en": "on the court",
+            "it": "in campo"
+          },
+          "room": "hall",
+          "near": ["-wall-padding-module(-red)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the marked wooden court under the high windows",
+            "it": "il campo in legno con le linee, sotto le finestre alte"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/soccer-ground.glb": {
+      "title": {
+        "en": "the soccer ground",
+        "it": "il campo da calcio"
+      },
+      "spots": [
+        {
+          "id": "goal",
+          "label": {
+            "en": "in front of the goal",
+            "it": "davanti alla porta"
+          },
+          "room": "pitch",
+          "near": ["-full-size-goal$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the goal and its net, with the pitch stretching away",
+            "it": "la porta con la rete e il campo che si allunga davanti"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "stand",
+          "label": {
+            "en": "by the stand",
+            "it": "vicino alla tribuna"
+          },
+          "room": "pitch",
+          "near": ["-seated-stand-bay$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the covered stand along the touchline",
+            "it": "la tribuna coperta lungo la linea laterale"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dugout",
+          "label": {
+            "en": "by the dugout",
+            "it": "vicino alla panchina"
+          },
+          "room": "pitch",
+          "near": ["-dugout-shelter$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the dugout shelter at the side of the pitch",
+            "it": "la panchina coperta a bordo campo"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/guild-tavern.glb": {
+      "title": {
+        "en": "the guild tavern",
+        "it": "la taverna della gilda"
+      },
+      "spots": [
+        {
+          "id": "fireplace",
+          "label": {
+            "en": "by the fireplace",
+            "it": "vicino al camino"
+          },
+          "room": "hall",
+          "near": ["-fireplace-wall$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the stone fireplace with a long trestle table in front of it",
+            "it": "il camino di pietra con un lungo tavolo davanti"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "hall",
+          "near": ["-bar-counter-straight$", "-keg-on-stand$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar counter with a keg on its stand",
+            "it": "il bancone con una botte sul suo cavalletto"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "quest-board",
+          "label": {
+            "en": "by the quest board",
+            "it": "vicino alla bacheca"
+          },
+          "room": "hall",
+          "near": ["-quest-board$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a board covered in notices and quests",
+            "it": "una bacheca piena di avvisi e missioni"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/guild-tavern-light.glb": {
+      "title": {
+        "en": "the guild tavern",
+        "it": "la taverna della gilda"
+      },
+      "floor": 0.222,
+      "floorArea": [-3.9, -3.7, 3.9, 3.9],
+      "spots": [
+        {
+          "id": "fireplace",
+          "label": {
+            "en": "by the fireplace",
+            "it": "vicino al camino"
+          },
+          "room": "hall",
+          "near": ["-fireplace-wall$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the stone fireplace with a long trestle table in front of it",
+            "it": "il camino di pietra con un lungo tavolo davanti"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "hall",
+          "near": ["-bar-counter-straight$", "-keg-on-stand$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar counter with a keg on its stand",
+            "it": "il bancone con una botte sul suo cavalletto"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "quest-board",
+          "label": {
+            "en": "by the quest board",
+            "it": "vicino alla bacheca"
+          },
+          "room": "hall",
+          "near": ["-quest-board$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a board covered in notices and quests",
+            "it": "una bacheca piena di avvisi e missioni"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/dungeon-rooms.glb": {
+      "title": {
+        "en": "the dungeon",
+        "it": "il sotterraneo"
+      },
+      "spots": [
+        {
+          "id": "chest",
+          "label": {
+            "en": "by the treasure chest",
+            "it": "vicino al forziere"
+          },
+          "room": "store-room",
+          "near": ["-treasure-chest$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a treasure chest on the cobbled floor of the store room",
+            "it": "un forziere sul pavimento di ciottoli del magazzino"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "barrels",
+          "label": {
+            "en": "by the barrels",
+            "it": "vicino ai barili"
+          },
+          "room": "store-room",
+          "near": ["-barrel-rack$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a rack of barrels and a torch on its stand",
+            "it": "una rastrelliera di barili e una torcia sul suo sostegno"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "desk",
+          "label": {
+            "en": "at the study table",
+            "it": "al tavolo dello studio"
+          },
+          "room": "study",
+          "near": ["-study-table$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a study table with a stool, a bookcase and a lectern",
+            "it": "un tavolo da studio con uno sgabello, una libreria e un leggio"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "shrine",
+          "label": {
+            "en": "at the shrine",
+            "it": "al santuario"
+          },
+          "room": "shrine",
+          "near": ["-shrine$", "-ritual-circle$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a shrine above a ritual circle, with a brazier burning",
+            "it": "un santuario sopra un cerchio rituale, con un braciere acceso"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/jungle-ruins.glb": {
+      "title": {
+        "en": "the jungle ruins",
+        "it": "le rovine nella giungla"
+      },
+      "floor": 0.1,
+      "floorArea": [-13.0, -6.5, 15.0, 5.3],
+      "spots": [
+        {
+          "id": "gate",
+          "label": {
+            "en": "by the gate tower",
+            "it": "vicino alla torre del cancello"
+          },
+          "room": "compound",
+          "near": ["-stone-gate-tower$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a stone gate tower in the ruined wall",
+            "it": "una torre di pietra nel muro in rovina"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "arch",
+          "label": {
+            "en": "by the arch",
+            "it": "vicino all'arco"
+          },
+          "room": "compound",
+          "near": ["-corbel-arch-doorway$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a corbelled stone doorway between fallen walls",
+            "it": "un portale di pietra tra muri crollati"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "colonnade",
+          "label": {
+            "en": "by the colonnade",
+            "it": "vicino al colonnato"
+          },
+          "room": "compound",
+          "near": ["-colonnade-section$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a row of stone columns still standing",
+            "it": "una fila di colonne di pietra ancora in piedi"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/jungle-ruins-light.glb": {
+      "title": {
+        "en": "the jungle ruins",
+        "it": "le rovine nella giungla"
+      },
+      "floor": 0.1,
+      "floorArea": [-13.0, -6.5, 15.0, 5.3],
+      "spots": [
+        {
+          "id": "gate",
+          "label": {
+            "en": "by the gate tower",
+            "it": "vicino alla torre del cancello"
+          },
+          "room": "compound",
+          "near": ["-stone-gate-tower$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a stone gate tower in the ruined wall",
+            "it": "una torre di pietra nel muro in rovina"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "arch",
+          "label": {
+            "en": "by the arch",
+            "it": "vicino all'arco"
+          },
+          "room": "compound",
+          "near": ["-corbel-arch-doorway$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a corbelled stone doorway between fallen walls",
+            "it": "un portale di pietra tra muri crollati"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "colonnade",
+          "label": {
+            "en": "by the colonnade",
+            "it": "vicino al colonnato"
+          },
+          "room": "compound",
+          "near": ["-colonnade-section$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a row of stone columns still standing",
+            "it": "una fila di colonne di pietra ancora in piedi"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/pub-bar-room.glb": {
+      "title": {
+        "en": "the pub",
+        "it": "il pub"
+      },
+      "floor": 0,
+      "spots": [
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "bar-room",
+          "near": ["-bar-stool-with-back$", "-bar-counter-module$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar with its stools and the mirrored back bar",
+            "it": "il bancone con gli sgabelli e lo specchio dietro"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dining-table",
+          "label": {
+            "en": "by a table",
+            "it": "vicino a un tavolo"
+          },
+          "room": "bar-room",
+          "near": ["-pub-table-round-pedestal$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a round pub table with spindle-back chairs",
+            "it": "un tavolo rotondo da pub con sedie di legno"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/pub-bar-room-light.glb": {
+      "title": {
+        "en": "the pub",
+        "it": "il pub"
+      },
+      "floor": 0,
+      "spots": [
+        {
+          "id": "bar",
+          "label": {
+            "en": "at the bar",
+            "it": "al bancone"
+          },
+          "room": "bar-room",
+          "near": ["-bar-stool-with-back$", "-bar-counter-module$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bar with its stools and the mirrored back bar",
+            "it": "il bancone con gli sgabelli e lo specchio dietro"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dining-table",
+          "label": {
+            "en": "by a table",
+            "it": "vicino a un tavolo"
+          },
+          "room": "bar-room",
+          "near": ["-pub-table-round-pedestal$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a round pub table with spindle-back chairs",
+            "it": "un tavolo rotondo da pub con sedie di legno"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/club-main-room.glb": {
+      "title": {
+        "en": "the club",
+        "it": "la discoteca"
+      },
+      "spots": [
+        {
+          "id": "dance-floor",
+          "label": {
+            "en": "on the dance floor",
+            "it": "in pista"
+          },
+          "room": "main-room",
+          "near": ["-led-floor-tile-module(-pale|-cyan)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the lit dance floor under the disco ball",
+            "it": "la pista illuminata sotto la palla da discoteca"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dj-booth",
+          "label": {
+            "en": "by the DJ booth",
+            "it": "vicino alla consolle"
+          },
+          "room": "main-room",
+          "near": ["-dj-booth-facade-panel$", "-dj-booth-desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the DJ booth with speaker stacks either side",
+            "it": "la consolle del DJ con le casse ai lati"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "booth",
+          "label": {
+            "en": "by the seating booth",
+            "it": "vicino al privé"
+          },
+          "room": "main-room",
+          "near": ["-raised-seating-booth(-cyan)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a raised seating booth beside the floor",
+            "it": "un privé rialzato accanto alla pista"
+          },
+          "rating": "romantic"
+        }
+      ]
+    },
+    "scenes/club-main-room-light.glb": {
+      "title": {
+        "en": "the club",
+        "it": "la discoteca"
+      },
+      "spots": [
+        {
+          "id": "dance-floor",
+          "label": {
+            "en": "on the dance floor",
+            "it": "in pista"
+          },
+          "room": "main-room",
+          "near": ["-led-floor-tile-module(-pale|-cyan)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the lit dance floor under the disco ball",
+            "it": "la pista illuminata sotto la palla da discoteca"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dj-booth",
+          "label": {
+            "en": "by the DJ booth",
+            "it": "vicino alla consolle"
+          },
+          "room": "main-room",
+          "near": ["-dj-booth-facade-panel$", "-dj-booth-desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the DJ booth with speaker stacks either side",
+            "it": "la consolle del DJ con le casse ai lati"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "booth",
+          "label": {
+            "en": "by the seating booth",
+            "it": "vicino al privé"
+          },
+          "room": "main-room",
+          "near": ["-raised-seating-booth(-cyan)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a raised seating booth beside the floor",
+            "it": "un privé rialzato accanto alla pista"
+          },
+          "rating": "romantic"
+        }
+      ]
+    },
+    "scenes/academy-seminar.glb": {
+      "title": {
+        "en": "the academy",
+        "it": "l'accademia"
+      },
+      "spots": [
+        {
+          "id": "whiteboard",
+          "label": {
+            "en": "at the whiteboard",
+            "it": "alla lavagna"
+          },
+          "room": "seminar-room",
+          "near": ["-whiteboard-bank(-single)?$", "-mobile-whiteboard$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a bank of whiteboards along the wall",
+            "it": "una serie di lavagne bianche lungo la parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "seminar-table",
+          "label": {
+            "en": "at the seminar table",
+            "it": "al tavolo del seminario"
+          },
+          "room": "seminar-room",
+          "near": ["-seminar-table(-round-4)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "seminar tables with stackable chairs",
+            "it": "i tavoli del seminario con le sedie impilabili"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/academy-seminar-light.glb": {
+      "title": {
+        "en": "the academy",
+        "it": "l'accademia"
+      },
+      "spots": [
+        {
+          "id": "whiteboard",
+          "label": {
+            "en": "at the whiteboard",
+            "it": "alla lavagna"
+          },
+          "room": "seminar-room",
+          "near": ["-whiteboard-bank(-single)?$", "-mobile-whiteboard$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a bank of whiteboards along the wall",
+            "it": "una serie di lavagne bianche lungo la parete"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "seminar-table",
+          "label": {
+            "en": "at the seminar table",
+            "it": "al tavolo del seminario"
+          },
+          "room": "seminar-room",
+          "near": ["-seminar-table(-round-4)?$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "seminar tables with stackable chairs",
+            "it": "i tavoli del seminario con le sedie impilabili"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/downtown-office.glb": {
+      "title": {
+        "en": "the office",
+        "it": "l'ufficio"
+      },
+      "floor": 0.05,
+      "spots": [
+        {
+          "id": "desk",
+          "label": {
+            "en": "at the desks",
+            "it": "alle scrivanie"
+          },
+          "room": "office-floor",
+          "near": ["-bench-desk-6-position-spine$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a long bench desk with monitors and task chairs",
+            "it": "una lunga scrivania condivisa con monitor e sedie"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "meeting-table",
+          "label": {
+            "en": "at the meeting table",
+            "it": "al tavolo riunioni"
+          },
+          "room": "office-floor",
+          "near": ["-meeting-table-round-4$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a round meeting table for four",
+            "it": "un tavolo rotondo da riunione per quattro"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "lounge",
+          "label": {
+            "en": "by the soft bench",
+            "it": "vicino alla panca imbottita"
+          },
+          "room": "office-floor",
+          "near": ["-soft-bench-modular-with-back$", "-ottoman-cube-accent$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a soft bench and an ottoman by the planters",
+            "it": "una panca imbottita e un pouf vicino alle fioriere"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/airship-dock.glb": {
+      "title": {
+        "en": "the airship dock",
+        "it": "il molo dei dirigibili"
+      },
+      "spots": [
+        {
+          "id": "gondola",
+          "label": {
+            "en": "by the airship",
+            "it": "vicino al dirigibile"
+          },
+          "room": "dock",
+          "near": ["-airship-gondola$", "-boarding-stair$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the airship's gondola and the stair up to it",
+            "it": "la gondola del dirigibile e la scala per salire"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "mast",
+          "label": {
+            "en": "by the mooring mast",
+            "it": "vicino al pilone d'ormeggio"
+          },
+          "room": "dock",
+          "near": ["-mooring-mast$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the mooring mast holding the airship's nose",
+            "it": "il pilone che tiene la prua del dirigibile"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "crates",
+          "label": {
+            "en": "by the crates",
+            "it": "vicino alle casse"
+          },
+          "room": "dock",
+          "near": ["-shipping-crate$", "-toolbox$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "shipping crates and a toolbox on the deck",
+            "it": "casse da spedizione e una cassetta degli attrezzi sul ponte"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/airship-dock-light.glb": {
+      "title": {
+        "en": "the airship dock",
+        "it": "il molo dei dirigibili"
+      },
+      "spots": [
+        {
+          "id": "gondola",
+          "label": {
+            "en": "by the airship",
+            "it": "vicino al dirigibile"
+          },
+          "room": "dock",
+          "near": ["-airship-gondola$", "-boarding-stair$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the airship's gondola and the stair up to it",
+            "it": "la gondola del dirigibile e la scala per salire"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "mast",
+          "label": {
+            "en": "by the mooring mast",
+            "it": "vicino al pilone d'ormeggio"
+          },
+          "room": "dock",
+          "near": ["-mooring-mast$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the mooring mast holding the airship's nose",
+            "it": "il pilone che tiene la prua del dirigibile"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "crates",
+          "label": {
+            "en": "by the crates",
+            "it": "vicino alle casse"
+          },
+          "room": "dock",
+          "near": ["-shipping-crate$", "-toolbox$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "shipping crates and a toolbox on the deck",
+            "it": "casse da spedizione e una cassetta degli attrezzi sul ponte"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/lagoon-beach.glb": {
+      "title": {
+        "en": "the lagoon",
+        "it": "la laguna"
+      },
+      "spots": [
+        {
+          "id": "palm",
+          "label": {
+            "en": "under the palm",
+            "it": "sotto la palma"
+          },
+          "room": "beach",
+          "near": ["-coconut-palm-leaning$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a leaning coconut palm over the white sand",
+            "it": "una palma da cocco inclinata sulla sabbia bianca"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "shore",
+          "label": {
+            "en": "at the water's edge",
+            "it": "in riva all'acqua"
+          },
+          "room": "beach",
+          "near": ["-lagoon-shallow-tile$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the clear shallow water of the lagoon",
+            "it": "l'acqua bassa e trasparente della laguna"
+          },
+          "rating": "romantic"
+        }
+      ]
+    },
+    "scenes/neon-dispatch.glb": {
+      "title": {
+        "en": "the neon street",
+        "it": "la strada al neon"
+      },
+      "spots": [
+        {
+          "id": "arcade",
+          "label": {
+            "en": "by the arcade",
+            "it": "vicino alla sala giochi"
+          },
+          "room": "street",
+          "near": ["-arcade-front$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "an arcade front glowing with neon",
+            "it": "la facciata di una sala giochi illuminata dai neon"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "vending",
+          "label": {
+            "en": "by the vending machine",
+            "it": "vicino al distributore"
+          },
+          "room": "street",
+          "near": ["-vending-machine$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a vending machine lit up on the pavement",
+            "it": "un distributore automatico acceso sul marciapiede"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "street-bench",
+          "label": {
+            "en": "by the bench",
+            "it": "vicino alla panchina"
+          },
+          "room": "street",
+          "near": ["-cantilever-bench$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a cantilever bench under the signs",
+            "it": "una panchina a sbalzo sotto le insegne"
           },
           "rating": "romantic"
         }

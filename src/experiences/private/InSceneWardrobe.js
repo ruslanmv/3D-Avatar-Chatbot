@@ -42,6 +42,11 @@
     'use strict';
 
     const LOOKS_FRESH_MS = 60000;
+    // UN15. A look's file (12–20 MB) loads in seconds from Forge or the dataset; a minute means
+    // something is wrong. Making a new look takes about a minute on a warm Forge.
+    const SLOW_MS = 8 * 1000;
+    const WEAR_MS = 60 * 1000;
+    const CREATE_MS = 4 * 60 * 1000;
 
     function keyOf(look) {
         return look ? String(look.lookId || look.id || look.vrmUrl || look.vrm_url || look.name || '') : '';
@@ -123,6 +128,17 @@
                 wearing: Boolean(wearing),
                 canUndo: Boolean(this.session && this.session.history && this.session.history.length > 1 && head),
             };
+        }
+
+        /** UN15. How long a change may take before the strip says so, and before it is given up. */
+        get slowMs() {
+            return this._slowMs || SLOW_MS;
+        }
+        get wearMs() {
+            return this._wearMs || WEAR_MS;
+        }
+        get createMs() {
+            return this._createMs || CREATE_MS;
         }
 
         _set(status, why, progress) {
@@ -216,6 +232,22 @@
             } catch (_) {
                 this.entries = [];
             }
+            // RU5. Her looks that are dictionary outfits say so, so asking for one wears it.
+            const Engine = this._dep('Engine', (w) => w.NEXUS_OUTFIT_DECISION_ENGINE);
+            try {
+                if (Engine && typeof Engine.tagOutfits === 'function') Engine.tagOutfits(this.looks, this.entries);
+            } catch (_) {
+                /* untagged looks are still worn by name and style; only the shortcut is lost */
+            }
+            // UN14. What each look covers, from Forge's templates; null when it cannot be verified.
+            const Coverage = this._dep('Coverage', (w) => w.NEXUS_WARDROBE_COVERAGE);
+            try {
+                if (Coverage && (Coverage.ready() || (await Coverage.load(this.win)))) {
+                    for (const look of this.looks) look.coverage = Coverage.describe(look, this.entries);
+                }
+            } catch (_) {
+                /* unannotated looks fall back to on-demand description, or the name guesses */
+            }
             this._loadedAt = Date.now();
         }
 
@@ -238,6 +270,35 @@
                 return Boolean(verdict && verdict.mode === 'open');
             } catch (_) {
                 return false;
+            }
+        }
+
+        /**
+         * BL2. How many garment meshes the renderer is drawing on her right now, or null when it
+         * cannot be asked. Forge tags each garment node (`extras.wardrobeForge.kind: 'garment'`)
+         * and the loader copies node extras to `userData`, so this is read from the loaded asset
+         * itself, not from which look was selected. Her source avatar's own clothes carry no
+         * tag: this counts what Forge put on her, which is what a bare look must have none of.
+         */
+        renderedGarments() {
+            try {
+                const viewer = this.win && this.win.NEXUS_VIEWER;
+                const root = viewer && viewer.avatarManager && viewer.avatarManager.currentRoot;
+                if (!root || typeof root.traverse !== 'function') return null;
+                let count = 0;
+                root.traverse((object) => {
+                    if (!object || !object.isMesh || object.visible === false) return;
+                    for (let o = object; o && o !== root.parent; o = o.parent) {
+                        const tag = o.userData && o.userData.wardrobeForge;
+                        if (tag && tag.kind === 'garment') {
+                            count += 1;
+                            break;
+                        }
+                    }
+                });
+                return count;
+            } catch (_) {
+                return null;
             }
         }
 
@@ -291,19 +352,96 @@
             return { ok: false, why: 'no-match' };
         }
 
-        /** Put a saved look on. Her previous outfit stays until this one has loaded. */
-        async wearLook(look, alive) {
+        /**
+         * Put a saved look on. Her previous outfit stays until this one has loaded.
+         *
+         * UN15. Every change ends — in her new look, or back in the one she had, with the reason.
+         * A report found a first change pending for more than three minutes against a cold Forge
+         * store, with nothing on screen saying why and nothing that would ever end it. Now:
+         * after SLOW_MS the strip says it is still changing; at WEAR_MS the change is given up
+         * and the session is asked for the look she had (`undo` replaces the pending head, and the
+         * session's own loop loads it as soon as the slow file lands — the controller stays the
+         * only thing that swaps her avatar); and the same look asked for again while it is on its
+         * way joins the change already running instead of starting a second one.
+         */
+        wearLook(look, alive) {
+            const key = keyOf(look);
+            if (this._wearing && key && this._wearing.key === key) return this._wearing.promise;
+            const token = { cancelled: false };
+            const promise = this._wearLook(look, alive, token).finally(() => {
+                if (this._wearing && this._wearing.promise === promise) this._wearing = null;
+            });
+            this._wearing = { key, promise, token };
+            return promise;
+        }
+
+        /**
+         * LT10. A newer request took over while a look was still on its way: stop that look.
+         *
+         * "A late result is undone, not applied" (above) was true only after the fact: the
+         * superseded look finished its download, was put on her, and was then taken off again.
+         * Seen in a Private evening in the browser (tools/qa/wardrobe-scene-acceptance.mjs): she
+         * asked for one outfit, changed her mind while it loaded, and the first one appeared
+         * anyway for a moment. For a private look that is a body state shown after the person
+         * asked for something else. The download is aborted through the session (BI3), the look
+         * never reaches the renderer, and the call that asked for it ends as `stale`, not as a
+         * failure. Returns whether there was a wear to stop.
+         */
+        cancelPending() {
+            if (!this._wearing || !this.session || typeof this.session.cancelPending !== 'function') return false;
+            this._wearing.token.cancelled = true;
+            return Boolean(this.session.cancelPending());
+        }
+
+        async _wearLook(look, alive, token) {
             const stillMine = typeof alive === 'function' ? alive : () => true;
             if (!this.session || this.closed) return { ok: false, why: 'wardrobe-not-ready' };
             if (isPrivate(look) && !this.privateOpen) return { ok: false, why: 'adult-ineligible' };
             this._set('changing');
+            const timers = [];
+            const slow = setTimeout(() => {
+                if (this.state.status === 'changing') this._set('changing', 'slow');
+            }, this.slowMs);
+            timers.push(slow);
             let landed = false;
+            let timedOut = false;
             try {
-                landed = await this.session.wear(look);
+                landed = await Promise.race([
+                    this.session.wear(look),
+                    new Promise((resolve) => {
+                        timers.push(
+                            setTimeout(() => {
+                                timedOut = true;
+                                resolve(false);
+                            }, this.wearMs)
+                        );
+                    }),
+                ]);
             } catch (_) {
                 landed = false;
+            } finally {
+                timers.forEach(clearTimeout);
+            }
+            if (timedOut) {
+                try {
+                    // BI3. The slow look is cancelled, not left to land and then be replaced: its
+                    // download stops, and it never shows (a bare look the person stopped waiting
+                    // for must not appear for a moment either). Then back to the look she had.
+                    if (typeof this.session.cancelPending === 'function') this.session.cancelPending();
+                    Promise.resolve(this.session.undo()).catch(() => null);
+                } catch (_) {
+                    /* the session's own end restores her */
+                }
+                this._set('failed', 'timeout');
+                return { ok: false, why: 'timeout' };
             }
             if (!landed) {
+                if (token && token.cancelled) {
+                    // LT10. Stopped for a newer request: she kept what she had on. Whatever that
+                    // request does next sets the strip; this one says nothing went wrong.
+                    this._set('idle');
+                    return { ok: false, why: 'stale' };
+                }
                 this._set('failed', (this.session && this.session.error) || 'load-failed');
                 return { ok: false, why: 'load-failed' };
             }
@@ -323,6 +461,35 @@
             return { ok: true, look };
         }
 
+        /**
+         * UN5. Back into what she wore when the session began (the head of her history), in one
+         * swap — not Undo's walk back through every look in between.
+         */
+        async wearOriginal(alive) {
+            const stillMine = typeof alive === 'function' ? alive : () => true;
+            if (!this.session || this.closed) return { ok: false, why: 'wardrobe-not-ready' };
+            const first = this.session.history && this.session.history[0];
+            if (!first) return { ok: false, why: 'nothing-to-undo' };
+            if (!this.current()) return { ok: true, look: first };
+            this._set('changing');
+            let landed = false;
+            try {
+                landed = await this.session.wear(first);
+            } catch (_) {
+                landed = false;
+            }
+            if (!landed) {
+                this._set('failed', 'load-failed');
+                return { ok: false, why: 'load-failed' };
+            }
+            if (!stillMine()) {
+                this._set('idle');
+                return { ok: false, why: 'stale' };
+            }
+            this._set(this.current() ? 'worn' : 'idle');
+            return { ok: true, look: first };
+        }
+
         /** Make a new look (a dictionary set, or plain garment words) and put it on. */
         async create(request, alive) {
             const stillMine = typeof alive === 'function' ? alive : () => true;
@@ -334,6 +501,18 @@
             this._abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
             this._set('creating');
             let look = null;
+            // UN15. A new look that is not made in createMs is cancelled (its job aborted): the
+            // generator's own poll would otherwise wait fifteen minutes.
+            let late = false;
+            const abort = this._abort;
+            const deadline = setTimeout(() => {
+                late = true;
+                try {
+                    if (abort) abort.abort();
+                } catch (_) {
+                    /* already finished */
+                }
+            }, this.createMs);
             try {
                 look = await this.generator.create(r.prompt, {
                     baseLookId: r.baseLookId || undefined,
@@ -344,11 +523,17 @@
                     },
                 });
             } catch (error) {
+                clearTimeout(deadline);
                 this._abort = null;
+                if (late) {
+                    this._set('failed', 'timeout');
+                    return { ok: false, why: 'timeout' };
+                }
                 const aborted = error && error.name === 'AbortError';
                 this._set(aborted ? 'idle' : 'failed', aborted ? null : (error && error.message) || 'create-failed');
                 return { ok: false, why: aborted ? 'stale' : 'create-failed', message: error && error.message };
             }
+            clearTimeout(deadline);
             this._abort = null;
             if (!look) {
                 this._set('failed', 'create-failed');
@@ -404,6 +589,9 @@
             }
             const session = this.session;
             this.listeners.clear();
+            // BI3. A wear still downloading is cancelled before the session restores her, so it
+            // cannot land after the restore.
+            if (session && typeof session.cancelPending === 'function') session.cancelPending();
             if (!session) return true;
             const worn = this.current();
             try {
@@ -416,7 +604,7 @@
         }
     }
 
-    const api = { InSceneWardrobe, keyOf, isPrivate };
+    const api = { InSceneWardrobe, keyOf, isPrivate, SLOW_MS, WEAR_MS, CREATE_MS };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_IN_SCENE_WARDROBE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

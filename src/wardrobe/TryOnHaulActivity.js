@@ -209,6 +209,7 @@ const TryOnHaulActivity = (() => {
                 console.warn('[Try-On] imported packs could not be read', error);
             }
         }
+        const worn = identity && identity.sha256 ? String(identity.sha256).toLowerCase() : null;
         if (library && library.available && identity && identity.kind === 'library') {
             try {
                 const wardrobe = await library.client.getWardrobe(identity.slug);
@@ -219,6 +220,9 @@ const TryOnHaulActivity = (() => {
                 const named = new Set();
                 ((wardrobe && wardrobe.looks) || [])
                     .filter((look) => look && look.vrmUrl && look.type !== 'source')
+                    // BL2. A look made from another version of her (Forge names the source hash) is
+                    // hers in name only, exactly as for the bundled pack above.
+                    .filter((look) => !(look.sourceSha256 && worn && String(look.sourceSha256).toLowerCase() !== worn))
                     .filter((look) => {
                         const name = String(look.name || '')
                             .trim()
@@ -233,6 +237,9 @@ const TryOnHaulActivity = (() => {
                             ...look,
                             vrmUrl: library.resolveUrl(look.vrmUrl),
                             previewUrl: look.previewUrl ? library.resolveUrl(look.previewUrl) : null,
+                            // BL2. Forge's hash of the file: the controller verifies the bytes it
+                            // downloads against it before the loader sees them (W11).
+                            ...(look.outputSha256 && !look.sha256 ? { sha256: look.outputSha256 } : {}),
                             source: 'forge',
                         })
                     );

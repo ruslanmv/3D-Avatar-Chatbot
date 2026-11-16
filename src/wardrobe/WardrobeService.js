@@ -50,8 +50,19 @@
             this._Client = Client;
             this._RemoteSource = RemoteSource;
             var remote = Boolean(this.config.remoteGeneration && this.config.apiUrl);
+            // BI5. Which avatar a capability is asked for: the one on stage, by her library slug.
+            this._capabilityFor = function () {
+                var context = this.context();
+                return (context.identity && context.identity.slug) || '';
+            }.bind(this);
             var forge = remote
-                ? new Client({ baseUrl: this.config.apiUrl, token: this.config.token || '' })
+                ? new Client({
+                      baseUrl: this.config.apiUrl,
+                      token: this.config.token || '',
+                      grant: this.config.grant || '',
+                      capabilityUrl: this.config.capabilityUrl || '',
+                      capabilityFor: this._capabilityFor,
+                  })
                 : LOCAL_FORGE;
 
             // W11. A look whose pack names its SHA-256 is downloaded and checked before the
@@ -59,9 +70,25 @@
             var Validator = global.NEXUS_WARDROBE_PACK_VALIDATOR;
             var verifyLook =
                 Validator && this.config.verifyLooks !== false
-                    ? function (look) {
-                          return Validator.fetchVerified(look);
-                      }
+                    ? function (look, options) {
+                          // BI2. Read the client at call time: setForge() swaps it, and the grant
+                          // goes only to the Forge that is configured now.
+                          var client = this.controller && this.controller.forge;
+                          // BI5. With account capabilities, the one that is live now (renewed if
+                          // it is about to run out), still only for a URL on that Forge.
+                          var headers =
+                              client && typeof client.downloadHeadersNow === 'function'
+                                  ? client.downloadHeadersNow(look.vrmUrl)
+                                  : client && typeof client.downloadHeaders === 'function'
+                                    ? client.downloadHeaders(look.vrmUrl)
+                                    : {};
+                          return Promise.resolve(headers).then(function (resolved) {
+                              return Validator.fetchVerified(look, {
+                                  headers: resolved,
+                                  signal: options && options.signal,
+                              });
+                          });
+                      }.bind(this)
                     : null;
 
             this.controller = new Controller({
@@ -161,7 +188,13 @@
             this.config.apiUrl = url;
             this.config.remoteGeneration = remote;
             this.controller.forge = remote
-                ? new this._Client({ baseUrl: url, token: this.config.token || '' })
+                ? new this._Client({
+                      baseUrl: url,
+                      token: this.config.token || '',
+                      grant: this.config.grant || '',
+                      capabilityUrl: this.config.capabilityUrl || '',
+                      capabilityFor: this._capabilityFor,
+                  })
                 : LOCAL_FORGE;
             this._attachForge(remote);
             return remote;
