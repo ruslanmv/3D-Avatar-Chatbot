@@ -27,6 +27,8 @@
     var MODE_KEY = 'wardrobe_forge_mode';
     var URL_KEY = 'wardrobe_forge_url';
     var GRANT_KEY = 'wardrobe_forge_grant';
+    /** BI5. The longest-lived grant a page's public configuration may carry (Forge's AC1 ceiling). */
+    var SITE_GRANT_MAX_S = 15 * 60;
     var MODES = ['default', 'custom', 'off'];
 
     function read(storage, key) {
@@ -127,6 +129,59 @@
         return { ok: true, why: '', grant: grant };
     }
 
+    /**
+     * BI5. What a grant says about itself: `{sub, exp, iat, lifetime}` from its claims, or null
+     * when it cannot be read. Nothing here is trusted (Forge checks the signature); it only
+     * tells a short-lived account capability from a long-lived operator grant.
+     */
+    function describeGrant(grant) {
+        try {
+            var body = String(grant || '').split('.')[0];
+            if (!body) return null;
+            var padded = body.replace(/-/g, '+').replace(/_/g, '/');
+            while (padded.length % 4) padded += '=';
+            var claims = JSON.parse(global.atob ? global.atob(padded) : Buffer.from(padded, 'base64').toString('utf8'));
+            var exp = Number(claims.exp);
+            var iat = Number(claims.iat);
+            if (!isFinite(exp) || !isFinite(iat)) return null;
+            return { sub: typeof claims.sub === 'string' ? claims.sub : null, exp: exp, iat: iat, lifetime: exp - iat };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * BI5. The grant a *page's own configuration* may carry, or '' with the reason.
+     *
+     * `NEXUS_WARDROBE_CONFIG.forge.grant` is served to every visitor: whatever is put there is
+     * a shared credential. An operator grant lasts up to thirty days and names no one, so one
+     * in the page hands every visitor a month of every listed avatar's private looks, and
+     * taking it back means a redeploy. Only a short-lived grant is honoured from there
+     * (`SITE_GRANT_MAX_S`, Forge's ceiling for an account capability); a longer one, or one
+     * that cannot be read, is refused and said so once in the console. The grant a person
+     * pastes into Settings on their own device is theirs and is not judged here, and a signed-in
+     * person's capability comes from `forge.capabilityUrl`, the site's own server.
+     */
+    function siteGrant(value) {
+        var grant = String(value || '').trim();
+        if (!grant) return { grant: '', refused: '' };
+        var about = describeGrant(grant);
+        if (!about || about.lifetime > SITE_GRANT_MAX_S) {
+            var why = about ? 'long-lived' : 'unreadable';
+            if (!siteGrant.warned && global.console && global.console.warn) {
+                siteGrant.warned = true;
+                global.console.warn(
+                    '[Wardrobe] forge.grant in the page configuration was ignored (' +
+                        why +
+                        '): a grant in public configuration is shared by every visitor. Use forge.capabilityUrl ' +
+                        '(short-lived, per signed-in account) or Settings ▸ Wardrobe Forge on one device.'
+                );
+            }
+            return { grant: '', refused: why };
+        }
+        return { grant: grant, refused: '' };
+    }
+
     function readBool(value, fallback) {
         if (value === undefined || value === null || value === '') return fallback;
         if (typeof value === 'boolean') return value;
@@ -143,6 +198,7 @@
         }
         var forge = resolveForge(supplied, storage);
         var apiUrl = forge.url;
+        var fromSite = siteGrant(supplied.forge && supplied.forge.grant);
 
         return {
             enabled: readBool(
@@ -165,7 +221,14 @@
             // this page list and download her private looks without ever holding the admin
             // token, which can declare, import and delete. The site's own config wins; otherwise
             // the one pasted into Settings on this device (`wardrobe_forge_grant`).
-            grant: String((supplied.forge && supplied.forge.grant) || read(storage, GRANT_KEY) || '').trim(),
+            // BI5. From the page's configuration only when it is short-lived (`siteGrant`).
+            grant: String(fromSite.grant || read(storage, GRANT_KEY) || '').trim(),
+            grantRefused: fromSite.refused,
+            // BI5. Where a signed-in person's short-lived capability comes from: an endpoint of
+            // this site's own server (it knows who is signed in; this page does not hold their
+            // identity secret). Answers `{token, expiresIn | expires}` to
+            // `POST {avatars: [slug]}`. Empty: no account capabilities, as before.
+            capabilityUrl: String((supplied.forge && supplied.forge.capabilityUrl) || '').trim(),
             // W11. Check a look against its pack's SHA-256 before wearing it.
             verifyLooks: readBool(supplied.verifyLooks, true),
             // W14. Importing wardrobe packs into this browser.
@@ -178,6 +241,9 @@
         resolveWardrobeConfig: resolveWardrobeConfig,
         resolveForge: resolveForge,
         GRANT_KEY: GRANT_KEY,
+        SITE_GRANT_MAX_S: SITE_GRANT_MAX_S,
+        describeGrant: describeGrant,
+        siteGrant: siteGrant,
         saveGrant: saveGrant,
         normalizeForgeUrl: normalizeForgeUrl,
         storedForgeChoice: storedForgeChoice,

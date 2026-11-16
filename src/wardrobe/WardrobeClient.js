@@ -40,6 +40,9 @@
         }
     }
 
+    /** BI5. A capability is renewed this long before it expires: a 15 MB look takes a while to arrive. */
+    var CAPABILITY_MARGIN_MS = 60 * 1000;
+
     class WardrobeClient {
         constructor(options) {
             options = options || {};
@@ -47,8 +50,79 @@
             this.token = options.token || '';
             this.grant = options.grant || '';
             this.fetchImpl = options.fetchImpl || global.fetch.bind(global);
+            /**
+             * BI5. A signed-in person's capability instead of a stored grant: short-lived (Forge
+             * issues at most fifteen minutes), bound to their account and the avatar asked for,
+             * fetched from the site's own server and kept only in memory. `capabilityUrl` is that
+             * server's endpoint; `capabilityFor()` says which avatar is on stage. With neither,
+             * `this.grant` (the device's own, from Settings) is used exactly as before.
+             */
+            this.capabilityUrl = options.capabilityUrl || '';
+            this.capabilityFor = options.capabilityFor || null;
+            this.now = options.now || Date.now;
+            this._capability = null; // {slug, token, expiresAt}
+            this._capabilityPending = null;
             this.pollIntervalMs = options.pollIntervalMs || 700;
             this.timeoutMs = options.timeoutMs || 15 * 60 * 1000;
+        }
+
+        /**
+         * BI5. The grant to send right now: a live capability for the avatar on stage when the
+         * site offers them, else the device's stored grant, else ''. Never throws: a capability
+         * that cannot be had means her private looks are not listed, not that the wardrobe breaks.
+         * The capability is asked for with the page's own cookies (`same-origin`), so the site's
+         * server decides who is signed in; this page sends no identity of its own.
+         */
+        async currentGrant() {
+            if (!this.capabilityUrl) return this.grant || '';
+            var slug = '';
+            try {
+                slug = (this.capabilityFor && this.capabilityFor()) || '';
+            } catch (_) {
+                slug = '';
+            }
+            if (!slug) return this.grant || '';
+            var held = this._capability;
+            if (held && held.slug === slug && held.expiresAt - CAPABILITY_MARGIN_MS > this.now()) return held.token;
+            if (this._capabilityPending && this._capabilityPending.slug === slug)
+                return this._capabilityPending.promise;
+            var self = this;
+            var promise = (async function () {
+                try {
+                    var response = await self.fetchImpl(self.capabilityUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ avatars: [slug] }),
+                    });
+                    if (!response.ok) throw new Error('capability refused (' + response.status + ')');
+                    var body = await response.json();
+                    var token = body && typeof body.token === 'string' ? body.token : '';
+                    if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) throw new Error('not a capability');
+                    var seconds = Number(body.expiresIn);
+                    var expiresAt =
+                        isFinite(seconds) && seconds > 0 ? self.now() + seconds * 1000 : Number(body.expires) * 1000;
+                    if (!isFinite(expiresAt) || expiresAt <= self.now()) throw new Error('capability already expired');
+                    self._capability = { slug: slug, token: token, expiresAt: expiresAt };
+                    return token;
+                } catch (error) {
+                    self._capability = null;
+                    if (!self._capabilityWarned && global.console && global.console.warn) {
+                        self._capabilityWarned = true;
+                        global.console.warn(
+                            '[Wardrobe] no account capability; private looks stay unlisted:',
+                            error.message
+                        );
+                    }
+                    // The device's own grant, if the person set one, still stands.
+                    return self.grant || '';
+                } finally {
+                    self._capabilityPending = null;
+                }
+            })();
+            this._capabilityPending = { slug: slug, promise: promise };
+            return promise;
         }
 
         async request(path, options) {
@@ -56,7 +130,8 @@
             var headers = Object.assign({ Accept: 'application/json' }, options.headers || {});
             if (this.token) headers.Authorization = 'Bearer ' + this.token;
             // BI2. The read grant goes only to this client's own Forge (the path is relative to it).
-            if (this.grant) headers['X-Wardrobe-Grant'] = this.grant;
+            var grant = await this.currentGrant();
+            if (grant) headers['X-Wardrobe-Grant'] = grant;
             if (options.body && !(options.body instanceof FormData) && !headers['Content-Type']) {
                 headers['Content-Type'] = 'application/json';
             }
@@ -87,8 +162,9 @@
          * BI2. Headers for downloading `url` itself (a look's VRM): the grant, but only when the
          * URL is on this Forge. A look from a pack or another host never sees it.
          */
-        downloadHeaders(url) {
-            if (!this.grant || !this.baseUrl || !url) return {};
+        downloadHeaders(url, grant) {
+            grant = grant === undefined ? this.grant : grant;
+            if (!grant || !this.baseUrl || !url) return {};
             try {
                 var base = new URL(this.baseUrl);
                 var target = new URL(url, base);
@@ -96,7 +172,12 @@
             } catch (_) {
                 return {};
             }
-            return { 'X-Wardrobe-Grant': this.grant };
+            return { 'X-Wardrobe-Grant': grant };
+        }
+
+        /** BI5. `downloadHeaders` with the grant that is current now (a capability, when there is one). */
+        async downloadHeadersNow(url) {
+            return this.downloadHeaders(url, await this.currentGrant());
         }
 
         async generate(options) {

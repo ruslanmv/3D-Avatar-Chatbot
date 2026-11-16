@@ -200,8 +200,12 @@ describe('BI2 the read grant goes only to its own Forge', () => {
         window.localStorage.setItem(Config.GRANT_KEY, 'device-grant');
         delete window.NEXUS_WARDROBE_CONFIG;
         expect(Config.resolveWardrobeConfig().grant).toBe('device-grant');
-        window.NEXUS_WARDROBE_CONFIG = { forge: { baseUrl: 'https://forge.test', grant: 'site-grant' } };
-        expect(Config.resolveWardrobeConfig().grant).toBe('site-grant');
+        // BI5. The site's grant still comes first, when it is one a public page may carry: a
+        // short-lived one. (A long-lived or unreadable one there is refused and the device's
+        // stands: tests/wardrobe/wardrobe-capability-bi5.test.js.)
+        const short = `${Buffer.from(JSON.stringify({ iat: 1000, exp: 1300, sub: 'acct' })).toString('base64url')}.sig`;
+        window.NEXUS_WARDROBE_CONFIG = { forge: { baseUrl: 'https://forge.test', grant: short } };
+        expect(Config.resolveWardrobeConfig().grant).toBe(short);
         delete window.NEXUS_WARDROBE_CONFIG;
         window.localStorage.clear();
     });
