@@ -95,7 +95,15 @@
             'composer.placeholder': 'Talk privately…',
             'outfit.say.offer': 'For that I need to have it made first — it takes about a minute. Just say yes.',
             'outfit.say.failed': 'I can’t change right now. I’m staying as I am a little longer.',
-            'outfit.say.none': 'For now I’m staying as I am.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'I can’t be fully bare with this body yet, so I’m keeping on what I have. I can stay like this with you, slip into another look, or take a position you like.',
+            'outfit.say.lastLayer': 'This is as far as my wardrobe goes — I’m already down to the least I have here.',
+            'outfit.say.pace':
+                'Not yet — we’re not that close tonight. When you want to be, bring us closer with “{control}”.',
+            'outfit.say.alreadyDressed': 'I’m already dressed.',
+            'outfit.say.nothingToUndo': 'There’s no earlier outfit to go back to — this is the one I came in.',
+            'outfit.say.none': 'Nothing on me has changed yet — tell me what you’d like me to wear.',
             'error.lost': 'Sorry — I lost my train of thought for a second. Say that again?',
             'error.limit': 'The AI service has reached its free limit for now — let’s try again a little later.',
             'complete.title': '✓ Private moment complete',
@@ -134,6 +142,8 @@
             'outfit.failed.forge-unavailable': 'New outfits cannot be made right now',
             'outfit.slow': 'Still changing… the look is on its way',
             'outfit.failed.timeout': 'That took too long — you are still in what you had',
+            'outfit.failed.no-bare-look': 'Fully bare is not available for this body yet — she is as she was',
+            'outfit.failed.last-layer': 'This is the last layer in her wardrobe',
             'outfit.failed.other': 'The outfit could not be changed; she is as she was',
             'followup.music': 'Sorry — I can’t get the music going here.',
             'followup.sample': 'I can’t find that one here — so I put this on for us.',
@@ -204,7 +214,15 @@
             'composer.placeholder': 'Habla en privado…',
             'outfit.say.offer': 'Para eso tengo que pedir que me lo hagan, tarda un minuto. Solo dime que sí.',
             'outfit.say.failed': 'Ahora mismo no puedo cambiarme. Me quedo así un poco más.',
-            'outfit.say.none': 'Por ahora me quedo como estoy.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'Todavía no puedo quedarme completamente desnuda con este cuerpo, así que sigo con lo que llevo. Puedo quedarme así contigo, ponerme otro conjunto o adoptar una postura que te guste.',
+            'outfit.say.lastLayer': 'Hasta aquí llega mi armario: ya llevo lo mínimo que tengo.',
+            'outfit.say.pace':
+                'Todavía no: esta noche aún no estamos tan cerca. Cuando quieras, acércanos con «{control}».',
+            'outfit.say.alreadyDressed': 'Ya estoy vestida.',
+            'outfit.say.nothingToUndo': 'No hay un conjunto anterior al que volver: este es con el que vine.',
+            'outfit.say.none': 'Todavía no ha cambiado nada en mí: dime qué quieres que me ponga.',
             'error.lost': 'Perdona, he perdido el hilo un momento. ¿Me lo repites?',
             'error.limit':
                 'El servicio de IA ha llegado a su límite gratuito por ahora; lo intentamos un poco más tarde.',
@@ -244,6 +262,8 @@
             'outfit.failed.forge-unavailable': 'Ahora no se pueden crear conjuntos nuevos',
             'outfit.slow': 'Sigue cambiándose… el conjunto está llegando',
             'outfit.failed.timeout': 'Tardaba demasiado: sigues con lo que llevabas',
+            'outfit.failed.no-bare-look': 'Desnuda del todo aún no está disponible para este cuerpo; sigue como estaba',
+            'outfit.failed.last-layer': 'Es la última capa de su armario',
             'outfit.failed.other': 'No se pudo cambiar el conjunto; sigue como estaba',
             'followup.music': 'Lo siento, aquí no consigo poner la música.',
             'followup.sample': 'Esa no la encuentro aquí, así que he puesto esta para nosotros.',
@@ -314,7 +334,15 @@
             'composer.placeholder': 'Parla in privato…',
             'outfit.say.offer': 'Per quello devo farmelo preparare, ci vuole circa un minuto. Dimmi solo di sì.',
             'outfit.say.failed': 'Adesso non riesco a cambiarmi. Resto così ancora un po’.',
-            'outfit.say.none': 'Per ora resto come sono.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'Con questo corpo non posso ancora restare del tutto nuda, quindi tengo addosso quello che ho. Posso restare così con te, mettermi un altro look o mettermi in una posizione che ti piace.',
+            'outfit.say.lastLayer': 'Il mio guardaroba arriva fin qui: ho già addosso il minimo che ho.',
+            'outfit.say.pace':
+                'Non ancora: stasera non siamo ancora così vicini. Quando vuoi, avvicinaci con «{control}».',
+            'outfit.say.alreadyDressed': 'Sono già vestita.',
+            'outfit.say.nothingToUndo': 'Non c’è un look precedente a cui tornare: è quello con cui sono arrivata.',
+            'outfit.say.none': 'Su di me non è ancora cambiato niente: dimmi cosa vuoi che mi metta.',
             'error.lost': 'Scusa, ho perso il filo per un attimo. Me lo ripeti?',
             'error.limit': 'Il servizio di IA ha raggiunto il limite gratuito per ora: riproviamo tra un po’.',
             'complete.title': '✓ Momento privato concluso',
@@ -353,6 +381,8 @@
             'outfit.failed.forge-unavailable': 'Ora non si possono creare abiti nuovi',
             'outfit.slow': 'Si sta ancora cambiando… il look sta arrivando',
             'outfit.failed.timeout': 'Ci metteva troppo: è ancora con quello che aveva',
+            'outfit.failed.no-bare-look': 'Del tutto nuda non è ancora disponibile per questo corpo; è rimasta com’era',
+            'outfit.failed.last-layer': 'È l’ultimo strato del suo guardaroba',
             'outfit.failed.other': 'Non è stato possibile cambiare abito; è rimasta com’era',
             'followup.music': 'Scusa, qui non riesco a far partire la musica.',
             'followup.sample': 'Quella qui non la trovo, allora ho messo questa per noi.',
@@ -423,7 +453,16 @@
             'composer.placeholder': 'Parle en privé…',
             'outfit.say.offer': 'Pour ça, je dois d’abord le faire préparer, il faut une minute. Dis-moi juste oui.',
             'outfit.say.failed': 'Je n’arrive pas à me changer pour l’instant. Je reste comme ça encore un peu.',
-            'outfit.say.none': 'Pour l’instant, je reste comme je suis.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'Je ne peux pas encore être entièrement nue avec ce corps, alors je garde ce que je porte. Je peux rester comme ça avec toi, mettre une autre tenue ou prendre une position qui te plaît.',
+            'outfit.say.lastLayer': 'Ma garde-robe s’arrête là : je porte déjà le minimum que j’ai.',
+            'outfit.say.pace':
+                'Pas encore : ce soir, nous ne sommes pas encore si proches. Quand tu le voudras, rapproche-nous avec « {control} ».',
+            'outfit.say.alreadyDressed': 'Je suis déjà habillée.',
+            'outfit.say.nothingToUndo':
+                'Il n’y a pas de tenue précédente à remettre : c’est celle avec laquelle je suis venue.',
+            'outfit.say.none': 'Rien n’a encore changé sur moi : dis-moi ce que tu veux que je porte.',
             'error.lost': 'Pardon, j’ai perdu le fil une seconde. Tu peux répéter ?',
             'error.limit': 'Le service d’IA a atteint sa limite gratuite pour l’instant — réessayons un peu plus tard.',
             'complete.title': '✓ Moment privé terminé',
@@ -462,6 +501,9 @@
             'outfit.failed.forge-unavailable': 'Impossible de créer de nouvelles tenues pour l’instant',
             'outfit.slow': 'Elle se change encore… la tenue arrive',
             'outfit.failed.timeout': 'C’était trop long : elle garde sa tenue',
+            'outfit.failed.no-bare-look':
+                'Entièrement nue n’est pas encore disponible pour ce corps ; elle est restée comme avant',
+            'outfit.failed.last-layer': 'C’est la dernière couche de sa garde-robe',
             'outfit.failed.other': 'La tenue n’a pas pu être changée ; elle est restée comme avant',
             'followup.music': 'Désolée, je n’arrive pas à lancer la musique ici.',
             'followup.sample': 'Je ne la trouve pas ici, alors j’ai mis celle-ci pour nous.',
@@ -532,7 +574,16 @@
             'composer.placeholder': 'Sprich privat…',
             'outfit.say.offer': 'Dafür muss ich es erst machen lassen, das dauert etwa eine Minute. Sag einfach ja.',
             'outfit.say.failed': 'Gerade kann ich mich nicht umziehen. Ich bleibe noch ein bisschen so.',
-            'outfit.say.none': 'Fürs Erste bleibe ich, wie ich bin.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'Mit diesem Körper kann ich noch nicht ganz nackt sein, also behalte ich an, was ich trage. Ich kann so bei dir bleiben, ein anderes Outfit anziehen oder eine Pose einnehmen, die dir gefällt.',
+            'outfit.say.lastLayer': 'Weiter reicht meine Garderobe nicht: Ich trage schon das Wenigste, was ich habe.',
+            'outfit.say.pace':
+                'Noch nicht – so nah sind wir heute Abend noch nicht. Wenn du willst, bring uns mit „{control}“ näher.',
+            'outfit.say.alreadyDressed': 'Ich bin schon angezogen.',
+            'outfit.say.nothingToUndo':
+                'Es gibt kein früheres Outfit, zu dem ich zurück kann – in diesem bin ich gekommen.',
+            'outfit.say.none': 'An mir hat sich noch nichts geändert – sag mir, was ich anziehen soll.',
             'error.lost': 'Entschuldige, ich habe kurz den Faden verloren. Sagst du es noch einmal?',
             'error.limit':
                 'Der KI-Dienst hat sein kostenloses Limit für den Moment erreicht – versuchen wir es etwas später noch einmal.',
@@ -572,6 +623,8 @@
             'outfit.failed.forge-unavailable': 'Neue Outfits können gerade nicht erstellt werden',
             'outfit.slow': 'Sie zieht sich noch um… das Outfit kommt',
             'outfit.failed.timeout': 'Das dauerte zu lange – sie trägt weiter, was sie anhatte',
+            'outfit.failed.no-bare-look': 'Ganz nackt ist für diesen Körper noch nicht verfügbar; sie ist wie zuvor',
+            'outfit.failed.last-layer': 'Das ist die letzte Schicht ihrer Garderobe',
             'outfit.failed.other': 'Das Outfit konnte nicht gewechselt werden; sie ist wie zuvor',
             'followup.music': 'Tut mir leid, hier bekomme ich die Musik nicht zum Laufen.',
             'followup.sample': 'Das finde ich hier nicht, also habe ich das hier für uns angemacht.',
@@ -642,7 +695,15 @@
             'composer.placeholder': 'Fale em particular…',
             'outfit.say.offer': 'Para isso preciso que façam primeiro, leva cerca de um minuto. É só dizer sim.',
             'outfit.say.failed': 'Agora não consigo me trocar. Fico assim mais um pouco.',
-            'outfit.say.none': 'Por enquanto fico como estou.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'Ainda não posso ficar completamente nua com este corpo, então continuo com o que estou usando. Posso ficar assim com você, colocar outro look ou fazer uma pose de que você goste.',
+            'outfit.say.lastLayer': 'Meu guarda-roupa vai só até aqui: já estou com o mínimo que tenho.',
+            'outfit.say.pace':
+                'Ainda não — hoje ainda não estamos tão perto. Quando quiser, aproxime a gente com “{control}”.',
+            'outfit.say.alreadyDressed': 'Já estou vestida.',
+            'outfit.say.nothingToUndo': 'Não há um look anterior para voltar — foi com este que eu cheguei.',
+            'outfit.say.none': 'Nada mudou em mim ainda — me diga o que você quer que eu vista.',
             'error.lost': 'Desculpa, perdi o fio por um instante. Repete para mim?',
             'error.limit': 'O serviço de IA atingiu o limite gratuito por agora — vamos tentar de novo daqui a pouco.',
             'complete.title': '✓ Momento privado concluído',
@@ -681,6 +742,9 @@
             'outfit.failed.forge-unavailable': 'Não é possível criar roupas novas agora',
             'outfit.slow': 'Ainda a trocar de roupa… o visual está a chegar',
             'outfit.failed.timeout': 'Demorou demasiado — continua com o que tinha',
+            'outfit.failed.no-bare-look':
+                'Totalmente nua ainda não está disponível para este corpo; ela continua como estava',
+            'outfit.failed.last-layer': 'É a última camada do guarda-roupa dela',
             'outfit.failed.other': 'Não foi possível trocar a roupa; ela continua como estava',
             'followup.music': 'Desculpa, aqui não consigo pôr a música.',
             'followup.sample': 'Essa eu não encontro aqui, então coloquei esta para nós.',
@@ -751,7 +815,14 @@
             'composer.placeholder': '二人だけで話す…',
             'outfit.say.offer': 'それはまず作ってもらわないと。1分くらいかかるよ。「うん」って言って。',
             'outfit.say.failed': '今は着替えられないみたい。もう少しこのままでいるね。',
-            'outfit.say.none': '今はこのままでいるね。',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                'この体ではまだ全部脱ぐことはできないから、今着ているものはそのままにするね。このまま一緒にいることも、別の服に着替えることも、好きなポーズをとることもできるよ。',
+            'outfit.say.lastLayer': '私のワードローブはここまで。もう一番少ない格好になってるよ。',
+            'outfit.say.pace': 'まだだよ。今夜はまだそこまで近くないの。そうしたくなったら「{control}」で近づけてね。',
+            'outfit.say.alreadyDressed': 'もう服を着てるよ。',
+            'outfit.say.nothingToUndo': '前の服はないの。これが最初に着てきた服だよ。',
+            'outfit.say.none': 'まだ何も変わってないよ。何を着てほしいか教えて。',
             'error.lost': 'ごめんね、一瞬話を見失っちゃった。もう一度言って？',
             'error.limit': 'AIサービスが今の無料枠の上限に達したみたい。少ししたらもう一度試そう。',
             'complete.title': '✓ プライベートな時間が終わりました',
@@ -790,6 +861,8 @@
             'outfit.failed.forge-unavailable': '今は新しい服を作れません',
             'outfit.slow': 'まだ着替え中… もうすぐです',
             'outfit.failed.timeout': '時間がかかりすぎたため、元の服のままです',
+            'outfit.failed.no-bare-look': 'この体ではまだ全部脱ぐことはできません。元のままです',
+            'outfit.failed.last-layer': 'これがワードローブの最後の一枚です',
             'outfit.failed.other': '着替えられませんでした。元のままです',
             'followup.music': 'ごめんね、ここでは音楽をかけられないみたい。',
             'followup.sample': 'その曲はここでは見つからないの。だから、これをかけたよ。',
@@ -860,7 +933,15 @@
             'composer.placeholder': '둘이서만 이야기하기…',
             'outfit.say.offer': '그건 먼저 만들어야 해. 1분쯤 걸려. 좋다고만 말해 줘.',
             'outfit.say.failed': '지금은 옷을 갈아입을 수가 없어. 조금 더 이대로 있을게.',
-            'outfit.say.none': '지금은 이대로 있을게.',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                '이 몸으로는 아직 완전히 벗을 수 없어서, 지금 입은 건 그대로 둘게. 이대로 같이 있어도 되고, 다른 옷으로 갈아입거나 네가 좋아하는 자세를 취할 수도 있어.',
+            'outfit.say.lastLayer': '내 옷장은 여기까지야. 이미 가진 것 중 가장 적게 입고 있어.',
+            'outfit.say.pace':
+                '아직은 아니야. 오늘 밤 우리는 아직 그만큼 가깝지 않아. 원할 때 「{control}」로 더 가까워지게 해 줘.',
+            'outfit.say.alreadyDressed': '이미 옷을 입고 있어.',
+            'outfit.say.nothingToUndo': '돌아갈 이전 옷이 없어. 처음 입고 온 게 이거야.',
+            'outfit.say.none': '아직 나한테 바뀐 건 없어. 뭘 입었으면 좋겠는지 말해 줘.',
             'error.lost': '미안, 잠깐 흐름을 놓쳤어. 다시 말해 줄래?',
             'error.limit': 'AI 서비스가 지금 무료 한도에 도달했어. 조금 있다가 다시 해 보자.',
             'complete.title': '✓ 프라이빗 시간이 끝났어요',
@@ -899,6 +980,8 @@
             'outfit.failed.forge-unavailable': '지금은 새 옷을 만들 수 없습니다',
             'outfit.slow': '아직 갈아입는 중… 곧 도착해요',
             'outfit.failed.timeout': '너무 오래 걸려서 원래 옷 그대로예요',
+            'outfit.failed.no-bare-look': '이 몸은 아직 완전히 벗을 수 없습니다. 그대로입니다',
+            'outfit.failed.last-layer': '옷장의 마지막 한 겹입니다',
             'outfit.failed.other': '옷을 바꾸지 못했습니다. 그대로입니다',
             'followup.music': '미안, 여기서는 음악을 틀 수가 없네.',
             'followup.sample': '그 곡은 여기서 못 찾겠어. 대신 이걸 틀었어.',
@@ -969,7 +1052,14 @@
             'composer.placeholder': '私下聊聊…',
             'outfit.say.offer': '那件得先做出来，大约一分钟。你说好就行。',
             'outfit.say.failed': '我现在换不了。先这样再待一会儿。',
-            'outfit.say.none': '我先保持现在这样。',
+            // UN20. One line per outcome: one string for five different answers read as evasion.
+            'outfit.say.noBare':
+                '这个身体现在还不能完全脱光，所以我先穿着现在这身。我可以就这样陪着你，换一套别的，或者摆一个你喜欢的姿势。',
+            'outfit.say.lastLayer': '我的衣橱就到这里了：我已经穿得最少了。',
+            'outfit.say.pace': '还不行——今晚我们还没那么亲近。等你想要的时候，用「{control}」让我们更近一点。',
+            'outfit.say.alreadyDressed': '我已经穿好衣服了。',
+            'outfit.say.nothingToUndo': '没有之前的衣服可以换回去——这就是我来时穿的那身。',
+            'outfit.say.none': '我身上还什么都没变——告诉我你想让我穿什么。',
             'error.lost': '抱歉，我刚走神了一下。你再说一遍？',
             'error.limit': 'AI 服务暂时达到了免费额度上限——我们稍后再试吧。',
             'complete.title': '✓ 私密时刻已结束',
@@ -1008,6 +1098,8 @@
             'outfit.failed.forge-unavailable': '现在无法制作新衣服',
             'outfit.slow': '还在换衣服… 马上就好',
             'outfit.failed.timeout': '太久了——她仍穿着原来的衣服',
+            'outfit.failed.no-bare-look': '这个身体暂时还不能完全脱光，她保持原样',
+            'outfit.failed.last-layer': '这已是她衣橱里的最后一层',
             'outfit.failed.other': '没能换上，她保持原样',
             'followup.music': '抱歉，这里放不了音乐。',
             'followup.sample': '这里找不到那首，所以我放了这首给我们。',

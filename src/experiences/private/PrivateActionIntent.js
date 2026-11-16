@@ -324,10 +324,28 @@
         'iu'
     );
 
+    /**
+     * UN20. The reported Italian session: "poi togliete i vestiti" took a layer off, then "Toglili
+     * tutti" ("take them all off") parsed as nothing. No action ran, so nothing told her why, and
+     * the reply check put "Per ora resto come sono." in place of whatever she said: a flat
+     * non-answer to a clear request, at the level the person had chosen. An object pronoun on the
+     * verb ("toglili", "levateli", "quítatelos", "enlève-les", "tira-os") points back at what was
+     * being talked about, so it counts as undressing unless that was the music ("toglila" then
+     * means switch it off, which the music path reads).
+     */
+    const UNDRESS_PRONOUN = new RegExp(
+        `^(?:${word(
+            'togli(?:te)?(?:li|le|lo|la)|toglietel[ieoa]|toglitel[ieoa]|toglietevel[ieoa]|leva(?:te)?(?:li|le|lo|la)|levatel[ieoa]|' +
+                'quít(?:a|ate)l[oa]s?|quit(?:a|ate)l[oa]s?|enl[èe]ve-(?:les|le|la)|retire-(?:les|le|la)|tira-(?:os|as|o|a)|zieh (?:sie|es|die) aus'
+        )})`,
+        'iu'
+    );
+
     /** UN1. "All of it": straight to the last layer she has, not one at a time. */
     const UNDRESS_ALL = new RegExp(
         `${word(
-            'everything|all of it|completely|all the way|tutto|tutta|completamente|del tutto|todo|toda|completamente|tout|complètement|entièrement|alles|ganz|komplett|tudo|toda'
+            // UN20. "Toglili tutti": the plural "all" counts as much as "everything".
+            'everything|all of it|all of them|them all|completely|all the way|tutto|tutta|tutti|tutte|completamente|del tutto|todo|toda|todos|todas|completamente|tout|tous|toutes|complètement|entièrement|alles|ganz|komplett|tudo|toda'
         )}|全部|すべて|全部脱|다 벗|모두|全部脱|都脱`,
         'iu'
     );
@@ -809,7 +827,11 @@
         if (UNDO_OUTFIT.test(body) || UNDO_OUTFIT_CJK.test(body)) {
             if (!BARE_UNDO.test(body) || c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
         }
-        if (UNDRESS.test(body) || /脱いで|벗어|脱掉/u.test(body)) {
+        if (
+            UNDRESS.test(body) ||
+            /脱いで|벗어|脱掉/u.test(body) ||
+            (UNDRESS_PRONOUN.test(body) && c.lastFamily !== 'music' && !aboutMusic)
+        ) {
             // UN1. One layer at a time unless they say "all of it"; the policy decides whether the
             // evening is there yet (level 4), and the bridge picks the layer from her own looks.
             const step = UNDRESS_ALL.test(body) ? 'all' : 'next';
