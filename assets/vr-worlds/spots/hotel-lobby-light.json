@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/hotel-lobby-light.glb",
+  "sha256": "8b14588f8f3ad7e45b3e892e60364b671156c7598e92bb04881277ed366ff518",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0,
+  "virtualFloor": true,
+  "title": {
+    "en": "the hotel lobby",
+    "it": "la hall dell'hotel"
+  },
+  "spots": [
+    {
+      "id": "reception",
+      "label": {
+        "en": "at the reception desk",
+        "it": "alla reception"
+      },
+      "room": "lobby",
+      "near": ["-check-in-desk-module$", "-check-in-desk-corner$"],
+      "sees": {
+        "en": "the long check-in desk with the world clocks on the wall behind it",
+        "it": "il lungo banco della reception con gli orologi del mondo sulla parete"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.103, 0, -1.4],
+      "facingDeg": 60,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.37,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 1399
+      }
+    },
+    {
+      "id": "fireplace",
+      "label": {
+        "en": "by the fireplace",
+        "it": "vicino al camino"
+      },
+      "room": "lobby",
+      "near": ["-lobby-fireplace-feature$"],
+      "sees": {
+        "en": "the fireplace with a sofa and two armchairs round a low table",
+        "it": "il camino con un divano e due poltrone attorno a un tavolino"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": true,
+      "position": [4.35, 0, -2.25],
+      "facingDeg": 75,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.501,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 1015
+      }
+    },
+    {
+      "id": "entrance",
+      "label": {
+        "en": "by the revolving door",
+        "it": "vicino alla porta girevole"
+      },
+      "room": "lobby",
+      "near": ["-revolving-door-module$"],
+      "sees": {
+        "en": "the revolving door to the street",
+        "it": "la porta girevole che dà sulla strada"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [4.09, 0, 1.898],
+      "facingDeg": -125,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.316,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 5,
+        "framing": "fullBody",
+        "candidates": 1388
+      }
+    }
+  ]
+}

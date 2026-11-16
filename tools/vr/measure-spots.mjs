@@ -107,7 +107,7 @@ const PAGE = `<!doctype html><script type="importmap">{"imports":{"three":"/vend
 import * as THREE from 'three';
 import { GLTFLoader } from '/vendor/three-0.147.0/examples/jsm/loaders/GLTFLoader.js';
 const r2 = (v) => Math.round(v * 1000) / 1000;
-window.measure = async (src, spots, P) => {
+window.measure = async (src, spots, P, virtualFloor) => {
     const g = await new GLTFLoader().loadAsync('/assets/vr-worlds/' + src);
     const scene = g.scene;
     // Two copies of the room. SOLID: every face blocks from both sides — her body must never be
@@ -145,6 +145,31 @@ window.measure = async (src, spots, P) => {
     }
     // The floor height: the most common height of upward faces hit straight down across the scene.
     const sceneBox = new THREE.Box3().setFromObject(root);
+    // LW6. A scene that is furniture and walls only (the hotel lobby, the restaurant, the tavern's
+    // phone cut) has no floor to cast onto: the app draws its floor as the world's ground disk.
+    // Its spot-targets entry names that floor's height, and a flat one is stood in here, a little
+    // wider than the scene, so every other check (her body, the view, the camera) runs unchanged.
+    // Added after the box is taken, so the search still covers the scene and not the plane.
+    if (virtualFloor && typeof virtualFloor.y === 'number') {
+        // The plane is the room's footprint and nothing more: floorArea [x0, z0, x1, z1] from the
+        // scene's entry, else the scene's own box. The first run gave it a margin, and the hotel
+        // lobby's fireplace spot came out behind the fireplace and its door spot out in the street.
+        const A = Array.isArray(virtualFloor.area) && virtualFloor.area.length === 4 ? virtualFloor.area : null;
+        const x0 = A ? A[0] : sceneBox.min.x;
+        const z0 = A ? A[1] : sceneBox.min.z;
+        const x1 = A ? A[2] : sceneBox.max.x;
+        const z1 = A ? A[3] : sceneBox.max.z;
+        const plane = new THREE.Mesh(
+            new THREE.PlaneGeometry(x1 - x0, z1 - z0),
+            new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })
+        );
+        plane.name = 'virtual-floor';
+        plane.rotation.x = -Math.PI / 2;
+        plane.position.set((x0 + x1) / 2, virtualFloor.y, (z0 + z1) / 2);
+        root.add(plane);
+        plane.updateMatrixWorld(true);
+        meshes.push(plane);
+    }
     const votes = new Map();
     for (let x = sceneBox.min.x; x <= sceneBox.max.x; x += 0.25)
         for (let z = sceneBox.min.z; z <= sceneBox.max.z; z += 0.25) {
@@ -303,7 +328,11 @@ try {
     for (const [src, spec] of todo) {
         const file = path.join(ROOT, 'assets/vr-worlds', src);
         const sha256 = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-        const r = await page.evaluate(([s, spots, P]) => window.measure(s, spots, P), [src, spec.spots, PARAMS]);
+        const floor = typeof spec.floor === 'number' ? { y: spec.floor, area: spec.floorArea || null } : null;
+        const r = await page.evaluate(
+            ([s, spots, P, f]) => window.measure(s, spots, P, f === null ? undefined : f),
+            [src, spec.spots, PARAMS, floor]
+        );
         const byId = new Map(r.results.map((x) => [x.id, x]));
         const out = {
             schemaVersion: 1,
@@ -312,6 +341,7 @@ try {
             tool: { name: 'tools/vr/measure-spots.mjs', version: TOOL_VERSION, params: PARAMS },
             coordinateSpace: 'scene',
             floorY: r.floorY,
+            ...(floor === null ? {} : { virtualFloor: true }),
             title: spec.title,
             spots: spec.spots.map((s) => {
                 const m = byId.get(s.id) || { verified: false, why: 'not measured' };
