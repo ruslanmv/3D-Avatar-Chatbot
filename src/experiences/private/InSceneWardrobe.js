@@ -367,14 +367,33 @@
         wearLook(look, alive) {
             const key = keyOf(look);
             if (this._wearing && key && this._wearing.key === key) return this._wearing.promise;
-            const promise = this._wearLook(look, alive).finally(() => {
+            const token = { cancelled: false };
+            const promise = this._wearLook(look, alive, token).finally(() => {
                 if (this._wearing && this._wearing.promise === promise) this._wearing = null;
             });
-            this._wearing = { key, promise };
+            this._wearing = { key, promise, token };
             return promise;
         }
 
-        async _wearLook(look, alive) {
+        /**
+         * LT10. A newer request took over while a look was still on its way: stop that look.
+         *
+         * "A late result is undone, not applied" (above) was true only after the fact: the
+         * superseded look finished its download, was put on her, and was then taken off again.
+         * Seen in a Private evening in the browser (tools/qa/wardrobe-scene-acceptance.mjs): she
+         * asked for one outfit, changed her mind while it loaded, and the first one appeared
+         * anyway for a moment. For a private look that is a body state shown after the person
+         * asked for something else. The download is aborted through the session (BI3), the look
+         * never reaches the renderer, and the call that asked for it ends as `stale`, not as a
+         * failure. Returns whether there was a wear to stop.
+         */
+        cancelPending() {
+            if (!this._wearing || !this.session || typeof this.session.cancelPending !== 'function') return false;
+            this._wearing.token.cancelled = true;
+            return Boolean(this.session.cancelPending());
+        }
+
+        async _wearLook(look, alive, token) {
             const stillMine = typeof alive === 'function' ? alive : () => true;
             if (!this.session || this.closed) return { ok: false, why: 'wardrobe-not-ready' };
             if (isPrivate(look) && !this.privateOpen) return { ok: false, why: 'adult-ineligible' };
@@ -417,6 +436,12 @@
                 return { ok: false, why: 'timeout' };
             }
             if (!landed) {
+                if (token && token.cancelled) {
+                    // LT10. Stopped for a newer request: she kept what she had on. Whatever that
+                    // request does next sets the strip; this one says nothing went wrong.
+                    this._set('idle');
+                    return { ok: false, why: 'stale' };
+                }
                 this._set('failed', (this.session && this.session.error) || 'load-failed');
                 return { ok: false, why: 'load-failed' };
             }
