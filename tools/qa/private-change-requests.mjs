@@ -326,6 +326,10 @@ try {
         // after the step, from when the bridge received the words (typing on a phone takes
         // seconds, and the change may land meanwhile) — see `landedFirst` below.
         const wasRunning = previous ? previous.turnId : null;
+        const before = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.log().length);
+        const shownBefore = (await herLines()).length;
+        await page.fill('#speech-text', said);
+        await page.click('#speak-btn');
         if (expect.send) {
             // Sent on: wait only until it is under way.
             await page
