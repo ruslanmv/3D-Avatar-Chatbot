@@ -150,6 +150,33 @@ describe('Private Settings gate', () => {
         expect(s.director.adult).toBe(s.flow);
     });
 
+    test("the director's adult mode takes the same local profile, so Private enters it (CG2)", () => {
+        const { gate, director } = loadGate({ acknowledged: true });
+        const ModeManager = require('../../src/behavior/modes/ModeManager.js');
+        const { Manager } = ModeManager;
+        const modes = new Manager({ blackboard: director.blackboard, bus: director.bus });
+        modes.register({ id: 'adult', requires: ['adultVerified', 'nsfwAllowed'] });
+        director.modes = modes;
+        director.blackboard.nsfwAllowed = true;
+        gate.setEnabled(true);
+        expect(director.blackboard.adultVerified).toBe(false);
+        expect(modes.get('adult').requires).toEqual(['nsfwAllowed']);
+        expect(modes.activate('adult')).toBe(true);
+    });
+
+    test('the adult mode still needs the nsfwAllowed preference (CG2)', () => {
+        const { gate, director } = loadGate({ acknowledged: true });
+        const ModeManager = require('../../src/behavior/modes/ModeManager.js');
+        const { Manager } = ModeManager;
+        const modes = new Manager({ blackboard: director.blackboard, bus: director.bus });
+        modes.register({ id: 'adult', requires: ['adultVerified', 'nsfwAllowed'] });
+        director.modes = modes;
+        gate.setEnabled(true);
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(modes.activate('adult')).toBe(false);
+        warn.mockRestore();
+    });
+
     test('losing a server acknowledgement does not disable an accepted local gate', () => {
         const s = loadGate({ acknowledged: true, connected: true });
         s.director.blackboard.adultVerified = true;
