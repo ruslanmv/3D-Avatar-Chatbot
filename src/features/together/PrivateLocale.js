@@ -94,6 +94,7 @@
             'card.thinking': 'She is thinking',
             'composer.placeholder': 'Talk privately…',
             'outfit.say.offer': 'For that I need to have it made first — it takes about a minute. Just say yes.',
+            'pose.say.failed': 'That position didn’t work just now — I’m staying as I am.',
             'outfit.say.failed': 'I can’t change right now. I’m staying as I am a little longer.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -216,6 +217,7 @@
             'card.thinking': 'Está pensando',
             'composer.placeholder': 'Habla en privado…',
             'outfit.say.offer': 'Para eso tengo que pedir que me lo hagan, tarda un minuto. Solo dime que sí.',
+            'pose.say.failed': 'Esa postura no me ha salido ahora — me quedo como estoy.',
             'outfit.say.failed': 'Ahora mismo no puedo cambiarme. Me quedo así un poco más.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -339,6 +341,7 @@
             'card.thinking': 'Sta pensando',
             'composer.placeholder': 'Parla in privato…',
             'outfit.say.offer': 'Per quello devo farmelo preparare, ci vuole circa un minuto. Dimmi solo di sì.',
+            'pose.say.failed': 'Questa posizione adesso non mi è riuscita: resto come sono.',
             'outfit.say.failed': 'Adesso non riesco a cambiarmi. Resto così ancora un po’.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -461,6 +464,7 @@
             'card.thinking': 'Elle réfléchit',
             'composer.placeholder': 'Parle en privé…',
             'outfit.say.offer': 'Pour ça, je dois d’abord le faire préparer, il faut une minute. Dis-moi juste oui.',
+            'pose.say.failed': 'Cette position n’a pas marché pour l’instant — je reste comme je suis.',
             'outfit.say.failed': 'Je n’arrive pas à me changer pour l’instant. Je reste comme ça encore un peu.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -585,6 +589,7 @@
             'card.thinking': 'Sie überlegt',
             'composer.placeholder': 'Sprich privat…',
             'outfit.say.offer': 'Dafür muss ich es erst machen lassen, das dauert etwa eine Minute. Sag einfach ja.',
+            'pose.say.failed': 'Diese Haltung hat gerade nicht geklappt – ich bleibe so, wie ich bin.',
             'outfit.say.failed': 'Gerade kann ich mich nicht umziehen. Ich bleibe noch ein bisschen so.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -709,6 +714,7 @@
             'card.thinking': 'Ela está pensando',
             'composer.placeholder': 'Fale em particular…',
             'outfit.say.offer': 'Para isso preciso que façam primeiro, leva cerca de um minuto. É só dizer sim.',
+            'pose.say.failed': 'Essa posição não deu certo agora — fico como estou.',
             'outfit.say.failed': 'Agora não consigo me trocar. Fico assim mais um pouco.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -832,6 +838,7 @@
             'card.thinking': '考えています',
             'composer.placeholder': '二人だけで話す…',
             'outfit.say.offer': 'それはまず作ってもらわないと。1分くらいかかるよ。「うん」って言って。',
+            'pose.say.failed': 'その姿勢はいまうまくできませんでした。このままでいますね。',
             'outfit.say.failed': '今は着替えられないみたい。もう少しこのままでいるね。',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -953,6 +960,7 @@
             'card.thinking': '생각 중이에요',
             'composer.placeholder': '둘이서만 이야기하기…',
             'outfit.say.offer': '그건 먼저 만들어야 해. 1분쯤 걸려. 좋다고만 말해 줘.',
+            'pose.say.failed': '그 자세는 지금 잘 안 됐어요. 이대로 있을게요.',
             'outfit.say.failed': '지금은 옷을 갈아입을 수가 없어. 조금 더 이대로 있을게.',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
@@ -1075,6 +1083,7 @@
             'card.thinking': '她在想',
             'composer.placeholder': '私下聊聊…',
             'outfit.say.offer': '那件得先做出来，大约一分钟。你说好就行。',
+            'pose.say.failed': '这个姿势刚才没能做成，我就先保持这样。',
             'outfit.say.failed': '我现在换不了。先这样再待一会儿。',
             // UN20. One line per outcome: one string for five different answers read as evasion.
             'outfit.say.noBare':
