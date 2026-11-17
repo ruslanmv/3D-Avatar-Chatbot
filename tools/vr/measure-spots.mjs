@@ -258,11 +258,23 @@ window.measure = async (src, spots, P, virtualFloor) => {
         if (best) break;
         const cfg = framing === 'fullBody' ? { ...P.camera, bodyPoints: P.bodyPoints } : P[framing];
         // VW12. An "anywhere" spot searches a whole room: a 37 m corridor on a 10 cm grid ran past
-        // ninety minutes. A 50 cm grid, and stop at the first point that passes with 4 m of view.
+        // ninety minutes, so it uses a 50 cm grid. It used to stop at the first point that passed,
+        // and the first one found was in a corner or on the apron outside the building (the
+        // pictures showed her behind a wall): the whole grid is searched, under a roof a point
+        // needs the ceiling above it, and more room around her scores higher.
         const step = anywhere ? Math.max(P.gridStep, 0.5) : P.gridStep;
-        const enough = () => anywhere && best && best.open >= 4;
-        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing && !enough(); x += step)
-            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing && !enough(); z += step) {
+        const UP = new THREE.Vector3(0, 1, 0);
+        const roomAround = (x, y, z) => {
+            let near = 1.5;
+            for (let k = 0; k < 16; k++) {
+                const a = (k / 16) * Math.PI * 2;
+                const h = first(new THREE.Vector3(x, y + 1.3, z), new THREE.Vector3(Math.sin(a), 0, Math.cos(a)), 1.5);
+                if (h) near = Math.min(near, h.distance);
+            }
+            return near;
+        };
+        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing; x += step)
+            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing; z += step) {
                 const dx = Math.max(box.min.x - x, 0, x - box.max.x), dz = Math.max(box.min.z - z, 0, z - box.max.z);
                 const dist = anywhere ? 0 : Math.hypot(dx, dz);
                 if (!anywhere && (dist < P.minFromThing || dist > P.maxFromThing)) continue;
@@ -270,6 +282,8 @@ window.measure = async (src, spots, P, virtualFloor) => {
                 tried++;
                 const y = floorAt(x, z); if (y == null) { why.floor++; continue; }
                 if (!clearRadius(x, y, z, P.bodyRadius)) { why.body++; continue; }
+                if (anywhere && P.floorUnderRoof && !first(new THREE.Vector3(x, y + 0.1, z), UP, 8)) { why.room++; continue; }
+                const around = anywhere ? roomAround(x, y, z) : 0;
                 // Same room: from her chest, the first thing toward the object is the object.
                 // v5: a low or wide thing (a strip of footlights at the stage edge, a curtain) is
                 // missed by a chest-height aim that passes over it, so the nearest point of its top
@@ -298,7 +312,7 @@ window.measure = async (src, spots, P, virtualFloor) => {
                     const behind = yaw + Math.PI;
                     const off = Math.abs(Math.atan2(Math.sin(toThing - behind), Math.cos(toThing - behind)));
                     if (!anywhere && off > (80 * Math.PI) / 180) continue;
-                    const score = anywhere ? Math.min(open, 4) : Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
+                    const score = anywhere ? Math.min(open, 4) + 2 * around : Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
                     if (!best || score > best.score) best = { x, y, z, yaw, open, dist, off, score, framing };
                 }
                 if (!best) why.view++;
