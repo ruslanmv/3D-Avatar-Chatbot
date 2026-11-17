@@ -327,6 +327,21 @@
             }
         });
 
+        // EXPERIMENT (SG): VRoid's raw bones are J_Bip_L_* / J_Bip_R_*, which the name match above
+        // (it looks for "left"/"right") never finds. Fill any core bone it missed from the VRM
+        // humanoid's raw bones, as the finger lookup below already does.
+        var hum =
+            root.userData?.vrm?.humanoid ||
+            root.userData?.vrmHumanoid ||
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+        if (hum && typeof hum.getRawBoneNode === 'function') {
+            for (var key in map) {
+                if (map[key] || key === 'jaw') continue;
+                var rb = hum.getRawBoneNode(key);
+                if (rb) map[key] = rb;
+            }
+        }
+
         // fallback preference
         if (!map.chest && map.spine) map.chest = map.spine;
 
