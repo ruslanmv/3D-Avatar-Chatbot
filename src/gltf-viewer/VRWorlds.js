@@ -488,7 +488,10 @@
         const p = (async () => {
             if (!f) return { worlds: [], problems: ['no fetch'] };
             try {
-                const response = await f(CATALOGUE_URL);
+                // VW7. Always checked with the server: vercel.json had every .json "immutable" for a
+                // year, so a browser that loaded the catalogue on 7 November kept offering seven
+                // rooms while the site had nine. `no-cache` revalidates even such a stored copy.
+                const response = await f(CATALOGUE_URL, { cache: 'no-cache' });
                 if (!response || !response.ok) return { worlds: [], problems: ['catalogue not found'] };
                 const result = validateCatalogue(await response.json());
                 if (result.problems.length) console.warn('[VRWorlds] catalogue:', result.problems.join('; '));
