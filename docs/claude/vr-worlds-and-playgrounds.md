@@ -45,6 +45,20 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   trunk looked clear from above). Stylized worlds use `sky` (a gradient) and
   `fog` (snapshotted and restored) instead of a photo. A wide-short screen goes
   to CameraPresets' `bust` while a world is up (`framingFor`).
+- **Downloaded scenes (VW12): `/add-place`, budgets beyond triangles.** One
+  command prepares a Sketchfab (or any GLB) scene:
+  `node tools/vr/prepare-scene.mjs --sketchfab <uid> --name <stem>`. A phone or
+  Quest version must stay within **30 000 triangles, 40 draw calls and 32 MB of
+  texture memory**; the tool cuts one (simplified, colour textures only at
+  512 px) and **refuses** a scene that stays over (the night street: 149 draw
+  calls; the grandma's house: 36 draw calls and 44 MB). Do not force a refusal.
+  Geometry is never Meshopt/Draco-compressed: `tools/vr/*.mjs` read GLB
+  directly. Licences: CC0 or **CC BY** only; a CC BY place carries its credit
+  in its `note` (shown on the card) and a row in `PROVENANCE.md` saying what
+  was changed. A school, or anything that must never be part of a Private
+  evening, is `generalOnly: true`. Every new spot id needs words in
+  `WorldSpots.WORDS` (English and Italian), or "andiamo alla lavagna" moves
+  nobody.
 - **Places by name, and private rooms only inside Private (VW3).** A world may
   be `place: true` with a `rating` of `general`, `romantic` or `private`, and a
   `lightFor` stand-in for devices the heavy one cannot load on (`resolveFor`,
