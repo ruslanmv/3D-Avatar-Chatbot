@@ -15,6 +15,21 @@ fantasy places (VW9) in `docs/VR_WORLDS.md`. Rules behind the steps:
 
 A scene already under 30 000 is one world with all three tiers and no light version.
 
+## The fast path (VW12)
+
+`/add-place <uid or file> <stem>` walks every step below. Its first command does
+steps 1 to 3 at once and refuses a scene too heavy for a phone or a Quest:
+
+```bash
+node tools/vr/prepare-scene.mjs --sketchfab <uid> --name <stem>
+```
+
+Then spots with `measure-spots.mjs` (targets on the printed material names,
+`"anywhere": true` where nothing is named, `"floorUnderRoof": true` under a
+ceiling), the catalogue entries, the pictures, the gate. A room exported as one
+merged mesh: `tools/vr/split-by-material.mjs` names its parts, and
+`tools/vr/floor-spot.mjs` finds one standing point on its real floor.
+
 ## Steps
 
 1. **Get the file.** GLB only, a licence that allows redistribution (CC0 is the norm here).

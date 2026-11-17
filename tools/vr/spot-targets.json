@@ -1745,6 +1745,771 @@
           "rating": "romantic"
         }
       ]
+    },
+    "scenes/anime-school-classroom.glb": {
+      "title": {
+        "en": "the classroom",
+        "it": "l'aula"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "blackboard",
+          "label": {
+            "en": "by the blackboard",
+            "it": "vicino alla lavagna"
+          },
+          "room": "classroom",
+          "near": ["^School_blackboards$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the green blackboard at the front of the classroom",
+            "it": "la lavagna verde davanti alla classe"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "teacher-desk",
+          "label": {
+            "en": "by the teacher's desk",
+            "it": "vicino alla cattedra"
+          },
+          "room": "classroom",
+          "near": ["^Teacher_desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the teacher's desk at the front",
+            "it": "la cattedra davanti"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "desks",
+          "label": {
+            "en": "among the desks",
+            "it": "tra i banchi"
+          },
+          "room": "classroom",
+          "near": ["^School_desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of wooden school desks and chairs",
+            "it": "file di banchi e sedie di legno"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "windows",
+          "label": {
+            "en": "by the windows",
+            "it": "vicino alle finestre"
+          },
+          "room": "classroom",
+          "near": ["^Windows$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the tall classroom windows",
+            "it": "le alte finestre dell'aula"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "bookshelf",
+          "label": {
+            "en": "by the bookshelf",
+            "it": "vicino alla libreria"
+          },
+          "room": "classroom",
+          "near": ["^Book_shell$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a bookshelf at the back of the classroom",
+            "it": "una libreria in fondo all'aula"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-classroom-light.glb": {
+      "title": {
+        "en": "the classroom",
+        "it": "l'aula"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "blackboard",
+          "label": {
+            "en": "by the blackboard",
+            "it": "vicino alla lavagna"
+          },
+          "room": "classroom",
+          "near": ["^School_blackboards$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the green blackboard at the front of the classroom",
+            "it": "la lavagna verde davanti alla classe"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "teacher-desk",
+          "label": {
+            "en": "by the teacher's desk",
+            "it": "vicino alla cattedra"
+          },
+          "room": "classroom",
+          "near": ["^Teacher_desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the teacher's desk at the front",
+            "it": "la cattedra davanti"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "desks",
+          "label": {
+            "en": "among the desks",
+            "it": "tra i banchi"
+          },
+          "room": "classroom",
+          "near": ["^School_desk$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "rows of wooden school desks and chairs",
+            "it": "file di banchi e sedie di legno"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "windows",
+          "label": {
+            "en": "by the windows",
+            "it": "vicino alle finestre"
+          },
+          "room": "classroom",
+          "near": ["^Windows$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the tall classroom windows",
+            "it": "le alte finestre dell'aula"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "bookshelf",
+          "label": {
+            "en": "by the bookshelf",
+            "it": "vicino alla libreria"
+          },
+          "room": "classroom",
+          "near": ["^Book_shell$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a bookshelf at the back of the classroom",
+            "it": "una libreria in fondo all'aula"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-corridor.glb": {
+      "title": {
+        "en": "the school corridor",
+        "it": "il corridoio della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "windows",
+          "label": {
+            "en": "by the windows",
+            "it": "vicino alle finestre"
+          },
+          "room": "corridor",
+          "near": ["^Windows$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the long row of corridor windows",
+            "it": "la lunga fila di finestre del corridoio"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "corridor",
+          "label": {
+            "en": "along the corridor",
+            "it": "lungo il corridoio"
+          },
+          "room": "corridor",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the long school corridor",
+            "it": "il lungo corridoio della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-corridor-light.glb": {
+      "title": {
+        "en": "the school corridor",
+        "it": "il corridoio della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "windows",
+          "label": {
+            "en": "by the windows",
+            "it": "vicino alle finestre"
+          },
+          "room": "corridor",
+          "near": ["^Windows$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the long row of corridor windows",
+            "it": "la lunga fila di finestre del corridoio"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "corridor",
+          "label": {
+            "en": "along the corridor",
+            "it": "lungo il corridoio"
+          },
+          "room": "corridor",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the long school corridor",
+            "it": "il lungo corridoio della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-tatami-room.glb": {
+      "title": {
+        "en": "the tatami room",
+        "it": "la stanza col tatami"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "altar",
+          "label": {
+            "en": "by the altar",
+            "it": "vicino all'altare"
+          },
+          "room": "tatami-room",
+          "near": ["^Altar$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a small home altar",
+            "it": "un piccolo altare domestico"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "table",
+          "label": {
+            "en": "by the low table",
+            "it": "vicino al tavolino"
+          },
+          "room": "tatami-room",
+          "near": ["^KayuMeja$", "^KainMeja$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a low table with a cloth, teacups and a teapot",
+            "it": "un tavolino basso con una tovaglia, tazze e una teiera"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "cushions",
+          "label": {
+            "en": "by the cushions",
+            "it": "vicino ai cuscini"
+          },
+          "room": "tatami-room",
+          "near": ["^kainZabuton$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "floor cushions around the table",
+            "it": "cuscini sul pavimento attorno al tavolo"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "shoji",
+          "label": {
+            "en": "by the shoji screens",
+            "it": "vicino agli shoji"
+          },
+          "room": "tatami-room",
+          "near": ["^KayuShoji$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "wooden shoji sliding screens",
+            "it": "porte scorrevoli shoji di legno"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "lamp",
+          "label": {
+            "en": "by the lamp",
+            "it": "vicino alla lampada"
+          },
+          "room": "tatami-room",
+          "near": ["^Lamp$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a paper floor lamp",
+            "it": "una lampada di carta"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-tatami-room-light.glb": {
+      "title": {
+        "en": "the tatami room",
+        "it": "la stanza col tatami"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "altar",
+          "label": {
+            "en": "by the altar",
+            "it": "vicino all'altare"
+          },
+          "room": "tatami-room",
+          "near": ["^Altar$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a small home altar",
+            "it": "un piccolo altare domestico"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "table",
+          "label": {
+            "en": "by the low table",
+            "it": "vicino al tavolino"
+          },
+          "room": "tatami-room",
+          "near": ["^KayuMeja$", "^KainMeja$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a low table with a cloth, teacups and a teapot",
+            "it": "un tavolino basso con una tovaglia, tazze e una teiera"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "cushions",
+          "label": {
+            "en": "by the cushions",
+            "it": "vicino ai cuscini"
+          },
+          "room": "tatami-room",
+          "near": ["^kainZabuton$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "floor cushions around the table",
+            "it": "cuscini sul pavimento attorno al tavolo"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "shoji",
+          "label": {
+            "en": "by the shoji screens",
+            "it": "vicino agli shoji"
+          },
+          "room": "tatami-room",
+          "near": ["^KayuShoji$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "wooden shoji sliding screens",
+            "it": "porte scorrevoli shoji di legno"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "lamp",
+          "label": {
+            "en": "by the lamp",
+            "it": "vicino alla lampada"
+          },
+          "room": "tatami-room",
+          "near": ["^Lamp$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "a paper floor lamp",
+            "it": "una lampada di carta"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-hallway.glb": {
+      "title": {
+        "en": "the school hallway",
+        "it": "l'atrio della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "hallway",
+          "label": {
+            "en": "in the hallway",
+            "it": "nell'atrio"
+          },
+          "room": "hallway",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school hallway",
+            "it": "l'atrio della scuola"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "hallway-far",
+          "label": {
+            "en": "further along the hallway",
+            "it": "più avanti nell'atrio"
+          },
+          "room": "hallway",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school hallway",
+            "it": "l'atrio della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-hallway-light.glb": {
+      "title": {
+        "en": "the school hallway",
+        "it": "l'atrio della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "hallway",
+          "label": {
+            "en": "in the hallway",
+            "it": "nell'atrio"
+          },
+          "room": "hallway",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school hallway",
+            "it": "l'atrio della scuola"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "hallway-far",
+          "label": {
+            "en": "further along the hallway",
+            "it": "più avanti nell'atrio"
+          },
+          "room": "hallway",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school hallway",
+            "it": "l'atrio della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-stairs.glb": {
+      "title": {
+        "en": "the school stairs",
+        "it": "le scale della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "stairwell",
+          "label": {
+            "en": "in the stairwell",
+            "it": "nella tromba delle scale"
+          },
+          "room": "stairwell",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school stairwell",
+            "it": "le scale della scuola"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "stairwell-far",
+          "label": {
+            "en": "elsewhere in the stairwell",
+            "it": "altrove nelle scale"
+          },
+          "room": "stairwell",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school stairwell",
+            "it": "le scale della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-stairs-light.glb": {
+      "title": {
+        "en": "the school stairs",
+        "it": "le scale della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "stairwell",
+          "label": {
+            "en": "in the stairwell",
+            "it": "nella tromba delle scale"
+          },
+          "room": "stairwell",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school stairwell",
+            "it": "le scale della scuola"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "stairwell-far",
+          "label": {
+            "en": "elsewhere in the stairwell",
+            "it": "altrove nelle scale"
+          },
+          "room": "stairwell",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the school stairwell",
+            "it": "le scale della scuola"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-entrance.glb": {
+      "title": {
+        "en": "the school entrance",
+        "it": "l'ingresso della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "entrance",
+          "label": {
+            "en": "in the entrance hall",
+            "it": "nell'ingresso"
+          },
+          "room": "entrance",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the shoe lockers of the school entrance",
+            "it": "gli armadietti delle scarpe all'ingresso"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "entrance-far",
+          "label": {
+            "en": "further into the entrance hall",
+            "it": "più dentro l'ingresso"
+          },
+          "room": "entrance",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the shoe lockers of the school entrance",
+            "it": "gli armadietti delle scarpe all'ingresso"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-school-entrance-light.glb": {
+      "title": {
+        "en": "the school entrance",
+        "it": "l'ingresso della scuola"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "entrance",
+          "label": {
+            "en": "in the entrance hall",
+            "it": "nell'ingresso"
+          },
+          "room": "entrance",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the shoe lockers of the school entrance",
+            "it": "gli armadietti delle scarpe all'ingresso"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "entrance-far",
+          "label": {
+            "en": "further into the entrance hall",
+            "it": "più dentro l'ingresso"
+          },
+          "room": "entrance",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the shoe lockers of the school entrance",
+            "it": "gli armadietti delle scarpe all'ingresso"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-subway-car.glb": {
+      "title": {
+        "en": "the subway car",
+        "it": "il vagone della metro"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "carriage",
+          "label": {
+            "en": "in the carriage",
+            "it": "nel vagone"
+          },
+          "room": "carriage",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the inside of a subway car",
+            "it": "l'interno di un vagone della metro"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "carriage-far",
+          "label": {
+            "en": "further down the carriage",
+            "it": "più avanti nel vagone"
+          },
+          "room": "carriage",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the inside of a subway car",
+            "it": "l'interno di un vagone della metro"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-subway-car-light.glb": {
+      "title": {
+        "en": "the subway car",
+        "it": "il vagone della metro"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "carriage",
+          "label": {
+            "en": "in the carriage",
+            "it": "nel vagone"
+          },
+          "room": "carriage",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the inside of a subway car",
+            "it": "l'interno di un vagone della metro"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "carriage-far",
+          "label": {
+            "en": "further down the carriage",
+            "it": "più avanti nel vagone"
+          },
+          "room": "carriage",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "the inside of a subway car",
+            "it": "l'interno di un vagone della metro"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/anime-classroom-small.glb": {
+      "title": {
+        "en": "the classroom",
+        "it": "l'aula"
+      },
+      "floorUnderRoof": true,
+      "spots": [
+        {
+          "id": "classroom",
+          "label": {
+            "en": "in the classroom",
+            "it": "in aula"
+          },
+          "room": "classroom",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "a Japanese classroom",
+            "it": "un'aula giapponese"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "classroom-far",
+          "label": {
+            "en": "on the other side of the classroom",
+            "it": "dall'altra parte dell'aula"
+          },
+          "room": "classroom",
+          "anywhere": true,
+          "can": ["stand-near"],
+          "sees": {
+            "en": "a Japanese classroom",
+            "it": "un'aula giapponese"
+          },
+          "rating": "general"
+        }
+      ]
     }
   }
 }
