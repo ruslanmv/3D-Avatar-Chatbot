@@ -885,7 +885,7 @@
             // as a position reported done while nothing held her. A seated chat posture, which is
             // the motion engine's, still stands up first: MotionIntegration.execute.)
             const back = turner.toggle();
-            return settle(action, 'completed', null, { name: back ? 'turned' : 'front', stoodUp: wasHeld || '' });
+            return settle(action, 'completed', null, { name: back ? 'turned' : 'front' });
         }
         if (action.params.pose === 'back') {
             const out = s.poses.back();
