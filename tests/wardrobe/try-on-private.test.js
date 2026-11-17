@@ -32,6 +32,21 @@ describe('TryOnPrivate.evaluate', () => {
         expect(state.picks.map((pick) => pick.label)).toContain('Lace lingerie');
     });
 
+    test('CG1. Forge’s per-file bare answer is passed on with an open verdict', () => {
+        const bodyState = { status: 'needs-review', designReview: null };
+        const state = Private.evaluate({
+            privateOn: true,
+            identity: SAMPLE_A,
+            published: [{ ...DECLARED[0], bodyState }],
+            canCreate: true,
+        });
+        expect(state.mode).toBe('open');
+        expect(state.bodyState).toEqual(bodyState);
+        expect(
+            Private.evaluate({ privateOn: true, identity: SAMPLE_A, published: DECLARED, canCreate: true }).bodyState
+        ).toBeNull();
+    });
+
     test('private mode on but the avatar not declared adult: locked, and says why', () => {
         const state = Private.evaluate({ privateOn: true, identity: SAMPLE_A, published: UNDECLARED, canCreate: true });
         expect(state).toMatchObject({ mode: 'locked', why: expect.stringMatching(/not declared this avatar adult/) });

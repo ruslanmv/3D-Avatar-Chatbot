@@ -1,0 +1,39 @@
+{
+  "slug": "vroid-rinna",
+  "name": "Rinna",
+  "character": "凛菜（りんな）/Rinna",
+  "creator": "キャラクター紹介サイト管理人",
+  "modelId": "5352976366004384332",
+  "source": "https://hub.vroid.com/en/characters/7324249457020862693/models/5352976366004384332",
+  "license": {
+    "spec": "0.0",
+    "redistribution": true,
+    "modification": "allow",
+    "avatarUse": "everyone",
+    "commercialUse": {
+      "corporate": "allow",
+      "personal": "profit"
+    },
+    "credit": "unnecessary",
+    "sexualUse": "allow",
+    "violentUse": "allow",
+    "licenseUrl": null,
+    "otherLicenseUrl": null,
+    "conditionsUrl": "https://hub.vroid.com/license?allowed_to_use_user=everyone&characterization_allowed_user=everyone&corporate_commercial_use=allow&credit=unnecessary&modification=allow&personal_commercial_use=profit&redistribution=allow&sexual_expression=allow&version=1&violent_expression=allow"
+  },
+  "vroidAgeLimit": {
+    "is_r18": false,
+    "is_r15": false,
+    "is_adult": false
+  },
+  "checkedAtUtc": "2026-10-02T08:00:41+00:00",
+  "embedded": {
+    "spec": "0.x",
+    "name": "Rinna",
+    "authors": [
+      "キャラクター紹介サイト管理人"
+    ],
+    "licenseName": "Other",
+    "otherPermissionUrl": "https://hub.vroid.com/license?allowed_to_use_user=everyone&characterization_allowed_user=everyone&corporate_commercial_use=allow&credit=unnecessary&modification=allow&personal_commercial_use=profit&redistribution=allow&sexual_expression=allow&version=1&violent_expression=allow"
+  }
+}

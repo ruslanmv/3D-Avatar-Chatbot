@@ -2,7 +2,7 @@
  * W4. Which avatar is she, as far as Wardrobe Forge is concerned?
  *
  * Forge has two ways to dress an avatar. Its library route, `POST /v1/library/{slug}/jobs`,
- * takes nothing but the slug: the server already holds the five avatars this site ships,
+ * takes nothing but the slug: the server already holds the eight avatars this site ships,
  * pinned by SHA-256, with the CC0 terms their provenance grants. Its generic route,
  * `POST /v1/generate`, takes a URL the server must fetch and a licence the caller must
  * vouch for. For a built-in avatar the library route is strictly better — no 15 MB upload,
@@ -17,7 +17,7 @@
  *   viewer, so it stays a pure function and testable without one.
  * - **A file name on its own.** A user can install any VRM called `AvatarSample_A.vrm`
  *   through VRM Manager. It is a library avatar only when it is also served from the
- *   bundled avatar folder (`vendor/avatars/`), where the five pinned files live.
+ *   bundled avatar folder (`vendor/avatars/`), where the eight pinned files live.
  * - **Its own table, when Forge publishes one.** The hashes below were read from
  *   Forge's `assets/library/models.json` and match this repository's files byte for byte.
  *   `matchesPublished()` checks them against what a running Forge says, so a Forge
@@ -28,7 +28,7 @@
 (function (global) {
     'use strict';
 
-    /** The five avatars both repositories ship, and the Forge slug each one answers to. */
+    /** The eight avatars both repositories ship, and the Forge slug each one answers to. */
     var LIBRARY = Object.freeze([
         {
             slug: 'avatar-sample-a',
@@ -54,6 +54,23 @@
             slug: 'masc-vroid',
             file: 'masc_vroid.vrm',
             sha256: 'ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb',
+        },
+        // CG6. Forge's three VRoid Hub characters, so every library character can be opened here
+        // (Try-On, Private's body states). Copied byte for byte from Forge's assets/library/vroid/.
+        {
+            slug: 'vroid-rinna',
+            file: 'Rinna.vrm',
+            sha256: 'd88320f4b0059af84ce75aed66672f4602caa376e4bd41ba454e657083b54d51',
+        },
+        {
+            slug: 'vroid-model-girl',
+            file: 'Model_Girl.vrm',
+            sha256: '1a298a534c54c8f6d74ddf78de06ac1c9ecef88972552d18b9d5bf01cb7a42bb',
+        },
+        {
+            slug: 'vroid-avatar-sample-o',
+            file: 'AvatarSample_O.vrm',
+            sha256: 'e5c0395b59b636e6e0731ba872f4885d1bf1b69eba5f2904e68c16bd105e1697',
         },
     ]);
 

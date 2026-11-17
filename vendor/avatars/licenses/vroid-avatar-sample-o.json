@@ -1,0 +1,37 @@
+{
+  "slug": "vroid-avatar-sample-o",
+  "name": "AvatarSample_O",
+  "character": "AvatarSample_O",
+  "creator": "雨衣 ネモ",
+  "modelId": "3390783334862270831",
+  "source": "https://hub.vroid.com/en/characters/2082401201932290880/models/3390783334862270831",
+  "license": {
+    "spec": "1.0",
+    "redistribution": true,
+    "modification": "allowModificationRedistribution",
+    "avatarUse": "everyone",
+    "commercialUse": "corporation",
+    "credit": "unnecessary",
+    "sexualUse": true,
+    "violentUse": true,
+    "licenseUrl": "https://vrm.dev/licenses/1.0/",
+    "otherLicenseUrl": null
+  },
+  "vroidAgeLimit": {
+    "is_r18": false,
+    "is_r15": false,
+    "is_adult": false
+  },
+  "checkedAtUtc": "2026-10-02T08:00:30+00:00",
+  "embedded": {
+    "spec": "1.0",
+    "name": "AvatarSample_O",
+    "authors": [
+      "pixiv VRoid Project"
+    ],
+    "redistribution": true,
+    "modification": "allowModificationRedistribution",
+    "licenseUrl": "https://vrm.dev/licenses/1.0/",
+    "otherLicenseUrl": null
+  }
+}
