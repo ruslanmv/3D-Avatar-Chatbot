@@ -410,6 +410,9 @@ const POSE_PRESETS = {
 
     sittingLegsUp: {
         label: 'Sitting (Lounging)',
+        // UN22. Sits on the floor, legs out: grounded on her seat and legs (was 17 cm up: UN6 lowers
+        // only a preset that says what it rests on, and this one said nothing).
+        support: { ground: ['hips', 'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg'] },
         bones: {
             hips: eulerDegToQuat(-10, 0, 0), // Tilted back — reclined
             leftUpperLeg: eulerDegToQuat(75, 0, -12), // Legs extended, relaxed spread
@@ -505,6 +508,8 @@ const POSE_PRESETS = {
 
     lyingBackRelaxed: {
         label: 'Lying (Relaxed)',
+        // UN22. On her back, one leg straight: grounded on back and that leg (was 18 cm up).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head', 'leftUpperLeg', 'leftLowerLeg'] },
         bones: {
             hips: eulerDegToQuat(90, 0, 0),
             leftUpperLeg: eulerDegToQuat(0, 0, -5), // One straight
@@ -787,6 +792,8 @@ const POSE_PRESETS = {
     lyingKiss: {
         label: 'Lying (Kiss Me)',
         adult: true,
+        // UN22. On her back, knees up: grounded on her back (was 18 cm up).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head'] },
         bones: {
             // Supine on floor — same as lyingBackRelaxed base
             hips: eulerDegToQuat(90, 0, 0),
@@ -923,6 +930,8 @@ const POSE_PRESETS = {
     lyingSprawl: {
         label: 'Lying (Sprawl)',
         adult: true,
+        // UN22. On her back, legs apart: grounded on her back and legs (was 21 cm up).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head', 'leftUpperLeg', 'rightUpperLeg'] },
         bones: {
             hips: eulerDegToQuat(85, 0, 0), // Supine
             spine: eulerDegToQuat(-3, 5, 0), // Relaxed twist
@@ -944,6 +953,8 @@ const POSE_PRESETS = {
     missionary: {
         label: 'Missionary',
         adult: true,
+        // UN22. On her back, knees up: grounded on her back (was 21 cm up).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head'] },
         bones: {
             hips: eulerDegToQuat(80, 0, 0), // Supine, slightly raised
             spine: eulerDegToQuat(-3, 0, 0), // Natural arch

@@ -1142,6 +1142,38 @@
         'iu'
     );
 
+    /**
+     * UN22. A sentence in which she says she is taking (or has taken) a position, first person:
+     * "Mi metto a quattro zampe.", "I'm getting on my knees for you". Used only when the
+     * position the person asked for this turn did not happen.
+     */
+    const POSE_CLAIM = new RegExp(
+        [
+            // it
+            '\\bmi (?:sto )?(?:mett(?:o|endo)|inginocchi(?:o|ando)|sdrai(?:o|ando)|stend(?:o|endo)|pieg(?:o|ando)|gir(?:o|ando)|sied(?:o|endo)|accovacci(?:o|ando))\\b',
+            '\\bmi sono (?:mess[ao]|inginocchiat[ao]|sdraiat[ao]|stes[ao]|piegat[ao]|girat[ao]|sedut[ao])\\b',
+            '\\b(?:eccomi|sono) (?:a quattro zampe|carponi|in ginocchio|sdraiat[ao]|a pancia)',
+            // en
+            "\\bi(?:'m| am) (?:now |already )?(?:getting (?:on|down)|kneeling|lying|bending|turning|on (?:all fours|my knees))",
+            "\\b(?:i'?ll|i will|let me) (?:get on|kneel|lie|bend|turn)\\b",
+            // es / fr / de / pt
+            '\\bme (?:pongo|arrodillo|tumbo|acuesto|doblo|giro)\\b',
+            '\\bje me (?:mets|couche|penche|retourne)\\b',
+            '\\bich (?:knie|lege|beuge|drehe) mich\\b',
+            '\\b(?:me ponho|me ajoelho|me deito|me viro)\\b',
+        ].join('|'),
+        'iu'
+    );
+
+    /** UN22. Her reply with an untrue position claim taken out, and why it did not happen said instead. */
+    function poseTruthful(text, truth, language) {
+        const value = String(text || '');
+        if (!truth || truth.state !== 'failed' || !POSE_CLAIM.test(value)) return value;
+        // As for a refused outfit (UN20): what is left of a reply that answered a position which
+        // never happened ("Ti piace?") would read as yes, so the reason is said instead of it.
+        return outfitLine(truth.why === 'pace' ? 'outfit.say.pace' : 'pose.say.failed', language) || '';
+    }
+
     /** PX14. Her reply with any untrue outfit claim taken out and the truth said once instead. */
     function outfitTruthful(text, truth, language) {
         const value = String(text || '');
@@ -1275,7 +1307,9 @@
                 truth = (await actions.whenSettled(Number(o.settleMs) || 4000)) || truth;
             const language = (w && w.AppLanguage && w.AppLanguage.code) || undefined;
             const drafted = shape(draft);
-            const shaped = outfitTruthful(drafted, truth, language);
+            // UN22. The same for a position: "Mi metto a quattro zampe." stood under a refusal.
+            const pose = actions && typeof actions.poseTruth === 'function' ? actions.poseTruth() : null;
+            const shaped = outfitTruthful(poseTruthful(drafted, pose, language), truth, language);
             if (truth && truth.state !== 'none') {
                 // UN20. "Sì, fallo / Aspetta un momento" stood under a refusal, and under a change
                 // that had already happened: the draft's buttons answered an offer nobody made.
@@ -3604,6 +3638,7 @@
         privateReplyProblems,
         privateRevise,
         outfitTruthful,
+        poseTruthful,
         OUTFIT_CLAIM,
         NAKED_CLAIM,
         shapePrivateReply,

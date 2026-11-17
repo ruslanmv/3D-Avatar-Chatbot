@@ -880,14 +880,12 @@
         if (action.params.pose === 'turn') {
             const turner = turnerOf(s);
             if (!turner) return settle(action, 'failed', 'no-turn');
-            // UN21. The report: "Mi siedo per te" / "Girati" / "Mi giro per te" / she stayed
-            // seated, frozen. A held position owns her skeleton and a turn of the root under
-            // it read as nothing happening. A new body action means the last one is over:
-            // she stands up first, then turns, as a person would.
-            const wasHeld = typeof s.poses.held === 'function' ? s.poses.held() : null;
-            if (wasHeld) s.poses.release();
+            // UN5. A held position turns with her, in place: "girati" on all fours shows her back
+            // on all fours. (UN21 stood her up first; the real-page audit measured every such turn
+            // as a position reported done while nothing held her. A seated chat posture, which is
+            // the motion engine's, still stands up first: MotionIntegration.execute.)
             const back = turner.toggle();
-            return settle(action, 'completed', null, { name: back ? 'turned' : 'front', stoodUp: wasHeld || '' });
+            return settle(action, 'completed', null, { name: back ? 'turned' : 'front' });
         }
         if (action.params.pose === 'back') {
             const out = s.poses.back();
@@ -1555,6 +1553,25 @@
     }
 
     /**
+     * UN22. What happened to a position the person asked for on their latest turn, for the reply
+     * check (TogetherCapability.poseTruthful): `done`, `pending`, `failed` (with why: `pace`
+     * below the evening's top, a position that did not render, …) or `none`. "Mi metto a quattro
+     * zampe." under a refused request read as done while her body stayed standing.
+     */
+    function poseTruth() {
+        const s = state;
+        if (!s) return { state: 'none' };
+        const mine = [...s.log]
+            .reverse()
+            .find((a) => a.name === 'avatar.pose' && a.turnId === s.turnId && a.source !== 'model');
+        if (!mine) return { state: 'none' };
+        if (mine.status === 'completed') return { state: 'done', pose: mine.params && mine.params.pose };
+        if (mine.status === 'pending') return { state: 'pending' };
+        if (mine.why === 'stale') return { state: 'none' };
+        return { state: 'failed', why: mine.why, pose: mine.params && mine.params.pose };
+    }
+
+    /**
      * UN20. Wait, briefly, for this turn's outfit action to stop being `pending`.
      *
      * In the real page, "Toglili tutti" was still pending — her looks were being listed — when the
@@ -2091,6 +2108,7 @@
         declineOffer,
         snapshot,
         outfitTruth,
+        poseTruth,
         whenSettled,
         explained,
         log,
