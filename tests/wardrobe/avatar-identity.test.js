@@ -18,7 +18,16 @@ describe('AvatarIdentity', () => {
         const slugs = Identity.LIBRARY.map(
             (entry) => Identity.resolve({ url: `vendor/avatars/${entry.file}`, name: entry.file }).slug
         );
-        expect(slugs).toEqual(['avatar-sample-a', 'avatar-sample-b', 'avatar-sample-c', 'fem-vroid', 'masc-vroid']);
+        expect(slugs).toEqual([
+            'avatar-sample-a',
+            'avatar-sample-b',
+            'avatar-sample-c',
+            'fem-vroid',
+            'masc-vroid',
+            'vroid-rinna',
+            'vroid-model-girl',
+            'vroid-avatar-sample-o',
+        ]);
     });
 
     test('an absolute URL into the bundled folder, with a query string, is still the library avatar', () => {
