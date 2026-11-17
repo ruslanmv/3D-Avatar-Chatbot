@@ -104,11 +104,20 @@
       ]
     },
     {
-      "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin|json)",
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)\\.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
