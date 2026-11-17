@@ -327,35 +327,6 @@
             }
         });
 
-        // SG2. VRoid's raw bones are J_Bip_L_* / J_Bip_R_*, which the name match above (it looks for
-        // "left"/"right") never finds, so on every VRoid avatar her arms were never in this map:
-        // the talk style's arm motion and every speech gesture wrote to nothing. Fill the ARM CHAIN
-        // only from the VRM humanoid's raw bones, as the finger lookup below already does. Legs,
-        // hips and spine are left to the name match on purpose: filling them too (SG1's
-        // experiment) made every mood preset's leg motion appear on VRoid avatars at once, a
-        // wider change than gestures need and one no audit had looked at.
-        var hum =
-            root.userData?.vrm?.humanoid ||
-            root.userData?.vrmHumanoid ||
-            window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
-        if (hum && typeof hum.getRawBoneNode === 'function') {
-            var armChain = [
-                'leftShoulder',
-                'rightShoulder',
-                'leftUpperArm',
-                'rightUpperArm',
-                'leftLowerArm',
-                'rightLowerArm',
-                'leftHand',
-                'rightHand',
-            ];
-            for (var ai = 0; ai < armChain.length; ai++) {
-                if (map[armChain[ai]]) continue;
-                var rb = hum.getRawBoneNode(armChain[ai]);
-                if (rb) map[armChain[ai]] = rb;
-            }
-        }
-
         // fallback preference
         if (!map.chest && map.spine) map.chest = map.spine;
 
@@ -567,28 +538,6 @@
         }
     }
 
-    var _sgEuler = null;
-    var _sgWarned = false;
-    function applySpeechGestures() {
-        var SG = window.NEXUS_SPEECH_GESTURES;
-        if (!SG || typeof SG.sample !== 'function' || !bones) return;
-        try {
-            var offsets = SG.sample();
-            if (!offsets) return;
-            if (!_sgEuler) _sgEuler = new THREE.Euler();
-            for (var name in offsets) {
-                var bone = bones[name];
-                var o = offsets[name];
-                if (!bone || (o[0] === 0 && o[1] === 0 && o[2] === 0)) continue;
-                _sgEuler.set(o[0], o[1], o[2]);
-                applyAdditiveEuler(bone, _sgEuler);
-            }
-        } catch (error) {
-            if (!_sgWarned) console.warn('[ProceduralAnimator] speech gestures skipped', error);
-            _sgWarned = true;
-        }
-    }
-
     /**
      * Find a talk style definition from presets and apply it.
      */
@@ -680,6 +629,7 @@
     // ---------------------------
     function registerAvatar(root, hasClips) {
         ensureInput();
+        releaseSpeechGestures();
 
         avatarRoot = root || null;
         hasBakedAnimations = !!hasClips;
@@ -790,7 +740,60 @@
         console.log('[ProceduralAnimator] Talk style set:', talkStyle);
     }
 
+    // ---------------------------
+    // SG3. Co-speech gestures (src/features/gestures/SpeechGestures.js), as an additive layer of
+    // their own that runs after everything above. It finds her arm bones through the VRM
+    // humanoid itself, because the name match in findBones looks for "left"/"right" and never
+    // finds VRoid's J_Bip_L_* / J_Bip_R_*: changing findBones instead (SG2) would have made this
+    // animator start resetting VRoid arms every frame — a new idle stance, and a gesture clip's
+    // arms erased whenever she talks while it plays. The layer undoes its own last offset before
+    // the next, so it never accumulates, and steps aside (handing the arms back exactly) outside
+    // talk mode, in Pose Studio, in pose mode (the VR puppet) and while a clip owns the bones.
+    // ---------------------------
+    var _sgLayer = null;
+    var _sgWarned = false;
+    function sgResolve(name) {
+        if (bones && bones[name]) return bones[name];
+        var hum =
+            avatarRoot?.userData?.vrm?.humanoid ||
+            avatarRoot?.userData?.vrmHumanoid ||
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+        return hum && typeof hum.getRawBoneNode === 'function' ? hum.getRawBoneNode(name) : null;
+    }
+    function applySpeechGestures(allowed) {
+        var SG = window.NEXUS_SPEECH_GESTURES;
+        if (!SG || typeof SG.createLayer !== 'function') return;
+        try {
+            if (!_sgLayer) _sgLayer = SG.createLayer(THREE);
+            if (!allowed) {
+                _sgLayer.release();
+                return;
+            }
+            _sgLayer.apply(SG.sample(), sgResolve);
+        } catch (error) {
+            if (!_sgWarned) console.warn('[ProceduralAnimator] speech gestures skipped', error);
+            _sgWarned = true;
+        }
+    }
+    function releaseSpeechGestures() {
+        if (_sgLayer) _sgLayer.release();
+    }
+
     function update(timeSec, dtSec) {
+        updateCore(timeSec, dtSec);
+        // A clip owns her arms while one plays (a wave, a clap, a dance the model asked for) or while
+        // a pose-restore blend holds the bones: gestures added on top would distort it.
+        var clipPlaying = false;
+        try {
+            clipPlaying = window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.()?.isPlaying === true;
+        } catch (_) {
+            clipPlaying = false;
+        }
+        var clipOwnsBones = (hasBakedAnimations && !allowWithMixer) || clipPlaying;
+        applySpeechGestures(!!(avatarRoot && bones) && mode === 'talk' && !poseMode && !editMode && !clipOwnsBones);
+    }
+
+    function updateCore(timeSec, dtSec) {
         if (!avatarRoot || !bones) return;
 
         // Pose Studio mouse-editing active — do not fight the editor
@@ -1004,11 +1007,6 @@
         if (mode === 'talk') {
             // Speaking gesture animation — dispatches to active talkStyle
             applyTalkStyle(timeSec);
-            // SG1. Discrete co-speech gestures on top (src/features/gestures/SpeechGestures.js):
-            // strokes timed to the words being said, where the talk style alone is a steady sine.
-            // Additive, talk mode only, so dances, poses, Pose Studio and the VR puppet (which all
-            // return earlier in this function) are never touched. Absent module: nothing changes.
-            applySpeechGestures();
             // Jaw bone fallback for Tier C models (no morph targets)
             if (bones.jaw && AP && AP.IDLE_PARAMS) {
                 var jp = AP.IDLE_PARAMS.jawTalk;
@@ -1023,6 +1021,7 @@
 
     function unregisterAvatar(root) {
         if (avatarRoot === root || !root) {
+            releaseSpeechGestures();
             avatarRoot = null;
             bones = null;
             rest.clear();

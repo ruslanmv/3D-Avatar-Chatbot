@@ -172,21 +172,93 @@ describe('wiring', () => {
         expect(read('src/gltf-viewer/VRChatIntegration.js')).toContain('window.NEXUS_LIP_SYNC.start(text, rate)');
     });
 
-    test('VRoid arm bones are found through the VRM humanoid, and only the arm chain (SG2)', () => {
-        const animator = read('src/ProceduralAnimator.js');
-        const block = animator.slice(animator.indexOf('var armChain = ['), animator.indexOf('// fallback preference'));
-        for (const bone of ['Shoulder', 'UpperArm', 'LowerArm', 'Hand']) {
-            expect(block).toContain(`'left${bone}'`);
-            expect(block).toContain(`'right${bone}'`);
-        }
-        expect(block).toContain('getRawBoneNode(armChain[ai])');
-        expect(block).not.toMatch(/Leg|Foot|hips|spine/);
-    });
-
-    test('applied in talk mode only, after the talk style', () => {
+    test('ProceduralAnimator runs the layer after its own frame, only where it may (SG3)', () => {
         const animator = read('src/ProceduralAnimator.js');
         expect(animator).toMatch(
-            /if \(mode === 'talk'\) \{[\s\S]{0,200}applyTalkStyle\(timeSec\);[\s\S]{0,500}applySpeechGestures\(\);/
+            /function update\(timeSec, dtSec\) \{\s*updateCore\(timeSec, dtSec\);[\s\S]{0,900}applySpeechGestures\(/
         );
+        const call = animator.slice(
+            animator.indexOf('function update(timeSec, dtSec)'),
+            animator.indexOf('function updateCore(')
+        );
+        for (const condition of ["mode === 'talk'", '!poseMode', '!editMode', '!clipOwnsBones']) {
+            expect(call).toContain(condition);
+        }
+        expect(call).toContain('hasBakedAnimations && !allowWithMixer');
+        expect(call).toContain('getCurrentPlaybackState?.()?.isPlaying === true');
+    });
+
+    test('her bone lookup is untouched: VRoid arms are reached by the layer, not added to the animator (SG3)', () => {
+        const animator = read('src/ProceduralAnimator.js');
+        const findBones = animator.slice(
+            animator.indexOf('function findBones('),
+            animator.indexOf('function captureRestPose(')
+        );
+        expect(findBones).not.toMatch(/armChain|getRawBoneNode\(key\)/);
+        expect(animator).toMatch(/function sgResolve\(name\)[\s\S]{0,400}getRawBoneNode\(name\)/);
+    });
+});
+
+describe('the additive layer (SG3)', () => {
+    const THREE = require('../../vendor/three-0.147.0/build/three.min.js');
+    const bone = (x = 0.1, y = 0.2, z = -0.3) => ({
+        quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z)),
+    });
+    const close = (a, b) => [a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w].every((d) => Math.abs(d) < 1e-9);
+
+    test('the same offset applied for many frames does not build up', () => {
+        const arm = bone();
+        const layer = SG.createLayer(THREE);
+        layer.apply({ rightUpperArm: [-0.3, 0, -0.2] }, () => arm);
+        const once = arm.quaternion.clone();
+        for (let i = 0; i < 500; i += 1) layer.apply({ rightUpperArm: [-0.3, 0, -0.2] }, () => arm);
+        expect(close(arm.quaternion, once)).toBe(true);
+    });
+
+    test('when the gesture ends her arm is exactly where it was', () => {
+        const arm = bone();
+        const before = arm.quaternion.clone();
+        const layer = SG.createLayer(THREE);
+        for (let i = 1; i <= 30; i += 1) layer.apply({ rightUpperArm: [-0.01 * i, 0, 0.02 * i] }, () => arm);
+        layer.apply(null, () => arm);
+        expect(close(arm.quaternion, before)).toBe(true);
+        expect(layer.size()).toBe(0);
+    });
+
+    test('a bone that stops moving this frame is handed back, the others keep theirs', () => {
+        const upper = bone();
+        const lower = bone(0, 0.5, 0);
+        const lowerBefore = lower.quaternion.clone();
+        const nodes = { rightUpperArm: upper, rightLowerArm: lower };
+        const layer = SG.createLayer(THREE);
+        layer.apply({ rightUpperArm: [-0.2, 0, 0], rightLowerArm: [0, 0.6, 0] }, (n) => nodes[n]);
+        layer.apply({ rightUpperArm: [-0.2, 0, 0] }, (n) => nodes[n]);
+        expect(close(lower.quaternion, lowerBefore)).toBe(true);
+        expect(layer.size()).toBe(1);
+    });
+
+    test('a bone something else rewrote is not undone a second time (a reset, a clip)', () => {
+        const arm = bone();
+        const layer = SG.createLayer(THREE);
+        layer.apply({ rightUpperArm: [-0.3, 0, 0] }, () => arm);
+        const rewritten = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, 0, 0));
+        arm.quaternion.copy(rewritten); // e.g. ProceduralAnimator reset it, or a clip wrote it
+        layer.apply({ rightUpperArm: [-0.3, 0, 0] }, () => arm);
+        const expected = rewritten.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0)));
+        expect(close(arm.quaternion, expected)).toBe(true);
+        layer.release();
+        expect(close(arm.quaternion, rewritten)).toBe(true);
+    });
+
+    test('release hands every bone back, and a missing bone is skipped', () => {
+        const arm = bone();
+        const before = arm.quaternion.clone();
+        const layer = SG.createLayer(THREE);
+        layer.apply({ rightUpperArm: [0.2, 0.1, 0], leftHand: [0.1, 0, 0] }, (n) =>
+            n === 'rightUpperArm' ? arm : null
+        );
+        layer.release();
+        expect(close(arm.quaternion, before)).toBe(true);
+        expect(layer.size()).toBe(0);
     });
 });

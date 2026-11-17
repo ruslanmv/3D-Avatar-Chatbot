@@ -19,11 +19,11 @@
  * words. It is rule-based on purpose — no model, no download, no server — so it runs the same
  * offline, on a phone and on a Quest.
  *
- * `start(text, rate)` plans and starts the clock (called beside `NEXUS_LIP_SYNC.start`, on the
+ * `start(text, rate)` plans and starts the clock (called from `NEXUS_LIP_SYNC.start`, on the
  * same 15 characters per second), `stop()` lets every gesture retract, and `sample(nowSec)`
- * returns the additive Euler offsets for this frame. ProceduralAnimator applies them on top of
- * the talk style, inside talk mode only, so a dance, a pose, Pose Studio or the VR puppet
- * (which return earlier in `update`) are never touched.
+ * returns the additive Euler offsets for this frame. `createLayer(THREE)` puts them on her bones
+ * without accumulating; ProceduralAnimator runs it after its own frame, in talk mode only, and
+ * releases it in Pose Studio, in pose mode (the VR puppet) and while a clip owns the bones.
  *
  * ## Budgets per device
  *
@@ -436,6 +436,76 @@
         return state.items.length > 0;
     }
 
+    /**
+     * SG3. The additive layer that puts `sample()`'s offsets on her bones, with `THREE` injected.
+     *
+     * Each frame it first takes back its own previous offset, then applies this frame's, so it
+     * never accumulates on a bone nobody else resets (VRoid arms, which ProceduralAnimator does
+     * not hold). It takes back an offset only if the bone still holds exactly what it left there:
+     * a bone something else rewrote this frame (a reset, a clip) has already lost the old offset,
+     * and undoing it again would twist her arm. `release()` hands every bone back the same way.
+     * A bone gets two quaternions the first time it moves; nothing is allocated per frame after.
+     */
+    function createLayer(THREE) {
+        const EPS = 1e-6;
+        const applied = new Map(); // node -> { inv, last }
+        const euler = new THREE.Euler();
+        const q = new THREE.Quaternion();
+        let frame = 0;
+
+        function untouched(node, rec) {
+            const a = node.quaternion;
+            const b = rec.last;
+            return (
+                Math.abs(a.x - b.x) < EPS &&
+                Math.abs(a.y - b.y) < EPS &&
+                Math.abs(a.z - b.z) < EPS &&
+                Math.abs(a.w - b.w) < EPS
+            );
+        }
+
+        function takeBack(node, rec) {
+            if (untouched(node, rec)) node.quaternion.multiply(rec.inv);
+        }
+
+        function apply(offsets, resolve) {
+            frame += 1;
+            if (offsets) {
+                for (const name of Object.keys(offsets)) {
+                    const o = offsets[name];
+                    if (o[0] === 0 && o[1] === 0 && o[2] === 0) continue;
+                    const node = resolve(name);
+                    if (!node || !node.quaternion) continue;
+                    let rec = applied.get(node);
+                    if (rec) takeBack(node, rec);
+                    else {
+                        rec = { inv: new THREE.Quaternion(), last: new THREE.Quaternion(), frame: 0 };
+                        applied.set(node, rec);
+                    }
+                    euler.set(o[0], o[1], o[2]);
+                    q.setFromEuler(euler);
+                    node.quaternion.multiply(q);
+                    rec.inv.copy(q).invert();
+                    rec.last.copy(node.quaternion);
+                    rec.frame = frame;
+                }
+            }
+            // Bones that moved last frame and not this one go back to what was under them.
+            for (const [node, rec] of applied) {
+                if (rec.frame === frame) continue;
+                takeBack(node, rec);
+                applied.delete(node);
+            }
+        }
+
+        function release() {
+            for (const [node, rec] of applied) takeBack(node, rec);
+            applied.clear();
+        }
+
+        return { apply, release, size: () => applied.size };
+    }
+
     const api = {
         CHARS_PER_SEC,
         PROFILES,
@@ -450,6 +520,7 @@
         stop,
         sample,
         active,
+        createLayer,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
