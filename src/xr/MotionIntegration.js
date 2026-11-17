@@ -1214,6 +1214,19 @@ const MotionIntegration = (() => {
             plan = Object.assign({}, plan, { commands: face });
         }
 
+        // UN21. The report: "Mi siedo per te" / "Girati" / "Mi giro per te" / she stayed in the
+        // chair, frozen. Sitting and lying are sticky postures (only "stand" or "stop" left them),
+        // so a turn, a gesture or a walk ran underneath the seated loop and showed nothing. A new
+        // body action means the posture is over: she stands up first, then does it, as a person
+        // would. Her face (an expression, a look) still changes while she sits.
+        if ((state.sitting || state.laying) && plan && Array.isArray(plan.commands)) {
+            const KEEPS_POSTURE = ['expression', 'look_at', 'stand', 'stop', 'sit', 'lay'];
+            const body = plan.commands.some((c) => c && !KEEPS_POSTURE.includes(c.type));
+            const standsAlready = plan.commands.some((c) => c && (c.type === 'stand' || c.type === 'stop'));
+            if (body && !standsAlready)
+                plan = Object.assign({}, plan, { commands: [{ type: 'stand' }].concat(plan.commands) });
+        }
+
         dsl.execute(plan, { integration: 'nexus-motion' });
     }
 
