@@ -96,7 +96,11 @@
         var entry = options.published.find(function (item) {
             return item && item.slug === identity.slug;
         });
-        if (entry && entry.depictsAdult === true) return { mode: 'open', picks: PICKS.slice() };
+        // CG1. Forge's per-file answer for the bare body state (`bodyState`: cleared, needs-review or
+        // blocked), passed on so a refusal can say what this character still needs. Lingerie and the
+        // rest of Private do not depend on it; only undressing to bare does.
+        if (entry && entry.depictsAdult === true)
+            return { mode: 'open', picks: PICKS.slice(), bodyState: entry.bodyState || null };
         // The avatar picker names her by file ("AvatarSample_A.vrm"); Forge's library has the
         // name a person recognises, so the sentence uses that when Forge knows her.
         var who = (entry && entry.name) || name;

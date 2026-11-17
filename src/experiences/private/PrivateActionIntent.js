@@ -324,10 +324,28 @@
         'iu'
     );
 
+    /**
+     * UN20. The reported Italian session: "poi togliete i vestiti" took a layer off, then "Toglili
+     * tutti" ("take them all off") parsed as nothing. No action ran, so nothing told her why, and
+     * the reply check put "Per ora resto come sono." in place of whatever she said: a flat
+     * non-answer to a clear request, at the level the person had chosen. An object pronoun on the
+     * verb ("toglili", "levateli", "quítatelos", "enlève-les", "tira-os") points back at what was
+     * being talked about, so it counts as undressing unless that was the music ("toglila" then
+     * means switch it off, which the music path reads).
+     */
+    const UNDRESS_PRONOUN = new RegExp(
+        `^(?:${word(
+            'togli(?:te)?(?:li|le|lo|la)|toglietel[ieoa]|toglitel[ieoa]|toglietevel[ieoa]|leva(?:te)?(?:li|le|lo|la)|levatel[ieoa]|' +
+                'quít(?:a|ate)l[oa]s?|quit(?:a|ate)l[oa]s?|enl[èe]ve-(?:les|le|la)|retire-(?:les|le|la)|tira-(?:os|as|o|a)|zieh (?:sie|es|die) aus'
+        )})`,
+        'iu'
+    );
+
     /** UN1. "All of it": straight to the last layer she has, not one at a time. */
     const UNDRESS_ALL = new RegExp(
         `${word(
-            'everything|all of it|completely|all the way|tutto|tutta|completamente|del tutto|todo|toda|completamente|tout|complètement|entièrement|alles|ganz|komplett|tudo|toda'
+            // UN20. "Toglili tutti": the plural "all" counts as much as "everything".
+            'everything|all of it|all of them|them all|completely|all the way|tutto|tutta|tutti|tutte|completamente|del tutto|todo|toda|todos|todas|completamente|tout|tous|toutes|complètement|entièrement|alles|ganz|komplett|tudo|toda'
         )}|全部|すべて|全部脱|다 벗|모두|全部脱|都脱`,
         'iu'
     );
@@ -485,12 +503,15 @@
             // The everyday adult name for the same static position maps to it too (owner
             // decision): the pose, held, nothing more — and it opens only where all fours does.
             'all-fours',
-            '(?:mettiti |get |go )?(?:a |on )?(?:quattro zampe|all fours|pecorina)|(?:in )?doggy(?: style)?|a cuatro patas|a lo perrito|en perrito|à quatre pattes|en levrette|auf alle viere|de quatro|de gatas',
+            // UN21. "meti in 4 zampi", "mettiti a 4 zampe", "mettiti alla pecorina", "carponi": the
+            // digit, "in" for "a", the everyday typos. Unmatched, "mettiti a 4 zampe" fell through
+            // to clothes and she was asked to put on a look called "4 zampe".
+            '(?:(?:mettiti|mettit[ae]|metti|meti|mettere|vai|va|stai|resta|get|go|stay) )?(?:(?:a|in|su|alla|on|onto) )?(?:(?:quattro|4) zamp[aeio]|all (?:fours|4s?)|pecorina|carponi|gattoni)|(?:in )?doggy(?: style)?|a cuatro patas|a lo perrito|en perrito|à quatre pattes|en levrette|auf alle viere|de quatro|de gatas',
             /四つん這い|四つんばい|네\s?발로|跪趴|趴在床上/u,
         ],
         [
             'kneel',
-            'inginocchiati|in ginocchio|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
+            '(?:(?:mettiti|metti|meti|vai|stai) )?in ginocc?hi[oa]|in[gn]?inocc?hiati|inginocchiati|kneel(?: down)?|get on your knees|arrodíllate|arrodillate|de rodillas|à genoux|mets-toi à genoux|knie dich hin|auf die knie|ajoelha-te|de joelhos',
             /跪いて|ひざまずいて|무릎\s?꿇어|跪下/u,
         ],
         [
@@ -718,6 +739,9 @@
     );
 
     /** The wardrobe request in a message already known to be about clothes. */
+    const POSTURE_NOT_CLOTHES =
+        /^(?:mettiti|mettit[ae]|metti|meti|stai|resta)\s+(?:(?:a|in|sul|sulla|alla|di|più)\s+)*(?:sedut[oa]|sdraiat[oa]|stes[oa]|distes[oa]|in piedi|piedi|comod[oa]|cavalcioni|ginocc?hi[oa]|fianco|pancia|schiena|accovacciat[oa]|piegat[oa]|dritt[oa]|qui|qua|lì|li|là|vicino)(?![\p{L}\p{N}])/iu;
+
     function wardrobeFrom(text) {
         const styles = stylesIn(text);
         const colours = coloursIn(text);
@@ -809,7 +833,11 @@
         if (UNDO_OUTFIT.test(body) || UNDO_OUTFIT_CJK.test(body)) {
             if (!BARE_UNDO.test(body) || c.canUndoOutfit) return action('wardrobe.undo', {}, 'wardrobe');
         }
-        if (UNDRESS.test(body) || /脱いで|벗어|脱掉/u.test(body)) {
+        if (
+            UNDRESS.test(body) ||
+            /脱いで|벗어|脱掉/u.test(body) ||
+            (UNDRESS_PRONOUN.test(body) && c.lastFamily !== 'music' && !aboutMusic)
+        ) {
             // UN1. One layer at a time unless they say "all of it"; the policy decides whether the
             // evening is there yet (level 4), and the bridge picks the layer from her own looks.
             const step = UNDRESS_ALL.test(body) ? 'all' : 'next';
@@ -821,6 +849,10 @@
             return wanted;
         }
         const wearSure = new RegExp(`^${word(WEAR_SURE)}(?:\\s+|$)`, 'iu');
+        // UN21. "Mettiti seduta", "mettiti a cavalcioni", "mettiti comoda": "mettiti" is also how
+        // Italian asks for a posture, and those became a look to put on ("seduta"). A posture is
+        // never clothes: nothing here, so the body's own path (the motion fast path) reads it.
+        if (POSTURE_NOT_CLOTHES.test(body)) return null;
         if (wearSure.test(body) || /着て|입어|穿上|换上/u.test(body)) {
             // "usa", "porte", "veste" are ordinary words too: they need something to wear.
             if (

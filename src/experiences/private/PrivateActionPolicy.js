@@ -38,7 +38,10 @@
 
     const AUTONOMY = Object.freeze(['off', 'suggest', 'autonomous']);
     const AUTONOMY_KEY = 'nexus_private_wardrobe_autonomy';
-    const DEFAULT_AUTONOMY = 'suggest';
+    // UN21. "She changes her clothes by herself, nobody asked, and it ruins the moment." The
+    // default is the person's words only: she changes when they ask, never on her own, and
+    // never offers unprompted. "She suggests" and "She chooses" stay in setup for whoever wants them.
+    const DEFAULT_AUTONOMY = 'off';
 
     /** Who may be the reason an action runs. */
     const SOURCES = Object.freeze(['user', 'user-approved', 'control', 'model']);

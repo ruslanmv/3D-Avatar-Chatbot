@@ -104,6 +104,29 @@ describe('Private Settings gate', () => {
         expect(localStorage.getItem('nexus_spicy_verified')).toBe('true');
     });
 
+    test('turning Private back on asks nothing on a device that already confirmed (CG1)', () => {
+        const s = loadGate({ acknowledged: true, storedEnabled: false });
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(document.querySelector('.spicy-age-overlay')).toBeNull();
+        expect(s.gate.isEnabled()).toBe(true);
+    });
+
+    test('after the confirmation is reset, turning Private on asks again (CG1)', () => {
+        const s = loadGate({ acknowledged: true });
+        s.gate.resetVerification();
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(document.querySelector('.spicy-age-overlay')).not.toBeNull();
+        expect(s.gate.isEnabled()).toBe(false);
+    });
+
     test('programmatic enable completes immediately after conditions were already accepted', () => {
         const s = loadGate({ acknowledged: true, connected: false });
         const done = jest.fn();
@@ -125,6 +148,33 @@ describe('Private Settings gate', () => {
         expect(options.profile.requires).toEqual(['nsfwAllowed']);
         expect(window.NEXUS_BD_PROFILE_ADULT.requires).toEqual(['adultVerified', 'nsfwAllowed']);
         expect(s.director.adult).toBe(s.flow);
+    });
+
+    test("the director's adult mode takes the same local profile, so Private enters it (CG2)", () => {
+        const { gate, director } = loadGate({ acknowledged: true });
+        const ModeManager = require('../../src/behavior/modes/ModeManager.js');
+        const { Manager } = ModeManager;
+        const modes = new Manager({ blackboard: director.blackboard, bus: director.bus });
+        modes.register({ id: 'adult', requires: ['adultVerified', 'nsfwAllowed'] });
+        director.modes = modes;
+        director.blackboard.nsfwAllowed = true;
+        gate.setEnabled(true);
+        expect(director.blackboard.adultVerified).toBe(false);
+        expect(modes.get('adult').requires).toEqual(['nsfwAllowed']);
+        expect(modes.activate('adult')).toBe(true);
+    });
+
+    test('the adult mode still needs the nsfwAllowed preference (CG2)', () => {
+        const { gate, director } = loadGate({ acknowledged: true });
+        const ModeManager = require('../../src/behavior/modes/ModeManager.js');
+        const { Manager } = ModeManager;
+        const modes = new Manager({ blackboard: director.blackboard, bus: director.bus });
+        modes.register({ id: 'adult', requires: ['adultVerified', 'nsfwAllowed'] });
+        director.modes = modes;
+        gate.setEnabled(true);
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(modes.activate('adult')).toBe(false);
+        warn.mockRestore();
     });
 
     test('losing a server acknowledgement does not disable an accepted local gate', () => {

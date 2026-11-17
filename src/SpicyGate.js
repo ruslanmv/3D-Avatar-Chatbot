@@ -64,9 +64,33 @@
      * Reuse the repository's existing ConsentFlow. Private Mode's explicit local adult
      * confirmation satisfies the profile's entry gate; per-experience consent remains intact.
      */
+    /**
+     * CG2. The behaviour director's `adult` mode keeps its own copy of the profile, registered
+     * when ModeManager was built, and that copy still lists `adultVerified` — the server's
+     * attestation. Private Mode's local confirmation is the complete entry gate (the header), and
+     * the ConsentFlow above already gets the local profile; ModeManager did not, so every Private
+     * start logged `[BD] mode "adult" refused: adultVerified is not satisfied` and ran without the
+     * mode's attention, initiative and scene rules. Re-register the same local copy there.
+     * `nsfwAllowed` stays required, and the NSFW clip gate in UtilityRanker still reads the
+     * server's `adultVerified` itself, so nothing that needed attestation is opened by this.
+     */
+    function alignAdultMode(d) {
+        const modes = d && d.modes;
+        if (!modes || typeof modes.get !== 'function' || typeof modes.register !== 'function') return;
+        try {
+            const profile = modes.get('adult');
+            if (profile && (profile.requires || []).includes('adultVerified')) {
+                modes.register(localPrivateProfile(profile));
+            }
+        } catch (error) {
+            console.warn('[SpicyGate] adult mode profile could not be aligned', error);
+        }
+    }
+
     function ensureTrustedAdultFlow() {
         const d = director();
         if (!d || !d.blackboard) return null;
+        alignAdultMode(d);
         if (d.adult && typeof d.adult.enter === 'function') {
             d.adult.profile = localPrivateProfile(d.adult.profile);
             return d.adult;
@@ -705,14 +729,15 @@
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             toggle.addEventListener('change', function () {
+                // CG1. The adult confirmation is once per device. Turning Private back ON on a
+                // device that already accepted it asked the same question again every time; the
+                // answer is in `nexus_spicy_verified`, and `setEnabled` still shows the dialog on a
+                // device that never answered (or after `resetVerification`). Each experience keeps
+                // its own consent check-ins in ConsentFlow: that is consent, not this question.
                 const wantsOn = toggle.checked;
-                window.NEXUS_SPICY.setEnabled(
-                    wantsOn,
-                    function () {
-                        updateUI();
-                    },
-                    wantsOn ? { requireConfirmation: true } : undefined
-                );
+                window.NEXUS_SPICY.setEnabled(wantsOn, function () {
+                    updateUI();
+                });
                 updateUI();
             });
         }

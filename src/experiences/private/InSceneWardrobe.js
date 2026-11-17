@@ -267,6 +267,8 @@
             }
             try {
                 const verdict = Private.evaluate({ privateOn: on, identity, published, canCreate: this.canCreate });
+                // CG1. Her bare-body-state answer from Forge, for the words of an undress refusal.
+                this.bodyState = (verdict && verdict.bodyState) || null;
                 return Boolean(verdict && verdict.mode === 'open');
             } catch (_) {
                 return false;

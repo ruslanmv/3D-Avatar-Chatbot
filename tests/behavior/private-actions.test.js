@@ -140,7 +140,7 @@ function world(options) {
         constructor() {
             this.library = {
                 available: !o.noForge,
-                library: async () => [{ slug: 'ava', depictsAdult: o.adult === true }],
+                library: async () => [{ slug: 'ava', depictsAdult: o.adult === true, bodyState: o.bodyState }],
             };
             this.create = create;
         }
@@ -345,7 +345,7 @@ describe('PX2. permission is separate from intent', () => {
         const create = { name: 'wardrobe.create', source: 'model' };
         expect(Policy.decide(create, facts({ autonomy: 'autonomous' })).allow).toBe(false);
         expect(Policy.decide(create, facts({ asked: { wardrobe: true } })).allow).toBe(true);
-        expect(Policy.autonomy(window)).toBe('suggest'); // the default
+        expect(Policy.autonomy(window)).toBe('off'); // UN21: only when the person asks
         expect(Policy.setAutonomy('everything', window)).toBe(false);
     });
 
@@ -581,8 +581,9 @@ describe('PX5. her outfit changes where she stands', () => {
         expect(w.controller.applyLook).toHaveBeenCalledTimes(1);
     });
 
-    test('SUGGEST (the default): her idea is offered, and nothing changes until they say yes', async () => {
+    test('SUGGEST (chosen in setup): her idea is offered, and nothing changes until they say yes', async () => {
         const w = await begin();
+        localStorage.setItem('nexus_private_wardrobe_autonomy', 'suggest'); // UN21: chosen, no longer the default
         await say('Cosa ti piacerebbe indossare?');
         expect(Actions.log()).toHaveLength(0);
         WardrobeTool.consume('Forse il vestito giallo. <wardrobe action="wear" look="Yellow sundress"/>');
@@ -1018,6 +1019,7 @@ describe('PX8. what the end-to-end run found', () => {
 
     test('"Wearing X · Undo" is a receipt that goes; an offer waiting for a yes stays', async () => {
         const w = await begin();
+        localStorage.setItem('nexus_private_wardrobe_autonomy', 'suggest'); // UN21: chosen, no longer the default
         jest.useFakeTimers();
         Surface.renderUser('Mettiti un vestito elegante.');
         for (let i = 0; i < 40; i += 1) {
@@ -1311,6 +1313,7 @@ describe('UN1. undressing in a real Private session — at the top of the pace o
 
     test('her own wish under SUGGEST is an offer, and the yes re-checks the level', async () => {
         const w = await at(4);
+        localStorage.setItem('nexus_private_wardrobe_autonomy', 'suggest'); // UN21: chosen, no longer the default
         await say('Mettiti il vestito da cocktail nero');
         await flush();
         await say('Sei bellissima');
@@ -1419,6 +1422,24 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         await flush();
         expect(w.pose.calls.slice(-1)).toEqual(['release']);
         expect(w.adult.level).toBe(2);
+    });
+
+    test('UN21: "girati" while she holds a position stands her up first, then she turns', async () => {
+        const w = await at(2);
+        await say('inginocchiati');
+        await flush();
+        expect(w.pose.calls).toEqual(['claim', 'apply:kneeling']);
+        const turns = [];
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.makeTurner = () => ({
+            toggle: () => turns.push('toggle') > 0,
+            reset: () => turns.push('reset'),
+        });
+        window.NEXUS_VIEWER = Object.assign({}, window.NEXUS_VIEWER, { avatarManager: { currentRoot: {} } });
+        await say('girati');
+        await flush();
+        expect(w.pose.calls.slice(-1)).toEqual(['release']);
+        expect(turns).toEqual(['toggle']);
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
     });
 
     test('on all fours at level 4 is the distinct hands-and-knees preset, never a standing bend', async () => {
@@ -1760,12 +1781,28 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
             adult: o.adult !== false,
             looks: o.looks || [DRESS, ...LINGERIE],
             loadFails: o.loadFails,
+            bodyState: o.bodyState,
         });
         window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
         w.adult.level = level;
         return w;
     }
     const worn = (w) => w.controller.applyLook.mock.calls.map((c) => c[0].name);
+
+    test.each([
+        ['needs-review', 'bare-needs-review'],
+        ['blocked', 'bare-blocked'],
+    ])('CG1. no bare look, and Forge says her exact file is %s: the refusal says so for her', async (status, why) => {
+        const w = await at(4, { bodyState: { status } });
+        await say('Mettiti il vestito da cocktail nero');
+        await say('Please, I wanna see you naked.');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.undress', status: 'failed', why });
+        // Nothing changed and nothing else in Private was turned off: she still wears the dress.
+        expect(worn(w).slice(-1)).toEqual(['Black Cocktail Dress']);
+        expect(prompt()).toMatch(/Being fully bare is not available for this body[\s\S]*nothing was changed/);
+        expect(w.adult.level).toBe(4);
+    });
     const prompt = () => Actions.promptLines().join('\n');
     const truthful = (reply) => Capability.outfitTruthful(reply, Actions.outfitTruth(), 'en');
 
