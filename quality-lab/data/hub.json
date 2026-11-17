@@ -30,7 +30,7 @@
             "fails": 0,
             "warns": 19,
             "animations": {
-                "avatars": 17,
+                "avatars": 20,
                 "clips": 163,
                 "poses": 26,
                 "intentsOk": 7,
@@ -140,7 +140,7 @@
             "area": "3d",
             "priority": 2,
             "title": "Run per-avatar animation playback CSV + frame shots",
-            "why": "Inventory covers 17 avatars × 163 clips (3213 cells). Playback proves sit/dance/pose are not broken on each character.",
+            "why": "Inventory covers 20 avatars × 163 clips (3780 cells). Playback proves sit/dance/pose are not broken on each character.",
             "command": "npm start & node audits/vrm_animations/run.mjs",
             "files": [
                 "audits/vrm_animations/",
