@@ -172,6 +172,17 @@ describe('wiring', () => {
         expect(read('src/gltf-viewer/VRChatIntegration.js')).toContain('window.NEXUS_LIP_SYNC.start(text, rate)');
     });
 
+    test('VRoid arm bones are found through the VRM humanoid, and only the arm chain (SG2)', () => {
+        const animator = read('src/ProceduralAnimator.js');
+        const block = animator.slice(animator.indexOf('var armChain = ['), animator.indexOf('// fallback preference'));
+        for (const bone of ['Shoulder', 'UpperArm', 'LowerArm', 'Hand']) {
+            expect(block).toContain(`'left${bone}'`);
+            expect(block).toContain(`'right${bone}'`);
+        }
+        expect(block).toContain('getRawBoneNode(armChain[ai])');
+        expect(block).not.toMatch(/Leg|Foot|hips|spine/);
+    });
+
     test('applied in talk mode only, after the talk style', () => {
         const animator = read('src/ProceduralAnimator.js');
         expect(animator).toMatch(

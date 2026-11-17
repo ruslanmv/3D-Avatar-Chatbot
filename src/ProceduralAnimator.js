@@ -327,18 +327,32 @@
             }
         });
 
-        // EXPERIMENT (SG): VRoid's raw bones are J_Bip_L_* / J_Bip_R_*, which the name match above
-        // (it looks for "left"/"right") never finds. Fill any core bone it missed from the VRM
-        // humanoid's raw bones, as the finger lookup below already does.
+        // SG2. VRoid's raw bones are J_Bip_L_* / J_Bip_R_*, which the name match above (it looks for
+        // "left"/"right") never finds, so on every VRoid avatar her arms were never in this map:
+        // the talk style's arm motion and every speech gesture wrote to nothing. Fill the ARM CHAIN
+        // only from the VRM humanoid's raw bones, as the finger lookup below already does. Legs,
+        // hips and spine are left to the name match on purpose: filling them too (SG1's
+        // experiment) made every mood preset's leg motion appear on VRoid avatars at once, a
+        // wider change than gestures need and one no audit had looked at.
         var hum =
             root.userData?.vrm?.humanoid ||
             root.userData?.vrmHumanoid ||
             window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
         if (hum && typeof hum.getRawBoneNode === 'function') {
-            for (var key in map) {
-                if (map[key] || key === 'jaw') continue;
-                var rb = hum.getRawBoneNode(key);
-                if (rb) map[key] = rb;
+            var armChain = [
+                'leftShoulder',
+                'rightShoulder',
+                'leftUpperArm',
+                'rightUpperArm',
+                'leftLowerArm',
+                'rightLowerArm',
+                'leftHand',
+                'rightHand',
+            ];
+            for (var ai = 0; ai < armChain.length; ai++) {
+                if (map[armChain[ai]]) continue;
+                var rb = hum.getRawBoneNode(armChain[ai]);
+                if (rb) map[armChain[ai]] = rb;
             }
         }
 
