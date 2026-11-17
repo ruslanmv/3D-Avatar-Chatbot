@@ -257,8 +257,12 @@ window.measure = async (src, spots, P, virtualFloor) => {
         for (const framing of ['fullBody', 'mid', 'bust']) {
         if (best) break;
         const cfg = framing === 'fullBody' ? { ...P.camera, bodyPoints: P.bodyPoints } : P[framing];
-        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing; x += P.gridStep)
-            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing; z += P.gridStep) {
+        // VW12. An "anywhere" spot searches a whole room: a 37 m corridor on a 10 cm grid ran past
+        // ninety minutes. A 50 cm grid, and stop at the first point that passes with 4 m of view.
+        const step = anywhere ? Math.max(P.gridStep, 0.5) : P.gridStep;
+        const enough = () => anywhere && best && best.open >= 4;
+        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing && !enough(); x += step)
+            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing && !enough(); z += step) {
                 const dx = Math.max(box.min.x - x, 0, x - box.max.x), dz = Math.max(box.min.z - z, 0, z - box.max.z);
                 const dist = anywhere ? 0 : Math.hypot(dx, dz);
                 if (!anywhere && (dist < P.minFromThing || dist > P.maxFromThing)) continue;
