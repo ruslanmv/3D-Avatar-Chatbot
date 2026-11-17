@@ -1424,7 +1424,7 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         expect(w.adult.level).toBe(2);
     });
 
-    test('UN21: "girati" while she holds a position stands her up first, then she turns', async () => {
+    test('UN5: "girati" while she holds a position turns her in place, still in it', async () => {
         const w = await at(2);
         await say('inginocchiati');
         await flush();
@@ -1437,9 +1437,21 @@ describe('UN5. positions and dressing again, in a real Private session', () => {
         window.NEXUS_VIEWER = Object.assign({}, window.NEXUS_VIEWER, { avatarManager: { currentRoot: {} } });
         await say('girati');
         await flush();
-        expect(w.pose.calls.slice(-1)).toEqual(['release']);
         expect(turns).toEqual(['toggle']);
+        expect(w.pose.calls).not.toContain('release'); // the real-page audit: a turn keeps the hold
         expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'completed' });
+    });
+
+    test('UN22: a refused position is never claimed in her reply', async () => {
+        const w = await at(2);
+        await say('mettiti a quattro zampe');
+        await flush();
+        expect(Actions.snapshot().last).toMatchObject({ name: 'avatar.pose', status: 'blocked', why: 'pace' });
+        expect(Actions.poseTruth()).toMatchObject({ state: 'failed', why: 'pace' });
+        const reply = Capability.poseTruthful('Mi metto a quattro zampe.', Actions.poseTruth(), 'it-IT');
+        expect(reply).not.toMatch(/quattro zampe/);
+        expect(reply).toMatch(/Non ancora/);
+        expect(w.adult.level).toBe(2);
     });
 
     test('on all fours at level 4 is the distinct hands-and-knees preset, never a standing bend', async () => {
