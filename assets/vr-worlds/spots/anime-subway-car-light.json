@@ -1,0 +1,151 @@
+{
+    "schemaVersion": 1,
+    "scene": "scenes/anime-subway-car-light.glb",
+    "sha256": "b5dd699613d534a97ef67f8b6a8c7d938aeb8232ba4e0a349dd9a992a41a5d26",
+    "tool": {
+        "name": "tools/vr/measure-spots.mjs",
+        "version": 5,
+        "params": {
+            "bodyRadius": 0.32,
+            "bodyHeights": [
+                0.12,
+                0.55,
+                1.05,
+                1.55
+            ],
+            "gridStep": 0.1,
+            "minFromThing": 0.3,
+            "maxFromThing": 1.3,
+            "floorTolerance": 0.06,
+            "viewClear": 2.2,
+            "viewHeights": [
+                0.95,
+                1.5
+            ],
+            "personAt": 1,
+            "personRadius": 0.28,
+            "facingSteps": 72,
+            "camera": {
+                "distance": 4.7,
+                "height": 0.95,
+                "lateral": [
+                    -0.3,
+                    0,
+                    0.3
+                ]
+            },
+            "bodyPoints": [
+                0.08,
+                0.45,
+                0.85,
+                1.15,
+                1.45
+            ],
+            "mid": {
+                "distance": 2.3,
+                "height": 1.1,
+                "lateral": [
+                    -0.25,
+                    0,
+                    0.25
+                ],
+                "bodyPoints": [
+                    0.45,
+                    0.85,
+                    1.15,
+                    1.45
+                ]
+            },
+            "bust": {
+                "distance": 1,
+                "height": 1.3,
+                "lateral": [
+                    -0.15,
+                    0,
+                    0.15
+                ],
+                "bodyPoints": [
+                    1,
+                    1.25,
+                    1.5
+                ]
+            },
+            "bodyWidth": [
+                -0.3,
+                0,
+                0.3
+            ],
+            "minSpacing": 1.2
+        }
+    },
+    "coordinateSpace": "scene",
+    "floorY": -0.66,
+    "title": {
+        "en": "the subway car",
+        "it": "il vagone della metro"
+    },
+    "spots": [
+        {
+            "id": "carriage",
+            "label": {
+                "en": "in the carriage",
+                "it": "nel vagone"
+            },
+            "room": "carriage",
+            "sees": {
+                "en": "the inside of a subway car",
+                "it": "l'interno di un vagone della metro"
+            },
+            "can": [
+                "stand-near"
+            ],
+            "rating": "general",
+            "verified": true,
+            "position": [
+                -2.33,
+                -0.665,
+                -9.582
+            ],
+            "facingDeg": 75,
+            "framing": "fullBody",
+            "measured": {
+                "fromThingM": 0,
+                "viewOpenM": 6,
+                "thingOffBehindDeg": 169,
+                "framing": "fullBody",
+                "candidates": 58
+            }
+        },
+        {
+            "id": "carriage-far",
+            "label": {
+                "en": "further down the carriage",
+                "it": "più avanti nel vagone"
+            },
+            "room": "carriage",
+            "sees": {
+                "en": "the inside of a subway car",
+                "it": "l'interno di un vagone della metro"
+            },
+            "can": [
+                "stand-near"
+            ],
+            "rating": "general",
+            "verified": true,
+            "position": [
+                -1.33,
+                -0.665,
+                -8.582
+            ],
+            "facingDeg": 90,
+            "framing": "fullBody",
+            "measured": {
+                "fromThingM": 0,
+                "viewOpenM": 6,
+                "thingOffBehindDeg": 176,
+                "framing": "fullBody",
+                "candidates": 65
+            }
+        }
+    ]
+}
