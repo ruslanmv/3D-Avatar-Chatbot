@@ -880,8 +880,14 @@
         if (action.params.pose === 'turn') {
             const turner = turnerOf(s);
             if (!turner) return settle(action, 'failed', 'no-turn');
+            // UN21. The report: "Mi siedo per te" / "Girati" / "Mi giro per te" / she stayed
+            // seated, frozen. A held position owns her skeleton and a turn of the root under
+            // it read as nothing happening. A new body action means the last one is over:
+            // she stands up first, then turns, as a person would.
+            const wasHeld = typeof s.poses.held === 'function' ? s.poses.held() : null;
+            if (wasHeld) s.poses.release();
             const back = turner.toggle();
-            return settle(action, 'completed', null, { name: back ? 'turned' : 'front' });
+            return settle(action, 'completed', null, { name: back ? 'turned' : 'front', stoodUp: wasHeld || '' });
         }
         if (action.params.pose === 'back') {
             const out = s.poses.back();
