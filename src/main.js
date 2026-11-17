@@ -4762,6 +4762,9 @@ function __nexusSpeechFinished() {
         window.NEXUS_LIP_SYNC?.stop?.();
     } catch (_) {}
     try {
+        window.NEXUS_SPEECH_GESTURES?.stop?.();
+    } catch (_) {}
+    try {
         window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
     } catch (_) {}
     try {
@@ -4820,6 +4823,8 @@ function speakText(rawText) {
         // AX7. The mouth follows the same pace the voice is about to use.
         const rate = window.NEXUS_PRIVATE_PRESENTATION?.adjustVoice?.({ rate: baseRate }).rate || baseRate;
         window.NEXUS_LIP_SYNC?.start?.(text, rate);
+        // SG1. Her hands plan from the same text at the same pace as her mouth.
+        window.NEXUS_SPEECH_GESTURES?.start?.(text, rate);
     } catch (_) {}
     try {
         window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.startLipSync?.();
