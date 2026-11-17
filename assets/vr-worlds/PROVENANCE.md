@@ -255,23 +255,26 @@ in the app, in each place's note. Changes made (allowed by CC BY, and stated
 here as it requires): textures resized to at most 1024 px and re-encoded as
 WebP; unused data pruned; for the phone and Quest versions (`*-light.glb`) the
 mesh simplified with gltf-transform (meshoptimizer) to under 30 000 triangles
-and textures cut to 512 px; the entrance's light version also drops one object
+and textures cut to 512 px, keeping colour textures only (normal, roughness and
+occlusion maps removed); the entrance's light version also drops one object
 (recipe `anime-entrance-light`). No model was taken from an existing game or
 anime.
 
-| File stem                | Model                                           | Author                             | Source                                                                                                          |
-| ------------------------ | ----------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `anime-school-classroom` | The Japanese School Classroom                   | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-classroom-d9fc039ba0b6433db91ec129abe86b52>                |
-| `anime-school-corridor`  | The Japanese School Corridor                    | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-corridor-f7775fea6fc34f518424ef9cad55c926>                 |
-| `anime-school-hallway`   | School\_[hallway]                               | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-hallway-0f1e9ea00ef94425a62c28d26773ed47>                               |
-| `anime-school-stairs`    | School\_[stairs]                                | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-stairs-287058f9d2034f26a9f00e05e2138310>                                |
-| `anime-school-entrance`  | School\_[entrance]                              | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-entrance-62bf26754b2e42fd960dccfc3f9f6ceb>                              |
-| `anime-classroom-small`  | Japanese Classroom                              | ouz209                             | <https://sketchfab.com/3d-models/japanese-classroom-54bdec1baa5c4855a45a4f956d947960>                           |
-| `anime-night-street`     | Japanese street at night                        | AFX/CGMotion (afx_cgmotion)        | <https://sketchfab.com/3d-models/japanese-street-at-night-fb1bdcd71a5544d699379d2d13dd1171>                     |
-| `anime-subway-car`       | Subway\_[interior]                              | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/subway-interior-b7f25426ac674a9291ba092fb9fe8406>                              |
-| `anime-tatami-room`      | Japanese Tatami Room Set                        | Geraldo Pratama Wahyu Teddy (juyo) | <https://sketchfab.com/3d-models/japanese-tatami-room-set-8b5108dde0f24f76bda2313750e80134>                     |
-| `anime-grandma-house`    | DAE Diorama - Japanese Suburban Grandma's House | Trisha Lui (trishalui)             | <https://sketchfab.com/3d-models/dae-diorama-japanese-suburban-grandmas-house-94b9e197509f4389a5e7436846f0a344> |
+| File stem                | Model                         | Author                             | Source                                                                                           |
+| ------------------------ | ----------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `anime-school-classroom` | The Japanese School Classroom | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-classroom-d9fc039ba0b6433db91ec129abe86b52> |
+| `anime-school-corridor`  | The Japanese School Corridor  | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-corridor-f7775fea6fc34f518424ef9cad55c926>  |
+| `anime-school-hallway`   | School\_[hallway]             | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-hallway-0f1e9ea00ef94425a62c28d26773ed47>                |
+| `anime-school-stairs`    | School\_[stairs]              | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-stairs-287058f9d2034f26a9f00e05e2138310>                 |
+| `anime-school-entrance`  | School\_[entrance]            | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-entrance-62bf26754b2e42fd960dccfc3f9f6ceb>               |
+| `anime-classroom-small`  | Japanese Classroom            | ouz209                             | <https://sketchfab.com/3d-models/japanese-classroom-54bdec1baa5c4855a45a4f956d947960>            |
+| `anime-subway-car`       | Subway\_[interior]            | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/subway-interior-b7f25426ac674a9291ba092fb9fe8406>               |
+| `anime-tatami-room`      | Japanese Tatami Room Set      | Geraldo Pratama Wahyu Teddy (juyo) | <https://sketchfab.com/3d-models/japanese-tatami-room-set-8b5108dde0f24f76bda2313750e80134>      |
 
-Not taken: _School Rooftop_ (clonekrakein; 111 000 triangles over 120 × 205 m,
-with a skeleton and an animation, too heavy to make light), and anything ripped
-from a game (_Yakuza 5 – Karaoke room_, _Yandere Simulator_ props).
+Not taken, for phone and Quest performance: _Japanese street at night_
+(afx*cgmotion; 107 textures, 142 MB of GPU texture memory even reduced) and
+\_Japanese Suburban Grandma's House* (trishalui; 36 draw calls and 44 MB of
+textures, an exterior diorama). Also not taken: _School Rooftop_ (clonekrakein;
+111 000 triangles over 120 × 205 m, with a skeleton and an animation, too heavy
+to make light), and anything ripped from a game (_Yakuza 5 – Karaoke room_,
+_Yandere Simulator_ props).
