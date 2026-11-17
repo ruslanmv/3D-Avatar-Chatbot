@@ -139,12 +139,25 @@
         state.target = { aa: 0, ee: 0, oh: 0 };
         state.current = { aa: 0, ee: 0, oh: 0 };
         console.log(`[LipSync] Started — ${state.sequence.length} segments`);
+        // SG1. Her hands plan from the same text at the same pace as her mouth. Here rather than
+        // at one caller: desktop chat (main.js), VR chat (VRChatIntegration) and BehaviorEngine
+        // each start lip sync themselves, and this is the one call all of them make.
+        try {
+            global.NEXUS_SPEECH_GESTURES?.start?.(text, rate || 1.0);
+        } catch (_) {
+            /* gestures are decoration: never let them stop the mouth */
+        }
     }
 
     /**
      * Stop lip-sync and close mouth (smooth fade-out).
      */
     function stop() {
+        try {
+            global.NEXUS_SPEECH_GESTURES?.stop?.();
+        } catch (_) {
+            /* see start() */
+        }
         state.active = false;
         state.sequence = [];
         state.seqIndex = 0;

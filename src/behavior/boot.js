@@ -259,6 +259,9 @@
         'src/features/clips/ClipRecorder.js',
         'src/features/clips/ShareCard.js',
         'src/features/clips/ui/ClipButton.js',
+        // SG1. Co-speech gestures: read by ProceduralAnimator each frame and started beside lip
+        // sync in main.js, both by lookup, so its place in this list depends on nothing.
+        'src/features/gestures/SpeechGestures.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
         // IC1–IC3. Destinations and the experience runtime. After the activities

@@ -538,6 +538,28 @@
         }
     }
 
+    var _sgEuler = null;
+    var _sgWarned = false;
+    function applySpeechGestures() {
+        var SG = window.NEXUS_SPEECH_GESTURES;
+        if (!SG || typeof SG.sample !== 'function' || !bones) return;
+        try {
+            var offsets = SG.sample();
+            if (!offsets) return;
+            if (!_sgEuler) _sgEuler = new THREE.Euler();
+            for (var name in offsets) {
+                var bone = bones[name];
+                var o = offsets[name];
+                if (!bone || (o[0] === 0 && o[1] === 0 && o[2] === 0)) continue;
+                _sgEuler.set(o[0], o[1], o[2]);
+                applyAdditiveEuler(bone, _sgEuler);
+            }
+        } catch (error) {
+            if (!_sgWarned) console.warn('[ProceduralAnimator] speech gestures skipped', error);
+            _sgWarned = true;
+        }
+    }
+
     /**
      * Find a talk style definition from presets and apply it.
      */
@@ -953,6 +975,11 @@
         if (mode === 'talk') {
             // Speaking gesture animation — dispatches to active talkStyle
             applyTalkStyle(timeSec);
+            // SG1. Discrete co-speech gestures on top (src/features/gestures/SpeechGestures.js):
+            // strokes timed to the words being said, where the talk style alone is a steady sine.
+            // Additive, talk mode only, so dances, poses, Pose Studio and the VR puppet (which all
+            // return earlier in this function) are never touched. Absent module: nothing changes.
+            applySpeechGestures();
             // Jaw bone fallback for Tier C models (no morph targets)
             if (bones.jaw && AP && AP.IDLE_PARAMS) {
                 var jp = AP.IDLE_PARAMS.jawTalk;
