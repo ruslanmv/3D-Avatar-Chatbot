@@ -67,8 +67,10 @@ const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = path.join(HERE, 'runs', stamp);
 const SHOTS = path.join(OUT, 'shots');
 
-/** MotionAuditScorer's posture for a category. */
-const POSTURE = { sitting: 'sit', laying: 'lay', kneeling: 'low', action: 'low', exercise: 'low' };
+/** MotionAuditScorer's posture for a category. A dance is choreography: it may drop low, fold
+ * forward or go to the floor on purpose, so it is judged like a bend — its hips and head may come
+ * down — while floating, flipped legs and feet in the floor still fail it. */
+const POSTURE = { sitting: 'sit', laying: 'lay', kneeling: 'low', action: 'low', exercise: 'low', dance: 'bend' };
 
 /** In the page: step the playing clip to a time and read her skeleton. */
 function installSampler() {
