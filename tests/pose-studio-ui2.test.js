@@ -148,6 +148,65 @@ describe('UI2 the panel', () => {
         expect(adv.contains(document.getElementById('poseTposePresetSelect'))).toBe(false);
     });
 
+    test('UI4: bone editing and saving live in Advanced; the everyday controls stay in view', () => {
+        build();
+        const adv = document.getElementById('poseAdvanced');
+        for (const id of [
+            'poseMouseEditToggle',
+            'posePuppetToggle',
+            'poseBoneSelect',
+            'poseSliderX',
+            'poseSliderY',
+            'poseSliderZ',
+            'poseResetSelectedBtn',
+            'poseMirrorBtn',
+            'poseSaveName',
+            'poseSaveBtn',
+            'poseUndoBtn',
+            'poseRedoBtn',
+        ])
+            expect([id, adv.contains(document.getElementById(id))]).toEqual([id, true]);
+        for (const id of [
+            'poseNavNext',
+            'poseNavPrev',
+            'poseTposePresetSelect',
+            'posePresetSelect',
+            'poseApplyBtn',
+            'poseResetBtn',
+            'poseAnimGridEmotes',
+        ])
+            expect([id, adv.contains(document.getElementById(id))]).toEqual([id, false]);
+    });
+
+    test('UI4: closing Advanced puts the joint handles away; opening it brings them back', () => {
+        const gizmo = {
+            on: false,
+            isEnabled: () => gizmo.on,
+            enable: () => ((gizmo.on = true), true),
+            disable: () => (gizmo.on = false),
+        };
+        window.NEXUS_POSE_GIZMO_OVERLAY = gizmo;
+        try {
+            build();
+            const adv = document.getElementById('poseAdvanced');
+            const sw = document.getElementById('poseMouseEditToggle');
+            adv.open = true;
+            adv.dispatchEvent(new Event('toggle'));
+            sw.checked = true;
+            sw.dispatchEvent(new Event('change'));
+            expect(gizmo.on).toBe(true);
+            adv.open = false;
+            adv.dispatchEvent(new Event('toggle'));
+            expect(gizmo.on).toBe(false);
+            expect(sw.checked).toBe(true); // the setting is kept
+            adv.open = true;
+            adv.dispatchEvent(new Event('toggle'));
+            expect(gizmo.on).toBe(true);
+        } finally {
+            delete window.NEXUS_POSE_GIZMO_OVERLAY;
+        }
+    });
+
     test('actions bind the editor to the avatar on stage first', () => {
         build();
         const n = editor.rebound;

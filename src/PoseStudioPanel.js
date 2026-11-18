@@ -203,11 +203,24 @@
             '      <option value="presentation">Presentation (30\u00B0 arms)</option>' +
             '    </select>' +
             '  </div>' +
-            // UI3. Advanced: the rig's neutral and the correction strength, for building a pose
-            // from zero or checking a model. Closed by default.
+            // Section 2: Pose presets dropdown + user saved poses
+            '  <div class="pose-studio-section">' +
+            '    <label class="pose-studio-label">Poses</label>' +
+            '    <select id="posePresetSelect" class="pose-studio-select"></select>' +
+            '    <div class="pose-studio-actions">' +
+            '      <button id="poseApplyBtn" class="primary-btn small-btn">Apply</button>' +
+            '      <button id="poseResetBtn" class="secondary-btn small-btn">Reset All</button>' +
+            '    </div>' +
+            '  </div>' +
+            // UI3/UI4. Advanced, closed by default: the tools for building a pose by hand — the
+            // T-pose and correction strength, bone editing (mouse, Puppet IK, per-bone sliders, reset,
+            // mirror) and saving with undo. Hard to use well from a panel, and the everyday path (pick
+            // a pose, Apply, Reset All, a Behavior chip) needs none of it, so it stays out of sight
+            // until someone opens it.
             '  <details id="poseAdvanced" class="pose-studio-section pose-studio-advanced">' +
             '    <summary class="pose-studio-label" style="cursor:pointer;user-select:none;">Advanced</summary>' +
             '    <div style="padding-top:8px;">' +
+            '      <div class="pose-toggle-hint" style="margin-bottom:8px;">For building a pose by hand. Pick a pose above for everyday use.</div>' +
             '      <label class="pose-studio-label">T-Pose Correction</label>' +
             '      <div class="pose-slider-row">' +
             '        <div class="pose-slider-head">' +
@@ -222,17 +235,6 @@
             '        <button id="poseTposeRestoreBtn" class="secondary-btn small-btn">Restore recommended (1.0)</button>' +
             '        <button id="poseTposeStartBtn" class="secondary-btn small-btn" title="The rig\u2019s neutral pose, to build a pose from zero">Start from T-pose</button>' +
             '      </div>' +
-            '    </div>' +
-            '  </details>' +
-            // Section 2: Pose presets dropdown + user saved poses
-            '  <div class="pose-studio-section">' +
-            '    <label class="pose-studio-label">Poses</label>' +
-            '    <select id="posePresetSelect" class="pose-studio-select"></select>' +
-            '    <div class="pose-studio-actions">' +
-            '      <button id="poseApplyBtn" class="primary-btn small-btn">Apply</button>' +
-            '      <button id="poseResetBtn" class="secondary-btn small-btn">Reset All</button>' +
-            '    </div>' +
-            '  </div>' +
             // Section 3: Mouse Bone Editing Toggle
             '  <div class="pose-studio-section">' +
             '    <div class="pose-toggle-row">' +
@@ -324,6 +326,8 @@
             '      <button id="poseRedoBtn" class="secondary-btn small-btn">Redo</button>' +
             '    </div>' +
             '  </div>' +
+            '    </div>' +
+            '  </details>' +
             // Section 6: Animations — organized into Behavior / Motion / Talk
             '  <div class="pose-studio-section">' +
             '    <label class="pose-studio-label">\uD83C\uDFAD Behavior (Live)</label>' +
@@ -993,6 +997,24 @@
 
                 // Re-apply natural pose with new intensity
                 self._reapplyNaturalPose();
+            });
+        }
+
+        // --- UI4. Bone editing follows the Advanced section: closing it puts the joint handles
+        // away (the switch keeps its setting), opening it brings them back if the switch is on.
+        const advancedEl = this.rootEl.querySelector('#poseAdvanced');
+        if (advancedEl) {
+            advancedEl.addEventListener('toggle', () => {
+                const gizmo = window.NEXUS_POSE_GIZMO_OVERLAY;
+                const sw = self.rootEl.querySelector('#poseMouseEditToggle');
+                if (!gizmo || !sw) return;
+                if (!advancedEl.open) {
+                    if (gizmo.isEnabled && gizmo.isEnabled()) gizmo.disable();
+                    self._mouseEditEnabled = false;
+                } else if (sw.checked && gizmo.enable) {
+                    self._mouseEditEnabled = gizmo.enable() !== false;
+                    sw.checked = self._mouseEditEnabled;
+                }
             });
         }
 
@@ -1872,11 +1894,14 @@
                 wantMouseEdit = localStorage.getItem('nexus-pose-mouse-edit') === '1';
             } catch (_) {}
             var gizmoOn = gizmoRef.isEnabled ? gizmoRef.isEnabled() : false;
-            if (wantMouseEdit && !gizmoOn && gizmoRef.enable) {
+            // UI4. The switch lives in the closed Advanced section: the remembered preference only
+            // comes back with it, so nobody meets joint handles on her with no visible switch.
+            var advancedOpen = !!(this.rootEl.querySelector('#poseAdvanced') || {}).open;
+            if (wantMouseEdit && advancedOpen && !gizmoOn && gizmoRef.enable) {
                 gizmoOn = gizmoRef.enable() !== false;
             }
             this._mouseEditEnabled = gizmoOn;
-            mouseToggleEl.checked = gizmoOn;
+            mouseToggleEl.checked = gizmoOn || (wantMouseEdit && !advancedOpen);
         }
         var puppetToggleEl = this.rootEl.querySelector('#posePuppetToggle');
         if (puppetToggleEl && window.NEXUS_POSE_PUPPET_IK) {
