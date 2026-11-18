@@ -1113,5 +1113,9 @@
         // exactly as they were (src/gltf-viewer/PuppetSkeleton.js).
         isPoseMode: () => poseMode,
         isEditMode: () => editMode,
+        // UI2. The mode she is in right now, read-only. The UI tour (audits/ui/run.mjs) checks that
+        // a Behavior chip in Pose Studio really put her in its mode; a highlighted chip proves only
+        // that the click landed.
+        getMode: () => mode,
     };
 })();
