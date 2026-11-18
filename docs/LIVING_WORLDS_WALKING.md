@@ -235,7 +235,8 @@ ignores the navmesh, which is how agents get pushed through walls. Instead:
   on the navmesh (this is Unreal's "capsule follows root motion" rule, turned
   around).
 - `playbackRate = speed / clipStrideSpeed`, with `clipStrideSpeed` measured once
-  per clip by the motion audit and stored next to the clip's `USE` hint. That
+  per clip by the animation review (`npm run audit:animations`, §9.0 point 8)
+  and stored next to the clip's `USE` hint. That
   keeps the feet planted at every speed of the arrive ramp.
 - Walking is refused while anything holds her bones: Pose Studio, a VR puppet
   (`vrPoseSystem.claimBones()`), a Private pose. The walk asks; it does not
@@ -387,15 +388,33 @@ Each batch leaves `npm run validate` at exit 0, and updates
 
 ## 9. Implementation plan, file by file (on `claude/gestures-quest-mobile`)
 
-Built on `claude/gestures-quest-mobile` at `fb5b5fd` (2026-11-18), 20 commits
+Built on `claude/gestures-quest-mobile` at `bcb3421` (2026-11-18), 22 commits
 ahead of `ultimate` and none behind. That is `ultimate` plus:
 - SG1–SG8, the co-speech gestures and the conversation audit;
 - MO15–MO17, the idle pool, the turn clock and the hips sway;
-- UI1–UI3, the menu and Pose Studio tour (`npm run audit:ui`) and the Pose
-  Studio fixes.
+- UI1–UI4, the menu and Pose Studio tour (`npm run audit:ui`) and the Pose
+  Studio fixes;
+- AN1–AN2, the animation review (`npm run audit:animations`) and BVH clips
+  retargeted onto the normalized rig again.
 
 Every path and line below was read in that tree. Re-check them if the branch
 has moved when a batch starts.
+
+**Updated at `bcb3421`** (two commits since `fb5b5fd`):
+- AN2 changed how BVH clips reach her skeleton. The optional locomotion
+  player probably no longer shows its walk; §9.0 point 9 covers it, and LW6.3
+  starts by checking it.
+- AN1's clip review measures foot skate. That is how `clipStrideSpeed` is
+  measured, and the walk clip gets its own category there (§9.0 point 8).
+  This replaces the `idle-arm-check` step of the previous update.
+- UI4 moved bone editing and Puppet Mode into Pose Studio's closed Advanced
+  section. Walking's refusal reads Pose Studio's edit and pose modes, not
+  where the controls sit, so nothing changes there. UI4 re-recorded the parity
+  baseline again, which confirms the rule of loading the new modules from
+  `ViewerEngine.js`.
+- No line reference in this plan moved: the two commits touch none of the
+  cited files except `PoseStudioPanel.js`, which the plan does not cite by
+  line.
 
 **Updated at `fb5b5fd`** (eight commits since `8e2a1de`, the first reading):
 - MO17 quarantined one more idle, so the idle pool is four clips.
@@ -478,6 +497,44 @@ this branch there is a more common one, and it decides where the work goes:
    `setAllowWithMixer(true)` is the default. The `walks` audit measures
    whether sway on top of the gait unbalances her. If it does, the
    `state.walking` gate below also covers the sway, not only the gestures.
+8. **There is now a clip review to judge the walk clip by (AN1).**
+   `npm run audit:animations` (`audits/animations/run.mjs`) plays every clip
+   Pose Studio lists, steps it to exact times and scores it with
+   `tools/qa/ClipQualityScorer.js` (pure, unit-tested). It checks floating,
+   sinking, tipping, feet through the floor, reversed knees, foot skate, hand
+   in body, pops, loop seams, and travel or turn in a clip meant to stay in
+   place. Two uses here:
+    - **Is `action_walk.bvh` fit to ship?** Today it falls in the scorer's
+      `action` category: no loop, may travel. A walk cycle is neither. Add a
+      `locomotion` category (`posture: 'stand'`, `loops: true`,
+      `inPlace: true`) and file the walk clips under it. Then a loop seam (a
+      hitch every stride) or root travel (root motion we do not want) is
+      reported, not excused. Run
+      `node audits/animations/run.mjs --only action_walk --avatars AvatarSample_A,Vita,VRM_Viewer_Sample`.
+    - **Measure its stride speed.** In an in-place walk, the planted foot
+      slides backwards at exactly the speed the body would travel. The
+      scorer's planted-foot velocity (its `foot-skate` measurement, which a
+      `locomotion` clip must not be failed for) gives `clipStrideSpeed` per
+      avatar, measured rather than guessed. That makes `playbackRate` (§3.6)
+      the number that keeps the feet still on the floor.
+9. **BVH clips drive the normalized rig again (AN2), and the locomotion
+   player may not have caught up.** BVH tracks now name the *normalized*
+   bones. They reach her skeleton only while three-vrm copies normalized to
+   raw, which `ClipAnimationLoader.playClip` switches on
+   (`setHumanoidAutoUpdate(true)`, `src/ClipAnimationLoader.js:173`).
+   `AnimationBlendController` loads its clips through the same
+   `NEXUS_CLIP_LOADER.loadClip`, so they carry normalized tracks too. But it
+   plays them on **its own mixer** and never switches that copy on: no
+   `humanoid` or `AutoUpdate` reference in `src/AnimationBlendController.js`
+   or `src/AvatarLocomotionSystem.js`. The likely result is that the dev-only
+   locomotion path moves her root while her legs hold the rest pose.
+
+   This is read from the code, not yet seen in the renderer. The default
+   path (the manual glide, which plays the walk through `playClip`) is not
+   affected. LW6.3 starts by checking it in the page. If confirmed, the fix
+   is the one `playClip` already makes: the blend controller switches the
+   copy on while it drives the skeleton and hands it back when it stops,
+   snapshot-and-restore style.
 
    It does this across a 20-transition positions matrix, and
    `npm run audit:conversation` (SG8) runs it with the motion audit as one
@@ -622,7 +679,10 @@ This is the batch that fixes the bug people see on this branch.
     - `_updateWalk` (`:821`) steps the follower in **both** modes. In manual
       mode it writes position and heading. In locomotion mode it feeds the
       follower's point to the locomotion system as its next target, which then
-      only plays and blends clips.
+      only plays and blends clips. Before relying on that mode, confirm in the
+      page that its walk is visible after AN2 (§9.0 point 9), and fix
+      `AnimationBlendController` if it is not. The manual glide is the
+      default, so LW6.3 can ship on it alone.
     - `retreat` (`:997`) uses `NavWalk.retreatGoal`.
     - The `sit` seat walk (`:1065`) uses `seatApproach`.
     - `follow` (`:839`) re-plans at its existing 4 Hz. A path search at that
@@ -751,11 +811,17 @@ clean navmesh records why and keeps the §9.4 "place without nav file" rules.
 4. Each batch: `LW6.n:` commit subjects, `npm run validate` at exit 0, and
    `develop/NEEDS_FIX.md` for any walk clip the audit fails, never shipped.
    For example, if `action_walk.bvh` turns out to lean or float the way the
-   MO15 idles did. Before LW6.3, run
-   `node tools/qa/idle-arm-check.mjs --clips vendor/animations/action/action_walk.bvh`
-   on the three avatars. Read only its torso **clearance**: a walk swings the
-   arms in turn, so its asymmetry limit (14°) does not apply. An arm through
-   her cardigan on the swing is a quarantine, the same as MO17's.
+   MO15 idles did. Before LW6.3:
+    - add the `locomotion` category to `ClipQualityScorer` (with its unit
+      test in `tests/clip-quality-scorer.test.js`);
+    - run `audit:animations --only action_walk` on the three avatars (§9.0
+      point 8) and record `clipStrideSpeed` from it;
+    - check the hands: a walk swings the arms in turn, so `hand-in-body` is
+      the arm check that applies. MO17's asymmetry limit in
+      `idle-arm-check` does not. An arm through her cardigan on the swing is
+      a quarantine, the same as MO17's.
+   Run `audit:animations` again after LW6.3 too: AN1 is the review that
+   catches a clip regressing, as AN2 showed.
 
 ## Sources
 
