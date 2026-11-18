@@ -491,6 +491,7 @@
         avatarVRM: null,
         basePath: 'vendor/animations',
         cachedBoneMap: null,
+        bvhBoneMap: null, // AN2. the normalized-rig map BVH retargets onto (BVHAnimationLoader)
         // VRMA proxy
         vrmaProxyRoot: null,
         vrmaProxyEntries: [],

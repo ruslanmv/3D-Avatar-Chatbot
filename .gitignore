@@ -307,3 +307,4 @@ tools/qa/gesture-tune.out.json
 tools/qa/idle-arm-check.out.json
 audits/suite/runs/
 audits/ui/runs/
+audits/animations/runs/
