@@ -43,6 +43,24 @@
      * the measured file; an id with no words can still be reached from the menu and from her tag.
      */
     const WORDS = Object.freeze({
+        // VW12. The anime places: a school's rooms, a tatami room, a subway car.
+        blackboard: ['blackboard', 'chalkboard', 'board', 'lavagna'],
+        'teacher-desk': ["teacher's desk", 'teacher desk', 'cattedra'],
+        desks: ['desks', 'school desks', 'seats', 'banchi', 'banco', 'posti'],
+        windows: ['window', 'windows', 'finestra', 'finestre'],
+        bookshelf: ['bookshelf', 'bookcase', 'shelf', 'libreria', 'scaffale'],
+        corridor: ['corridor', 'corridoio'],
+        altar: ['altar', 'shrine', 'altare'],
+        table: ['low table', 'tea table', 'table', 'tavolino', 'tavolo'],
+        cushions: ['cushions', 'cushion', 'zabuton', 'cuscini', 'cuscino'],
+        shoji: ['shoji', 'sliding door', 'paper screen', 'porta scorrevole'],
+        lamp: ['lamp', 'lantern', 'lampada', 'lanterna'],
+        stairwell: ['stairs', 'stairwell', 'staircase', 'scale', 'scalinata'],
+        'stairwell-far': ['other side of the stairs', 'altro lato delle scale'],
+        carriage: ['carriage', 'train car', 'vagone', 'carrozza'],
+        'carriage-far': ['end of the carriage', 'fondo del vagone'],
+        classroom: ['classroom', 'aula'],
+        'classroom-far': ['other side of the classroom', "altra parte dell'aula"],
         sofa: ['sofa', 'couch', 'divano', 'salotto', 'living room', 'soggiorno'],
         'record-player': ['record player', 'records', 'vinyl', 'music corner', 'giradischi', 'dischi', 'vinili'],
         kitchen: ['kitchen', 'cucina'],

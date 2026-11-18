@@ -15,6 +15,21 @@ fantasy places (VW9) in `docs/VR_WORLDS.md`. Rules behind the steps:
 
 A scene already under 30 000 is one world with all three tiers and no light version.
 
+## The fast path (VW12)
+
+`/add-place <uid or file> <stem>` walks every step below. Its first command does
+steps 1 to 3 at once and refuses a scene too heavy for a phone or a Quest:
+
+```bash
+node tools/vr/prepare-scene.mjs --sketchfab <uid> --name <stem>
+```
+
+Then spots with `measure-spots.mjs` (targets on the printed material names,
+`"anywhere": true` where nothing is named, `"floorUnderRoof": true` under a
+ceiling), the catalogue entries, the pictures, the gate. A room exported as one
+merged mesh: `tools/vr/split-by-material.mjs` names its parts, and
+`tools/vr/floor-spot.mjs` finds one standing point on its real floor.
+
 ## Steps
 
 1. **Get the file.** GLB only, a licence that allows redistribution (CC0 is the norm here).
@@ -71,6 +86,10 @@ A scene already under 30 000 is one world with all three tiers and no light vers
    **Open `tmp/shots/<id>-desktop.jpg` and `-mobile.jpg` and look.** Every place added so far
    had a defect only the picture showed: a sofa across her legs, a wall between camera and
    bar, the camera outside the building, the camera inside a wall.
+   To compare preview angles without editing anything:
+   `node tools/vr/render-place-previews.mjs <id> --yaw 0 --out /tmp/pv0` (also `22`); the angle
+   that frames her goes into `PLACE_CAMERA`. A different verified spot:
+   `node tools/vr/at-from-spot.mjs scenes/<file>.glb <spot-id> --write`.
 
 7. **Record and regenerate.** A row in `assets/vr-worlds/PROVENANCE.md` (file, source URL,
    licence, triangles), a short section in `docs/VR_WORLDS.md`, then:

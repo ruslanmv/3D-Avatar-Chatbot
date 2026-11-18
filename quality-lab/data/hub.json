@@ -21,14 +21,14 @@
             "humanReviews": 0
         },
         "3d": {
-            "worlds": 59,
+            "worlds": 70,
             "offered": {
-                "desktop": 43,
-                "mobile": 41,
-                "vr": 42
+                "desktop": 49,
+                "mobile": 47,
+                "vr": 48
             },
             "fails": 0,
-            "warns": 19,
+            "warns": 25,
             "animations": {
                 "avatars": 20,
                 "clips": 163,
@@ -165,8 +165,8 @@
             "id": "3d-vr-comfort",
             "area": "3d",
             "priority": 3,
-            "title": "Check VR comfort near her spot in 17 worlds",
-            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy, cinema-light, sports-hall, soccer-ground, dungeon, jungle-ruins-light, school-light.",
+            "title": "Check VR comfort near her spot in 23 worlds",
+            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy, cinema-light, sports-hall, soccer-ground, dungeon, jungle-ruins-light, school-light, anime-classroom-light, anime-classroom-small, anime-corridor-light, anime-stairs-light, anime-subway-light, anime-tatami-light.",
             "command": "node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset",
             "files": [
                 "assets/vr-worlds/worlds.json",

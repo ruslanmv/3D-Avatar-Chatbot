@@ -179,3 +179,27 @@ moves the room with the runtime's own `goToSpot`, counts scene vertices inside h
 reason and is never offered; the per-place counts are in the audit
 (`quality-lab/data/3d/worlds-audit.json`). The props-built places (hotel suite, hotel bathroom,
 shopping street) have no scene file and so no spots. She still does not sit.
+
+## VW12. Spots in downloaded rooms
+
+Sketchfab rooms are usually one merged mesh with a ceiling, and both broke
+`measure-spots.mjs`:
+
+- **Nothing to stand by.** `near` matches top-level node names, and a merged
+  room has one node. `tools/vr/split-by-material.mjs` gives every material its
+  own named top-level node (only the GLB's JSON changes; the scene looks the
+  same), so a target can say `"near": ["^School_blackboards$"]`. A room with
+  one palette material has nothing to name: its targets say
+  `"anywhere": true` (any floor point; the body, view, camera and spacing
+  checks all still run).
+- **A ceiling.** The floor was voted from the first upward face straight down,
+  which under a roof is the roof's top: the classroom's floor came out at
+  3.34 m and every spot failed. `"floorUnderRoof": true` in the scene's entry
+  counts every upward face down each line and takes the lowest broad level.
+  Opt-in, so no scene measured before changes.
+- **Words.** Each spot id needs its words in `WorldSpots.WORDS`; the label
+  alone is a whole phrase ("vicino alla lavagna") and does not match
+  "andiamo alla lavagna".
+- `tools/vr/floor-spot.mjs` finds a single standing point on a merged room's
+  real floor when no spot targets are wanted.
+
