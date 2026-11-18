@@ -387,10 +387,24 @@ Each batch leaves `npm run validate` at exit 0, and updates
 
 ## 9. Implementation plan, file by file (on `claude/gestures-quest-mobile`)
 
-Built on `claude/gestures-quest-mobile` at `8e2a1de` (2026-11-18): `ultimate`
-plus the SG1–SG8 co-speech gestures and the MO15–MO16 motion fixes, 12 commits
-ahead and none behind. Every path and line below was read in that tree.
-Re-check them if the branch has moved when a batch starts.
+Built on `claude/gestures-quest-mobile` at `fb5b5fd` (2026-11-18), 20 commits
+ahead of `ultimate` and none behind. That is `ultimate` plus:
+- SG1–SG8, the co-speech gestures and the conversation audit;
+- MO15–MO17, the idle pool, the turn clock and the hips sway;
+- UI1–UI3, the menu and Pose Studio tour (`npm run audit:ui`) and the Pose
+  Studio fixes.
+
+Every path and line below was read in that tree. Re-check them if the branch
+has moved when a batch starts.
+
+**Updated at `fb5b5fd`** (eight commits since `8e2a1de`, the first reading):
+- MO17 quarantined one more idle, so the idle pool is four clips.
+- MO17 moved the hips sway onto the hips bone; see §9.0 point 7.
+- UI3 re-recorded the parity baseline, which now pins every `<script>` tag in
+  `index.html`. The new modules therefore load from `ViewerEngine.js` (§9.4).
+- MO17 added `tools/qa/idle-arm-check.mjs`; the walk clip is checked with it
+  (§9.8).
+- Line references were re-read: `ProceduralAnimator.js` moved; the rest held.
 
 ### 9.0 What this branch changes about the problem
 
@@ -419,7 +433,7 @@ this branch there is a more common one, and it decides where the work goes:
    (`src/features/gestures/SpeechGestures.js`, the SG3 additive layer applied by
    `ProceduralAnimator.update`). They step aside only when `NEXUS_CLIP_LOADER`
    reports a clip playing, or in pose mode, edit mode or Pose Studio
-   (`src/ProceduralAnimator.js:781-793`). The manual glide plays its walk
+   (`src/ProceduralAnimator.js:798-811`). The manual glide plays its walk
    through `NEXUS_CLIP_LOADER`, so gestures stop. `AnimationBlendController`
    plays its walk on **its own mixer**, which that check does not see, so
    gestures would land on top of the arm swing. The walk must switch gestures
@@ -429,9 +443,13 @@ this branch there is a more common one, and it decides where the work goes:
    wall-clock net that finishes the turn (`:311-357`). The walk's turn in place
    and final facing reuse `_turnBy` / `_faceTarget`; `PathFollower` adds no
    second turning implementation.
-4. **Standing still after a walk now has a balanced idle pool (MO15).**
-   `neutral.bvh`, `neutral_idle.bvh` and `neutral4.bvh` are quarantined
-   (`MotionClipMap.js:632-633`). The walk's stop must hand over to
+4. **Standing still after a walk now has a balanced idle pool (MO15, MO17).**
+   Four idles are quarantined (`MotionClipMap.js:637-642`):
+    - `neutral.bvh`, `neutral_idle.bvh` and `neutral4.bvh` as `'lean'`;
+    - `neutral3.bvh` as `'uneven'`, with one arm out and the other against
+      her side.
+
+   Four clips remain in the pool. The walk's stop must hand over to
    `_scheduleIdle` (the pool that respects the quarantine), never to a clip
    `AnimationBlendController` loads by path.
 5. **Postures are handled already.** `walkTo` stands her up first when she sits
@@ -445,6 +463,21 @@ this branch there is a more common one, and it decides where the work goes:
       length);
     - feet against the floor (6 cm);
     - facing the camera.
+
+   UI1–UI3 add `npm run audit:ui`, a tour of the menu and Pose Studio. It
+   matters here only because walking must be refused while Pose Studio holds
+   her (§9.4), and the tour is where that refusal gets a click-level check.
+7. **The hips sway now turns about her pelvis (MO17).** `ProceduralAnimator`
+   used to take VRoid's armature bone `Root` (the hips' parent, on the floor)
+   for the hips, so every sway rolled her whole body about her feet. It now
+   uses the VRM's raw `hips`, falling back to `Root` only when there is none.
+   That fixes the name clash this plan would otherwise trip over: a walk
+   moves her **avatar root object** (`_avatarRoot`, the scene node the
+   viewer places), and must never write the armature bone called `Root`.
+   The sway still runs while the walk clip plays, because
+   `setAllowWithMixer(true)` is the default. The `walks` audit measures
+   whether sway on top of the gait unbalances her. If it does, the
+   `state.walking` gate below also covers the sway, not only the gestures.
 
    It does this across a 20-transition positions matrix, and
    `npm run audit:conversation` (SG8) runs it with the motion audit as one
@@ -557,11 +590,15 @@ This is the batch that fixes the bug people see on this branch.
 - **`src/gltf-viewer/PathFollower.js`**: as designed in §3.4, but **without a
   turn of its own**. It returns `{ point, poly, heading, speed, turnFirst }`.
   `turnFirst` tells the caller to turn in place with `_turnBy` before moving.
-- **`src/xr/NavWalk.js`**: IIFE, `window.NEXUS_NAV_WALK`, loaded by a `defer`
-  tag right after `MotionIntegration.js` (`index.html:3832`). It is one line,
-  well above the wardrobe tags at the end of `<body>`; run the parity harness
-  test to confirm no frozen line moved, or else side-effect-import it from
-  `ViewerEngine.js` like `NavQuery`.
+- **`src/xr/NavWalk.js`**: IIFE, `window.NEXUS_NAV_WALK`. It is
+  **side-effect-imported from `ViewerEngine.js`**, beside `NavQuery` and
+  `PathFollower` (after `import './WorldSpots.js'`, line 37). It is not a new
+  `<script>` tag: since UI3, `tests/behavior/baseline/boot-baseline.json`
+  (recorded by `scripts/behavior-parity-baseline.mjs`) pins every `<script>` in
+  `index.html`, and a new tag would mean re-recording it. `MotionIntegration`
+  (a `defer` tag at `index.html:3832`) reads `window.NEXUS_NAV_WALK` lazily at
+  walk time, as it already does `NEXUS_LOCOMOTION`, so the order the two load
+  in does not matter.
     - `plan(fromWorld, goalWorld, stopDist)` returns
       `{ ok, path, why }`:
         - converts to scene-local through the active `vr-world-scene:` node's
@@ -609,7 +646,7 @@ This is the batch that fixes the bug people see on this branch.
       `follow` and seat walks are refused with `why: 'no-navmesh'`, and she
       stays put. One `console.warn` per scene.
 - **Gestures off while walking**: `ProceduralAnimator.update`'s `allowed`
-  (`src/ProceduralAnimator.js:793`) gains
+  (`src/ProceduralAnimator.js:811`) gains
   `&& !window.NEXUS_MOTION?.state?.walking`. `walkTo` keeps a `state.walking`
   flag, which `state.lastActivity` already reports as `'walking'` through
   `bodyStatus` (`:1842`). Gestures come back with the next words after she
@@ -702,15 +739,23 @@ clean navmesh records why and keeps the §9.4 "place without nav file" rules.
 1. **LW6.1 and LW6.2** first, in parallel. They touch no file the gesture work
    touched.
 2. **LW6.3** next. It edits `MotionIntegration.js` and `ProceduralAnimator.js`,
-   both changed by SG3 and MO16 on this branch. Merge `ultimate` (and this
+   both changed on this branch (`MotionIntegration` by MO16;
+   `ProceduralAnimator` by SG3 and MO17). Merge `ultimate` (and this
    branch's own updates) into the work branch **before** starting it, and
    run `npm run audit:conversation` before and after: the positions matrix
    (20/20 ok at `8e2a1de`) and the gesture audit (78 ok) must not regress.
+   Re-run both at `fb5b5fd` first to set the baseline: MO17 changed the idle
+   pool and the hips since those numbers. Also run `npm run audit:ui` before
+   and after, for the Pose Studio refusal.
 3. **LW6.4** and **LW6.5** after LW6.3, in either order.
 4. Each batch: `LW6.n:` commit subjects, `npm run validate` at exit 0, and
    `develop/NEEDS_FIX.md` for any walk clip the audit fails, never shipped.
    For example, if `action_walk.bvh` turns out to lean or float the way the
-   MO15 idles did.
+   MO15 idles did. Before LW6.3, run
+   `node tools/qa/idle-arm-check.mjs --clips vendor/animations/action/action_walk.bvh`
+   on the three avatars. Read only its torso **clearance**: a walk swings the
+   arms in turn, so its asymmetry limit (14°) does not apply. An arm through
+   her cardigan on the swing is a quarantine, the same as MO17's.
 
 ## Sources
 
