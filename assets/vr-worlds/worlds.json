@@ -3606,8 +3606,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-corridor.glb",
-        "at": [-20.553, -0.005, -46.252],
-        "turn": -80
+        "at": [-2.063, 0, -0.803],
+        "turn": 20
       },
       "preview": "previews/anime-corridor.webp",
       "category": "School"
@@ -3647,8 +3647,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-corridor-light.glb",
-        "at": [-20.553, -0.005, -46.252],
-        "turn": -80
+        "at": [-2.063, 0, -0.803],
+        "turn": 20
       },
       "lightFor": "anime-corridor"
     },
