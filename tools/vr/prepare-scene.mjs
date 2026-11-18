@@ -191,17 +191,18 @@ async function main() {
         console.log(
             `  credit: "${credit.name}" by ${credit.author} (${credit.username}), ${credit.licence}, ${credit.url}`
         );
-    console.log('\nNext (docs/claude/adding-a-place.md):');
-    console.log(`  1. spot targets in tools/vr/spot-targets.json ("floorUnderRoof": true for a room with a ceiling)`);
+    const both = `scenes/${name}.glb${lightCost ? ` and scenes/${name}-light.glb` : ''}`;
+    console.log('\nNext (.claude/commands/add-place.md has every step):');
     console.log(
-        `  2. node tools/vr/measure-spots.mjs scenes/${name}.glb${lightCost ? `   and   scenes/${name}-light.glb` : ''}`
+        `  1. spot targets for ${both} in tools/vr/spot-targets.json, words for new spot ids in WorldSpots.WORDS`
     );
+    console.log(`  2. node tools/vr/measure-spots.mjs <file>, one file at a time; prettier --write the spot files`);
+    console.log('  3. worlds.json entries copied from anime-corridor; credit in the note; generalOnly for a school');
+    console.log(`  4. node tools/vr/at-from-spot.mjs scenes/${name}.glb --write`);
     console.log(
-        '  3. worlds.json entries (scene.at/turn from the first verified spot), PROVENANCE.md row, credit in the note'
+        '  5. render-place-previews.mjs <id> --yaw 0|22|-22, lab_screenshot; look; leave it out if it looks wrong'
     );
-    console.log(
-        '  4. node tools/vr/render-place-previews.mjs <id>; look at the pictures; world-audit; npm run validate'
-    );
+    console.log('  6. PROVENANCE.md row, world-audit, hub, npm run validate');
 }
 
 main().catch((e) => {
