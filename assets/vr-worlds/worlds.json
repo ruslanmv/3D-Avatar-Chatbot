@@ -3687,7 +3687,7 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-entrance.glb",
-        "at": [14.158, 0.571, 6.46],
+        "at": [6.158, 0.571, 5.46],
         "turn": 0
       },
       "preview": "previews/anime-entrance.webp",
@@ -3728,7 +3728,7 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-entrance-light.glb",
-        "at": [14.158, 0.571, 6.46],
+        "at": [6.158, 0.571, 5.46],
         "turn": 0
       },
       "lightFor": "anime-entrance"
