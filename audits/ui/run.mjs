@@ -15,6 +15,11 @@
  * Pose Studio writes, and the raw skeleton that is rendered), the procedural mode, expression
  * weights, a clip's playback state, where keyboard focus went.
  *
+ * Pose Studio's layout (UI3–UI4): the everyday controls are in view, and the T-pose, bone editing
+ * (mouse, Puppet, sliders, Reset Selected, Mirror) and saving with Undo/Redo sit in a closed
+ * "Advanced" section. The tour checks that layout, and every step that needs one of those tools
+ * opens Advanced with a click on its heading, as a person would, so the steps stay independent.
+ *
  * Exclusions agreed with the owner: the Spicy behaviours (Flirt, Tease, Intimate, Sensual Sway,
  * Beckon) are never clicked, and their grid is masked in every frame; the adult presets are absent
  * because Private is off, and the tour fails if one shows up.
@@ -246,6 +251,12 @@ const INVENTORY = [
     ['Experience', 'Together', '.drawer-nav-item:has-text("Together")', 'opens the Together panel'],
     ['Help', 'About', '#drawer-info-btn', 'opens #info-modal'],
     ['Help', 'GitHub', '#mobile-drawer a[href*="github.com"]', 'opens github.com/ruslanmv/3D-Avatar-Chatbot'],
+    [
+        'Pose Studio',
+        'Advanced (closed by default)',
+        '#poseAdvanced',
+        'holds the T-pose, bone editing and saving; closing it puts the joint handles away',
+    ],
     ['Pose Studio', 'Close', '#poseStudioCloseBtn', 'hides the panel, ends editing, focus back to the opener'],
     ['Pose Studio', 'Pose Navigator ‹ (back)', '#poseNavPrev', 'previous preset, wraps at 1'],
     ['Pose Studio', 'Pose Navigator › (next)', '#poseNavNext', 'next preset, wraps at the end'],
@@ -862,10 +873,19 @@ async function tourPoseStudio(D, browser, base) {
         await settle(1100);
     };
     // UI3. The rig's T-pose is an Advanced action now, not an entry in the Poses list.
+    // UI4. The T-pose, bone editing (mouse, Puppet, sliders, Reset Selected, Mirror) and saving
+    // with Undo/Redo live in the closed "Advanced" section. Every step that uses one opens it the
+    // way a person does — a click on its heading — so steps do not depend on each other's state.
+    const advanced = async (open) => {
+        const isOpen = await ev(() => document.getElementById('poseAdvanced').open);
+        if (isOpen !== open) {
+            await page.locator('#poseAdvanced > summary').scrollIntoViewIfNeeded();
+            await page.locator('#poseAdvanced > summary').click();
+            await settle(300);
+        }
+    };
     const tpose = async () => {
-        await ev(() => {
-            document.getElementById('poseAdvanced').open = true;
-        });
+        await advanced(true);
         await page.locator('#poseTposeStartBtn').click();
         await settle(900);
     };
@@ -928,6 +948,50 @@ async function tourPoseStudio(D, browser, base) {
             ),
             `opened from ${opener}; editor active, edit and pose mode on; navigator "${n0.category} · ${n0.label}" ${n0.counter}, holding ${n0.preset}; Spicy grid shown=${st0.spicyShown}`,
             await shot(page, 'ps-open')
+        );
+        // UI4. What a person sees on opening: Advanced closed, the hand-posing tools inside it.
+        const layout = await ev(() => {
+            const adv = document.getElementById('poseAdvanced');
+            const inside = (id) => adv.contains(document.getElementById(id));
+            const tools = [
+                'poseTposeIntensitySlider',
+                'poseTposeStartBtn',
+                'poseMouseEditToggle',
+                'posePuppetToggle',
+                'poseBoneSelect',
+                'poseSliderX',
+                'poseSliderY',
+                'poseSliderZ',
+                'poseResetSelectedBtn',
+                'poseMirrorBtn',
+                'poseSaveBtn',
+                'poseUndoBtn',
+                'poseRedoBtn',
+            ];
+            const everyday = [
+                'poseNavNext',
+                'poseNavPrev',
+                'poseTposePresetSelect',
+                'posePresetSelect',
+                'poseApplyBtn',
+                'poseResetBtn',
+                'poseAnimGridEmotes',
+            ];
+            return {
+                closed: !adv.open,
+                toolsIn: tools.filter(inside).length,
+                tools: tools.length,
+                outside: everyday.filter((id) => !inside(id) && document.getElementById(id)).length,
+                everyday: everyday.length,
+                gizmo: Boolean(window.NEXUS_POSE_GIZMO_OVERLAY?._enabled),
+            };
+        });
+        record(
+            'pose studio',
+            'Advanced closed, hand-posing tools inside',
+            pf(layout.closed && layout.toolsIn === layout.tools && layout.outside === layout.everyday && !layout.gizmo),
+            `Advanced closed=${layout.closed}; ${layout.toolsIn}/${layout.tools} T-pose, bone-editing and save controls inside it; ${layout.outside}/${layout.everyday} everyday controls outside; joint handles off=${!layout.gizmo}`,
+            await shot(page, 'ps-open-layout')
         );
         const minOpen = Math.min(...openDrops.filter((x) => x != null));
         record(
@@ -1219,6 +1283,7 @@ async function tourPoseStudio(D, browser, base) {
                 await settle(300);
                 return page.locator(sel).isChecked();
             };
+            await advanced(true);
             const camDist = (a, b) => Math.hypot(...a.pos.map((x, i) => x - b.pos[i]));
             // OrbitControls damping keeps turning the camera for a moment after an orbit drag;
             // wait until it is still, so a later drag is not blamed for the previous one.
@@ -1308,11 +1373,28 @@ async function tourPoseStudio(D, browser, base) {
                 `puppet on=${puppetOn}; hand handle dragged up: hand rose ${(rise * 100).toFixed(1)} cm; bones that followed: ${chain.join(', ') || 'none'}`,
                 await shot(page, 'ps-drag-puppet')
             );
+            // UI4. The joint handles follow the Advanced section: closing it puts them away and
+            // keeps the switch's setting; opening it brings them back.
+            await setToggle('#poseMouseEditToggle', true);
+            const gz = () => ev(() => Boolean(window.NEXUS_POSE_GIZMO_OVERLAY?._enabled));
+            const onOpen = await gz();
+            await advanced(false);
+            const onClosed = await gz();
+            const kept = await page.locator('#poseMouseEditToggle').isChecked();
+            await advanced(true);
+            const onReopen = await gz();
+            record(
+                'pose studio',
+                'joint handles follow Advanced',
+                pf(onOpen && !onClosed && kept && onReopen),
+                `handles on with Advanced open=${onOpen}; closing it put them away=${!onClosed} (switch kept on=${kept}); reopening brought them back=${onReopen}`
+            );
             await setToggle('#poseMouseEditToggle', false);
         });
 
         // ── Bone picker, sliders, Reset Selected, Mirror Arms ────────────────
         await step('Selected bone sliders', async () => {
+            await advanced(true);
             await tpose();
             const options = await page.locator('#poseBoneSelect option').allTextContents();
             const picked = [];
@@ -1530,6 +1612,7 @@ async function tourPoseStudio(D, browser, base) {
 
         // ── Undo / Redo, Save, change avatar, reapply ────────────────────────
         await step('Save / Undo / Redo / other avatar', async () => {
+            await advanced(true);
             await tpose();
             const S0 = await N();
             // A press on a slider starts an undo step, as when a person drags it.

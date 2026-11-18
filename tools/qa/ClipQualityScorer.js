@@ -73,6 +73,8 @@
     /**
      * @param {object} input
      * @param {string} input.category - manifest category ('idle', 'dance', 'vrma', …)
+     * @param {'stand'|'sit'|'lay'|'low'|'bend'} [input.posture] - a reviewed clip's own posture
+     * @param {number} [input.ground] - the floor's height; with samples' `soles`, judges the floor by it
      * @param {number} input.dt - seconds between samples
      * @param {{footY:[number,number]}} input.stand - standing foot heights (her floor contact)
      * @param {Array<object>} input.samples - one per step: { hips, feet:[l,r], legs:{left:{hip,knee,ankle},right:…},
@@ -80,7 +82,9 @@
      * @returns {{flags:string[], fails:string[], warns:string[], metrics:object}}
      */
     function score(input) {
-        const cat = CATEGORY[input.category] || CATEGORY.action;
+        const base = CATEGORY[input.category] || CATEGORY.action;
+        // A reviewed clip may name its own posture (audits/animations/clip-intent.json).
+        const cat = input.posture ? Object.assign({}, base, { posture: input.posture }) : base;
         const s = input.samples || [];
         const dt = input.dt || 1 / 30;
         const footY = (input.stand && input.stand.footY) || [0, 0];
@@ -89,11 +93,17 @@
         const m = {};
         if (s.length < 2) return { flags: ['too-few-samples'], fails: ['too-few-samples'], warns, metrics: m };
 
-        // Floor: a foot well below where it stands.
+        // Floor: the lowest point of a foot (ankle or toes) below the ground, when the samples
+        // carry it; else the ankle against its standing height. A foot lying flat — kneeling,
+        // sitting — brings the ankle lower than standing without entering the floor.
+        const ground = typeof input.ground === 'number' ? input.ground : null;
         let below = 0;
         let deepest = 0;
         for (const x of s) {
-            const d = Math.min(x.feet[0][1] - footY[0], x.feet[1][1] - footY[1]);
+            const d =
+                ground !== null && Array.isArray(x.soles)
+                    ? Math.min(x.soles[0], x.soles[1]) - ground
+                    : Math.min(x.feet[0][1] - footY[0], x.feet[1][1] - footY[1]);
             deepest = Math.min(deepest, d);
             if (d < -LIMITS.floorPenM) below++;
         }

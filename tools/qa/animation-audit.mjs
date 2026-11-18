@@ -93,7 +93,8 @@ export const NAV_PRESETS = Object.freeze([
     { id: 'lyingBackRelaxed', label: 'Relaxed', category: 'Lying' },
     { id: 'lyingFront', label: 'Front', category: 'Lying' },
     { id: 'lyingSide', label: 'Side', category: 'Lying' },
-    { id: 'standing', label: 'T-Pose (Reset)', category: 'Reset' },
+    // UI3. Advanced only in Pose Studio (out of the navigator's cycle); still a preset to audit.
+    { id: 'standing', label: 'T-Pose (Reset)', category: 'Reset', advanced: true },
 ]);
 
 /** Spoken commands that must produce motion — the UX contract for AI coders. */

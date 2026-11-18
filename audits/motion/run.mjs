@@ -443,9 +443,21 @@ async function auditAvatar(D, browser, base, avatar, offered) {
             const btn = document.getElementById('openPoseStudioBtn');
             if (btn) btn.click();
             await new Promise((r) => setTimeout(r, 1200));
-            const labels = [...document.querySelectorAll('.pose-studio-label')].map((l) => l.textContent.trim());
+            // UI3–UI4. The T-pose, bone editing and saving sit in the closed "Advanced" section:
+            // headings outside it are what a person sees on opening, the rest are one click away.
+            const adv = document.getElementById('poseAdvanced');
+            const all = [...document.querySelectorAll('.pose-studio-label')].filter((l) => l.tagName !== 'SUMMARY');
+            const name = (l) => l.textContent.trim();
+            const labels = all.filter((l) => !(adv && adv.contains(l))).map(name);
+            const advanced = adv ? all.filter((l) => adv.contains(l)).map(name) : [];
             const sel = document.getElementById('poseVrmaSelect');
-            return { button: !!btn, labels, vrmaOptions: sel ? sel.options.length : 0 };
+            return {
+                button: !!btn,
+                labels,
+                advanced,
+                advancedClosed: adv ? !adv.open : null,
+                vrmaOptions: sel ? sel.options.length : 0,
+            };
         });
         await page.screenshot({ path: path.join(SHOTS, `${avatar}-ui-pose-studio.jpg`), type: 'jpeg', quality: 70 });
         ui.shot = `shots/${avatar}-ui-pose-studio.jpg`;
@@ -548,7 +560,7 @@ function writeReport(report) {
         L.push('', `## ${a.avatar} (standing hips ${a.stand.hipsY.toFixed(2)} m)`, '');
         if (a.ui)
             L.push(
-                `UI: Pose Studio button ${a.ui.button ? 'ok' : '**missing**'}; sections: ${a.ui.labels.join(' · ')}; VRMA list: ${a.ui.vrmaOptions} clips`,
+                `UI: Pose Studio button ${a.ui.button ? 'ok' : '**missing**'}; sections: ${a.ui.labels.join(' · ')}; under Advanced (${a.ui.advancedClosed ? 'closed' : 'open'}): ${(a.ui.advanced || []).join(' · ') || '—'}; VRMA list: ${a.ui.vrmaOptions} clips`,
                 ''
             );
         L.push(`Page errors: ${a.errors.length ? a.errors.map((e) => '`' + e + '`').join('; ') : 'none'}`, '');

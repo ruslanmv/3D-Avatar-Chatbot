@@ -59,12 +59,18 @@ const load = (rel, name) => {
 const Motion = load('tools/qa/MotionAuditScorer.js', 'NEXUS_MOTION_AUDIT_SCORER');
 const Quality = load('tools/qa/ClipQualityScorer.js', 'NEXUS_CLIP_QUALITY_SCORER');
 
+// Reviewed exceptions: clips meant to jump, crawl, lie or kneel (see the file's purpose).
+const INTENT = JSON.parse(fs.readFileSync(path.join(HERE, 'clip-intent.json'), 'utf8')).clips;
+const intentOf = (id) => INTENT[String(id).replace(/^vendor\/animations\//, '')] || null;
+
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = path.join(HERE, 'runs', stamp);
 const SHOTS = path.join(OUT, 'shots');
 
-/** MotionAuditScorer's posture for a category. */
-const POSTURE = { sitting: 'sit', laying: 'lay', kneeling: 'low', action: 'low', exercise: 'low' };
+/** MotionAuditScorer's posture for a category. A dance is choreography: it may drop low, fold
+ * forward or go to the floor on purpose, so it is judged like a bend — its hips and head may come
+ * down — while floating, flipped legs and feet in the floor still fail it. */
+const POSTURE = { sitting: 'sit', laying: 'lay', kneeling: 'low', action: 'low', exercise: 'low', dance: 'bend' };
 
 /** In the page: step the playing clip to a time and read her skeleton. */
 function installSampler() {
@@ -139,6 +145,12 @@ function installSampler() {
             hips: get('hips'),
             head: get('head'),
             feet: [get('leftFoot'), get('rightFoot')],
+            // The lowest point of each foot — ankle or toes — for the floor check: a foot lying
+            // flat (kneeling, sitting) puts the ankle lower than standing without entering the floor.
+            soles: ['left', 'right'].map((s) => {
+                const ys = [get(s + 'Foot'), get(s + 'Toes')].filter(Boolean).map((p) => p[1]);
+                return Math.min(...ys);
+            }),
             legs: {
                 left: { hip: lUL, knee: get('leftLowerLeg'), ankle: get('leftFoot') },
                 right: { hip: rUL, knee: get('rightLowerLeg'), ankle: get('rightFoot') },
@@ -186,6 +198,11 @@ function installSampler() {
             if (!ok || !a) return { ok: false, why: 'the loader did not start it' };
             a.stopFading();
             a.setEffectiveWeight(1);
+            // The clip before is still fading out (playClip's 0.25 s crossfade) and would blend into
+            // this one's first samples: remorse3 ends collapsed on the floor, and sadness, played
+            // next, read as tipped over. Each clip is reviewed alone, so the others stop now.
+            const mixer = L.getCurrentMixer();
+            for (const other of (mixer && mixer._actions) || []) if (other !== a) other.stop();
             return { ok: true, duration: a.getClip().duration };
         },
         async sampleAll(duration, n) {
@@ -194,7 +211,7 @@ function installSampler() {
             for (let i = 0; i < n; i++) {
                 const t = (end * i) / (n - 1);
                 seek(t);
-                await frames(1);
+                await frames(i === 0 ? 3 : 1); // the first step also lets the switch from the last clip settle
                 out.push({ t, ...read() });
             }
             return out;
@@ -251,6 +268,7 @@ async function openAvatar(D, browser, base, avatar) {
 
 function judge(clip, samples, stand, start, dt) {
     const category = clip.category;
+    const intent = intentOf(clip.id);
     const played = Boolean(start.ok && samples.length);
     const nan = samples.some((x) => !x.finite);
     let motion = 0;
@@ -271,17 +289,26 @@ function judge(clip, samples, stand, start, dt) {
         stand: { hipsY: stand.hips[1], headAboveHips: stand.head[1] - stand.hips[1] },
         samples: samples.map((x) => ({ hipsY: x.hips[1], headY: x.head[1], footY: [x.feet[0][1], x.feet[1][1]] })),
         motionDeg: motion,
-        posture: POSTURE[category] || 'stand',
+        posture: (intent && intent.posture) || POSTURE[category] || 'stand',
     });
     const q = played
-        ? Quality.score({ category, dt, stand: { footY: [stand.feet[0][1], stand.feet[1][1]] }, samples })
+        ? Quality.score({
+              category,
+              posture: intent && intent.posture,
+              dt,
+              stand: { footY: [stand.feet[0][1], stand.feet[1][1]] },
+              ground: 0,
+              samples,
+          })
         : { fails: [], warns: [], metrics: {} };
+    let motionFlags = m.flags;
+    if (intent && intent.airborne) motionFlags = motionFlags.filter((f) => f !== 'floating');
     const fails = [
-        ...m.flags.filter((f) => ['not-played', 'floating', 'sinking', 'tipped-over', 'legs-flipped'].includes(f)),
+        ...motionFlags.filter((f) => ['not-played', 'floating', 'sinking', 'tipped-over', 'legs-flipped'].includes(f)),
         ...q.fails,
     ];
     if (nan) fails.push('nan-bones');
-    const warns = [...m.flags.filter((f) => !fails.includes(f)), ...q.warns];
+    const warns = [...motionFlags.filter((f) => !fails.includes(f)), ...q.warns];
     return {
         verdict: fails.length ? 'fail' : warns.length ? 'warn' : 'ok',
         fails,
@@ -293,6 +320,7 @@ function judge(clip, samples, stand, start, dt) {
             ...q.metrics,
         },
         why: start.why || null,
+        intent: intent ? intent.why : null,
     };
 }
 
@@ -404,7 +432,7 @@ function writeReport(rows, pageErrors) {
     for (const r of rows) {
         const m = r.metrics;
         md.push(
-            `| **${r.verdict}** | ${r.avatar} | ${r.category} | ${String(r.id).split('/').pop()} | ${n(m.duration)} | ${[...r.fails, ...r.warns].join(', ')}${r.why ? ' — ' + r.why : ''} | ${n(m.hipsMin)}/${n(m.hipsMax)} | ${n(m.floorPenCm)} | ${n(m.kneeBehindCm)} | ${n(m.skateShare)} | ${n(m.insideShare)} | ${n(m.maxStepDeg)} | ${n(m.seamDeg)} | ${n(m.travelM)} | ${n(m.turnDeg)} |`
+            `| **${r.verdict}** | ${r.avatar} | ${r.category} | ${String(r.id).split('/').pop()} | ${n(m.duration)} | ${[...r.fails, ...r.warns].join(', ')}${r.why ? ' — ' + r.why : ''}${r.intent ? ' (reviewed — intended: ' + r.intent + ')' : ''} | ${n(m.hipsMin)}/${n(m.hipsMax)} | ${n(m.floorPenCm)} | ${n(m.kneeBehindCm)} | ${n(m.skateShare)} | ${n(m.insideShare)} | ${n(m.maxStepDeg)} | ${n(m.seamDeg)} | ${n(m.travelM)} | ${n(m.turnDeg)} |`
         );
     }
     fs.writeFileSync(path.join(OUT, 'report.md'), md.join('\n') + '\n');

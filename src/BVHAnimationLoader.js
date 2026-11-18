@@ -345,9 +345,73 @@
     // BVH RETARGETING
     // =========================================================================
 
+    /**
+     * AN3. How many leading keyframes are a calibration pose and its lead-in. Captures open on the
+     * performer's T-pose with the hips at the rig's standing height, then blend into the take over
+     * a few frames (hips 11.7 → 7.8 → 3.9 → 0 in BVH units on the dance and sitting files). It
+     * applies when the first frame stands at least 35% above the median of the take; then every
+     * leading frame still more than 15% above that median goes, at most one second of them. A
+     * standing take keeps its hips within a few percent of its median and a sit or kneel lower
+     * still, so only frames that belong to no part of the performance are caught.
+     */
+    function calibrationLead(tracks) {
+        var hips = null;
+        for (var i = 0; i < tracks.length; i++) {
+            if (/\.position$/.test(tracks[i].name)) {
+                hips = tracks[i];
+                break;
+            }
+        }
+        if (!hips || !hips.values || hips.values.length < 9) return 0;
+        var ys = [];
+        for (var j = 1; j < hips.values.length; j += 3) ys.push(hips.values[j]);
+        var sorted = ys.slice(1).sort(function (a, b) {
+            return a - b;
+        });
+        var median = sorted[Math.floor(sorted.length / 2)];
+        if (!(median > 1e-6) || !(ys[0] > median * 1.35)) return 0;
+        var cap = Math.min(ys.length - 2, 30);
+        var n = 0;
+        while (n < cap && ys[n] > median * 1.15) n++;
+        return Math.max(1, n);
+    }
+
+    /** AN3. The same track without its first `n` keys, starting at time 0. */
+    function dropLeadingKeys(track, n) {
+        var times = track.times;
+        if (!times || times.length <= n + 1) return track;
+        var size = track.getValueSize();
+        var shift = times[n];
+        var nt = new Float32Array(times.length - n);
+        for (var i = 0; i < nt.length; i++) nt[i] = times[i + n] - shift;
+        var nv = track.values.slice(n * size);
+        var Ctor = track.constructor;
+        return new Ctor(track.name, nt, nv);
+    }
+
     function retargetBVHClip(clip, sourceSkeleton, targetRoot, clipPath) {
         if (!_init()) return clip;
         if (!clip || !clip.tracks) return clip;
+
+        // AN3. Drop a calibration frame, before anything reads the take. Many captures open on
+        // the performer's T-pose, recorded before the take (hips at the capture rig's standing
+        // height, arms out), and THREE's BVHLoader keeps it as frame 0. Looping, she snapped up
+        // into a floating T-pose every time the clip wrapped — sitting and kneeling idles among
+        // them (audits/animations/run.mjs, 2026-11-18). It also skewed the hips re-centring
+        // below, which judges "standing" from the whole hips track. A take whose first frame
+        // stands far above the rest of it now starts on frame 1; every other clip is untouched.
+        var lead = calibrationLead(clip.tracks);
+        if (lead > 0) {
+            var shift = clip.tracks[0].times.length > lead ? clip.tracks[0].times[lead] : 0;
+            clip = new THREE.AnimationClip(
+                clip.name,
+                Math.max(0.001, clip.duration - shift),
+                clip.tracks.map(function (t) {
+                    return dropLeadingKeys(t, lead);
+                })
+            );
+            console.log('[BVHLoader] Dropped the calibration frame of', clip.name, '(' + shift.toFixed(3) + ' s)');
+        }
 
         // Target the NORMALIZED rig: avatar-independent, so one clip plays the
         // same on every model and three-vrm composes normalized → raw itself.
