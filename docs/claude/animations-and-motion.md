@@ -140,3 +140,20 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
   the ⋯ chips follow the step; easing below a held position's step stands her up
   (`PrivateActionBridge.fitPoseToPace`, called after every pace repaint).
   Verified live: chips 0 / 1 / 3 / 5 by step, straddle at 3, Ease up → standing.
+
+## Tools for poses and Private positions (UN29)
+
+Kept so the next session starts from evidence, not from a screenshot that
+"looks seated". `/pose-check` walks them in order.
+
+| Tool                                                       | What it answers                                                                                                                                                             |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run audit:poses -- --poses a,b [--grid] [--cam d,h]`  | Front/side shots of presets on the real avatar, the blend PoseTransition chose, `lastSupport` (grounding, palms). Exit 1: a reaching palm > 20 mm off the floor.           |
+| `node tools/qa/pose-sweep.mjs --preset X --variants f.json` | Bone variants applied live to the real `POSE_PRESETS` object: grounding and palm heights plus a side shot per variant. No source edits per try.                              |
+| `npm run audit:private-positions [-- --lang en-US]`        | A real Private evening: chips per step vs `POSE_LEVEL`, every position taken from the ⋯ menu and confirmed on her body, Ease up stands her. Records the model's lines/step. |
+
+Output goes to `audits/poses/runs/` and `audits/private-positions/runs/`
+(gitignored). Two traps they encode: under plain Node the `src/` IIFEs load as
+ES modules (`"type": "module"`), so read their global, not `module.exports`; and
+proxy-rig joint heights are offset from the rendered body — judge contact by
+`lastSupport` palms and by the side view.

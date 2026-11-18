@@ -308,3 +308,7 @@ tools/qa/idle-arm-check.out.json
 audits/suite/runs/
 audits/ui/runs/
 audits/animations/runs/
+# Pose shots and sweeps (tools/qa/pose-shots.mjs, pose-sweep.mjs) and the live Private positions check
+# (tools/qa/private-positions-live.mjs): screenshots of every run. Findings go in develop/NEEDS_FIX.md or docs/.
+audits/poses/runs/
+audits/private-positions/runs/
