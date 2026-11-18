@@ -60,8 +60,8 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   `WorldSpots.WORDS` (English and Italian), or "andiamo alla lavagna" moves
   nobody.
   Look at every preview before shipping: a scene that passes every budget can
-  still be a bad place (the school entrance was a flat grey box and was left
-  out). When the default 22° preview camera puts furniture across her, add a
+  still be a bad place (the school entrance was a flat grey box, the hallway
+  open on one side; both were left out). When the default 22° preview camera puts furniture across her, add a
   straight (`yawDeg: 0`) entry to `PLACE_CAMERA` rather than moving her by eye;
   if no angle and no other verified spot frames her well, leave the place out.
 - **Places by name, and private rooms only inside Private (VW3).** A world may

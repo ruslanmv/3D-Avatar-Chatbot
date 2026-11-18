@@ -55,8 +55,6 @@
         cushions: ['cushions', 'cushion', 'zabuton', 'cuscini', 'cuscino'],
         shoji: ['shoji', 'sliding door', 'paper screen', 'porta scorrevole'],
         lamp: ['lamp', 'lantern', 'lampada', 'lanterna'],
-        hallway: ['hallway', 'atrio'],
-        'hallway-far': ['end of the hallway', "fondo dell'atrio"],
         stairwell: ['stairs', 'stairwell', 'staircase', 'scale', 'scalinata'],
         'stairwell-far': ['other side of the stairs', 'altro lato delle scale'],
         carriage: ['carriage', 'train car', 'vagone', 'carrozza'],

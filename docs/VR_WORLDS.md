@@ -348,7 +348,7 @@ carried through to the school with a real model's reply.
 
 ## Anime school and Japan places (VW12)
 
-Seven general places downloaded from Sketchfab (all **CC BY 4.0**; credit in each place's note and
+Six general places downloaded from Sketchfab (all **CC BY 4.0**; credit in each place's note and
 in `assets/vr-worlds/PROVENANCE.md`), each with a phone and Quest version where the full one is over
 budget:
 
@@ -357,7 +357,6 @@ budget:
 | `anime-classroom`       | School    | 22 102            | `-light`, 22 102, 512 px colour |
 | `anime-classroom-small` | School    | 13 264            | the same file on every tier    |
 | `anime-corridor`        | School    | 26 663            | `-light`, 26 663, 8 MB texture  |
-| `anime-hallway`         | School    | 39 940            | `-light`, 26 998               |
 | `anime-stairs`          | School    | 47 636            | `-light`, 27 091               |
 | `anime-subway`          | Going out | 35 066            | `-light`, 27 006               |
 | `anime-tatami`          | Home      | 57 611            | `-light`, 29 821               |
@@ -369,13 +368,14 @@ its own path). The subway carriage and the tatami room are ordinary places.
 texture memory (`tools/vr/prepare-scene.mjs` measures all three and refuses a scene that stays
 over). Refused so: a Japanese night street (142 MB of textures even reduced) and a grandma's house
 (36 draw calls, 44 MB). Left out by eye: the school entrance (a flat, untextured grey box, an empty
-picture from every spot and camera angle).
+picture from every spot and camera angle) and the school hallway (open on one side: from both
+measured spots and every angle she stood on a grey strip against grass and sky).
 
 **Spots.** Every place has measured spots (`assets/vr-worlds/spots/<scene>.json`, both versions),
 with English and Italian words in `WorldSpots.WORDS`, so "andiamo alla lavagna" walks her to the
 blackboard and the model may suggest one. Rooms with named things (classroom: teacher's desk, desks,
 windows, bookshelf; tatami room: low table, cushions; corridor: windows) were split one node per
-material (`tools/vr/split-by-material.mjs`) so a spot can name them; the others are single merged
+material (`tools/vr/split-by-material.mjs`) so a spot can name them; the stairs, the subway car and the small classroom are single merged
 meshes and use `anywhere` spots (`<room>`, `<room>-far`). The start (`scene.at` / `turn`) comes from
 a verified spot through `tools/vr/at-from-spot.mjs --write`, never typed.
 

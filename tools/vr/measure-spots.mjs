@@ -312,7 +312,7 @@ window.measure = async (src, spots, P, virtualFloor) => {
                     if (!anywhere && off > (80 * Math.PI) / 180) continue;
                     const score = anywhere ? Math.min(open, 4) + 2 * around : Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
                     // VW12. The camera check is the costly one (hundreds of rays through every
-                    // triangle of a merged mesh): the hallway ran past two hours. A point that
+                    // triangle of a merged mesh): a school hallway ran past two hours. A point that
                     // cannot beat the best so far is not checked; the spot chosen is the same.
                     if (best && score <= best.score) continue;
                     if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
