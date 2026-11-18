@@ -85,3 +85,67 @@ test('with the raw map already cached, the tracks still name the normalized bone
     // And the raw map VRMA relies on is left as it was.
     expect(S.cachedBoneMap.hips).toBe(a.raw.hips);
 });
+
+describe('AN3. a calibration frame at the head of a take is dropped', () => {
+    function take(firstY) {
+        const times = [0, 1 / 30, 2 / 30, 3 / 30, 4 / 30];
+        const hipsY = [firstY, 9, 9.1, 9, 8.9];
+        const pos = new THREE.VectorKeyframeTrack(
+            'hips.position',
+            times,
+            hipsY.flatMap((y) => [0, y, 0])
+        );
+        const rot = KEYS.map(
+            (n, i) =>
+                new THREE.QuaternionKeyframeTrack(
+                    n + '.quaternion',
+                    times,
+                    times.flatMap((_, k) => (k === 0 ? [0, 0, 0, 1] : [0, 0, 0.1 * (i + 1), 1]))
+                )
+        );
+        return new THREE.AnimationClip('take', 4 / 30, [pos, ...rot]);
+    }
+
+    function retarget(clip) {
+        const a = avatar();
+        S.avatarRoot = a.root;
+        S.avatarVRM = a.vrm;
+        return BVH.retargetBVHClip(clip, { bones: [] }, a.root, 'vendor/animations/sitting/x.bvh');
+    }
+
+    test('a first frame standing far above the take starts the clip on frame 1', () => {
+        const out = retarget(take(17.5));
+        for (const t of out.tracks) {
+            expect(t.times.length).toBe(4);
+            expect(t.times[0]).toBe(0);
+        }
+        expect(out.duration).toBeCloseTo(3 / 30, 5);
+    });
+
+    test('a lead-in blending down from the calibration pose goes with it', () => {
+        const times = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => k / 30);
+        const hipsY = [17.5, 14, 11, 9.1, 9, 8.9, 9, 9.05];
+        const pos = new THREE.VectorKeyframeTrack(
+            'hips.position',
+            times,
+            hipsY.flatMap((y) => [0, y, 0])
+        );
+        const rot = KEYS.map(
+            (n) =>
+                new THREE.QuaternionKeyframeTrack(
+                    n + '.quaternion',
+                    times,
+                    times.flatMap(() => [0, 0, 0.1, 1])
+                )
+        );
+        const out = retarget(new THREE.AnimationClip('ramp', 7 / 30, [pos, ...rot]));
+        for (const t of out.tracks) expect(t.times.length).toBe(5); // 17.5, 14 and 11 dropped
+        expect(out.duration).toBeCloseTo(4 / 30, 5);
+    });
+
+    test('a take whose first frame belongs to it is left whole', () => {
+        const out = retarget(take(9.05));
+        for (const t of out.tracks) expect(t.times.length).toBe(5);
+        expect(out.duration).toBeCloseTo(4 / 30, 5);
+    });
+});

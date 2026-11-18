@@ -144,3 +144,32 @@ test('turning is measured the short way round', () => {
     const r = Q.score(clip(10, (i) => sample({ yawDeg: i % 2 ? 359 : 1 })));
     expect(r.metrics.turnDeg).toBeLessThan(5);
 });
+
+test('with the ground given, a foot lying flat is on the floor, and a sole below it is not', () => {
+    const flat = Q.score({
+        ...clip(30, () =>
+            sample({
+                feet: [
+                    [0.08, 0.03, 0],
+                    [-0.08, 0.03, 0],
+                ],
+                soles: [0.0, 0.0],
+            })
+        ),
+        ground: 0,
+    });
+    expect(flat.fails).not.toContain('feet-through-floor');
+    const sunk = Q.score({ ...clip(30, () => sample({ soles: [-0.08, 0.0] })), ground: 0 });
+    expect(sunk.fails).toContain('feet-through-floor');
+});
+
+test("a reviewed clip's own posture overrides the category's: knees are not judged lying down", () => {
+    const bent = sample({
+        legs: {
+            left: { hip: [0.08, 0.9, 0], knee: [0.08, 0.5, -0.2], ankle: [0.08, FOOT, 0] },
+            right: { hip: [-0.08, 0.9, 0], knee: [-0.08, 0.5, -0.2], ankle: [-0.08, FOOT, 0] },
+        },
+    });
+    expect(Q.score(clip(30, () => bent, 'exercise')).fails).toContain('knee-reversed');
+    expect(Q.score({ ...clip(30, () => bent, 'exercise'), posture: 'lay' }).fails).not.toContain('knee-reversed');
+});
