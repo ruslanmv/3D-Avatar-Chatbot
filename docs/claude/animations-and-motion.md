@@ -103,3 +103,18 @@ static tables, UI, every offered gesture, chat phrases, every pose — on three
 avatar heights, and writes `report.md`, `index.html` (all frames) and
 `conversation.md` (design brief for chat and VR) to `audits/motion/runs/`. See
 `audits/motion/AGENT.md`.
+
+## Preset transitions and the open-knees poses (UN23, UN24)
+
+- **UN23.** `VRPoseSystem.applyPreset` no longer blends every bone on one fixed
+  curve. `src/gltf-viewer/PoseTransition.js` (IIFE, `NEXUS_POSE_TRANSITION`,
+  unit-tested in `tests/pose-transition.test.js`) stretches the caller's
+  duration for a large change (past 60° on any bone, plus hips travel; capped at
+  1.6 s; `0` stays instant) and staggers the bones: trunk first, hands and feet
+  last, each on smootherstep. Grounding's own 0.35 s hips blend stays on one
+  curve. Without the global, the old single smoothstep runs.
+- **UN24.** Adult presets `sittingOpen`, `floorOpen` (hands as `reach`
+  supports), `kneelingWide`, and the existing `seatedChair` added to Pose
+  Studio's Adult category. Spicy mode only; no NL phrases (adult). Rendered on
+  AvatarSample_A front and side before committing. The parity baseline was
+  re-recorded for the five-line shift in `PoseStudioPanel.js` only.

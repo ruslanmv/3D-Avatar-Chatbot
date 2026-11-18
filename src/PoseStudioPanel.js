@@ -58,6 +58,11 @@
         { name: 'embraceStanding', label: 'Embrace', category: 'Adult', adult: true },
         { name: 'kneelSubmissive', label: 'Submissive', category: 'Adult', adult: true },
         { name: 'lyingSprawl', label: 'Sprawl', category: 'Adult', adult: true },
+        // UN24. Seated and kneeling with the knees apart (VRPoseSystem has the measured signs).
+        { name: 'sittingOpen', label: 'Sitting Open', category: 'Adult', adult: true },
+        { name: 'floorOpen', label: 'Floor Open', category: 'Adult', adult: true },
+        { name: 'kneelingWide', label: 'Kneeling Wide', category: 'Adult', adult: true },
+        { name: 'seatedChair', label: 'Seated (Chair)', category: 'Adult', adult: true },
         // Adult — Top 5 VR Simulation (Spicy Mode only)
         { name: 'missionary', label: 'Missionary', category: 'VR Sim', adult: true },
         { name: 'doggyStyle', label: 'Doggy Style', category: 'VR Sim', adult: true },
