@@ -23,10 +23,25 @@ describe('UN27 closer positions: keys and gates', () => {
         expect(Policy.ADULT_POSES).toContain(key);
     });
 
-    test.each(CLOSER)('%s opens only at the top of the pace, even when the person asks', (key) => {
+    test.each(CLOSER)('%s opens at its own step of the pace and never below, even when asked', (key) => {
+        const need = Policy.poseLevel(key);
+        expect(need).toBeGreaterThanOrEqual(2);
         const action = { name: 'avatar.pose', params: { pose: key }, source: 'user' };
-        for (const level of [0, 1, 2, 3]) expect(Policy.decide(action, { active: true, level }).allow).toBe(false);
-        expect(Policy.decide(action, { active: true, level: 4 }).allow).toBe(true);
+        for (let level = 0; level < need; level++)
+            expect(Policy.decide(action, { active: true, level })).toMatchObject({ allow: false, why: 'pace' });
+        for (let level = need; level <= 4; level++)
+            expect(Policy.decide(action, { active: true, level }).allow).toBe(true);
+    });
+
+    test('UN28 the steps climb: something at Romantic, more at Sensual, the explicit ones at Intimate', () => {
+        const at = (n) => Policy.ADULT_POSES.filter((k) => Policy.poseLevel(k) <= n).sort();
+        expect(at(1)).toEqual([]);
+        expect(at(2)).toEqual(['kneel-wide']);
+        expect(at(3)).toEqual(['kneel-wide', 'sit-open', 'straddle']);
+        expect(at(4)).toEqual(['all-fours', 'kneel-wide', 'knees-up', 'sit-open', 'straddle']);
+        // Undressing still waits for the top, whatever the positions do.
+        expect(Policy.UNDRESS_LEVEL).toBe(4);
+        expect(Policy.poseLevel('kneel')).toBe(0);
     });
 
     test.each(CLOSER)('%s is never hers to take on her own', (key) => {
@@ -109,17 +124,21 @@ describe('UN27 the ⋯ menu: position chips', () => {
         document.body.innerHTML = '';
     });
 
-    test('none below the top of the pace; all six at it, and the ⋯ appears for them', () => {
+    test('each chip appears at its own step: none at Warm, then more with every step, and back down', () => {
         const sent = [];
+        const at = (level) => {
+            view.setPace({ level, steps: [], hasLadder: false });
+            return chips().map((b) => b.dataset.privatePosition);
+        };
         view.showActions({}, { onPosition: (line, key) => sent.push([line, key]) });
-        view.setPace({ level: 3, steps: [], hasLadder: false });
-        expect(chips()).toHaveLength(0);
-        view.setPace({ level: 4, steps: [], hasLadder: false });
-        expect(chips().map((b) => b.dataset.privatePosition)).toEqual(KEYS_IN_ORDER);
+        expect(at(1)).toEqual([]);
+        expect(at(2)).toEqual(['kneel-wide']);
+        expect(at(3)).toEqual(['sit-open', 'kneel-wide', 'straddle']);
+        expect(at(4)).toEqual(KEYS_IN_ORDER);
         if (view._more && view._more.sync) view._more.sync();
         expect(q('.nexus-private-more').hidden).toBe(false);
-        view.setPace({ level: 2, steps: [], hasLadder: false });
-        expect(chips()).toHaveLength(0);
+        expect(at(2)).toEqual(['kneel-wide']);
+        expect(at(1)).toEqual([]);
     });
 
     test('a tap sends the line as their turn, nothing else', () => {

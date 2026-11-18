@@ -2230,7 +2230,7 @@ describe('UN27. the closer positions, described to her as her body is', () => {
         await at(4);
         await say('ciao');
         await flush();
-        expect(prompt()).toMatch(/Closer positions, open now/);
+        expect(prompt()).toMatch(/Closer positions open at this step of the evening \(4 of 4\)/);
         for (const name of ['straddling them', 'on your back with your knees up', 'on all fours'])
             expect(prompt()).toContain(name);
     });
@@ -2239,7 +2239,11 @@ describe('UN27. the closer positions, described to her as her body is', () => {
         const w = await at(2);
         await say('Mettiti a cavalcioni su di me');
         await flush();
-        expect(prompt()).toMatch(/Closer positions \(.*straddling them.*\) open only/);
+        expect(prompt()).toMatch(
+            /Closer positions open at this step of the evening \(2 of 4\): kneeling with your knees wide\./
+        );
+        expect(prompt()).toMatch(/Not open yet: .*straddling them \(at 3 of 4\)/);
+        expect(prompt()).toMatch(/opens at 3 of 4; the evening is at 2/);
         expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
     });
 
@@ -2256,6 +2260,31 @@ describe('UN27. the closer positions, described to her as her body is', () => {
         await flush();
         expect(w.pose.calls).toContain('apply:straddle');
         expect(prompt()).toMatch(/Your body is in that position now \(straddle\): kneeling up astride their lap/);
+    });
+
+    test('UN28 at Sensual she can straddle them; at Romantic only kneel wide', async () => {
+        const w = await at(3);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        const v = await at(2);
+        await say('Mettiti in ginocchio a gambe aperte');
+        await flush();
+        expect(v.pose.calls).toContain('apply:kneelingWide');
+    });
+
+    test('UN28 easing below the step of the position she holds stands her up', async () => {
+        const w = await at(3);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        w.adult.level = 3;
+        expect(Actions.fitPoseToPace()).toBe(false); // still open: nothing happens
+        w.adult.level = 2;
+        expect(Actions.fitPoseToPace()).toBe(true);
+        await flush();
+        expect(w.pose.calls).toContain('release');
+        expect(Actions.fitPoseToPace()).toBe(false); // she stands: nothing more to do
     });
 
     test('her own tag or invitation never moves her into one', async () => {

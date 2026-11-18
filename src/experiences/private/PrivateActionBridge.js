@@ -1101,6 +1101,33 @@
         }
     }
 
+    /** UN28. The step of the pace a keyed position opens at (`PrivateActionPolicy.POSE_LEVEL`). */
+    function poseLevelOf(s, key) {
+        try {
+            const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
+            return Policy && typeof Policy.poseLevel === 'function' ? Policy.poseLevel(key) : UNDRESS_AT;
+        } catch (_) {
+            return UNDRESS_AT;
+        }
+    }
+
+    /**
+     * UN28. Easing off means easing off. When the pace is lowered (Ease up, cozy) below the step
+     * the position she holds opened at, she stands — through this bridge, as the person's own
+     * control, like every other action. Called after every repaint of the pace; does nothing when
+     * what she holds is still open, or when she holds nothing. Never raises or lowers the level.
+     */
+    function fitPoseToPace() {
+        const s = state;
+        if (!s || s.session._stopped || !s.poses || typeof s.poses.held !== 'function') return false;
+        const held = s.poses.held();
+        if (!held) return false;
+        const need = poseLevelOf(s, held);
+        if (!need || levelOf(s) >= need) return false;
+        request('avatar.pose', { pose: 'stand' }, { source: 'control' }).catch(() => null);
+        return true;
+    }
+
     /** UN27. What her body is doing in the position this action asked for, or `null`. */
     function bodyOf(s, action) {
         try {
@@ -1856,22 +1883,25 @@
                 lines.push(
                     '- Getting dressed again: when they say they are done or ask you to get dressed, the app puts back the outfit you wore before; then the evening can end gently.'
                 );
-            // UN27. The closer positions, by what they are. Before this the model knew of kneeling
-            // and lying and nothing else, so a request for any other was met with a guess, and its
-            // own invitations named positions the app had no way to take. Listed only when this
-            // build can run them (Spicy lists the presets), and open only where undressing is: at
-            // the top of the pace. Below it she is told plainly, as for undressing.
+            // UN27/UN28. The closer positions, by what they are and by the step each opens at.
+            // Before this the model knew of kneeling and lying and nothing else, so a request for
+            // any other was met with a guess, and its own invitations named positions the app had
+            // no way to take. Listed only when this build can run them (Spicy lists the presets);
+            // open ones by name, the next ones with the step they open at, so her teasing points
+            // at something the person can actually reach by bringing the evening closer.
             const closer = closerPositions(s);
             if (closer.length) {
-                const at = levelOf(s);
-                const names = closer.map((p) => p.name).join('; ');
-                if (at >= UNDRESS_AT)
+                const at = levelOf(s) || 1;
+                const need = (p) => poseLevelOf(s, p.key);
+                const open = closer.filter((p) => need(p) <= at);
+                const later = closer.filter((p) => need(p) > at);
+                if (open.length)
                     lines.push(
-                        `- Closer positions, open now that the evening is at its closest: ${names}. When they ask for one, the app moves your body into it and holds it until they ask you to stand or to go back to how you were. You never take one on your own: you may invite one in a few words, by its name, and it happens only if they ask. Once you are in it, stay in character — a sentence or two, unhurried, about being there for them like that and what you want next — and follow what RIGHT NOW below says your body is doing; never describe more than it shows.`
+                        `- Closer positions open at this step of the evening (${at} of ${UNDRESS_AT}): ${open.map((p) => p.name).join('; ')}. When they ask for one, the app moves your body into it and holds it until they ask you to stand or to go back to how you were. You never take one on your own: you may invite one in a few words, by its name, and it happens only if they ask. Once you are in it, stay in character — a sentence or two, unhurried, about being there for them like that and what you want next — and follow what RIGHT NOW below says your body is doing; never describe more than it shows.`
                     );
-                else
+                if (later.length)
                     lines.push(
-                        `- Closer positions (${names}) open only when the evening is at its closest (${UNDRESS_AT} of ${UNDRESS_AT}; it is at ${at || 1}). If they ask before then, say so warmly, once: not yet, it opens when they bring the evening closer with ${closerControl(s)}. Never describe yourself taking one before then.`
+                        `- Not open yet: ${later.map((p) => `${p.name} (at ${need(p)} of ${UNDRESS_AT})`).join('; ')}. If they ask for one, say so warmly, once: not yet, it opens when they bring the evening closer with ${closerControl(s)}. You may let them know it is waiting there; never describe yourself taking one before then.`
                     );
             }
         }
@@ -2111,7 +2141,7 @@
                 );
             else if (body.why === 'pace')
                 now.push(
-                    `They asked for a position the evening is not close enough for yet. Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`
+                    `They asked for a position the evening is not close enough for yet (it opens at ${poseLevelOf(s, body.params.pose) || UNDRESS_AT} of ${UNDRESS_AT}; the evening is at ${levelOf(s) || 1}). Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`
                 );
             else if (body.why === 'unsupported-pose')
                 now.push(
@@ -2155,6 +2185,7 @@
         end,
         active,
         request,
+        fitPoseToPace,
         onUserTurn,
         ownsBody,
         whenPoseSettled,

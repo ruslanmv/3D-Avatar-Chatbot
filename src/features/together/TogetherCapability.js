@@ -3014,6 +3014,13 @@
                 ? pace.describe({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
             this.view.setPace(shown);
+            // UN28. A position above the step the evening is now at is let go of (she stands).
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.fitPoseToPace === 'function') actions.fitPoseToPace();
+            } catch (error) {
+                console.warn('[Private] the held position was not checked against the pace', error);
+            }
         }
 
         /**

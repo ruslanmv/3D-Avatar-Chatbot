@@ -1172,10 +1172,20 @@ const PrivateConversationView = (() => {
             } catch (_) {
                 spicy = false;
             }
-            const open = Boolean(this._onPosition) && spicy && (this._paceLevel || 1) >= opensAt;
+            // UN28. Each position at its own step (PrivateActionPolicy.POSE_LEVEL); the group is drawn
+            // when at least one is open, and rebuilt when the set changes with the pace.
+            const level = this._paceLevel || 1;
+            const needOf = (key) =>
+                policy && typeof policy.poseLevel === 'function' ? policy.poseLevel(key) || opensAt : opensAt;
+            const keys = POSITION_KEYS.filter((key) => level >= needOf(key));
+            const open = Boolean(this._onPosition) && spicy && keys.length > 0;
             if (!open) {
                 if (group) group.remove();
                 return null;
+            }
+            if (group && group.dataset.keys !== keys.join(',')) {
+                group.remove();
+                group = null;
             }
             if (!group) {
                 group = this.doc.createElement('div');
@@ -1184,7 +1194,8 @@ const PrivateConversationView = (() => {
                 const title = this.doc.createElement('span');
                 title.className = 'nexus-private-positions-title';
                 group.appendChild(title);
-                for (const key of POSITION_KEYS) {
+                group.dataset.keys = keys.join(',');
+                for (const key of keys) {
                     const button = this.doc.createElement('button');
                     button.type = 'button';
                     button.className = 'nexus-private-position';

@@ -133,3 +133,10 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
   menu that send the person's line through the conversation surface. Verified
   in a real Private evening: no chips below level 4, each chip completed and
   confirmed on the rendered body at it.
+- **UN28.** The closer positions open by step, not all at the top:
+  `PrivateActionPolicy.POSE_LEVEL` — 2 Romantic `kneel-wide`; 3 Sensual
+  `sit-open`, `straddle`; 4 Intimate `knees-up`, `all-fours` (undressing stays
+  at 4). The prompt lists what is open now and what opens next (with its step);
+  the ⋯ chips follow the step; easing below a held position's step stands her up
+  (`PrivateActionBridge.fitPoseToPace`, called after every pace repaint).
+  Verified live: chips 0 / 1 / 3 / 5 by step, straddle at 3, Ease up → standing.
