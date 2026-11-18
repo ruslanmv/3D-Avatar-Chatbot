@@ -871,6 +871,9 @@ async function tourPoseStudio(D, browser, base) {
     };
 
     let opener = '#openPoseStudioBtn';
+    // Arms below horizontal at the default correction (intensity 1.0, Natural Idle): what "T-Pose
+    // (Reset)" shows, because the T-pose correction is applied to the rest pose it returns to.
+    let restDrop = null;
     try {
         // ── Open ─────────────────────────────────────────────────────────────
         if (!(await page.locator(opener).isVisible())) {
@@ -1013,6 +1016,7 @@ async function tourPoseStudio(D, browser, base) {
             );
             await input('#poseTposeIntensitySlider', 100);
             await settle(500);
+            restDrop = out.find((o) => o.v === 100).drop;
             const toggles = await page
                 .locator('#poseStudioRoot input[type="checkbox"]')
                 .evaluateAll((els) => els.map((e) => e.id));
@@ -1090,13 +1094,19 @@ async function tourPoseStudio(D, browser, base) {
             record(
                 'pose studio',
                 'Apply "Reset — T-Pose (Reset)"',
-                pf(b.preset === 'standing' && navOk && Math.abs(tDrop[0]) < 8 && hipsT > hipsSit + 0.1),
-                `holding ${b.preset}; navigator "${b.category} · ${b.label}" ${b.counter} (expected T-Pose (Reset) ${wantIdx} / ${cat.length}); arms ${tDrop[0]}°/${tDrop[1]}° from horizontal; hips back up to ${hipsT.toFixed(2)} m`,
+                pf(
+                    b.preset === 'standing' &&
+                        navOk &&
+                        restDrop != null &&
+                        Math.abs(tDrop[0] - restDrop) < 3 &&
+                        hipsT > hipsSit + 0.1
+                ),
+                `holding ${b.preset}; navigator "${b.category} · ${b.label}" ${b.counter} (expected T-Pose (Reset) ${wantIdx} / ${cat.length}); arms ${tDrop[0]}°/${tDrop[1]}° below horizontal (the corrected rest pose: ${restDrop}° at intensity 1.0, Natural Idle; a bare T-pose is intensity 0); hips back up to ${hipsT.toFixed(2)} m`,
                 await shot(page, 'ps-apply-tpose'),
                 {
                     repro: navOk
                         ? null
-                        : 'Pick "Reset — T-Pose (Reset)" in Poses and press Apply: the avatar takes the T-pose but the navigator shows another pose.',
+                        : 'Pick "Reset — T-Pose (Reset)" in Poses and press Apply: the avatar takes the rest pose but the navigator shows another pose.',
                 }
             );
 
@@ -1141,6 +1151,17 @@ async function tourPoseStudio(D, browser, base) {
                 return page.locator(sel).isChecked();
             };
             const camDist = (a, b) => Math.hypot(...a.pos.map((x, i) => x - b.pos[i]));
+            // OrbitControls damping keeps turning the camera for a moment after an orbit drag;
+            // wait until it is still, so a later drag is not blamed for the previous one.
+            const still = async () => {
+                let prev = await ev(() => window.__ui.camera());
+                for (let i = 0; i < 40; i++) {
+                    await settle(150);
+                    const cur = await ev(() => window.__ui.camera());
+                    if (camDist(prev, cur) < 1e-4) return;
+                    prev = cur;
+                }
+            };
             await apply('standing');
 
             // Off: a drag across her forearm orbits the camera and leaves her alone.
@@ -1159,8 +1180,10 @@ async function tourPoseStudio(D, browser, base) {
                 `drag across her right forearm: camera orbited ${camDist(c0, c1).toFixed(2)} m, her bones moved ${boneMoved}°`,
                 await shot(page, 'ps-drag-off')
             );
+            await still();
             await ev(() => document.getElementById('drawer-reset-view-btn').click());
             await settle(1300);
+            await still();
             await apply('standing');
 
             // On, Puppet off: drag the right forearm handle — that one bone turns.
@@ -1168,6 +1191,7 @@ async function tourPoseStudio(D, browser, base) {
             const gizmoOn = await ev(() => Boolean(window.NEXUS_POSE_GIZMO_OVERLAY._enabled));
             await setToggle('#posePuppetToggle', false);
             const puppetOff = await ev(() => !window.NEXUS_POSE_PUPPET_IK.isEnabled());
+            await still();
             let h = await ev(() => window.__ui.handleXY('rightLowerArm'));
             b0 = await N();
             c0 = await ev(() => window.__ui.camera());
@@ -1314,7 +1338,8 @@ async function tourPoseStudio(D, browser, base) {
             );
 
             await page.selectOption('#poseBoneSelect', { label: 'Left Upper Arm' });
-            await input('#poseSliderZ', 60);
+            // Left arm raised to horizontal and forward; the right one stays at rest.
+            await input('#poseSliderZ', 0);
             await input('#poseSliderX', 25);
             await page.selectOption('#poseBoneSelect', { label: 'Left Lower Arm' });
             await input('#poseSliderY', 40);
@@ -1335,24 +1360,103 @@ async function tourPoseStudio(D, browser, base) {
                     const b = rig.getBone(r).quaternion;
                     return +window.__ui.ang([-a.x, a.y, -a.z, a.w], [b.x, b.y, b.z, b.w]).toFixed(3);
                 });
-                return {
-                    err,
-                    L: window.__ui.world('leftHand'),
-                    R: window.__ui.world('rightHand'),
-                    H: window.__ui.world('hips'),
-                };
+                // The rendered skeleton: raw right-arm bones must be the mirror of the left ones.
+                const vrm = window.NEXUS_VIEWER.avatarManager._currentVRM;
+                vrm.update(0);
+                const rawErr = pairs.map(([l, r]) => {
+                    const a = vrm.humanoid.getRawBoneNode(l).quaternion;
+                    const b = vrm.humanoid.getRawBoneNode(r).quaternion;
+                    return +window.__ui.ang([-a.x, a.y, -a.z, a.w], [b.x, b.y, b.z, b.w]).toFixed(3);
+                });
+                return { err, rawErr, L: window.__ui.world('leftHand'), R: window.__ui.world('rightHand') };
             });
             const gapBefore = Math.hypot(asym[0][1] - asym[1][1]);
-            const sym =
-                Math.abs(mir.L[1] - mir.R[1]) < 0.02 && Math.abs(mir.L[0] - mir.H[0] + (mir.R[0] - mir.H[0])) < 0.03;
+            const gapAfter = Math.abs(mir.L[1] - mir.R[1]);
             record(
                 'pose studio',
                 'Mirror Arms (asymmetric → mirrored)',
-                pf(gapBefore > 0.1 && Math.max(...mir.err) < 0.5 && sym),
-                `before: hands ${(gapBefore * 100).toFixed(0)} cm apart in height; after: rig mirror error ${mir.err.join('/')}°, hands at height ${mir.L[1].toFixed(3)} / ${mir.R[1].toFixed(3)} m and ${(mir.L[0] - mir.H[0]).toFixed(3)} / ${(mir.R[0] - mir.H[0]).toFixed(3)} m either side`,
+                pf(gapBefore > 0.1 && Math.max(...mir.err) < 0.5 && Math.max(...mir.rawErr) < 0.5 && gapAfter < 0.05),
+                `before: hands ${(gapBefore * 100).toFixed(0)} cm apart in height; after: mirror error ${mir.err.join('/')}° (rig), ${mir.rawErr.join('/')}° (rendered skeleton); hands now ${(gapAfter * 100).toFixed(1)} cm apart in height`,
                 await shot(page, 'ps-mirror-after'),
                 { shots: [sA] }
             );
+        });
+
+        // ── Behavior (Live) ──────────────────────────────────────────────────
+        await step('Behavior (Live)', async () => {
+            await page.locator('#poseResetBtn').click();
+            await settle(1200);
+            const chips = await ev(() =>
+                [...document.querySelectorAll('#poseAnimGridEmotes .pose-anim-chip')].map((c) => ({
+                    id: c.dataset.anim,
+                    label: c.querySelector('.pose-anim-chip-label').textContent.trim(),
+                }))
+            );
+            const want = ['Idle', 'Waiting', 'Happy', 'Thinking', 'Dance', 'Talk', 'Sad', 'Angry', 'Surprised'];
+            const spicyHidden = await ev(
+                () => !window.__ui.shown(document.getElementById('poseAnimGridSpicy')?.closest('.spicy-gated'))
+            );
+            record(
+                'behavior',
+                'chips listed (Spicy excluded)',
+                pf(want.every((w) => chips.some((c) => c.label === w)) && chips.length === 9 && spicyHidden),
+                `${chips.map((c) => c.label).join(', ')}; Spicy grid hidden=${spicyHidden}`
+            );
+            const EXPR = { happy: 'happy', sad: 'sad', angry: 'angry', surprised: 'surprised' };
+            for (const c of chips) {
+                const id = c.id;
+                const base = await R();
+                await page.locator(`#poseAnimGridEmotes .pose-anim-chip[data-anim="${id}"]`).click();
+                let motion = 0;
+                let mode = null;
+                let expr = 0;
+                let clip = null;
+                let hasExpr = true;
+                for (let k = 0; k < 8; k++) {
+                    await settle(350);
+                    const s = await ev(
+                        (e) => ({
+                            r: window.__ui.rendered(),
+                            mode: window.__ui.mode(),
+                            expr: e ? window.__ui.expression(e) : 0,
+                            has: e
+                                ? Boolean(
+                                      window.NEXUS_VIEWER.avatarManager._currentVRM.expressionManager?.getExpression?.(
+                                          e
+                                      )
+                                  )
+                                : true,
+                            clip: window.__ui.clip(),
+                        }),
+                        EXPR[id] || null
+                    );
+                    motion = Math.max(motion, (await diff(base, s.r)).max);
+                    mode = s.mode;
+                    expr = Math.max(expr, s.expr || 0);
+                    hasExpr = s.has;
+                    if (s.clip && s.clip.playing) clip = s.clip.clip;
+                }
+                const active = await ev(
+                    (x) =>
+                        document
+                            .querySelector(`.pose-anim-chip[data-anim="${x}"]`)
+                            .classList.contains('pose-anim-chip--active'),
+                    id
+                );
+                const s = await shot(page, `beh-${id}`);
+                const modeOk = id === 'dance' ? Boolean(clip) || mode === 'musicIdle' : mode === id;
+                // An avatar without that expression cannot show it; the body response still counts.
+                const exprOk = EXPR[id] ? expr > 0.1 || !hasExpr : true;
+                record(
+                    'behavior',
+                    c.label,
+                    pf(motion > 1.5 && modeOk && exprOk),
+                    `mode "${mode}"${id === 'dance' ? `, clip ${clip ? String(clip).split('/').pop() : 'none'}` : ''}${EXPR[id] ? `, "${EXPR[id]}" expression peak ${expr}${hasExpr ? '' : ' (this avatar defines no such expression)'}` : ''}; skeleton moved up to ${motion}° in 2.8 s; chip highlighted=${active}`,
+                    s
+                );
+                await page.locator('#poseResetBtn').click();
+                await settle(900);
+            }
         });
 
         // ── Undo / Redo, Save, change avatar, reapply ────────────────────────
@@ -1361,6 +1465,7 @@ async function tourPoseStudio(D, browser, base) {
             const S0 = await N();
             // A press on a slider starts an undo step, as when a person drags it.
             await page.selectOption('#poseBoneSelect', { label: 'Left Upper Arm' });
+            await page.locator('#poseSliderZ').scrollIntoViewIfNeeded();
             const box = await page.locator('#poseSliderZ').boundingBox();
             await page.mouse.move(box.x + box.width * 0.85, box.y + box.height / 2);
             await page.mouse.down();
@@ -1482,73 +1587,6 @@ async function tourPoseStudio(D, browser, base) {
                         }
                     }
             }, name);
-        });
-
-        // ── Behavior (Live) ──────────────────────────────────────────────────
-        await step('Behavior (Live)', async () => {
-            await page.locator('#poseResetBtn').click();
-            await settle(1200);
-            const chips = await ev(() =>
-                [...document.querySelectorAll('#poseAnimGridEmotes .pose-anim-chip')].map((c) => ({
-                    id: c.dataset.anim,
-                    label: c.querySelector('.pose-anim-chip-label').textContent.trim(),
-                }))
-            );
-            const want = ['Idle', 'Waiting', 'Happy', 'Thinking', 'Dance', 'Talk', 'Sad', 'Angry', 'Surprised'];
-            const spicyHidden = await ev(
-                () => !window.__ui.shown(document.getElementById('poseAnimGridSpicy')?.closest('.spicy-gated'))
-            );
-            record(
-                'behavior',
-                'chips listed (Spicy excluded)',
-                pf(want.every((w) => chips.some((c) => c.label === w)) && chips.length === 9 && spicyHidden),
-                `${chips.map((c) => c.label).join(', ')}; Spicy grid hidden=${spicyHidden}`
-            );
-            const EXPR = { happy: 'happy', sad: 'sad', angry: 'angry', surprised: 'surprised' };
-            for (const c of chips) {
-                const id = c.id;
-                const base = await R();
-                await page.locator(`#poseAnimGridEmotes .pose-anim-chip[data-anim="${id}"]`).click();
-                let motion = 0;
-                let mode = null;
-                let expr = 0;
-                let clip = null;
-                for (let k = 0; k < 8; k++) {
-                    await settle(350);
-                    const s = await ev(
-                        (e) => ({
-                            r: window.__ui.rendered(),
-                            mode: window.__ui.mode(),
-                            expr: e ? window.__ui.expression(e) : 0,
-                            clip: window.__ui.clip(),
-                        }),
-                        EXPR[id] || null
-                    );
-                    motion = Math.max(motion, (await diff(base, s.r)).max);
-                    mode = s.mode;
-                    expr = Math.max(expr, s.expr || 0);
-                    if (s.clip && s.clip.playing) clip = s.clip.clip;
-                }
-                const active = await ev(
-                    (x) =>
-                        document
-                            .querySelector(`.pose-anim-chip[data-anim="${x}"]`)
-                            .classList.contains('pose-anim-chip--active'),
-                    id
-                );
-                const s = await shot(page, `beh-${id}`);
-                const modeOk = id === 'dance' ? Boolean(clip) || mode === 'musicIdle' : mode === id;
-                const exprOk = EXPR[id] ? expr > 0.1 : true;
-                record(
-                    'behavior',
-                    c.label,
-                    pf(motion > 1.5 && modeOk && exprOk),
-                    `mode "${mode}"${id === 'dance' ? `, clip ${clip ? String(clip).split('/').pop() : 'none'}` : ''}${EXPR[id] ? `, "${EXPR[id]}" expression peak ${expr}` : ''}; skeleton moved up to ${motion}° in 2.8 s; chip highlighted=${active}`,
-                    s
-                );
-                await page.locator('#poseResetBtn').click();
-                await settle(900);
-            }
         });
 
         // ── Close ────────────────────────────────────────────────────────────

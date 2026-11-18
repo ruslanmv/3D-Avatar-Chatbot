@@ -383,6 +383,7 @@
             closeBtn.addEventListener('click', () => {
                 self.hide();
                 self.editor.exit();
+                self._returnFocus();
 
                 // Cancel any VRPoseSystem blending so it doesn't fight
                 try {
@@ -557,6 +558,7 @@
         const resetSelectedBtn = this.rootEl.querySelector('#poseResetSelectedBtn');
         if (resetSelectedBtn) {
             resetSelectedBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.resetSelected();
                 self._resetSliders();
             });
@@ -566,6 +568,7 @@
         const mirrorBtn = this.rootEl.querySelector('#poseMirrorBtn');
         if (mirrorBtn) {
             mirrorBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.mirrorArms('left');
                 self._syncSlidersFromBone();
             });
@@ -575,6 +578,7 @@
         const saveBtn = this.rootEl.querySelector('#poseSaveBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
+                self._bindToStage();
                 const name = self.saveInput.value.trim() || 'Custom Pose';
                 self.editor.saveCurrentPose(name);
                 self.saveInput.value = '';
@@ -599,6 +603,7 @@
         const undoBtn = this.rootEl.querySelector('#poseUndoBtn');
         if (undoBtn) {
             undoBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.undo();
                 self._syncSlidersFromBone();
             });
@@ -607,6 +612,7 @@
         const redoBtn = this.rootEl.querySelector('#poseRedoBtn');
         if (redoBtn) {
             redoBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.redo();
                 self._syncSlidersFromBone();
             });
@@ -650,7 +656,8 @@
         // Sync navigator when VR-side changes the pose
         this._vrPoseListener = (e) => {
             if (e.detail && e.detail.preset) {
-                const idx = NAV_PRESETS.findIndex((p) => p.name === e.detail.preset);
+                // UI2. An index into the list the navigator shows (filtered when Private is off).
+                const idx = getFilteredPresets().findIndex((p) => p.name === e.detail.preset);
                 if (idx !== -1) {
                     self._navIndex = idx;
                     self._updateNavDisplay();
@@ -669,6 +676,7 @@
         // --- Bone selector ---
         if (this.boneSelect) {
             this.boneSelect.addEventListener('change', () => {
+                self._bindToStage();
                 self.editor.selectBone(self.boneSelect.value);
                 self._syncSlidersFromBone();
             });
@@ -685,6 +693,7 @@
 
             // Push undo on first drag interaction
             slider.addEventListener('mousedown', () => {
+                self._bindToStage();
                 if (!sliderUndoPushed) {
                     sliderUndoPushed = true;
                     if (self.editor._pushUndoSnapshot) {
@@ -1381,6 +1390,8 @@
         // Check if it's a VRPoseSystem preset (matches NAV_PRESETS name)
         const vrPreset = NAV_PRESETS.find((p) => p.name === selectedValue);
 
+        this._bindToStage();
+
         if (vrPreset) {
             // Ensure pose mode is active (stops clips, yields ProceduralAnimator)
             this._enterPoseMode();
@@ -1389,8 +1400,10 @@
             if (vps) {
                 vps.applyPreset(vrPreset.name, 0.5);
             }
-            // Sync navigator to this preset
-            const idx = NAV_PRESETS.indexOf(vrPreset);
+            // Sync navigator to this preset. UI2: its index in the list the navigator shows.
+            // NAV_PRESETS also holds the adult presets, so with Private off "T-Pose (Reset)"
+            // (index 43 there, 26 of 26 here) fell off the end and the navigator read "Lecturer".
+            const idx = getFilteredPresets().findIndex((p) => p.name === vrPreset.name);
             if (idx !== -1) {
                 this._navIndex = idx;
                 this._updateNavDisplay();
@@ -1407,7 +1420,25 @@
      * Navigate poses: direction = -1 (back) or +1 (next).
      * Always applies via VRPoseSystem for smooth blended transition on the 3D character.
      */
+    /**
+     * UI2. If the avatar was swapped while the studio stayed open, bind the editor to the one on
+     * stage before acting. Only the gizmo and skeleton overlays used to rebind, and only while
+     * shown, so with Mouse Bone Editing off a saved pose, a slider or Undo was written to the
+     * skeleton that had been taken off the stage. Re-entering resets the new rig to its neutral,
+     * which is the right start for whatever the person does next.
+     */
+    PoseStudioPanel.prototype._bindToStage = function () {
+        try {
+            if (this.editor && this.editor.rebindIfStale && this.editor.rebindIfStale()) {
+                this.refresh();
+            }
+        } catch (err) {
+            console.warn('[PoseStudio] could not bind to the avatar on stage:', err);
+        }
+    };
+
     PoseStudioPanel.prototype._navigatePose = function (direction) {
+        this._bindToStage();
         const filtered = getFilteredPresets();
         const len = filtered.length;
         this._navIndex = (((this._navIndex + direction) % len) + len) % len;
@@ -1484,7 +1515,10 @@
             return;
         }
 
-        const state = editor.applier.axisState && editor.applier.axisState[editor.selectedBone];
+        // UI2. Read the bone, not a cached slider value: a preset, a drag or Undo moves it too.
+        const state = editor.applier.readAxes
+            ? editor.applier.readAxes(editor.selectedBone)
+            : editor.applier.axisState && editor.applier.axisState[editor.selectedBone];
         if (!state) {
             this._resetSliders();
             return;
@@ -1740,6 +1774,9 @@
     };
 
     PoseStudioPanel.prototype.show = function () {
+        // UI2. Remember what opened the studio, so Close can hand focus back to it.
+        var active = document.activeElement;
+        this._opener = active && active !== document.body && !this.rootEl.contains(active) ? active : null;
         this.rootEl.classList.remove('hidden');
         this.refresh();
 
@@ -1808,6 +1845,37 @@
                 this._updateNavDisplay();
             }
         }
+    };
+
+    /**
+     * UI2. Close hands keyboard focus back to the control that opened the studio, as a dialog
+     * should; it used to fall to <body>, so a keyboard or switch user lost their place. When the
+     * opener is inside the closed ☰ drawer (hidden now), the menu button is the visible way back.
+     */
+    PoseStudioPanel.prototype._returnFocus = function () {
+        var visible = function (el) {
+            if (!el || !el.isConnected) return false;
+            var r = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+        };
+        var drawer = document.getElementById('mobile-drawer');
+        var opener = this._opener;
+        var inClosedDrawer = opener && drawer && drawer.contains(opener) && !drawer.classList.contains('open');
+        var candidates = [
+            inClosedDrawer ? null : opener,
+            document.getElementById('mobile-menu-btn'),
+            document.getElementById('openPoseStudioBtn'),
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+            if (visible(candidates[i])) {
+                try {
+                    candidates[i].focus({ preventScroll: true });
+                } catch (_) {}
+                break;
+            }
+        }
+        this._opener = null;
     };
 
     /**

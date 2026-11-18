@@ -125,19 +125,19 @@
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 585,
+      "line": 589,
       "guarded": true,
       "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 590,
+      "line": 594,
       "guarded": true,
       "comment": false
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 592,
+      "line": 596,
       "guarded": true,
       "comment": false
     }
@@ -167,6 +167,6 @@
     "adult.available": true
   },
   "informational": {
-    "totalBootScripts": 160
+    "totalBootScripts": 161
   }
 }
