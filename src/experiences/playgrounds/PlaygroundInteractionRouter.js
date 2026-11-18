@@ -281,6 +281,28 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
         }
 
         /**
+         * PG4. On a phone the chat is a sheet that sits collapsed to the composer while she is in
+         * a venue, so "A story" or "Quiz me" sent a line and showed nothing: her answer went into
+         * a transcript nobody could see, and without her voice on the chip seemed broken. A chip
+         * that asks her something opens the sheet to its middle height, the same way Private and
+         * Scene Tale do, through the overlay's own toggle so its drag state stays in step. Only
+         * from collapsed: a sheet the person has sized is theirs. Desktop has no such sheet.
+         */
+        function showConversation() {
+            try {
+                const panel = doc.querySelector('.chat-panel');
+                if (!panel || !panel.classList.contains('chat-overlay--collapsed')) return false;
+                const toggle = doc.getElementById('chat-overlay-toggle');
+                if (!toggle || typeof toggle.click !== 'function') return false;
+                toggle.click();
+                return true;
+            } catch (error) {
+                console.warn('[Playground] the conversation could not be shown', error);
+                return false;
+            }
+        }
+
+        /**
          * PG3. Say what happened, for PlaygroundReactiveContext, after this file has done it.
          * A report and nothing more: this router stays the one owner of every chip's effect,
          * and the listener checks the report against the verified world before using it.
@@ -387,8 +409,9 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
             const action = template && template.actions.find((a) => a.id === id);
             if (!action) return;
             report(action.id, 'selected');
-            if (action.kind === 'say') say(action.text);
-            else if (action.kind === 'clip') playClip(action);
+            if (action.kind === 'say') {
+                if (say(action.text)) showConversation();
+            } else if (action.kind === 'clip') playClip(action);
             else if (action.kind === 'mood') setMood(state.mood);
             else if (action.kind === 'pretend-live') {
                 state.live = !state.live;
