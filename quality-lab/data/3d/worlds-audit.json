@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 59,
-        "places": 27,
-        "standIns": 16,
-        "withSpots": 31,
+        "worlds": 70,
+        "places": 33,
+        "standIns": 21,
+        "withSpots": 42,
         "fails": 0,
-        "warns": 19,
+        "warns": 25,
         "offered": {
-            "desktop": 43,
-            "mobile": 41,
-            "vr": 42
+            "desktop": 49,
+            "mobile": 47,
+            "vr": 48
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -3165,6 +3165,684 @@
                 {
                     "severity": "warn",
                     "text": "VR comfort: 1 scene part within 1 m of her spot (060-shoe-locker-bank 0.8 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-classroom",
+            "title": "School classroom",
+            "kind": "place",
+            "rating": "general",
+            "category": "School",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "anime-classroom-light",
+            "triangles": 22102,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-classroom.glb",
+                "exists": true,
+                "bytes": 1923928
+            },
+            "preview": {
+                "src": "previews/anime-classroom.webp",
+                "exists": true,
+                "bytes": 18024
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-classroom.json",
+                "total": 5,
+                "verified": 4,
+                "ids": [
+                    "teacher-desk",
+                    "desks",
+                    "windows",
+                    "bookshelf"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-classroom",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-classroom-light",
+                    "why": "loads its light stand-in anime-classroom-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-classroom-light",
+                    "why": "loads its light stand-in anime-classroom-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "anime-classroom-light",
+            "title": "School classroom",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "anime-classroom",
+            "standIn": null,
+            "triangles": 22102,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-classroom-light.glb",
+                "exists": true,
+                "bytes": 1399852
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "Wall",
+                    "metres": 0
+                },
+                {
+                    "node": "Windows",
+                    "metres": 0.35
+                },
+                {
+                    "node": "School_desk",
+                    "metres": 0.4
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-classroom-light.json",
+                "total": 5,
+                "verified": 4,
+                "ids": [
+                    "teacher-desk",
+                    "desks",
+                    "windows",
+                    "bookshelf"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-classroom-light",
+                    "why": "stand-in for anime-classroom"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-classroom-light",
+                    "why": "stand-in for anime-classroom"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (Wall 0 m, Windows 0.35 m, School_desk 0.4 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-classroom-small",
+            "title": "Small classroom",
+            "kind": "place",
+            "rating": "general",
+            "category": "School",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 13264,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-classroom-small.glb",
+                "exists": true,
+                "bytes": 931660
+            },
+            "preview": {
+                "src": "previews/anime-classroom-small.webp",
+                "exists": true,
+                "bytes": 17910
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "Chair.015_Material.001_0",
+                    "metres": 0
+                },
+                {
+                    "node": "Chair.015_Material#1_0",
+                    "metres": 0
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-classroom-small.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "classroom",
+                    "classroom-far"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-classroom-small",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-classroom-small",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-classroom-small",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (Chair.015_Material.001_0 0 m, Chair.015_Material#1_0 0 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-corridor",
+            "title": "School corridor",
+            "kind": "place",
+            "rating": "general",
+            "category": "School",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "anime-corridor-light",
+            "triangles": 26663,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-corridor.glb",
+                "exists": true,
+                "bytes": 1979392
+            },
+            "preview": {
+                "src": "previews/anime-corridor.webp",
+                "exists": true,
+                "bytes": 22736
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-corridor.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "windows",
+                    "corridor"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-corridor",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-corridor-light",
+                    "why": "loads its light stand-in anime-corridor-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-corridor-light",
+                    "why": "loads its light stand-in anime-corridor-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "anime-corridor-light",
+            "title": "School corridor",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "anime-corridor",
+            "standIn": null,
+            "triangles": 26663,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-corridor-light.glb",
+                "exists": true,
+                "bytes": 1571668
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "Wall",
+                    "metres": 0.04
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-corridor-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "windows",
+                    "corridor"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-corridor-light",
+                    "why": "stand-in for anime-corridor"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-corridor-light",
+                    "why": "stand-in for anime-corridor"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (Wall 0.04 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-stairs",
+            "title": "School stairs",
+            "kind": "place",
+            "rating": "general",
+            "category": "School",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "anime-stairs-light",
+            "triangles": 47636,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-stairs.glb",
+                "exists": true,
+                "bytes": 1687348
+            },
+            "preview": {
+                "src": "previews/anime-stairs.webp",
+                "exists": true,
+                "bytes": 8882
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-stairs.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "stairwell",
+                    "stairwell-far"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-stairs",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-stairs-light",
+                    "why": "loads its light stand-in anime-stairs-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-stairs-light",
+                    "why": "loads its light stand-in anime-stairs-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "anime-stairs-light",
+            "title": "School stairs",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "anime-stairs",
+            "standIn": null,
+            "triangles": 27091,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-school-stairs-light.glb",
+                "exists": true,
+                "bytes": 1057140
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "Object_7",
+                    "metres": 0
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-school-stairs-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "stairwell",
+                    "stairwell-far"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-stairs-light",
+                    "why": "stand-in for anime-stairs"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-stairs-light",
+                    "why": "stand-in for anime-stairs"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (Object_7 0 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-subway",
+            "title": "Subway car",
+            "kind": "place",
+            "rating": "general",
+            "category": "Going out",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "anime-subway-light",
+            "triangles": 35066,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-subway-car.glb",
+                "exists": true,
+                "bytes": 1666548
+            },
+            "preview": {
+                "src": "previews/anime-subway.webp",
+                "exists": true,
+                "bytes": 14750
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-subway-car.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "carriage",
+                    "carriage-far"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-subway",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-subway-light",
+                    "why": "loads its light stand-in anime-subway-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-subway-light",
+                    "why": "loads its light stand-in anime-subway-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "anime-subway-light",
+            "title": "Subway car",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "anime-subway",
+            "standIn": null,
+            "triangles": 27006,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-subway-car-light.glb",
+                "exists": true,
+                "bytes": 1418868
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "Object_7",
+                    "metres": 0
+                },
+                {
+                    "node": "Object_1110",
+                    "metres": 0.88
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-subway-car-light.json",
+                "total": 2,
+                "verified": 2,
+                "ids": [
+                    "carriage",
+                    "carriage-far"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-subway-light",
+                    "why": "stand-in for anime-subway"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-subway-light",
+                    "why": "stand-in for anime-subway"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 2 scene parts within 1 m of her spot (Object_7 0 m, Object_1110 0.88 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "anime-tatami",
+            "title": "Tatami room",
+            "kind": "place",
+            "rating": "general",
+            "category": "Home",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "anime-tatami-light",
+            "triangles": 57611,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-tatami-room.glb",
+                "exists": true,
+                "bytes": 3144848
+            },
+            "preview": {
+                "src": "previews/anime-tatami.webp",
+                "exists": true,
+                "bytes": 20910
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-tatami-room.json",
+                "total": 5,
+                "verified": 2,
+                "ids": [
+                    "table",
+                    "cushions"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "anime-tatami",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-tatami-light",
+                    "why": "loads its light stand-in anime-tatami-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-tatami-light",
+                    "why": "loads its light stand-in anime-tatami-light"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "anime-tatami-light",
+            "title": "Tatami room",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "anime-tatami",
+            "standIn": null,
+            "triangles": 29821,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/anime-tatami-room-light.glb",
+                "exists": true,
+                "bytes": 1530692
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "kainZabuton",
+                    "metres": 0
+                },
+                {
+                    "node": "KayuRak",
+                    "metres": 0
+                },
+                {
+                    "node": "KayuMeja",
+                    "metres": 0
+                },
+                {
+                    "node": "KainMeja",
+                    "metres": 0
+                },
+                {
+                    "node": "Material.012",
+                    "metres": 0.56
+                },
+                {
+                    "node": "Nampan",
+                    "metres": 0.73
+                },
+                {
+                    "node": "Teko",
+                    "metres": 0.9
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/anime-tatami-room-light.json",
+                "total": 5,
+                "verified": 2,
+                "ids": [
+                    "table",
+                    "cushions"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "anime-tatami-light",
+                    "why": "stand-in for anime-tatami"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "anime-tatami-light",
+                    "why": "stand-in for anime-tatami"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 7 scene parts within 1 m of her spot (kainZabuton 0 m, KayuRak 0 m, KayuMeja 0 m, KainMeja 0 m, Material.012 0.56 m, Nampan 0.73 m, Teko 0.9 m) — check in a headset or leave out of the VR version"
                 }
             ]
         }

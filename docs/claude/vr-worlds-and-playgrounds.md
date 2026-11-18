@@ -45,6 +45,25 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   trunk looked clear from above). Stylized worlds use `sky` (a gradient) and
   `fog` (snapshotted and restored) instead of a photo. A wide-short screen goes
   to CameraPresets' `bust` while a world is up (`framingFor`).
+- **Downloaded scenes (VW12): `/add-place`, budgets beyond triangles.** One
+  command prepares a Sketchfab (or any GLB) scene:
+  `node tools/vr/prepare-scene.mjs --sketchfab <uid> --name <stem>`. A phone or
+  Quest version must stay within **30 000 triangles, 40 draw calls and 32 MB of
+  texture memory**; the tool cuts one (simplified, colour textures only at
+  512 px) and **refuses** a scene that stays over (the night street: 149 draw
+  calls; the grandma's house: 36 draw calls and 44 MB). Do not force a refusal.
+  Geometry is never Meshopt/Draco-compressed: `tools/vr/*.mjs` read GLB
+  directly. Licences: CC0 or **CC BY** only; a CC BY place carries its credit
+  in its `note` (shown on the card) and a row in `PROVENANCE.md` saying what
+  was changed. A school, or anything that must never be part of a Private
+  evening, is `generalOnly: true`. Every new spot id needs words in
+  `WorldSpots.WORDS` (English and Italian), or "andiamo alla lavagna" moves
+  nobody.
+  Look at every preview before shipping: a scene that passes every budget can
+  still be a bad place (the school entrance was a flat grey box, the hallway
+  open on one side; both were left out). When the default 22° preview camera puts furniture across her, add a
+  straight (`yawDeg: 0`) entry to `PLACE_CAMERA` rather than moving her by eye;
+  if no angle and no other verified spot frames her well, leave the place out.
 - **Places by name, and private rooms only inside Private (VW3).** A world may
   be `place: true` with a `rating` of `general`, `romantic` or `private`, and a
   `lightFor` stand-in for devices the heavy one cannot load on (`resolveFor`,
@@ -114,6 +133,18 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   sentence with a next step and never echoes the error.
   `tests/playground-pg3.test.js`, `tests/chat-error-text.test.js`;
   `docs/V5_PRODUCTION_READINESS.md` holds the evidence and the rollback.
+- **PG4: the playground on a phone.** Two defects found by clicking through
+  the real UI on a Pixel 7 (Menu ▸ Together ▸ Playground ▸ Experiences ▸ Visit
+  a place ▸ a venue ▸ each chip). (1) `boot.js` awaited each of its 149 modules
+  before requesting the next, so Together (and everything behind it) appeared
+  about 25 s after the page on a phone; they are now requested at once
+  (`async = false` keeps execution order) and the director is up in under a
+  second. Keep that list ordered and requested together; do not go back to a
+  sequential loop. (2) A `say` chip on a phone sent its line into a chat sheet
+  collapsed to the composer, so nothing visibly happened; the router now opens
+  the sheet to its middle height through `#chat-overlay-toggle` (the Private
+  and Scene Tale pattern), only from collapsed. On a phone Together is reached
+  only through the ☰ menu (the 👥 button is in the desktop toolbar).
 - **Every place has a picture (PG2).** `preview` (an image under
   `assets/vr-worlds/`, safe-path checked) and `category` on each place in
   `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky

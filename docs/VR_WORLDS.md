@@ -345,3 +345,43 @@ hidden by a perimeter fence. Not checked: a headset, frame rate on a real phone 
 the school (no floor mesh, so no measured spots, no stairs, no doors), a live Private evening
 carried through to the school with a real model's reply.
 
+
+## Anime school and Japan places (VW12)
+
+Six general places downloaded from Sketchfab (all **CC BY 4.0**; credit in each place's note and
+in `assets/vr-worlds/PROVENANCE.md`), each with a phone and Quest version where the full one is over
+budget:
+
+| id                      | category  | desktop triangles | phone / Quest version          |
+| ----------------------- | --------- | ----------------- | ------------------------------ |
+| `anime-classroom`       | School    | 22 102            | `-light`, 22 102, 512 px colour |
+| `anime-classroom-small` | School    | 13 264            | the same file on every tier    |
+| `anime-corridor`        | School    | 26 663            | `-light`, 26 663, 8 MB texture  |
+| `anime-stairs`          | School    | 47 636            | `-light`, 27 091               |
+| `anime-subway`          | Going out | 35 066            | `-light`, 27 006               |
+| `anime-tatami`          | Home      | 57 611            | `-light`, 29 821               |
+
+Every school place is `generalOnly: true` (see the VW11 section: going there ends Private through
+its own path). The subway carriage and the tatami room are ordinary places.
+
+**Budgets.** A phone or Quest version stays within 30 000 triangles, 40 draw calls and 32 MB of
+texture memory (`tools/vr/prepare-scene.mjs` measures all three and refuses a scene that stays
+over). Refused so: a Japanese night street (142 MB of textures even reduced) and a grandma's house
+(36 draw calls, 44 MB). Left out by eye: the school entrance (a flat, untextured grey box, an empty
+picture from every spot and camera angle) and the school hallway (open on one side: from both
+measured spots and every angle she stood on a grey strip against grass and sky).
+
+**Spots.** Every place has measured spots (`assets/vr-worlds/spots/<scene>.json`, both versions),
+with English and Italian words in `WorldSpots.WORDS`, so "andiamo alla lavagna" walks her to the
+blackboard and the model may suggest one. Rooms with named things (classroom: teacher's desk, desks,
+windows, bookshelf; tatami room: low table, cushions; corridor: windows) were split one node per
+material (`tools/vr/split-by-material.mjs`) so a spot can name them; the stairs, the subway car and the small classroom are single merged
+meshes and use `anywhere` spots (`<room>`, `<room>-far`). The start (`scene.at` / `turn`) comes from
+a verified spot through `tools/vr/at-from-spot.mjs --write`, never typed.
+
+**Previews.** The preview camera's default 22° turn put a desk top, a stair wall or a grab pole in
+front of her in the classroom, the stairs and the subway; those three use the straight camera
+(`PLACE_CAMERA` in `tools/vr/render-place-previews.mjs`), as their spots were raycast for.
+
+Not checked: a headset, frame rate on a real phone or Quest, a live conversation walking her
+between spots with a real model's reply.

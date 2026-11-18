@@ -3368,6 +3368,448 @@
         "radius": 16
       },
       "lightFor": "school"
+    },
+    {
+      "id": "anime-classroom",
+      "title": "School classroom",
+      "note": "A Japanese school classroom: rows of desks, the teacher's desk, tall windows, a bookshelf. Always General. Model: “The Japanese School Classroom” by volvor, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["desktop"],
+      "triangles": 22102,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-classroom.glb",
+        "at": [0.023, 0, 2.65],
+        "turn": 0
+      },
+      "preview": "previews/anime-classroom.webp",
+      "category": "School"
+    },
+    {
+      "id": "anime-classroom-light",
+      "title": "School classroom",
+      "note": "A Japanese school classroom: rows of desks, the teacher's desk, tall windows, a bookshelf. Always General. Model: “The Japanese School Classroom” by volvor, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "vr"],
+      "triangles": 22102,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-classroom-light.glb",
+        "at": [0.023, 0, 2.65],
+        "turn": 0
+      },
+      "lightFor": "anime-classroom"
+    },
+    {
+      "id": "anime-classroom-small",
+      "title": "Small classroom",
+      "note": "A small Japanese classroom with desks and a blackboard. Always General. Model: “Japanese Classroom” by ouz209, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 13264,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-classroom-small.glb",
+        "at": [-0.267, 1.246, 1.278],
+        "turn": -75
+      },
+      "preview": "previews/anime-classroom-small.webp",
+      "category": "School"
+    },
+    {
+      "id": "anime-corridor",
+      "title": "School corridor",
+      "note": "A Japanese school's corridor, windows down one side. Always General. Model: “The Japanese School Corridor” by volvor, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["desktop"],
+      "triangles": 26663,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-corridor.glb",
+        "at": [-2.063, 0, -0.803],
+        "turn": 20
+      },
+      "preview": "previews/anime-corridor.webp",
+      "category": "School"
+    },
+    {
+      "id": "anime-corridor-light",
+      "title": "School corridor",
+      "note": "A Japanese school's corridor, windows down one side. Always General. Model: “The Japanese School Corridor” by volvor, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "vr"],
+      "triangles": 26663,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-corridor-light.glb",
+        "at": [-2.063, 0, -0.803],
+        "turn": 20
+      },
+      "lightFor": "anime-corridor"
+    },
+    {
+      "id": "anime-stairs",
+      "title": "School stairs",
+      "note": "A Japanese school's stairwell. Always General. Model: “School_[stairs]” by Comicaroid, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["desktop"],
+      "triangles": 47636,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-stairs.glb",
+        "at": [-91.704, 4.766, 18.661],
+        "turn": 0
+      },
+      "preview": "previews/anime-stairs.webp",
+      "category": "School"
+    },
+    {
+      "id": "anime-stairs-light",
+      "title": "School stairs",
+      "note": "A Japanese school's stairwell. Always General. Model: “School_[stairs]” by Comicaroid, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "generalOnly": true,
+      "tiers": ["mobile", "vr"],
+      "triangles": 27091,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-school-stairs-light.glb",
+        "at": [-91.704, 4.766, 18.661],
+        "turn": 0
+      },
+      "lightFor": "anime-stairs"
+    },
+    {
+      "id": "anime-subway",
+      "title": "Subway car",
+      "note": "Inside a subway car on the ride home. Model: “Subway_[interior]” by Comicaroid, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 35066,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-subway-car.glb",
+        "at": [-8.713, 0.665, 2.887],
+        "turn": -80
+      },
+      "preview": "previews/anime-subway.webp",
+      "category": "Going out"
+    },
+    {
+      "id": "anime-subway-light",
+      "title": "Subway car",
+      "note": "Inside a subway car on the ride home. Model: “Subway_[interior]” by Comicaroid, CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 27006,
+      "activities": [],
+      "sky": {
+        "top": "#6f9fd8",
+        "horizon": "#f4e3cf",
+        "bottom": "#8c9a7e"
+      },
+      "fog": {
+        "color": "#e9e2d4",
+        "near": 18,
+        "far": 55
+      },
+      "light": {
+        "sky": "#f6f3ff",
+        "ground": "#7d8a6a",
+        "hemi": 0.95,
+        "key": "#fff3df",
+        "keyIntensity": 1.05,
+        "fill": "#dfeaff",
+        "fillIntensity": 0.55,
+        "rim": "#ffe0bd",
+        "rimIntensity": 0.3,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-subway-car-light.glb",
+        "at": [-8.713, 0.665, 2.887],
+        "turn": -80
+      },
+      "lightFor": "anime-subway"
+    },
+    {
+      "id": "anime-tatami",
+      "title": "Tatami room",
+      "note": "A Japanese tatami room: a low table with tea, floor cushions, shoji screens. Model: “Japanese Tatami Room Set” by Geraldo Pratama Wahyu Teddy (juyo), CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 57611,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#2e2630",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-tatami-room.glb",
+        "at": [0.698, -1.819, -4.915],
+        "turn": -135
+      },
+      "preview": "previews/anime-tatami.webp",
+      "category": "Home"
+    },
+    {
+      "id": "anime-tatami-light",
+      "title": "Tatami room",
+      "note": "A Japanese tatami room: a low table with tea, floor cushions, shoji screens. Model: “Japanese Tatami Room Set” by Geraldo Pratama Wahyu Teddy (juyo), CC BY 4.0 (Sketchfab).",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29821,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#2e2630",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/anime-tatami-room-light.glb",
+        "at": [0.698, -1.819, -4.915],
+        "turn": -135
+      },
+      "lightFor": "anime-tatami"
     }
   ]
 }

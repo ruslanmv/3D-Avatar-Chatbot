@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/anime-school-classroom.glb",
+  "sha256": "7e3ddf734893daca2738e4a6dd2d90572077fcd70a82f97c6fc7c002bf6b1c58",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 5,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0,
+  "title": {
+    "en": "the classroom",
+    "it": "l'aula"
+  },
+  "spots": [
+    {
+      "id": "blackboard",
+      "label": {
+        "en": "by the blackboard",
+        "it": "vicino alla lavagna"
+      },
+      "room": "classroom",
+      "near": ["^School_blackboards$"],
+      "sees": {
+        "en": "the green blackboard at the front of the classroom",
+        "it": "la lavagna verde davanti alla classe"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":4056,\"body\":1035,\"room\":561,\"view\":0} of 5652)"
+    },
+    {
+      "id": "teacher-desk",
+      "label": {
+        "en": "by the teacher's desk",
+        "it": "vicino alla cattedra"
+      },
+      "room": "classroom",
+      "near": ["^Teacher_desk$"],
+      "sees": {
+        "en": "the teacher's desk at the front",
+        "it": "la cattedra davanti"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [1.429, 0, -0.973],
+      "facingDeg": -90,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.423,
+        "viewOpenM": 5.344,
+        "thingOffBehindDeg": 41,
+        "framing": "fullBody",
+        "candidates": 1120
+      }
+    },
+    {
+      "id": "desks",
+      "label": {
+        "en": "among the desks",
+        "it": "tra i banchi"
+      },
+      "room": "classroom",
+      "near": ["^School_desk$"],
+      "sees": {
+        "en": "rows of wooden school desks and chairs",
+        "it": "file di banchi e sedie di legno"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-0.381, 0, 2.654],
+      "facingDeg": 70,
+      "framing": "mid",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 3.965,
+        "thingOffBehindDeg": 57,
+        "framing": "mid",
+        "candidates": 4528
+      }
+    },
+    {
+      "id": "windows",
+      "label": {
+        "en": "by the windows",
+        "it": "vicino alle finestre"
+      },
+      "room": "classroom",
+      "near": ["^Windows$"],
+      "sees": {
+        "en": "the tall classroom windows",
+        "it": "le alte finestre dell'aula"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-0.023, 0, -2.65],
+      "facingDeg": 0,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.345,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 3,
+        "framing": "fullBody",
+        "candidates": 2038
+      }
+    },
+    {
+      "id": "bookshelf",
+      "label": {
+        "en": "by the bookshelf",
+        "it": "vicino alla libreria"
+      },
+      "room": "classroom",
+      "near": ["^Book_shell$"],
+      "sees": {
+        "en": "a bookshelf at the back of the classroom",
+        "it": "una libreria in fondo all'aula"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [1.318, 0, 3.132],
+      "facingDeg": 155,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.5,
+        "viewOpenM": 5.926,
+        "thingOffBehindDeg": 39,
+        "framing": "fullBody",
+        "candidates": 984
+      }
+    }
+  ]
+}

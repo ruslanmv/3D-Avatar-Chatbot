@@ -12,6 +12,8 @@
  * `tools/vr/spot-targets.json`:
  *
  *   1. finds the thing it is for (top-level node names matched by `near`) and its bounding box;
+ *      a spot with `anywhere: true` and no `near` (VW12) is any floor point of the room, with
+ *      every check below except the thing's (distance, same room, seen behind her);
  *   2. tries every floor point 0.3–1.3 m from it on a 10 cm grid. A point counts only if a ray
  *      straight down hits an upward-facing surface at the scene's floor height (not a rug edge
  *      over a step, not a table top);
@@ -171,16 +173,27 @@ window.measure = async (src, spots, P, virtualFloor) => {
         meshes.push(plane);
     }
     const votes = new Map();
+    // VW12. A room with a roof (floorUnderRoof in its entry): straight down, the first upward face
+    // is the roof's top, which measured the classroom's floor at 3.34 m. Every upward face on the
+    // line is counted instead, and the lowest broad level is the floor.
+    const under = new THREE.Raycaster();
     for (let x = sceneBox.min.x; x <= sceneBox.max.x; x += 0.25)
         for (let z = sceneBox.min.z; z <= sceneBox.max.z; z += 0.25) {
-            const h = first(new THREE.Vector3(x, sceneBox.max.y + 1, z), DOWN, 1e3);
-            if (!h || !h.face) continue;
-            const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
-            if (n.y < 0.9) continue;
-            const k = Math.round(h.point.y * 50) / 50;
-            votes.set(k, (votes.get(k) || 0) + 1);
+            const hs = P.floorUnderRoof
+                ? (under.set(new THREE.Vector3(x, sceneBox.max.y + 1, z), DOWN), (under.far = 1e3), under.intersectObjects(meshes, false))
+                : [first(new THREE.Vector3(x, sceneBox.max.y + 1, z), DOWN, 1e3)];
+            for (const h of hs) {
+                if (!h || !h.face) continue;
+                const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+                if (n.y < 0.9) continue;
+                const k = Math.round(h.point.y * 50) / 50;
+                votes.set(k, (votes.get(k) || 0) + 1);
+            }
         }
-    const floorY = [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const ranked = [...votes.entries()].sort((a, b) => b[1] - a[1]);
+    const floorY = P.floorUnderRoof
+        ? Math.min(...ranked.filter(([, c]) => c >= ranked[0][1] * 0.5).map(([k]) => k))
+        : ranked[0][0];
     function floorAt(x, z) {
         const h = first(new THREE.Vector3(x, floorY + 2.1, z), DOWN, 3);
         if (!h || !h.face) return null;
@@ -232,24 +245,45 @@ window.measure = async (src, spots, P, virtualFloor) => {
     const results = [];
     const taken = [];
     for (const spot of spots) {
+        // VW12. "anywhere": a spot on the room's floor with no thing to stand by (a corridor, a
+        // subway car, a scene exported as one merged mesh). Every other check still applies.
+        const anywhere = spot.anywhere === true && !(spot.near || []).length;
         const res = (spot.near || []).map((s) => new RegExp(s));
-        const things = root.children.filter((c) => res.some((re) => re.test(c.name)));
-        if (!things.length) { results.push({ id: spot.id, verified: false, why: 'no node matches ' + spot.near.join(', ') }); continue; }
-        const box = new THREE.Box3(); things.forEach((t) => box.expandByObject(t));
+        const things = anywhere ? [] : root.children.filter((c) => res.some((re) => re.test(c.name)));
+        if (!anywhere && !things.length) { results.push({ id: spot.id, verified: false, why: 'no node matches ' + spot.near.join(', ') }); continue; }
+        const box = new THREE.Box3(); (anywhere ? [root] : things).forEach((t) => box.expandByObject(t));
         const centre = box.getCenter(new THREE.Vector3());
         let best = null; let tried = 0; const why = { floor: 0, body: 0, room: 0, view: 0 };
         for (const framing of ['fullBody', 'mid', 'bust']) {
         if (best) break;
         const cfg = framing === 'fullBody' ? { ...P.camera, bodyPoints: P.bodyPoints } : P[framing];
-        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing; x += P.gridStep)
-            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing; z += P.gridStep) {
+        // VW12. An "anywhere" spot searches a whole room: a 37 m corridor on a 10 cm grid ran past
+        // ninety minutes, so it uses a 50 cm grid. It used to stop at the first point that passed,
+        // and the first one found was in a corner or on the apron outside the building (the
+        // pictures showed her behind a wall): the whole grid is searched, under a roof a point
+        // needs the ceiling above it, and more room around her scores higher.
+        const step = anywhere ? Math.max(P.gridStep, 0.5) : P.gridStep;
+        const UP = new THREE.Vector3(0, 1, 0);
+        const roomAround = (x, y, z) => {
+            let near = 1.5;
+            for (let k = 0; k < 16; k++) {
+                const a = (k / 16) * Math.PI * 2;
+                const h = first(new THREE.Vector3(x, y + 1.3, z), new THREE.Vector3(Math.sin(a), 0, Math.cos(a)), 1.5);
+                if (h) near = Math.min(near, h.distance);
+            }
+            return near;
+        };
+        for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing; x += step)
+            for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing; z += step) {
                 const dx = Math.max(box.min.x - x, 0, x - box.max.x), dz = Math.max(box.min.z - z, 0, z - box.max.z);
-                const dist = Math.hypot(dx, dz);
-                if (dist < P.minFromThing || dist > P.maxFromThing) continue;
+                const dist = anywhere ? 0 : Math.hypot(dx, dz);
+                if (!anywhere && (dist < P.minFromThing || dist > P.maxFromThing)) continue;
                 if (taken.some((t) => Math.hypot(t[0] - x, t[1] - z) < P.minSpacing)) continue;
                 tried++;
                 const y = floorAt(x, z); if (y == null) { why.floor++; continue; }
                 if (!clearRadius(x, y, z, P.bodyRadius)) { why.body++; continue; }
+                if (anywhere && P.floorUnderRoof && !first(new THREE.Vector3(x, y + 0.1, z), UP, 8)) { why.room++; continue; }
+                const around = anywhere ? roomAround(x, y, z) : 0;
                 // Same room: from her chest, the first thing toward the object is the object.
                 // v5: a low or wide thing (a strip of footlights at the stage edge, a curtain) is
                 // missed by a chest-height aim that passes over it, so the nearest point of its top
@@ -261,7 +295,7 @@ window.measure = async (src, spots, P, virtualFloor) => {
                     Math.min(Math.max(z, box.min.z), box.max.z)
                 );
                 const aims = [new THREE.Vector3(centre.x, Math.min(Math.max(centre.y, y + 0.4), y + 1.0), centre.z), near];
-                const sees = aims.some((aim) => {
+                const sees = anywhere || aims.some((aim) => {
                     const hit = first(from, aim.clone().sub(from).normalize(), from.distanceTo(aim) + 0.5);
                     return Boolean(hit && things.includes(topOf(hit.object)));
                 });
@@ -271,15 +305,19 @@ window.measure = async (src, spots, P, virtualFloor) => {
                     const open = openAlong(x, y, z, yaw);
                     if (open < P.viewClear) continue;
                     const px = x + Math.sin(yaw) * P.personAt, pz = z + Math.cos(yaw) * P.personAt;
-                    if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
-                    if (!cameraSees(x, y, z, yaw, cfg)) continue;
                     // The thing seen past her: angle between "behind her" and the direction to it.
                     const toThing = Math.atan2(centre.x - x, centre.z - z);
                     const behind = yaw + Math.PI;
                     const off = Math.abs(Math.atan2(Math.sin(toThing - behind), Math.cos(toThing - behind)));
-                    if (off > (80 * Math.PI) / 180) continue;
-                    const score = Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
-                    if (!best || score > best.score) best = { x, y, z, yaw, open, dist, off, score, framing };
+                    if (!anywhere && off > (80 * Math.PI) / 180) continue;
+                    const score = anywhere ? Math.min(open, 4) + 2 * around : Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
+                    // VW12. The camera check is the costly one (hundreds of rays through every
+                    // triangle of a merged mesh): a school hallway ran past two hours. A point that
+                    // cannot beat the best so far is not checked; the spot chosen is the same.
+                    if (best && score <= best.score) continue;
+                    if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
+                    if (!cameraSees(x, y, z, yaw, cfg)) continue;
+                    best = { x, y, z, yaw, open, dist, off, score, framing };
                 }
                 if (!best) why.view++;
             }
@@ -331,7 +369,7 @@ try {
         const floor = typeof spec.floor === 'number' ? { y: spec.floor, area: spec.floorArea || null } : null;
         const r = await page.evaluate(
             ([s, spots, P, f]) => window.measure(s, spots, P, f === null ? undefined : f),
-            [src, spec.spots, PARAMS, floor]
+            [src, spec.spots, { ...PARAMS, floorUnderRoof: spec.floorUnderRoof === true }, floor]
         );
         const byId = new Map(r.results.map((x) => [x.id, x]));
         const out = {

@@ -170,11 +170,13 @@
             '<label class="input-label" for="wardrobe-forge-grant" style="margin-top: 10px">' +
             '🔒 PRIVATE LOOKS ACCESS (READ GRANT)</label>' +
             '<input type="password" id="wardrobe-forge-grant" class="text-input" autocomplete="off"' +
-            ' spellcheck="false" placeholder="Paste the grant your Forge operator gave you" />' +
+            ' spellcheck="false" autocapitalize="characters"' +
+            ' placeholder="Paste the grant, or type the 6-character code from Forge" />' +
             '<p style="' +
             STYLE_HINT +
             '">Lets Private show her private looks from this Forge. It can only read, for the avatars it' +
-            ' names, until it expires. Never paste the Forge admin password or session token here.</p>' +
+            " names, until it expires. On a headset, type the pairing code from Forge's" +
+            ' "Pair a headset" instead. Never paste the Forge admin password or session token here.</p>' +
             '<label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;' +
             ' font-size: 0.78rem">' +
             '<input type="checkbox" id="wardrobe-ai-enabled" /> Let her change her outfit when you ask in the chat' +
@@ -280,8 +282,28 @@
                     global.NEXUS_WARDROBE_CONFIG.forge &&
                     global.NEXUS_WARDROBE_CONFIG.forge.grant
             );
-            grantInput.addEventListener('change', function () {
-                var saved = Config.saveGrant(grantInput.value, options.storage);
+            // DC1. Shown while typed in (a masked six-character code is easy to mistype on a headset
+            // keyboard), masked again once the field is left.
+            grantInput.addEventListener('focus', function () {
+                grantInput.type = 'text';
+            });
+            grantInput.addEventListener('blur', function () {
+                grantInput.type = 'password';
+            });
+            grantInput.addEventListener('change', async function () {
+                var typed = grantInput.value;
+                var paired = false;
+                // DC1. A pairing code is traded with Forge for the grant it carries, then saved
+                // exactly as a pasted grant is.
+                if (Config.deviceCode && Config.deviceCode(typed)) {
+                    say('Pairing with Forge…', null);
+                    var redeemed = await Config.redeemDeviceCode(typed, current().apiUrl, options.fetch);
+                    if (!redeemed.ok) return say(redeemed.why, false);
+                    typed = redeemed.grant;
+                    grantInput.value = typed;
+                    paired = true;
+                }
+                var saved = Config.saveGrant(typed, options.storage);
                 if (!saved.ok) return say(saved.why, false);
                 var config = current();
                 var wardrobe = options.wardrobe || global.NEXUS_WARDROBE;
@@ -290,7 +312,11 @@
                 if (service && service.controller && service.controller.forge && 'grant' in service.controller.forge) {
                     service.controller.forge.grant = config.grant;
                 }
-                return say(config.grant ? 'Read grant saved on this device.' : 'Read grant removed.', true);
+                if (!config.grant) return say('Read grant removed.', true);
+                return say(
+                    paired ? 'Paired: read grant saved on this device.' : 'Read grant saved on this device.',
+                    true
+                );
             });
         }
         // W16. The wardrobe tool's switch (WardrobeTool): on by default — asking her to put
