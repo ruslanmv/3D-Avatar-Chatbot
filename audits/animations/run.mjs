@@ -198,6 +198,11 @@ function installSampler() {
             if (!ok || !a) return { ok: false, why: 'the loader did not start it' };
             a.stopFading();
             a.setEffectiveWeight(1);
+            // The clip before is still fading out (playClip's 0.25 s crossfade) and would blend into
+            // this one's first samples: remorse3 ends collapsed on the floor, and sadness, played
+            // next, read as tipped over. Each clip is reviewed alone, so the others stop now.
+            const mixer = L.getCurrentMixer();
+            for (const other of (mixer && mixer._actions) || []) if (other !== a) other.stop();
             return { ok: true, duration: a.getClip().duration };
         },
         async sampleAll(duration, n) {
@@ -206,7 +211,7 @@ function installSampler() {
             for (let i = 0; i < n; i++) {
                 const t = (end * i) / (n - 1);
                 seek(t);
-                await frames(1);
+                await frames(i === 0 ? 3 : 1); // the first step also lets the switch from the last clip settle
                 out.push({ t, ...read() });
             }
             return out;
