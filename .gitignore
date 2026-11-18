@@ -304,3 +304,4 @@ audits/nl-motion/runs/
 
 # Gesture tuner output (tools/qa/gesture-tune.mjs): proposals, reviewed before they reach SpeechGestures.
 tools/qa/gesture-tune.out.json
+audits/suite/runs/
