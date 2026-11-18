@@ -79,7 +79,24 @@ describe('planning', () => {
         const mobile = SG.plan(text, { profile: 'mobile' });
         expect(vr.length).toBeLessThanOrEqual(desktop.length);
         expect(mobile.length).toBeLessThanOrEqual(desktop.length);
-        expect(Math.max(...vr.map((g) => g.gain))).toBeLessThan(Math.max(...desktop.map((g) => g.gain)));
+        // Expressive gestures are smaller where she is close or the screen is small (SG5: targeted
+        // ones keep full size everywhere, so they are left out of this comparison).
+        const expressive = (items) =>
+            items.filter((g) => !['wave', 'handOnChest', 'chinTouch', 'hairTuck'].includes(g.id));
+        expect(Math.max(...expressive(vr).map((g) => g.gain))).toBeLessThan(
+            Math.max(...expressive(desktop).map((g) => g.gain))
+        );
+    });
+
+    test('a gesture with a place to reach plays at full size, whatever the device or emphasis (SG5)', () => {
+        for (const profile of ['desktop', 'mobile', 'vr']) {
+            for (const g of SG.plan('Hello! Honestly, I think so! Sorry!', { profile })) {
+                if (['wave', 'handOnChest', 'chinTouch', 'hairTuck'].includes(g.id)) expect(g.gain).toBe(1);
+            }
+        }
+        const beat = SG.plan('The weather turned cold this afternoon!', { profile: 'vr' })[0];
+        expect(beat.id).toBe('beat');
+        expect(beat.gain).toBeCloseTo(SG.PROFILES.vr.gain * 1.25);
     });
 
     test('Italian uses its own table, and English words do nothing there', () => {
@@ -105,7 +122,12 @@ describe('poses', () => {
             for (const [bone, v] of Object.entries(g.pose)) {
                 expect(`${id}:${bone}`).toMatch(new RegExp(`^${id}:`));
                 expect(bone).toMatch(ALLOWED);
-                for (const a of v) expect(Math.abs(a)).toBeLessThanOrEqual(1.6);
+                // An elbow bends to about 145°, so the forearm's bend (lowerArm y) may reach 2.5 rad
+                // (a hand to her chest or chin needs ~120°); every other angle stays within 1.6.
+                v.forEach((a, axis) => {
+                    const limit = /LowerArm$/.test(bone) && axis === 1 ? 2.5 : 1.6;
+                    expect(Math.abs(a)).toBeLessThanOrEqual(limit);
+                });
             }
             if (g.osc) expect(g.osc.bone).toMatch(ALLOWED);
         }

@@ -48,3 +48,5 @@ audits/motion/runs/
 audits/poses/runs/
 audits/wardrobe/runs/
 audits/nl-motion/runs/
+audits/gestures/runs/
+tools/qa/gesture-tune.out.json

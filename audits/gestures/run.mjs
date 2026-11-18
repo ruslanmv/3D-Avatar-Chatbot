@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SG4. Gesture audit: every co-speech gesture, in the real renderer, as a person would see it.
+ * SG4–SG5. Gesture audit: every co-speech gesture, in the real renderer, as a person would see it.
  *
  *   node audits/gestures/run.mjs                      # AvatarSample_A
  *   node audits/gestures/run.mjs --avatars AvatarSample_A,Vita
@@ -24,12 +24,19 @@
  * And one "conversation" row: a longer reply carrying several gestures, captured every half second,
  * to judge the rhythm (strokes landing on words, hands resting between them).
  *
+ * SG5 adds her body (tools/qa/GestureBodyCheck.js, the same check the tuner optimises): every
+ * gesture is held at its peak on each hand in turn — right, left, or both for a two-handed one —
+ * and for whole replies ("Hello! How are you today?", an Italian greeting, a longer conversation)
+ * every gesture the planner schedules is held at its peak with the planner's own hand and size.
+ * A phone showed a "hello" bringing her hand across her front into her cardigan; this is the check
+ * that would have caught it.
+ *
  * Verdicts (numbers first, frames to confirm):
- *   ok    the gesting hand moved at least MIN_MOVE_CM and returned within RETURN_CM
- *   warn  it moved, but less than MIN_MOVE_CM (too subtle to read), or came within TOO_CLOSE_CM
- *         of her chest centre (check the frame: a hand on the chest is meant to, a hand inside her
- *         is not)
- *   fail  the planner chose nothing, the hand did not move, or it did not return to rest
+ *   ok    the hand moved at least MIN_MOVE_CM, reached its target, stayed out of her torso, did
+ *         not cross her midline, and her hands were back at rest afterwards
+ *   warn  it did all that but moved less than MIN_MOVE_CM (too subtle to read)
+ *   fail  anything else: missed-target, hand-inside-body, forearm-inside-body, crosses-body,
+ *         no-visible-motion, did-not-return, or the planner chose a different gesture
  *
  * Output: audits/gestures/runs/<stamp>/ — report.md, report.json, index.html (every frame) and
  * shots/. Runs are not committed (audits/gestures/.gitignore). Exit 0 when nothing fails.
@@ -50,35 +57,6 @@ const AVATARS = arg('--avatars', 'AvatarSample_A')
 
 const MIN_MOVE_CM = 5;
 const RETURN_CM = 3;
-const TOO_CLOSE_CM = 6;
-
-/**
- * Where the hand must end up for the gesture to read as itself. "It moved" is not enough: the
- * first run of this audit passed a "hand to chin" whose hand stopped in front of her stomach.
- * Distances are from her own bones, so they hold for any avatar height.
- */
-const TARGETS = {
-    wave: {
-        what: 'hand above her shoulder',
-        check: (p) => p.handAboveShoulderCm >= 5,
-        value: (p) => p.handAboveShoulderCm,
-    },
-    chinTouch: {
-        what: 'hand within 22 cm of her head',
-        check: (p) => p.handToHeadCm <= 22,
-        value: (p) => p.handToHeadCm,
-    },
-    hairTuck: {
-        what: 'hand within 20 cm of her head',
-        check: (p) => p.handToHeadCm <= 20,
-        value: (p) => p.handToHeadCm,
-    },
-    handOnChest: {
-        what: 'hand within 15 cm of her chest',
-        check: (p) => p.handToChestCm <= 15,
-        value: (p) => p.handToChestCm,
-    },
-};
 
 /** One sentence per gesture, chosen so the planner's first pick is that gesture. */
 const CASES = [
@@ -93,35 +71,57 @@ const CASES = [
     ['hairTuck', 'Sorry.'],
     ['palmsUp', 'Ok?'],
 ];
-const CONVERSATION =
-    'Hi there! Honestly, I think today was lovely. Maybe we could walk by the sea later? ' +
-    'You always find the best places, and everything feels calmer with you.';
+/** Whole replies, checked gesture by gesture with the planner's own hands and sizes. */
+const REPLIES = [
+    ['hello', 'Hello! How are you today?', 'en-US'],
+    ['ciao', 'Ciao! Come stai oggi? Penso che sia una bella giornata.', 'it-IT'],
+    [
+        'conversation',
+        'Hi there! Honestly, I think today was lovely. Maybe we could walk by the sea later? ' +
+            'You always find the best places, and everything feels calmer with you.',
+        'en-US',
+    ],
+];
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = path.join(HERE, 'runs', stamp);
 const SHOTS = path.join(OUT, 'shots');
 
-/** Installed in the page: framing, hand measurement and a gesture start that mirrors real speech. */
+/** Installed in the page: framing, her body check, holding a gesture still, speaking. */
 function pageHelpers() {
+    const BC = window.NEXUS_GESTURE_BODY_CHECK;
+    const SG = window.NEXUS_SPEECH_GESTURES;
     const V = () => window.NEXUS_VIEWER;
     const vrm = () => V().avatarManager._currentVRM;
     const T = () => window.THREE;
-    const local = (bone) => {
+    const W = (bone) => {
         const node = vrm().humanoid.getRawBoneNode(bone);
         if (!node) return null;
-        return vrm().scene.worldToLocal(node.getWorldPosition(new (T().Vector3)()));
+        const v = node.getWorldPosition(new (T().Vector3)());
+        return { x: v.x, y: v.y, z: v.z };
+    };
+    const body = () => {
+        vrm().scene.updateMatrixWorld(true);
+        return BC.frame({
+            hips: W('hips'),
+            leftUpperLeg: W('leftUpperLeg'),
+            rightUpperLeg: W('rightUpperLeg'),
+            leftUpperArm: W('leftUpperArm'),
+            rightUpperArm: W('rightUpperArm'),
+            chest: W('upperChest') || W('chest'),
+            neck: W('neck'),
+            head: W('head'),
+        });
     };
     window.__ga = {
         frame() {
-            // Waist up, from her front and a little to one side: both hands and her face in view.
-            // Her facing comes from her hips, as the motion audit frames her: VRM 0.x and 1.0 face
-            // opposite ways in their own frames, so a fixed axis frames half the library from behind.
+            // Waist up, from her front and a little to one side. Her facing comes from her hips:
+            // VRM 0.x and 1.0 face opposite ways in their own frames.
             const v = V();
-            const W = (bone) => vrm().humanoid.getRawBoneNode(bone).getWorldPosition(new (T().Vector3)());
             const p = v.avatarManager.currentRoot.getWorldPosition(new (T().Vector3)());
-            const right = W('rightUpperLeg').sub(W('leftUpperLeg'));
-            right.y = 0;
-            right.normalize();
+            const r = W('rightUpperLeg');
+            const l = W('leftUpperLeg');
+            const right = new (T().Vector3)(r.x - l.x, 0, r.z - l.z).normalize();
             const fwd = new (T().Vector3)(0, 1, 0).cross(right).normalize();
             const dir = fwd.clone().multiplyScalar(0.92).add(right.clone().multiplyScalar(-0.38)).normalize();
             const chestY = (W('head').y + W('hips').y) / 2;
@@ -130,66 +130,97 @@ function pageHelpers() {
             v.controls.update();
         },
         hands() {
-            const r = local('rightHand');
-            const l = local('leftHand');
-            const c = local('chest') || local('spine');
-            const h = local('head');
-            const rs = local('rightShoulder') || local('rightUpperArm');
-            const ls = local('leftShoulder') || local('leftUpperArm');
-            return {
-                rightAboveShoulderCm: (r.y - rs.y) * 100,
-                leftAboveShoulderCm: (l.y - ls.y) * 100,
-                right: [r.x, r.y, r.z],
-                left: [l.x, l.y, l.z],
-                rightToChestCm: r.distanceTo(c) * 100,
-                leftToChestCm: l.distanceTo(c) * 100,
-                rightToHeadCm: r.distanceTo(h) * 100,
-                leftToHeadCm: l.distanceTo(h) * 100,
-            };
+            vrm().scene.updateMatrixWorld(true);
+            return { right: W('rightHand'), left: W('leftHand') };
+        },
+        /** Her body check for the hands that gesture, and the other hand's place too. */
+        check(id, side) {
+            const f = body();
+            const sides = side === 'both' ? ['right', 'left'] : [side];
+            const out = {};
+            for (const s of ['right', 'left']) {
+                const m = BC.measure(
+                    f,
+                    s,
+                    { hand: W(s + 'Hand'), elbow: W(s + 'LowerArm') },
+                    sides.includes(s) ? id : null
+                );
+                out[s] = {
+                    gesturing: sides.includes(s),
+                    flags: sides.includes(s)
+                        ? BC.verdict(m)
+                        : BC.verdict(m).filter((x) => x !== 'missed-target' && x !== 'crosses-body'),
+                    toTargetCm: m.toTargetCm == null ? null : +m.toTargetCm.toFixed(1),
+                    crossCm: +m.crossCm.toFixed(1),
+                };
+            }
+            return out;
         },
         quiet() {
+            this.release();
             try {
                 window.NEXUS_LIP_SYNC.stop();
             } catch (_) {
                 /* nothing was speaking */
             }
-            window.NEXUS_PROCEDURAL_ANIMATOR.setMode('talk', 60000);
+            try {
+                window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+            } catch (_) {
+                /* no behaviour engine */
+            }
+            window.NEXUS_PROCEDURAL_ANIMATOR.setMode('talk', 120000);
         },
-        speak(text) {
-            window.NEXUS_PROCEDURAL_ANIMATOR.setMode('talk', 60000);
-            window.__ga.t0 = performance.now() / 1000;
+        speak(text, lang) {
+            window.NEXUS_PROCEDURAL_ANIMATOR.setMode('talk', 120000);
+            const settings = window.SpeechSettings || (window.SpeechSettings = {});
+            this.lang = settings.lang;
+            settings.lang = lang || 'en-US';
+            this.t0 = performance.now() / 1000;
             window.NEXUS_LIP_SYNC.start(text, 1);
-            const plan = window.NEXUS_SPEECH_GESTURES.plan(text);
-            return plan.map((g) => ({
+            settings.lang = this.lang;
+            return SG.plan(text, { lang: lang || 'en-US' }).map((g) => ({
                 ...g,
-                prep: window.NEXUS_SPEECH_GESTURES.GESTURES[g.id].prep,
-                hold: window.NEXUS_SPEECH_GESTURES.GESTURES[g.id].hold,
-                duration: window.NEXUS_SPEECH_GESTURES.duration(g.id),
+                peak: g.at + SG.GESTURES[g.id].prep + SG.GESTURES[g.id].hold / 2,
             }));
         },
-        // Hold the gesture still at `offsetSec` into the reply: under software rendering a few frames
-        // a second miss a 0.2 s stroke, so the frame and the numbers are taken from a held pose.
-        // sample() takes an explicit time; nothing in the app is changed, only this page's call.
+        /**
+         * Tell the app she is speaking, as a real reply does. Holding a gesture still involves no
+         * audio, so BehaviorEngine saw silence and, a few seconds in, moved the animator to its idle
+         * "waiting" mode, where gestures (talk mode only) correctly step aside: the first left-hand
+         * beat of a run measured 1 cm for that reason, not because of its pose.
+         */
+        speaking() {
+            try {
+                window.NEXUS_BEHAVIOR?.onSpeechStart?.();
+            } catch (_) {
+                /* no behaviour engine: talk mode below is enough */
+            }
+            window.NEXUS_PROCEDURAL_ANIMATOR.setMode('talk', 120000);
+        },
+        /** Hold one gesture at its peak on a chosen hand: what the layer receives, nothing else. */
+        hold(id, side) {
+            this.speaking();
+            const pose = SG.GESTURES[id].pose;
+            const offsets =
+                side === 'left' ? SG.mirror(pose) : side === 'both' ? { ...pose, ...SG.mirror(pose) } : pose;
+            if (!this.orig) this.orig = SG.sample;
+            SG.sample = () => offsets;
+        },
+        /** Hold a reply's own planned gestures still at `offsetSec` into it. */
         freeze(offsetSec) {
-            const SG = window.NEXUS_SPEECH_GESTURES;
-            if (!window.__ga.orig) window.__ga.orig = SG.sample;
-            const at = window.__ga.t0 + offsetSec;
-            SG.sample = () => window.__ga.orig.call(SG, at);
+            this.speaking();
+            if (!this.orig) this.orig = SG.sample;
+            const at = this.t0 + offsetSec;
+            SG.sample = () => this.orig.call(SG, at);
         },
-        thaw() {
-            if (window.__ga.orig) window.NEXUS_SPEECH_GESTURES.sample = window.__ga.orig;
-            window.__ga.orig = null;
-        },
-        budgets(text) {
-            const SG = window.NEXUS_SPEECH_GESTURES;
-            return Object.fromEntries(
-                ['desktop', 'mobile', 'vr'].map((p) => [p, SG.plan(text, { profile: p }).length])
-            );
+        release() {
+            if (this.orig) SG.sample = this.orig;
+            this.orig = null;
         },
     };
 }
 
-const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) * 100;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * 100;
 
 async function shot(page, file) {
     // Cropped to the 3D view: the full page is mostly chat panel, and a gesture is a few
@@ -202,6 +233,35 @@ async function shot(page, file) {
     const clip = box && box.width > 50 ? box : undefined;
     await page.screenshot({ path: path.join(SHOTS, file), type: 'jpeg', quality: 72, clip });
     return 'shots/' + file;
+}
+
+/** Wait (up to 15 s) until no clip owns her arms; answer the clip that was playing, if any. */
+async function clipIdle(page) {
+    const playing = () => {
+        const st = window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.();
+        return st && st.isPlaying
+            ? String(st.clip || 'clip')
+                  .split('/')
+                  .pop()
+            : null;
+    };
+    const was = await page.evaluate(playing);
+    if (was) {
+        await page
+            .waitForFunction(() => !window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.()?.isPlaying, null, {
+                timeout: 15000,
+            })
+            .catch(() => null);
+    }
+    return was;
+}
+
+function judge(flags, moved) {
+    const all = [...flags];
+    if (moved != null && moved < 2) all.push('no-visible-motion');
+    const fail = all.some((f) => f !== 'subtle' && !f.startsWith('clip-was-playing'));
+    if (!fail && moved != null && moved < MIN_MOVE_CM) all.push('subtle');
+    return { verdict: fail ? 'fail' : all.length ? 'warn' : 'ok', flags: all };
 }
 
 async function auditAvatar(D, browser, base, avatar) {
@@ -227,113 +287,118 @@ async function auditAvatar(D, browser, base, avatar) {
             `${avatar}.vrm`
         );
     }
+    await page.addScriptTag({ path: path.join(ROOT, 'tools/qa/GestureBodyCheck.js') });
     await page.waitForTimeout(2500);
     await page.evaluate(pageHelpers);
     await page.evaluate(() => window.__ga.frame());
     const rows = [];
     let n = 0;
 
-    for (const [expect, text] of CASES) {
-        n += 1;
-        const tag = `${avatar}-${String(n).padStart(2, '0')}-${expect}`;
+    // 1. Every gesture, held at its peak on each hand.
+    for (const [id, text] of CASES) {
         await page.evaluate(() => window.__ga.quiet());
         await page.waitForTimeout(1500);
         const rest = await page.evaluate(() => window.__ga.hands());
-        const before = await shot(page, `${tag}-0-before.jpg`);
-        const plan = await page.evaluate((t) => window.__ga.speak(t), text);
-        const first = plan[0] || null;
-        let peak = null;
-        let target = null;
-        let peakFrame = null;
-        let maxMove = 0;
-        let minChest = Infinity;
-        if (first) {
-            await page.evaluate((t) => window.__ga.freeze(t), first.at + first.prep + first.hold / 2);
+        // The planner still picks this gesture for its sentence (a guard on the word tables).
+        const planned = await page.evaluate((t) => window.__ga.speak(t, 'en-US'), text);
+        await page.evaluate(() => window.__ga.quiet());
+        const two = await page.evaluate((g) => Boolean(window.NEXUS_SPEECH_GESTURES.GESTURES[g].both), id);
+        for (const side of two ? ['both'] : ['right', 'left']) {
+            n += 1;
+            const tag = `${avatar}-${String(n).padStart(2, '0')}-${id}-${side}`;
+            // The layer steps aside while a clip owns her arms (SG3), and the behaviour engine can
+            // start an idle flourish at any moment: wait for none, and say so if one was playing.
+            const clipWas = await clipIdle(page);
+            await page.evaluate(([g, s]) => window.__ga.hold(g, s), [id, side]);
             await page.waitForTimeout(1200); // several rendered frames of the held peak
-            peak = await page.evaluate(() => window.__ga.hands());
-            const right = dist(peak.right, rest.right);
-            const left = dist(peak.left, rest.left);
-            maxMove = first.side === 'left' ? left : first.side === 'both' ? Math.max(right, left) : right;
-            minChest =
-                first.side === 'left'
-                    ? peak.leftToChestCm
-                    : Math.min(peak.rightToChestCm, first.side === 'both' ? peak.leftToChestCm : Infinity);
-            peakFrame = await shot(page, `${tag}-1-peak.jpg`);
-            await page.evaluate(() => window.__ga.thaw());
-            const onLeft = first.side === 'left';
-            const at = {
-                handAboveShoulderCm: onLeft ? peak.leftAboveShoulderCm : peak.rightAboveShoulderCm,
-                handToHeadCm: onLeft ? peak.leftToHeadCm : peak.rightToHeadCm,
-                handToChestCm: onLeft ? peak.leftToChestCm : peak.rightToChestCm,
-            };
-            const goal = TARGETS[first.id];
-            target = goal ? { what: goal.what, reached: goal.check(at), measuredCm: +goal.value(at).toFixed(1) } : null;
+            const at = await page.evaluate(() => window.__ga.hands());
+            const check = await page.evaluate(([g, s]) => window.__ga.check(g, s), [id, side]);
+            const clipDuring = await page.evaluate(() => {
+                const st = window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.();
+                return st && st.isPlaying
+                    ? String(st.clip || 'clip')
+                          .split('/')
+                          .pop()
+                    : null;
+            });
+            const peakShot = await shot(page, `${tag}.jpg`);
+            await page.evaluate(() => window.__ga.release());
+            await page.waitForTimeout(1200);
+            const after = await page.evaluate(() => window.__ga.hands());
+            const moved = Math.max(
+                side !== 'left' ? dist(at.right, rest.right) : 0,
+                side !== 'right' ? dist(at.left, rest.left) : 0
+            );
+            const returned = Math.max(dist(after.right, rest.right), dist(after.left, rest.left));
+            const flags = [...new Set([...check.right.flags, ...check.left.flags])];
+            if (!planned.length || planned[0].id !== id)
+                flags.push(`planned-${planned[0] ? planned[0].id : 'nothing'}`);
+            if (returned > RETURN_CM) flags.push('did-not-return');
+            if (clipWas) flags.push(`clip-was-playing:${clipWas}`);
+            if (clipDuring) flags.push(`clip-playing-during-hold:${clipDuring}`);
+            const { verdict, flags: all } = judge(flags, moved);
+            const gest = check[side === 'left' ? 'left' : 'right'];
+            rows.push({
+                avatar,
+                kind: 'gesture',
+                name: `${id} (${side})`,
+                text,
+                verdict,
+                flags: all,
+                handMoveCm: +moved.toFixed(1),
+                toTargetCm: gest.toTargetCm,
+                returnedWithinCm: +returned.toFixed(2),
+                shots: [peakShot],
+            });
+            console.log(
+                `${verdict.padEnd(4)} ${avatar} ${`${id} (${side})`.padEnd(20)} moved ${moved.toFixed(1)} cm ${all.join(',')}`
+            );
         }
-        await page.evaluate(() => window.NEXUS_LIP_SYNC.stop());
-        await page.waitForTimeout(1200);
-        const after = await page.evaluate(() => window.__ga.hands());
-        const afterShot = await shot(page, `${tag}-2-after.jpg`);
-        const returned = Math.max(dist(after.right, rest.right), dist(after.left, rest.left));
-        let verdict = 'ok';
-        const flags = [];
-        if (!first) flags.push('nothing-planned');
-        else if (first.id !== expect) flags.push(`planned-${first.id}`);
-        if (first && maxMove < 2) flags.push('no-visible-motion');
-        else if (first && maxMove < MIN_MOVE_CM) flags.push('subtle');
-        if (returned > RETURN_CM) flags.push('did-not-return');
-        if (first && minChest < TOO_CLOSE_CM && first.id !== 'handOnChest') flags.push('close-to-chest');
-        if (target && !target.reached) flags.push('missed-target');
-        if (flags.some((f) => ['nothing-planned', 'no-visible-motion', 'did-not-return', 'missed-target'].includes(f)))
-            verdict = 'fail';
-        else if (flags.length) verdict = 'warn';
-        rows.push({
-            avatar,
-            gesture: expect,
-            text,
-            planned: plan.map((g) => `${g.id}:${g.side}`),
-            verdict,
-            flags,
-            handMoveCm: +maxMove.toFixed(1),
-            closestToChestCm: Number.isFinite(minChest) ? +minChest.toFixed(1) : null,
-            peakHandToHeadCm: peak ? +Math.min(peak.rightToHeadCm, peak.leftToHeadCm).toFixed(1) : null,
-            returnedWithinCm: +returned.toFixed(2),
-            target,
-            shots: [before, peakFrame, afterShot].filter(Boolean),
-        });
-        console.log(
-            `${verdict.padEnd(4)} ${avatar} ${expect.padEnd(12)} moved ${maxMove.toFixed(1)} cm ${flags.join(',')}`
-        );
     }
 
-    // The conversation strip: rhythm across a whole reply.
-    await page.evaluate(() => window.__ga.quiet());
-    await page.waitForTimeout(1500);
-    const plan = await page.evaluate((t) => window.__ga.speak(t), CONVERSATION);
-    const budgets = await page.evaluate((t) => window.__ga.budgets(t), CONVERSATION);
-    const strip = [];
-    const t0 = Date.now();
-    const total = (CONVERSATION.length / 15 + 1) * 1000;
-    for (let i = 0; Date.now() - t0 < total && i < 24; i += 1) {
-        strip.push({
-            t: +((Date.now() - t0) / 1000).toFixed(1),
-            shot: await shot(page, `${avatar}-conv-${String(i).padStart(2, '0')}.jpg`),
-        });
-        const wait = (i + 1) * 500 - (Date.now() - t0);
-        if (wait > 0) await page.waitForTimeout(wait);
+    // 2. Whole replies: each planned gesture held at its peak, with the planner's own hand and size.
+    const replies = [];
+    for (const [name, text, lang] of REPLIES) {
+        await page.evaluate(() => window.__ga.quiet());
+        await page.waitForTimeout(1500);
+        const plan = await page.evaluate(([t, l]) => window.__ga.speak(t, l), [text, lang]);
+        const items = [];
+        for (const [i, g] of plan.entries()) {
+            await page.evaluate((t) => window.__ga.freeze(t), g.peak);
+            await page.waitForTimeout(1000);
+            const check = await page.evaluate(([id, s]) => window.__ga.check(id, s), [g.id, g.side]);
+            const flags = [...new Set([...check.right.flags, ...check.left.flags])];
+            const { verdict } = judge(flags, null);
+            const s = await shot(page, `${avatar}-reply-${name}-${i}.jpg`);
+            items.push({ at: +g.at.toFixed(2), id: g.id, side: g.side, verdict, flags, shot: s });
+            rows.push({
+                avatar,
+                kind: 'reply',
+                name: `${name}: ${g.id} (${g.side}) at ${g.at.toFixed(2)} s`,
+                text,
+                verdict,
+                flags,
+                shots: [s],
+            });
+            console.log(
+                `${verdict.padEnd(4)} ${avatar} reply ${name.padEnd(13)} ${g.id} (${g.side}) ${flags.join(',')}`
+            );
+        }
+        await page.evaluate(() => window.__ga.quiet());
+        const budgets = await page.evaluate(
+            ([t, l]) =>
+                Object.fromEntries(
+                    ['desktop', 'mobile', 'vr'].map((p) => [
+                        p,
+                        window.NEXUS_SPEECH_GESTURES.plan(t, { profile: p, lang: l }).length,
+                    ])
+                ),
+            [text, lang]
+        );
+        replies.push({ name, text, lang, items, budgets });
     }
-    await page.evaluate(() => window.NEXUS_LIP_SYNC.stop());
     await page.context().close();
-    return {
-        avatar,
-        errors,
-        rows,
-        conversation: {
-            text: CONVERSATION,
-            planned: plan.map((g) => ({ at: +g.at.toFixed(2), id: g.id, side: g.side })),
-            budgets,
-            strip,
-        },
-    };
+    return { avatar, errors, rows, replies };
 }
 
 function writeReport(report) {
@@ -343,7 +408,8 @@ function writeReport(report) {
         '',
         `${report.ok ? 'PASS' : 'FAIL'} — ${report.summary.ok} ok · ${report.summary.warn} warn · ${report.summary.fail} fail`,
         '',
-        `Verdicts: ok = moved ≥ ${MIN_MOVE_CM} cm, reached its target where it has one, and back within ${RETURN_CM} cm. Look at index.html before trusting a number.`,
+        'ok = moved enough, reached its target, stayed out of her body and on its own side, back at rest after. ' +
+            'Look at index.html before trusting a number.',
         '',
     ];
     for (const a of report.avatars) {
@@ -353,43 +419,35 @@ function writeReport(report) {
             a.errors.length ? `Page errors: ${a.errors.join(' | ')}` : 'Page errors: none',
             ''
         );
-        md.push(
-            '| gesture | sentence | planned | verdict | moved (cm) | target | closest to chest (cm) | hand to head at peak (cm) | back within (cm) | flags |'
-        );
-        md.push('|---|---|---|---|---|---|---|---|---|---|');
+        md.push('| check | sentence | verdict | moved (cm) | to target (cm) | back within (cm) | flags |');
+        md.push('|---|---|---|---|---|---|---|');
         for (const r of a.rows) {
             md.push(
-                `| ${r.gesture} | ${r.text} | ${r.planned.join(' ') || '—'} | **${r.verdict}** | ${r.handMoveCm} | ${r.target ? `${r.target.what}: ${r.target.reached ? 'yes' : 'NO'} (${r.target.measuredCm})` : '—'} | ${r.closestToChestCm ?? '—'} | ${r.peakHandToHeadCm ?? '—'} | ${r.returnedWithinCm} | ${r.flags.join(', ') || '—'} |`
+                `| ${r.name} | ${r.text} | **${r.verdict}** | ${r.handMoveCm ?? '—'} | ${r.toTargetCm ?? '—'} | ${r.returnedWithinCm ?? '—'} | ${r.flags.join(', ') || '—'} |`
             );
         }
-        const c = a.conversation;
-        md.push(
-            '',
-            `**Conversation:** "${c.text}"`,
-            '',
-            `Planned (desktop): ${c.planned.map((g) => `${g.at}s ${g.id}`).join(', ')}`,
-            '',
-            `Gestures in this reply by device: desktop ${c.budgets.desktop}, phone ${c.budgets.mobile}, VR ${c.budgets.vr}.`,
-            ''
-        );
+        md.push('');
+        for (const r of a.replies) {
+            md.push(
+                `**${r.name}** (${r.lang}): "${r.text}" — gestures by device: desktop ${r.budgets.desktop}, phone ${r.budgets.mobile}, VR ${r.budgets.vr}.`,
+                ''
+            );
+        }
     }
     fs.writeFileSync(path.join(OUT, 'report.md'), md.join('\n') + '\n');
     const img = (s, label) => `<figure><img src="${s}" loading="lazy"><figcaption>${label}</figcaption></figure>`;
     const html = [
         '<!doctype html><meta charset="utf-8"><title>Gesture audit</title>',
-        '<style>body{font:14px system-ui;background:#151317;color:#eee;margin:16px}figure{display:inline-block;margin:4px}img{width:200px;display:block;border-radius:6px}.ok{color:#8fd6a0}.warn{color:#e8c46e}.fail{color:#ef8b80}h3{margin:18px 0 4px}</style>',
+        '<style>body{font:14px system-ui;background:#151317;color:#eee;margin:16px}figure{display:inline-block;margin:4px}img{width:220px;display:block;border-radius:6px}.ok{color:#8fd6a0}.warn{color:#e8c46e}.fail{color:#ef8b80}</style>',
         `<h1>Gesture audit ${stamp}</h1>`,
     ];
     for (const a of report.avatars) {
-        html.push(`<h2>${a.avatar}</h2>`);
-        for (const r of a.rows) {
+        html.push(`<h2>${a.avatar}</h2><div>`);
+        for (const r of a.rows)
             html.push(
-                `<h3 class="${r.verdict}">${r.gesture} — ${r.verdict} · moved ${r.handMoveCm} cm · ${r.flags.join(', ') || 'no flags'}</h3><div>"${r.text}" → ${r.planned.join(' ') || 'nothing planned'}</div>`
+                img(r.shots[0], `<span class="${r.verdict}">${r.name} — ${r.verdict}</span> ${r.flags.join(', ')}`)
             );
-            html.push(r.shots.map((s, i) => img(s, ['before', 'peak', 'after'][i])).join(''));
-        }
-        html.push(`<h3>Conversation</h3><div>"${a.conversation.text}"</div>`);
-        html.push(a.conversation.strip.map((s) => img(s.shot, s.t + ' s')).join(''));
+        html.push('</div>');
     }
     fs.writeFileSync(path.join(OUT, 'index.html'), html.join('\n'));
 }

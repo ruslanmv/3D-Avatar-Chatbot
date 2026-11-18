@@ -58,9 +58,16 @@
     };
 
     /**
-     * Each gesture is its peak pose for the RIGHT side, as additive Euler offsets (radians) on the
-     * same raw-bone axes AnimationPresets uses: upper arm x− forward, z− away from her body; lower
-     * arm y+ bends the elbow. `mirror()` gives the left side. Timings in seconds: prep (rise), hold
+     * SG5. The poses below were found by tools/qa/gesture-tune.mjs, not written by hand: the first,
+     * hand-written ones stopped low in front of her (a "wave" 29 cm below her shoulder) and two of
+     * them crossed her front into her body on a phone. The tuner searched the angles against
+     * tools/qa/GestureBodyCheck.js on both hands — reach the gesture's target, never a hand or
+     * forearm inside her torso, never across her midline — and audits/gestures/run.mjs checks the
+     * result in the renderer. Re-tune rather than hand-edit.
+     *
+     * Each gesture is its peak pose for the RIGHT side, as additive Euler offsets (radians) on her
+     * raw bones, applied on top of her talking stance. `mirror()` gives the left side (x kept,
+     * y and z negated), and the tuner scores both. Timings in seconds: prep (rise), hold
      * (at peak), rel (return). `osc` adds a small oscillation during the hold (a wave, a sweep).
      */
     const GESTURES = {
@@ -68,22 +75,22 @@
             prep: 0.16,
             hold: 0.08,
             rel: 0.32,
-            pose: { rightUpperArm: [-0.16, 0, -0.08], rightLowerArm: [0, 0.42, 0], rightHand: [0.18, 0, 0] },
+            pose: { rightUpperArm: [-0.12, 0.19, -0.16], rightLowerArm: [0, 1.08, -0.1], rightHand: [-0.01, 0, 0] },
         },
         palmToYou: {
             prep: 0.25,
             hold: 0.35,
             rel: 0.4,
-            pose: { rightUpperArm: [-0.34, 0, -0.12], rightLowerArm: [0, 0.62, 0], rightHand: [-0.1, 0, 0.12] },
+            pose: { rightUpperArm: [-0.03, 0.9, -0.08], rightLowerArm: [0, 0.37, -0.03], rightHand: [0.19, 0, 0] },
         },
         handOnChest: {
             prep: 0.3,
             hold: 0.5,
             rel: 0.45,
             pose: {
-                rightUpperArm: [-0.22, 0, -0.06],
-                rightLowerArm: [0, 1.25, 0],
-                rightHand: [0.1, 0, 0],
+                rightUpperArm: [-0.15, 0.24, -0.08],
+                rightLowerArm: [0, 2.17, -0.02],
+                rightHand: [0, 0, 0],
                 head: [0.04, 0, 0],
             },
         },
@@ -92,9 +99,9 @@
             hold: 0.55,
             rel: 0.45,
             pose: {
-                rightUpperArm: [-0.3, 0, -0.26],
-                rightLowerArm: [0, 1.3, 0],
-                rightHand: [0.15, 0, 0],
+                rightUpperArm: [-0.1, 0.59, -0.1],
+                rightLowerArm: [0, 2.07, -0.02],
+                rightHand: [0.01, 0, 0],
                 head: [0.06, 0, 0.04],
             },
         },
@@ -103,9 +110,9 @@
             hold: 0.3,
             rel: 0.5,
             pose: {
-                rightUpperArm: [-0.2, 0, -0.7],
-                rightLowerArm: [0, 1.45, 0],
-                rightHand: [0.2, 0, 0],
+                rightUpperArm: [0.48, 1.1, 0.57],
+                rightLowerArm: [0, 2.12, 0.27],
+                rightHand: [-0.01, 0, 0],
                 head: [0, 0, -0.07],
             },
         },
@@ -116,8 +123,9 @@
             rel: 0.4,
             pose: {
                 rightShoulder: [0, 0, -0.1],
-                rightUpperArm: [-0.1, 0, -0.18],
-                rightLowerArm: [0, 0.55, 0],
+                rightUpperArm: [0.04, 0.08, 0.05],
+                rightLowerArm: [0, 1.04, 0.12],
+                rightHand: [-0.01, 0, 0],
                 head: [0, 0, 0.06],
             },
         },
@@ -126,30 +134,38 @@
             prep: 0.3,
             hold: 0.35,
             rel: 0.5,
-            pose: { rightUpperArm: [-0.22, 0, -0.4], rightLowerArm: [0, 0.3, 0] },
+            pose: { rightUpperArm: [0.12, 0.35, 0.44], rightLowerArm: [0, 0.45, 0.34], rightHand: [0, 0, 0] },
         },
         palmsUp: {
             both: true,
             prep: 0.25,
             hold: 0.3,
             rel: 0.4,
-            pose: { rightUpperArm: [-0.2, 0, -0.12], rightLowerArm: [0, 0.65, 0], head: [0, 0, 0.05] },
+            pose: {
+                rightUpperArm: [-0.03, 0.31, -0.05],
+                rightLowerArm: [0, 0.96, 0],
+                rightHand: [0, 0, 0],
+                head: [0, 0, 0.05],
+            },
         },
         negate: {
             prep: 0.2,
             hold: 0.3,
             rel: 0.35,
-            pose: { rightUpperArm: [-0.18, 0, -0.15], rightLowerArm: [0, 0.6, 0] },
+            pose: { rightUpperArm: [-0.05, 0.53, -0.14], rightLowerArm: [0, 0.85, -0.07], rightHand: [0, 0, 0] },
             osc: { bone: 'rightHand', axis: 1, amp: 0.25, freq: 9 },
         },
         wave: {
             prep: 0.3,
             hold: 0.7,
             rel: 0.45,
-            pose: { rightUpperArm: [-0.15, 0, -1.0], rightLowerArm: [0, 0.95, 0] },
+            pose: { rightUpperArm: [0.37, 0.79, 0.5], rightLowerArm: [0, 1.62, 0.31], rightHand: [0, 0, 0] },
             osc: { bone: 'rightLowerArm', axis: 2, amp: 0.22, freq: 9 },
         },
     };
+
+    /** SG5. Gestures that must land somewhere on her or by her: never scaled. */
+    const TARGETED = new Set(['wave', 'handOnChest', 'chinTouch', 'hairTuck']);
 
     /** The mirror of a right-side pose for the left: x kept, y and z negated, names swapped. */
     function mirror(pose) {
@@ -258,7 +274,11 @@
             if (peak - lastPeak < budget.minGap) return false;
             const at = Math.max(0, peak - g.prep);
             const s = g.both ? 'both' : forceSide || side;
-            out.push({ at, id, side: s, gain: budget.gain * gainMul });
+            // SG5. A gesture with a place to reach (her chin, her chest, above her shoulder) plays at
+            // full size always: scaled up by an exclamation it overshot ("Hello!" waved past her head),
+            // scaled down on a phone or headset it fell short of her chin. Size is for the expressive
+            // ones; devices still differ in how often gestures come (minGap, perSentence).
+            out.push({ at, id, side: s, gain: TARGETED.has(id) ? 1 : budget.gain * gainMul });
             lastPeak = peak;
             if (!g.both && !forceSide) side = side === 'right' ? 'left' : 'right';
             return true;
