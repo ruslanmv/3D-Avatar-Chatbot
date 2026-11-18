@@ -1084,6 +1084,38 @@
             return 'Closer';
         }
     }
+    /**
+     * UN27. The closer positions this session can run: `PrivatePoseController.INTIMATE`, kept to
+     * the ones the pose system lists now. A controller without `available` (a test double) is
+     * taken at its word.
+     */
+    function closerPositions(s) {
+        try {
+            const Poses = pick(s.win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+            const all = (Poses && Poses.INTIMATE) || [];
+            if (!s.poses) return [];
+            if (typeof s.poses.available !== 'function') return all.slice();
+            return all.filter((p) => s.poses.available(p.key));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /** UN27. What her body is doing in the position this action asked for, or `null`. */
+    function bodyOf(s, action) {
+        try {
+            if (!s.poses || typeof s.poses.describe !== 'function' || !action || !action.params) return null;
+            const key =
+                action.params.pose === 'preset' && typeof s.poses.presetKey === 'function'
+                    ? s.poses.presetKey(action.params.preset || '')
+                    : action.params.pose;
+            const named = s.poses.describe(key);
+            return (named && named.body) || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function closerControl(s) {
         return `the “${closerLabel(s)}” control`;
     }
@@ -1824,6 +1856,24 @@
                 lines.push(
                     '- Getting dressed again: when they say they are done or ask you to get dressed, the app puts back the outfit you wore before; then the evening can end gently.'
                 );
+            // UN27. The closer positions, by what they are. Before this the model knew of kneeling
+            // and lying and nothing else, so a request for any other was met with a guess, and its
+            // own invitations named positions the app had no way to take. Listed only when this
+            // build can run them (Spicy lists the presets), and open only where undressing is: at
+            // the top of the pace. Below it she is told plainly, as for undressing.
+            const closer = closerPositions(s);
+            if (closer.length) {
+                const at = levelOf(s);
+                const names = closer.map((p) => p.name).join('; ');
+                if (at >= UNDRESS_AT)
+                    lines.push(
+                        `- Closer positions, open now that the evening is at its closest: ${names}. When they ask for one, the app moves your body into it and holds it until they ask you to stand or to go back to how you were. You never take one on your own: you may invite one in a few words, by its name, and it happens only if they ask. Once you are in it, stay in character — a sentence or two, unhurried, about being there for them like that and what you want next — and follow what RIGHT NOW below says your body is doing; never describe more than it shows.`
+                    );
+                else
+                    lines.push(
+                        `- Closer positions (${names}) open only when the evening is at its closest (${UNDRESS_AT} of ${UNDRESS_AT}; it is at ${at || 1}). If they ask before then, say so warmly, once: not yet, it opens when they bring the evening closer with ${closerControl(s)}. Never describe yourself taking one before then.`
+                    );
+            }
         }
         // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
         // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
@@ -2029,9 +2079,11 @@
             // skeleton). There was no line for that, so the last `else` below told her she could
             // not take a position she was in the middle of taking; and nothing may be called done
             // before the renderer has shown it.
+            // UN27. What the position is, for her words to follow: the key alone told her nothing.
+            const shape = bodyOf(s, body);
             if (body.status === 'pending')
                 now.push(
-                    `You are moving into that position right now (${named}); it is not confirmed on screen yet. Say you are getting into it, in a few words. Do not say it is done.`
+                    `You are moving into that position right now (${named}${shape ? `: ${shape}` : ''}); it is not confirmed on screen yet. Say you are getting into it, in a few words. Do not say it is done.`
                 );
             else if (body.why === 'ambiguous-pose')
                 now.push(
@@ -2052,7 +2104,11 @@
             else if (body.status === 'completed' && body.params.pose === 'back')
                 now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
             else if (body.status === 'completed')
-                now.push(`Your body is in that position now (${named}). Stay in it until they ask you to stand.`);
+                now.push(
+                    shape
+                        ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
+                        : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`
+                );
             else if (body.why === 'pace')
                 now.push(
                     `They asked for a position the evening is not close enough for yet. Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`

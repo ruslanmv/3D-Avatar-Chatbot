@@ -979,6 +979,11 @@ const POSE_PRESETS = {
         },
     },
 
+    // UN27. NOT IN THE CYCLE. Measured in a real Private session and in Pose Studio on
+    // AvatarSample_A: her seat and palms hang 25–30 cm above the floor (lastSupport palmAfterMm
+    // ~304): the shins drop steeply from the raised knees, so the feet ground her and the seat
+    // floats, and the arm IK cannot reach because JOINT_LIMITS clamp the upper arm at Z 30°.
+    // Kept for a fix; develop/NEEDS_FIX.md has the row and how to bring it back.
     floorOpen: {
         label: 'Floor (Open, Leaning Back)',
         adult: true,
@@ -1489,7 +1494,7 @@ const PRESET_ORDER = [
     'lyingSprawl',
     // UN24. Seated / kneeling, knees apart
     'sittingOpen',
-    'floorOpen',
+    // UN27. floorOpen is out until it rests on the floor (develop/NEEDS_FIX.md, Pose presets).
     'kneelingWide',
     'lyingKneesUp', // UN26
     'straddle',

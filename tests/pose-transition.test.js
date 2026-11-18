@@ -130,7 +130,7 @@ describe('UN24 + UN26 open-knees presets', () => {
         vps.indexOf('];', vps.indexOf('const PRESET_ORDER'))
     );
 
-    for (const name of ['sittingOpen', 'floorOpen', 'kneelingWide', 'lyingKneesUp', 'straddle']) {
+    for (const name of ['sittingOpen', 'kneelingWide', 'lyingKneesUp', 'straddle']) {
         test(`${name} is defined as adult, in the cycle and in Pose Studio as adult`, () => {
             const at = vps.indexOf(`    ${name}: {`);
             expect(at).toBeGreaterThan(0);

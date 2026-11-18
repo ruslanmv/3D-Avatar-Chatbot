@@ -113,9 +113,10 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
   1.6 s; `0` stays instant) and staggers the bones: trunk first, hands and feet
   last, each on smootherstep. Grounding's own 0.35 s hips blend stays on one
   curve. Without the global, the old single smoothstep runs.
-- **UN24.** Adult presets `sittingOpen`, `floorOpen` (hands as `reach`
-  supports), `kneelingWide`, and the existing `seatedChair` added to Pose
-  Studio's Adult category. Spicy mode only; no NL phrases (adult). Rendered on
+- **UN24.** Adult presets `sittingOpen`, `kneelingWide`, and the existing
+  `seatedChair` added to Pose Studio's Adult category. `floorOpen` was too, and
+  is out again (UN27): its seat and palms float 25–30 cm, see
+  `develop/NEEDS_FIX.md`. Spicy mode only; no NL phrases (adult). Rendered on
   AvatarSample_A front and side before committing. The parity baseline was
   re-recorded for the five-line shift in `PoseStudioPanel.js` only.
 - **UN25.** Pose Studio ▸ Transition speed (Slow 1.6× / Normal / Fast 0.6×),
@@ -125,3 +126,10 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
 - **UN26.** Adult `lyingKneesUp` (on her back, knees up and apart, feet on the
   floor; elbows fold about Z because Y folds a supine forearm up at the
   ceiling) and `straddle` (kneeling up astride, knees wide, hands forward).
+- **UN27.** Private reaches the closer positions by key (`sit-open`,
+  `kneel-wide`, `knees-up`, `straddle`, with `all-fours`): words in nine
+  languages, gated at the top of the pace, described to the model as her body
+  is (`PrivatePoseController.BODY`), and offered as chips at the top of the ⋯
+  menu that send the person's line through the conversation surface. Verified
+  in a real Private evening: no chips below level 4, each chip completed and
+  confirmed on the rendered body at it.

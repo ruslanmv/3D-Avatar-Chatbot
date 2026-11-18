@@ -2195,3 +2195,76 @@ describe('UN18. the reported session: "Togliete vestiti" moved nothing and she s
         expect(said('Va bene, li tolgo.', 'changed')).toMatch(/li tolgo/);
     });
 });
+
+describe('UN27. the closer positions, described to her as her body is', () => {
+    const CLOSER_PRESETS = ['sittingOpen', 'kneelingWide', 'lyingKneesUp', 'straddle', 'handsKnees'];
+    function poseSystem(spicy = true) {
+        const calls = [];
+        const presets = ['kneeling', 'lyingBack'];
+        if (spicy) presets.push(...CLOSER_PRESETS);
+        let current = 'standing';
+        return {
+            calls,
+            lastSupport: null,
+            claimBones: () => calls.push('claim'),
+            releaseBones: () => calls.push('release') && true,
+            applyPreset: (name) => {
+                calls.push(`apply:${name}`);
+                if (presets.includes(name)) current = name;
+            },
+            getCurrentPreset: () => current,
+            getPresetList: () => presets.map((name) => ({ name })),
+        };
+    }
+    async function at(level, options) {
+        const pose = poseSystem(!(options && options.spicyOff));
+        window.vrPoseSystem = pose;
+        const w = await begin({ adult: true });
+        w.adult.level = level;
+        w.pose = pose;
+        return w;
+    }
+    const prompt = () => Actions.promptLines().join('\n');
+
+    test('at the top of the pace she is told which closer positions are open, by name', async () => {
+        await at(4);
+        await say('ciao');
+        await flush();
+        expect(prompt()).toMatch(/Closer positions, open now/);
+        for (const name of ['straddling them', 'on your back with your knees up', 'on all fours'])
+            expect(prompt()).toContain(name);
+    });
+
+    test('below it she is told they are not open yet, and nothing runs when asked', async () => {
+        const w = await at(2);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(prompt()).toMatch(/Closer positions \(.*straddling them.*\) open only/);
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
+    });
+
+    test('with Spicy off the presets are not listed, so they are never offered', async () => {
+        await at(4, { spicyOff: true });
+        await say('ciao');
+        await flush();
+        expect(prompt()).not.toMatch(/Closer positions/);
+    });
+
+    test('asked for, the position runs and the reply is told what her body is doing', async () => {
+        const w = await at(4);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        expect(prompt()).toMatch(/Your body is in that position now \(straddle\): kneeling up astride their lap/);
+    });
+
+    test('her own tag or invitation never moves her into one', async () => {
+        const w = await at(4);
+        await say('ciao');
+        await flush();
+        const out = Actions.request('avatar.pose', { pose: 'straddle' }, { source: 'model' });
+        await Promise.resolve(out);
+        await flush();
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
+    });
+});

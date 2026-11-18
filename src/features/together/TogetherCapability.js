@@ -1153,8 +1153,12 @@
             '\\bmi (?:sto )?(?:mett(?:o|endo)|inginocchi(?:o|ando)|sdrai(?:o|ando)|stend(?:o|endo)|pieg(?:o|ando)|gir(?:o|ando)|sied(?:o|endo)|accovacci(?:o|ando))\\b',
             '\\bmi sono (?:mess[ao]|inginocchiat[ao]|sdraiat[ao]|stes[ao]|piegat[ao]|girat[ao]|sedut[ao])\\b',
             '\\b(?:eccomi|sono) (?:a quattro zampe|carponi|in ginocchio|sdraiat[ao]|a pancia)',
+            // UN27. The closer positions: "mi metto a cavalcioni" is caught above; these are not.
+            '\\b(?:eccomi|sono|resto) (?:a cavalcioni|a gambe aperte|seduta a gambe aperte|per terra a gambe aperte)',
             // en
             "\\bi(?:'m| am) (?:now |already )?(?:getting (?:on|down)|kneeling|lying|bending|turning|on (?:all fours|my knees))",
+            "\\bi(?:'m| am) (?:now |already )?(?:straddling|astride|sitting with my legs (?:open|apart)|spreading my legs)",
+            "\\b(?:i'?ll|i will|let me) (?:straddle|spread my legs|open my legs)\\b",
             "\\b(?:i'?ll|i will|let me) (?:get on|kneel|lie|bend|turn)\\b",
             // es / fr / de / pt
             '\\bme (?:pongo|arrodillo|tumbo|acuesto|doblo|giro)\\b',
@@ -1660,6 +1664,10 @@
                             ? actions.onChange((now) => this._showActions(now))
                             : null;
                 }
+                // UN27. The ⋯ menu's position chips speak from the start, not from the first
+                // action the bridge reports: they are drawn the moment the pace allows them.
+                if (this.view && typeof this.view.setPositionHandler === 'function')
+                    this.view.setPositionHandler((line) => this._chooseReply(line));
             } catch (error) {
                 console.warn('[Private] actions are unavailable for this session', error);
             }
@@ -1940,6 +1948,8 @@
                     onUndo: () => actions.request('wardrobe.undo', {}, { source: 'control' }),
                     onApprove: () => actions.approveOffer('control'),
                     onDecline: () => actions.declineOffer(),
+                    // UN27. A position chip in the ⋯ menu is their line, sent as their turn.
+                    onPosition: (line) => this._chooseReply(line),
                 });
             } catch (error) {
                 console.warn('[Private] the action strip could not be drawn', error);

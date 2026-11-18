@@ -72,6 +72,11 @@
         'bend-forward',
         'arch-back',
         'lounge',
+        // UN27. The closer positions (PrivatePoseController.INTIMATE).
+        'sit-open',
+        'kneel-wide',
+        'knees-up',
+        'straddle',
         'stand',
         'back',
         'turn',
@@ -83,7 +88,7 @@
     ];
     /** NL1. A Pose Studio preset's own name: `sittingCrossed`. Never free text. */
     const PRESET_NAME = /^[A-Za-z][A-Za-z0-9]{1,39}$/;
-    const ADULT_POSES = ['all-fours'];
+    const ADULT_POSES = ['all-fours', 'sit-open', 'kneel-wide', 'knees-up', 'straddle'];
 
     const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
     const GARMENT = /^[a-z0-9][a-z0-9 ,'+&-]{1,119}$/;
