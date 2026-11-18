@@ -50,6 +50,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const argv = process.argv.slice(2);
 const arg = (f, d) => (argv.includes(f) && argv[argv.indexOf(f) + 1] ? argv[argv.indexOf(f) + 1] : d);
+const STAGES = new Set(arg('--only', 'gestures,replies,positions').split(','));
 const AVATARS = arg('--avatars', 'AvatarSample_A')
     .split(',')
     .map((s) => s.trim())
@@ -295,7 +296,7 @@ async function auditAvatar(D, browser, base, avatar) {
     let n = 0;
 
     // 1. Every gesture, held at its peak on each hand.
-    for (const [id, text] of CASES) {
+    for (const [id, text] of STAGES.has('gestures') ? CASES : []) {
         await page.evaluate(() => window.__ga.quiet());
         await page.waitForTimeout(1500);
         const rest = await page.evaluate(() => window.__ga.hands());
@@ -358,7 +359,7 @@ async function auditAvatar(D, browser, base, avatar) {
 
     // 2. Whole replies: each planned gesture held at its peak, with the planner's own hand and size.
     const replies = [];
-    for (const [name, text, lang] of REPLIES) {
+    for (const [name, text, lang] of STAGES.has('replies') ? REPLIES : []) {
         await page.evaluate(() => window.__ga.quiet());
         await page.waitForTimeout(1500);
         const plan = await page.evaluate(([t, l]) => window.__ga.speak(t, l), [text, lang]);
@@ -397,8 +398,220 @@ async function auditAvatar(D, browser, base, avatar) {
         );
         replies.push({ name, text, lang, items, budgets });
     }
+    // 3. Everyday positions in combination (SG6), each step held and measured, then spoken in.
+    if (STAGES.has('positions')) rows.push(...(await positionsStage(page, avatar)));
     await page.context().close();
     return { avatar, errors, rows, replies };
+}
+
+/**
+ * SG6. Everyday positions, in combination: the body doing what was asked, upright, balanced and
+ * grounded, and her hands out of her body while she talks in each one.
+ *
+ * Asked the way a person asks — `NEXUS_MOTION.onUserUtterance`, the entry typed chat, the mic and
+ * VR voice share — in a fresh page where Private is off. Private's own positions are not audited
+ * here. Each step is held a few seconds, then measured in her own frame:
+ *
+ *   posture   hips height against her standing height: stand ~1, sit ~0.6, lie ~0.15
+ *   upright   the tilt of her spine (hips → neck) from vertical; standing and sitting stay near 0°
+ *   balance   standing only: how far her hips are from the point between her feet, as a share of
+ *             her leg length — the lean a phone showed after "stand up"
+ *   grounded  her lowest foot against the floor she started on
+ *   facing    after "turn around" her back is to the camera; after "face me" her front is
+ *   speaking  a reply started in that position: both hands checked against her torso while it plays
+ */
+const POSITION_COMBOS = [
+    ['sit and stand', ['sit down', 'stand up']],
+    ['lie and stand', ['lie down', 'stand up']],
+    ['sit, lie, sit, stand', ['sit down', 'lie down', 'sit down', 'stand up']],
+    ['turn around and back', ['turn around', 'face me']],
+    ['turn, sit, stand', ['turn around', 'sit down', 'stand up', 'face me']],
+];
+const EXPECT = {
+    'sit down': { posture: 'sit' },
+    'lie down': { posture: 'lie' },
+    'stand up': { posture: 'stand' },
+    'turn around': { posture: 'stand', facing: 'away' },
+    'face me': { posture: 'stand', facing: 'toward' },
+};
+const LIMITS = { uprightDeg: 15, balance: 0.15, floatCm: 6, sinkCm: 6 };
+
+function positionHelpers() {
+    const T = () => window.THREE;
+    const vrm = () => window.NEXUS_VIEWER.avatarManager._currentVRM;
+    const W = (b) => {
+        const n = vrm().humanoid.getRawBoneNode(b);
+        if (!n) return null;
+        const v = n.getWorldPosition(new (T().Vector3)());
+        return { x: v.x, y: v.y, z: v.z };
+    };
+    window.__pos = {
+        sample() {
+            vrm().scene.updateMatrixWorld(true);
+            const hips = W('hips');
+            const neck = W('neck') || W('head');
+            const lf = W('leftFoot');
+            const rf = W('rightFoot');
+            const lul = W('leftUpperLeg');
+            const rul = W('rightUpperLeg');
+            const cam = window.NEXUS_VIEWER.camera.position;
+            // Her facing, from her legs (as the audits frame her): up × right = (r.z, 0, -r.x).
+            const r = { x: rul.x - lul.x, z: rul.z - lul.z };
+            const fwd = { x: r.z, z: -r.x };
+            const fl = Math.hypot(fwd.x, fwd.z) || 1;
+            const toCam = { x: cam.x - hips.x, z: cam.z - hips.z };
+            const tl = Math.hypot(toCam.x, toCam.z) || 1;
+            const spine = { x: neck.x - hips.x, y: neck.y - hips.y, z: neck.z - hips.z };
+            const sl = Math.hypot(spine.x, spine.y, spine.z) || 1;
+            const between = { x: (lf.x + rf.x) / 2, z: (lf.z + rf.z) / 2 };
+            const legLen = Math.abs(lul.y - Math.min(lf.y, rf.y)) || 0.8;
+            return {
+                hipsY: hips.y,
+                footY: Math.min(lf.y, rf.y),
+                uprightDeg: (Math.acos(Math.max(-1, Math.min(1, spine.y / sl))) * 180) / Math.PI,
+                balance: Math.hypot(hips.x - between.x, hips.z - between.z) / legLen,
+                facingCam: (fwd.x * toCam.x + fwd.z * toCam.z) / (fl * tl),
+            };
+        },
+        /** Frame her whole body wherever it is: standing, seated or lying on the floor. */
+        frame() {
+            const v = window.NEXUS_VIEWER;
+            vrm().scene.updateMatrixWorld(true);
+            const pts = ['head', 'hips', 'leftFoot', 'rightFoot', 'leftHand', 'rightHand'].map(W).filter(Boolean);
+            const lo = (k) => Math.min(...pts.map((p) => p[k]));
+            const hi = (k) => Math.max(...pts.map((p) => p[k]));
+            const c = { x: (lo('x') + hi('x')) / 2, y: (lo('y') + hi('y')) / 2, z: (lo('z') + hi('z')) / 2 };
+            const size = Math.max(hi('y') - lo('y'), hi('x') - lo('x'), hi('z') - lo('z'), 0.6);
+            // From the camera's current side, a little above, far enough for her whole body.
+            const dir = new (T().Vector3)(v.camera.position.x - c.x, 0, v.camera.position.z - c.z).normalize();
+            const dist = size * 1.6 + 0.6;
+            v.camera.position.set(c.x + dir.x * dist, c.y + size * 0.35 + 0.2, c.z + dir.z * dist);
+            v.controls.target.set(c.x, c.y, c.z);
+            v.controls.update();
+        },
+        clip() {
+            const st = window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.();
+            return st && st.isPlaying
+                ? String(st.clip || '')
+                      .split('/')
+                      .pop()
+                : null;
+        },
+        hands() {
+            const BC = window.NEXUS_GESTURE_BODY_CHECK;
+            vrm().scene.updateMatrixWorld(true);
+            const f = BC.frame({
+                hips: W('hips'),
+                leftUpperLeg: W('leftUpperLeg'),
+                rightUpperLeg: W('rightUpperLeg'),
+                leftUpperArm: W('leftUpperArm'),
+                rightUpperArm: W('rightUpperArm'),
+                chest: W('upperChest') || W('chest'),
+                neck: W('neck'),
+                head: W('head'),
+            });
+            const out = [];
+            for (const s of ['right', 'left']) {
+                const m = BC.measure(f, s, { hand: W(s + 'Hand'), elbow: W(s + 'LowerArm') }, null);
+                if (m.handInside > 0) out.push(`${s}-hand-inside-body`);
+                if (m.forearmInside > 0) out.push(`${s}-forearm-inside-body`);
+            }
+            return out;
+        },
+        stop() {
+            try {
+                window.NEXUS_MOTION.execute({ commands: [{ type: 'stop' }] });
+            } catch (_) {
+                /* nothing to stop */
+            }
+        },
+    };
+}
+
+async function positionsStage(page, avatar) {
+    await page.evaluate(positionHelpers);
+    const rows = [];
+    let n = 0;
+    for (const [combo, steps] of POSITION_COMBOS) {
+        // Each combination starts from her standing, facing the camera.
+        await page.evaluate(() => {
+            window.__ga.quiet();
+            window.__pos.stop();
+        });
+        await page.waitForTimeout(3000);
+        await page.evaluate(() => window.NEXUS_MOTION.onUserUtterance('face me'));
+        await page.waitForTimeout(2500);
+        await page.evaluate(() => window.__ga.frame());
+        const base = await page.evaluate(() => window.__pos.sample());
+        for (const said of steps) {
+            n += 1;
+            await page.evaluate((t) => window.NEXUS_MOTION.onUserUtterance(t), said);
+            await page.waitForTimeout(5000); // a posture clip loads, plays its transition, settles
+            const m = await page.evaluate(() => window.__pos.sample());
+            const clip = await page.evaluate(() => window.__pos.clip());
+            const state = await page.evaluate(() => ({
+                sitting: Boolean(window.NEXUS_MOTION.state?.sitting),
+                laying: Boolean(window.NEXUS_MOTION.state?.laying),
+                exec: window.NEXUS_MOTION.state?.execution
+                    ? `${window.NEXUS_MOTION.state.execution.action}:${window.NEXUS_MOTION.state.execution.status}`
+                    : null,
+            }));
+            const want = EXPECT[said];
+            const ratio = m.hipsY / base.hipsY;
+            const posture = ratio > 0.85 ? 'stand' : ratio > 0.35 ? 'sit' : 'lie';
+            const flags = [];
+            if (want.posture !== posture) flags.push(`posture-${posture}-not-${want.posture}`);
+            if (want.posture === 'sit' && !state.sitting) flags.push('not-sitting-state');
+            if (want.posture === 'lie' && !state.laying) flags.push('not-laying-state');
+            if (want.posture !== 'lie' && m.uprightDeg > LIMITS.uprightDeg)
+                flags.push(`tilted-${m.uprightDeg.toFixed(0)}deg`);
+            if (want.posture === 'stand' && m.balance > LIMITS.balance)
+                flags.push(`off-balance-${m.balance.toFixed(2)}`);
+            const floorCm = (m.footY - base.footY) * 100;
+            if (want.posture === 'stand' && floorCm > LIMITS.floatCm) flags.push(`floating-${floorCm.toFixed(0)}cm`);
+            if (floorCm < -LIMITS.sinkCm) flags.push(`sunk-${(-floorCm).toFixed(0)}cm`);
+            if (want.facing === 'away' && m.facingCam > -0.3) flags.push('not-turned-away');
+            if (want.facing === 'toward' && m.facingCam < 0.3) flags.push('not-facing');
+            // Talking in this position: both hands out of her body while the reply plays.
+            const before = await page.evaluate(() => window.__pos.hands());
+            await page.evaluate(() => window.__ga.speak('Honestly, I think this is nice. Maybe you agree?', 'en-US'));
+            let during = [];
+            for (let k = 0; k < 4; k += 1) {
+                await page.waitForTimeout(700);
+                during = during.concat(await page.evaluate(() => window.__pos.hands()));
+            }
+            await page.evaluate(() => window.NEXUS_LIP_SYNC.stop());
+            flags.push(...new Set([...before, ...during].map((f) => `speaking:${f}`)));
+            await page.evaluate(() => window.__pos.frame());
+            await page.waitForTimeout(400);
+            const shotFile = await shot(
+                page,
+                `${avatar}-pos-${String(n).padStart(2, '0')}-${said.replace(/\s+/g, '-')}.jpg`
+            );
+            const verdict = flags.length ? 'fail' : 'ok';
+            rows.push({
+                avatar,
+                kind: 'position',
+                name: `${combo}: "${said}"`,
+                text: said,
+                verdict,
+                flags,
+                posture,
+                hipsRatio: +ratio.toFixed(2),
+                uprightDeg: +m.uprightDeg.toFixed(1),
+                balance: +m.balance.toFixed(2),
+                floorCm: +floorCm.toFixed(1),
+                facing: +m.facingCam.toFixed(2),
+                state: state.exec,
+                clip,
+                shots: [shotFile],
+            });
+            console.log(
+                `${verdict.padEnd(4)} ${avatar} pos ${`${combo}: "${said}"`.padEnd(40)} ${posture} hips ${ratio.toFixed(2)} tilt ${m.uprightDeg.toFixed(0)}° bal ${m.balance.toFixed(2)} ${flags.join(',')}`
+            );
+        }
+    }
+    return rows;
 }
 
 function writeReport(report) {
@@ -421,10 +634,25 @@ function writeReport(report) {
         );
         md.push('| check | sentence | verdict | moved (cm) | to target (cm) | back within (cm) | flags |');
         md.push('|---|---|---|---|---|---|---|');
-        for (const r of a.rows) {
+        for (const r of a.rows.filter((x) => x.kind !== 'position')) {
             md.push(
                 `| ${r.name} | ${r.text} | **${r.verdict}** | ${r.handMoveCm ?? '—'} | ${r.toTargetCm ?? '—'} | ${r.returnedWithinCm ?? '—'} | ${r.flags.join(', ') || '—'} |`
             );
+        }
+        const positions = a.rows.filter((x) => x.kind === 'position');
+        if (positions.length) {
+            md.push(
+                '',
+                '### Positions (SG6)',
+                '',
+                '| step | verdict | posture | hips / standing | spine tilt (°) | balance | feet vs floor (cm) | facing camera | motion state | clip | flags |',
+                '|---|---|---|---|---|---|---|---|---|---|---|'
+            );
+            for (const r of positions) {
+                md.push(
+                    `| ${r.name} | **${r.verdict}** | ${r.posture} | ${r.hipsRatio} | ${r.uprightDeg} | ${r.balance} | ${r.floorCm} | ${r.facing} | ${r.state || '—'} | ${r.clip || '—'} | ${r.flags.join(', ') || '—'} |`
+                );
+            }
         }
         md.push('');
         for (const r of a.replies) {
