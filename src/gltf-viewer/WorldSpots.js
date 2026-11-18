@@ -59,8 +59,6 @@
         'hallway-far': ['end of the hallway', "fondo dell'atrio"],
         stairwell: ['stairs', 'stairwell', 'staircase', 'scale', 'scalinata'],
         'stairwell-far': ['other side of the stairs', 'altro lato delle scale'],
-        entrance: ['entrance', 'shoe lockers', 'lockers', 'ingresso', 'armadietti'],
-        'entrance-far': ['further in', 'più dentro'],
         carriage: ['carriage', 'train car', 'vagone', 'carrozza'],
         'carriage-far': ['end of the carriage', 'fondo del vagone'],
         classroom: ['classroom', 'aula'],

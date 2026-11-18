@@ -79,6 +79,9 @@ const SPEC = Object.freeze({
 const PLACE_CAMERA = Object.freeze({
     'irish-pub': { yawDeg: 0 }, // at -22 a chair crosses her legs
     office: { yawDeg: 0 }, // at -22 two desk chairs stand in front of her
+    'anime-classroom': { yawDeg: 0 }, // at -22 a desk top fills the front of the frame
+    'anime-stairs': { yawDeg: 0 }, // at -22 the stair wall is all you see; at +22 the rail cuts her
+    'anime-subway': { yawDeg: 0 }, // at -22 a grab pole stands across her
 });
 const yawArg = option('--yaw', null);
 
