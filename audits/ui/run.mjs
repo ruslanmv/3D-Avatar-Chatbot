@@ -185,7 +185,7 @@ function installProbes() {
             } catch (_) {
                 spicy = null;
             }
-            return { spicy, privateComposer, placeholder: document.getElementById('user-input')?.placeholder || null };
+            return { spicy, privateComposer, placeholder: document.getElementById('speech-text')?.placeholder || null };
         },
         shown(sel) {
             const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
