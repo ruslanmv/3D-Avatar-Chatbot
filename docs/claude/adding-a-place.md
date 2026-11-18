@@ -86,6 +86,10 @@ merged mesh: `tools/vr/split-by-material.mjs` names its parts, and
    **Open `tmp/shots/<id>-desktop.jpg` and `-mobile.jpg` and look.** Every place added so far
    had a defect only the picture showed: a sofa across her legs, a wall between camera and
    bar, the camera outside the building, the camera inside a wall.
+   To compare preview angles without editing anything:
+   `node tools/vr/render-place-previews.mjs <id> --yaw 0 --out /tmp/pv0` (also `22`); the angle
+   that frames her goes into `PLACE_CAMERA`. A different verified spot:
+   `node tools/vr/at-from-spot.mjs scenes/<file>.glb <spot-id> --write`.
 
 7. **Record and regenerate.** A row in `assets/vr-worlds/PROVENANCE.md` (file, source URL,
    licence, triangles), a short section in `docs/VR_WORLDS.md`, then:
