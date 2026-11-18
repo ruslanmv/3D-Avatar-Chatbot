@@ -130,6 +130,56 @@
     }
 
     /**
+     * DC1. A Forge device code, as the person typed it: six symbols from Forge's alphabet, with or
+     * without the dash, any case. Returns the code as Forge reads it, or null when this is not one
+     * (a pasted grant has a dot and is far longer, so the two never overlap).
+     *
+     * Why a code at all: on a Quest the only keyboard is a pointer on a floating panel, and a read
+     * grant is a signed token of well over a hundred characters, where one wrong character is a
+     * grant that does not verify. The operator's Studio hands out the same grant as a code instead.
+     */
+    var DEVICE_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+    function deviceCode(value) {
+        var code = String(value || '')
+            .toUpperCase()
+            .replace(/[\s-]/g, '');
+        if (code.length !== 6) return null;
+        for (var i = 0; i < code.length; i += 1) {
+            if (DEVICE_CODE_ALPHABET.indexOf(code[i]) === -1) return null;
+        }
+        return code;
+    }
+
+    /**
+     * DC1. Trade a device code for the read grant it carries (Forge `POST /v1/device-codes/redeem`).
+     * Once only, on Forge's side. Resolves `{ok, grant, why}`; never throws, so a Settings field
+     * can say what went wrong instead of failing silently.
+     */
+    async function redeemDeviceCode(value, apiUrl, fetchImpl) {
+        var code = deviceCode(value);
+        var send = fetchImpl || (typeof global.fetch === 'function' ? global.fetch.bind(global) : null);
+        if (!code) return { ok: false, why: 'That is not a pairing code.' };
+        if (!apiUrl) return { ok: false, why: 'Choose a Forge above first: the code is redeemed there.' };
+        if (!send) return { ok: false, why: 'This browser cannot reach Forge.' };
+        try {
+            var response = await send(String(apiUrl).replace(/\/$/, '') + '/v1/device-codes/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ code: code }),
+            });
+            if (response.status === 429) return { ok: false, why: 'Too many tries. Wait a minute, then try again.' };
+            if (!response.ok) {
+                return { ok: false, why: 'That code did not work: it may be mistyped, already used or expired.' };
+            }
+            var body = await response.json();
+            if (!body || typeof body.token !== 'string') return { ok: false, why: 'Forge did not send a grant back.' };
+            return { ok: true, why: '', grant: body.token };
+        } catch (_) {
+            return { ok: false, why: 'Could not reach Forge to redeem the code.' };
+        }
+    }
+
+    /**
      * BI5. What a grant says about itself: `{sub, exp, iat, lifetime}` from its claims, or null
      * when it cannot be read. Nothing here is trusted (Forge checks the signature); it only
      * tells a short-lived account capability from a long-lived operator grant.
@@ -245,6 +295,8 @@
         describeGrant: describeGrant,
         siteGrant: siteGrant,
         saveGrant: saveGrant,
+        deviceCode: deviceCode,
+        redeemDeviceCode: redeemDeviceCode,
         normalizeForgeUrl: normalizeForgeUrl,
         storedForgeChoice: storedForgeChoice,
         saveForgeChoice: saveForgeChoice,

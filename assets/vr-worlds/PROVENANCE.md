@@ -1,8 +1,10 @@
 # VR worlds — provenance
 
 Everything in this folder is **CC0 1.0** (public domain dedication): free for
-any use, no attribution required. Credits are given anyway. Downloaded
-2026-11-06 for batch VW1; nothing here was generated.
+any use, no attribution required, except the anime places below
+(`scenes/anime-*.glb`, VW12), which are **CC BY 4.0** and must be credited where
+they are shown. Credits are given anyway. Downloaded 2026-11-06 for batch VW1;
+nothing here was generated.
 
 ## Panoramas (`panoramas/`)
 
@@ -243,3 +245,35 @@ app.
 - **ambientCG** HDRIs and textures: not needed, Poly Haven covers the panoramas.
 - **Sketchfab**: licences vary per model; nothing was taken from it.
 - Poly Haven's _Alkantstrand Sunset_ and other Vault-only HDRIs: not free.
+
+## Anime places (`scenes/anime-*.glb`, VW12)
+
+Downloaded from Sketchfab on 2026-11-17 through the signed-in download API.
+Every model is **CC BY 4.0** (<https://creativecommons.org/licenses/by/4.0/>):
+free for commercial use and redistribution **with credit**. The credit is shown
+in the app, in each place's note. Changes made (allowed by CC BY, and stated
+here as it requires): textures resized to at most 1024 px and re-encoded as
+WebP; unused data pruned; for the phone and Quest versions (`*-light.glb`) the
+mesh simplified with gltf-transform (meshoptimizer) to under 30 000 triangles
+and textures cut to 512 px, keeping colour textures only (normal, roughness and
+occlusion maps removed). No model was taken from an existing game or anime.
+
+| File stem                | Model                         | Author                             | Source                                                                                           |
+| ------------------------ | ----------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `anime-school-classroom` | The Japanese School Classroom | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-classroom-d9fc039ba0b6433db91ec129abe86b52> |
+| `anime-school-corridor`  | The Japanese School Corridor  | volvor                             | <https://sketchfab.com/3d-models/the-japanese-school-corridor-f7775fea6fc34f518424ef9cad55c926>  |
+| `anime-school-stairs`    | School\_[stairs]              | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/school-stairs-287058f9d2034f26a9f00e05e2138310>                 |
+| `anime-classroom-small`  | Japanese Classroom            | ouz209                             | <https://sketchfab.com/3d-models/japanese-classroom-54bdec1baa5c4855a45a4f956d947960>            |
+| `anime-subway-car`       | Subway\_[interior]            | Comicaroid (yuuuusukeeee)          | <https://sketchfab.com/3d-models/subway-interior-b7f25426ac674a9291ba092fb9fe8406>               |
+| `anime-tatami-room`      | Japanese Tatami Room Set      | Geraldo Pratama Wahyu Teddy (juyo) | <https://sketchfab.com/3d-models/japanese-tatami-room-set-8b5108dde0f24f76bda2313750e80134>      |
+
+Not taken: _School_[entrance]_ and \_School_[hallway]_ (Comicaroid), downloaded
+and prepared but left out: the entrance is a flat, untextured grey room that
+frames as an empty box, and the hallway is open on one side, so she stood
+against grass and sky from every measured spot. For phone and Quest performance:
+\_Japanese street at night_ (afx*cgmotion; 107 textures, 142 MB of GPU texture
+memory even reduced) and \_Japanese Suburban Grandma's House* (trishalui; 36
+draw calls and 44 MB of textures, an exterior diorama). Also not taken: _School
+Rooftop_ (clonekrakein; 111 000 triangles over 120 × 205 m, with a skeleton and
+an animation, too heavy to make light), and anything ripped from a game (_Yakuza
+5 – Karaoke room_, _Yandere Simulator_ props).
