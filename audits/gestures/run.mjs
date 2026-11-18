@@ -420,19 +420,27 @@ async function auditAvatar(D, browser, base, avatar) {
  *   facing    after "turn around" her back is to the camera; after "face me" her front is
  *   speaking  a reply started in that position: both hands checked against her torso while it plays
  */
-const POSITION_COMBOS = [
-    ['sit and stand', ['sit down', 'stand up']],
-    ['lie and stand', ['lie down', 'stand up']],
-    ['sit, lie, sit, stand', ['sit down', 'lie down', 'sit down', 'stand up']],
-    ['turn around and back', ['turn around', 'face me']],
-    ['turn, sit, stand', ['turn around', 'sit down', 'stand up', 'face me']],
-];
+/**
+ * SG7. Every position followed by every request: twenty transitions. "Coherent" means what her body
+ * does always agrees with what the motion stack believes (hips at seat height ⇔ sitting, on the
+ * floor ⇔ lying, neither ⇔ standing), and each request ends where a person would expect.
+ */
+const STARTS = {
+    standing: ['face me'],
+    sitting: ['sit down'],
+    lying: ['lie down'],
+    'turned away': ['turn around'],
+};
+const REQUESTS = ['sit down', 'lie down', 'stand up', 'turn around', 'face me'];
+/** What each request must end in. `keepOrStand`: from a seat or the floor, staying or getting up are both coherent. */
 const EXPECT = {
     'sit down': { posture: 'sit' },
     'lie down': { posture: 'lie' },
     'stand up': { posture: 'stand' },
-    'turn around': { posture: 'stand', facing: 'away' },
-    'face me': { posture: 'stand', facing: 'toward' },
+    // "Turn around" is relative: from facing you she ends with her back to you, from turned away
+    // she ends facing you again.
+    'turn around': { posture: 'stand', facing: 'flip', keepOrStand: true },
+    'face me': { posture: 'stand', facing: 'toward', keepOrStand: true },
 };
 const LIMITS = { uprightDeg: 15, balance: 0.15, floatCm: 6, sinkCm: 6 };
 
@@ -528,52 +536,69 @@ function positionHelpers() {
     };
 }
 
+async function measureStep(page, base, said, from, prevFacing = 1) {
+    await page.evaluate((t) => window.NEXUS_MOTION.onUserUtterance(t), said);
+    await page.waitForTimeout(5000); // a posture clip loads, plays its transition, settles
+    const m = await page.evaluate(() => window.__pos.sample());
+    const clip = await page.evaluate(() => window.__pos.clip());
+    const state = await page.evaluate(() => ({
+        sitting: Boolean(window.NEXUS_MOTION.state?.sitting),
+        laying: Boolean(window.NEXUS_MOTION.state?.laying),
+        exec: window.NEXUS_MOTION.state?.execution
+            ? `${window.NEXUS_MOTION.state.execution.action}:${window.NEXUS_MOTION.state.execution.status}`
+            : null,
+    }));
+    const ratio = m.hipsY / base.hipsY;
+    const posture = ratio > 0.85 ? 'stand' : ratio > 0.35 ? 'sit' : 'lie';
+    const believed = state.laying ? 'lie' : state.sitting ? 'sit' : 'stand';
+    const want = EXPECT[said];
+    const flags = [];
+    // Coherence: the body and the motion stack agree, whatever was asked.
+    if (posture !== believed) flags.push(`incoherent-body-${posture}-state-${believed}`);
+    const accepted = want.keepOrStand && from !== 'stand' ? [from, 'stand'] : [want.posture];
+    if (!accepted.includes(posture)) flags.push(`ended-${posture}-expected-${accepted.join('-or-')}`);
+    if (posture !== 'lie' && m.uprightDeg > LIMITS.uprightDeg) flags.push(`tilted-${m.uprightDeg.toFixed(0)}deg`);
+    if (posture === 'stand' && m.balance > LIMITS.balance) flags.push(`off-balance-${m.balance.toFixed(2)}`);
+    const floorCm = (m.footY - base.footY) * 100;
+    if (posture === 'stand' && floorCm > LIMITS.floatCm) flags.push(`floating-${floorCm.toFixed(0)}cm`);
+    if (floorCm < -LIMITS.sinkCm) flags.push(`sunk-${(-floorCm).toFixed(0)}cm`);
+    if (posture === 'stand' && want.facing === 'flip' && !(m.facingCam * Math.sign(prevFacing || 1) < -0.3))
+        flags.push(prevFacing < 0 ? 'not-turned-back' : 'not-turned-away');
+    if (posture === 'stand' && want.facing === 'toward' && m.facingCam < 0.3) flags.push('not-facing');
+    return { m, clip, state, ratio, posture, flags, floorCm };
+}
+
 async function positionsStage(page, avatar) {
     await page.evaluate(positionHelpers);
     const rows = [];
     let n = 0;
-    for (const [combo, steps] of POSITION_COMBOS) {
-        // Each combination starts from her standing, facing the camera.
-        await page.evaluate(() => {
-            window.__ga.quiet();
-            window.__pos.stop();
-        });
-        await page.waitForTimeout(3000);
-        await page.evaluate(() => window.NEXUS_MOTION.onUserUtterance('face me'));
-        await page.waitForTimeout(2500);
-        await page.evaluate(() => window.__ga.frame());
-        const base = await page.evaluate(() => window.__pos.sample());
-        for (const said of steps) {
+    for (const [startName, startSteps] of Object.entries(STARTS)) {
+        for (const said of REQUESTS) {
             n += 1;
-            await page.evaluate((t) => window.NEXUS_MOTION.onUserUtterance(t), said);
-            await page.waitForTimeout(5000); // a posture clip loads, plays its transition, settles
-            const m = await page.evaluate(() => window.__pos.sample());
-            const clip = await page.evaluate(() => window.__pos.clip());
-            const state = await page.evaluate(() => ({
-                sitting: Boolean(window.NEXUS_MOTION.state?.sitting),
-                laying: Boolean(window.NEXUS_MOTION.state?.laying),
-                exec: window.NEXUS_MOTION.state?.execution
-                    ? `${window.NEXUS_MOTION.state.execution.action}:${window.NEXUS_MOTION.state.execution.status}`
-                    : null,
-            }));
-            const want = EXPECT[said];
-            const ratio = m.hipsY / base.hipsY;
-            const posture = ratio > 0.85 ? 'stand' : ratio > 0.35 ? 'sit' : 'lie';
-            const flags = [];
-            if (want.posture !== posture) flags.push(`posture-${posture}-not-${want.posture}`);
-            if (want.posture === 'sit' && !state.sitting) flags.push('not-sitting-state');
-            if (want.posture === 'lie' && !state.laying) flags.push('not-laying-state');
-            if (want.posture !== 'lie' && m.uprightDeg > LIMITS.uprightDeg)
-                flags.push(`tilted-${m.uprightDeg.toFixed(0)}deg`);
-            if (want.posture === 'stand' && m.balance > LIMITS.balance)
-                flags.push(`off-balance-${m.balance.toFixed(2)}`);
-            const floorCm = (m.footY - base.footY) * 100;
-            if (want.posture === 'stand' && floorCm > LIMITS.floatCm) flags.push(`floating-${floorCm.toFixed(0)}cm`);
-            if (floorCm < -LIMITS.sinkCm) flags.push(`sunk-${(-floorCm).toFixed(0)}cm`);
-            if (want.facing === 'away' && m.facingCam > -0.3) flags.push('not-turned-away');
-            if (want.facing === 'toward' && m.facingCam < 0.3) flags.push('not-facing');
-            // Talking in this position: both hands out of her body while the reply plays.
-            const before = await page.evaluate(() => window.__pos.hands());
+            // Every transition starts afresh: stopped, standing, facing the camera.
+            await page.evaluate(() => {
+                window.__ga.quiet();
+                window.__pos.stop();
+            });
+            await page.waitForTimeout(3000);
+            await page.evaluate(() => window.NEXUS_MOTION.onUserUtterance('stand up'));
+            await page.waitForTimeout(2500);
+            await page.evaluate(() => window.NEXUS_MOTION.onUserUtterance('face me'));
+            await page.waitForTimeout(2500);
+            await page.evaluate(() => window.__ga.frame());
+            const base = await page.evaluate(() => window.__pos.sample());
+            let from = 'stand';
+            let facing = base.facingCam;
+            const setup = [];
+            for (const step of startSteps) {
+                const r = await measureStep(page, base, step, 'stand', facing);
+                from = r.posture;
+                facing = r.m.facingCam;
+                if (r.flags.length) setup.push(...r.flags.map((f) => `start:${f}`));
+            }
+            const r = await measureStep(page, base, said, from, facing);
+            // Talking in the position she ended in: both hands out of her body while a reply plays.
+            const hands = await page.evaluate(() => window.__pos.hands());
             await page.evaluate(() => window.__ga.speak('Honestly, I think this is nice. Maybe you agree?', 'en-US'));
             let during = [];
             for (let k = 0; k < 4; k += 1) {
@@ -581,33 +606,33 @@ async function positionsStage(page, avatar) {
                 during = during.concat(await page.evaluate(() => window.__pos.hands()));
             }
             await page.evaluate(() => window.NEXUS_LIP_SYNC.stop());
-            flags.push(...new Set([...before, ...during].map((f) => `speaking:${f}`)));
+            const flags = [...setup, ...r.flags, ...new Set([...hands, ...during].map((f) => `speaking:${f}`))];
             await page.evaluate(() => window.__pos.frame());
             await page.waitForTimeout(400);
             const shotFile = await shot(
                 page,
-                `${avatar}-pos-${String(n).padStart(2, '0')}-${said.replace(/\s+/g, '-')}.jpg`
+                `${avatar}-pos-${String(n).padStart(2, '0')}-${startName.replace(/\s+/g, '-')}-${said.replace(/\s+/g, '-')}.jpg`
             );
             const verdict = flags.length ? 'fail' : 'ok';
             rows.push({
                 avatar,
                 kind: 'position',
-                name: `${combo}: "${said}"`,
+                name: `${startName} → "${said}"`,
                 text: said,
                 verdict,
                 flags,
-                posture,
-                hipsRatio: +ratio.toFixed(2),
-                uprightDeg: +m.uprightDeg.toFixed(1),
-                balance: +m.balance.toFixed(2),
-                floorCm: +floorCm.toFixed(1),
-                facing: +m.facingCam.toFixed(2),
-                state: state.exec,
-                clip,
+                posture: r.posture,
+                hipsRatio: +r.ratio.toFixed(2),
+                uprightDeg: +r.m.uprightDeg.toFixed(1),
+                balance: +r.m.balance.toFixed(2),
+                floorCm: +r.floorCm.toFixed(1),
+                facing: +r.m.facingCam.toFixed(2),
+                state: r.state.exec,
+                clip: r.clip,
                 shots: [shotFile],
             });
             console.log(
-                `${verdict.padEnd(4)} ${avatar} pos ${`${combo}: "${said}"`.padEnd(40)} ${posture} hips ${ratio.toFixed(2)} tilt ${m.uprightDeg.toFixed(0)}° bal ${m.balance.toFixed(2)} ${flags.join(',')}`
+                `${verdict.padEnd(4)} ${avatar} pos ${`${startName} → "${said}"`.padEnd(32)} ${r.posture} hips ${r.ratio.toFixed(2)} tilt ${r.m.uprightDeg.toFixed(0)}° bal ${r.m.balance.toFixed(2)} face ${r.m.facingCam.toFixed(2)} ${r.clip || ''} ${flags.join(',')}`
             );
         }
     }
