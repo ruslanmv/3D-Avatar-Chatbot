@@ -305,15 +305,19 @@ window.measure = async (src, spots, P, virtualFloor) => {
                     const open = openAlong(x, y, z, yaw);
                     if (open < P.viewClear) continue;
                     const px = x + Math.sin(yaw) * P.personAt, pz = z + Math.cos(yaw) * P.personAt;
-                    if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
-                    if (!cameraSees(x, y, z, yaw, cfg)) continue;
                     // The thing seen past her: angle between "behind her" and the direction to it.
                     const toThing = Math.atan2(centre.x - x, centre.z - z);
                     const behind = yaw + Math.PI;
                     const off = Math.abs(Math.atan2(Math.sin(toThing - behind), Math.cos(toThing - behind)));
                     if (!anywhere && off > (80 * Math.PI) / 180) continue;
                     const score = anywhere ? Math.min(open, 4) + 2 * around : Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
-                    if (!best || score > best.score) best = { x, y, z, yaw, open, dist, off, score, framing };
+                    // VW12. The camera check is the costly one (hundreds of rays through every
+                    // triangle of a merged mesh): the hallway ran past two hours. A point that
+                    // cannot beat the best so far is not checked; the spot chosen is the same.
+                    if (best && score <= best.score) continue;
+                    if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
+                    if (!cameraSees(x, y, z, yaw, cfg)) continue;
+                    best = { x, y, z, yaw, open, dist, off, score, framing };
                 }
                 if (!best) why.view++;
             }
