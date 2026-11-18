@@ -199,3 +199,41 @@ describe('UI3 a near-T-pose correction is not remembered', () => {
         expect(stored().intensity).toBeGreaterThanOrEqual(0.5);
     });
 });
+
+describe('UI3 an undo step is the whole pose, hips included', () => {
+    test('undoing a T-pose put on a sitting pose brings her hips back down too', () => {
+        window.THREE = THREE;
+        window.NEXUS_POSE_LIBRARY = function () {
+            return { getUserPoses: () => [], getBuiltInPoses: () => [] };
+        };
+        window.NEXUS_POSE_RIG_MAP = function () {};
+        jest.isolateModules(() => {
+            require('../src/PoseState.js');
+            require('../src/PoseApplier.js');
+            require('../src/PoseEditor.js');
+        });
+        const rig = rigWith(['hips', 'leftUpperLeg']);
+        const editor = new window.NEXUS_POSE_EDITOR({});
+        editor.rigMap = rig;
+        editor.neutralPose = window.NEXUS_POSE_STATE.createNeutralSnapshot(rig);
+        editor.applier = new window.NEXUS_POSE_APPLIER({ rigMap: rig, neutralPose: editor.neutralPose });
+        editor.enabled = true;
+
+        // Sitting: hips low, thigh forward.
+        rig.bones.hips.position.set(0, 0.55, 0);
+        rig.bones.leftUpperLeg.quaternion.setFromEuler(new THREE.Euler(rad(-80), 0, 0));
+        const sitQ = rig.bones.leftUpperLeg.quaternion.clone();
+
+        // Start from T-pose: one undo step, then standing height and neutral rotations.
+        editor._pushUndoSnapshot();
+        rig.bones.hips.position.set(0, 0.9, 0);
+        editor.applier.resetAll();
+
+        editor.undo();
+        expect(rig.bones.hips.position.y).toBeCloseTo(0.55, 6);
+        expect(deg(rig.bones.leftUpperLeg.quaternion.angleTo(sitQ))).toBeLessThan(0.01);
+
+        editor.redo();
+        expect(rig.bones.hips.position.y).toBeCloseTo(0.9, 6);
+    });
+});

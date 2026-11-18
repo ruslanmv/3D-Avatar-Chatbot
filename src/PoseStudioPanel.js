@@ -1018,10 +1018,15 @@
             tposeStartBtn.addEventListener('click', () => {
                 self._bindToStage();
                 self._enterPoseMode();
+                // The undo step is the pose she is in now, taken before anything moves (UI3).
+                if (self.editor._pushUndoSnapshot) self.editor._pushUndoSnapshot();
                 try {
                     window.vrPoseSystem?.applyPreset?.('standing', 0);
                 } catch (_) {}
-                self.editor.resetAll && self.editor.resetAll();
+                if (self.editor.applier) {
+                    self.editor.applier.resetAll();
+                    if (self.editor._emitChange) self.editor._emitChange();
+                }
                 self._navIndex = -1;
                 self._updateNavDisplay();
                 self._syncSlidersFromBone();

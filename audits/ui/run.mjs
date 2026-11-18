@@ -1407,8 +1407,8 @@ async function tourPoseStudio(D, browser, base) {
             );
 
             await page.selectOption('#poseBoneSelect', { label: 'Left Upper Arm' });
-            // Left arm raised to horizontal and forward; the right one stays at rest.
-            await input('#poseSliderZ', 0);
+            // Left arm lowered 60° and forward; the right one stays level (the T-pose start).
+            await input('#poseSliderZ', 60);
             await input('#poseSliderX', 25);
             await page.selectOption('#poseBoneSelect', { label: 'Left Lower Arm' });
             await input('#poseSliderY', 40);
@@ -1513,14 +1513,14 @@ async function tourPoseStudio(D, browser, base) {
                     id
                 );
                 const s = await shot(page, `beh-${id}`);
-                const modeOk = id === 'dance' ? Boolean(clip) || mode === 'musicIdle' : mode === id;
+                const modeOk = id === 'dance' ? mode === 'musicidle' || mode === 'musicIdle' : mode === id;
                 // An avatar without that expression cannot show it; the body response still counts.
                 const exprOk = EXPR[id] ? expr > 0.1 || !hasExpr : true;
                 record(
                     'behavior',
                     c.label,
                     pf(motion > 1.5 && modeOk && exprOk),
-                    `mode "${mode}"${id === 'dance' ? `, clip ${clip ? String(clip).split('/').pop() : 'none'}` : ''}${EXPR[id] ? `, "${EXPR[id]}" expression peak ${expr}${hasExpr ? '' : ' (this avatar defines no such expression)'}` : ''}; skeleton moved up to ${motion}° in 2.8 s; chip highlighted=${active}`,
+                    `mode "${mode}"${id === 'dance' ? (mode === 'musicidle' ? ' (the procedural dance: the dance intent lists no clip while the Mixamo dances are quarantined)' : `, clip ${clip ? String(clip).split('/').pop() : 'none'}`) : ''}${EXPR[id] ? `, "${EXPR[id]}" expression peak ${expr}${hasExpr ? '' : ' (this avatar defines no such expression)'}` : ''}; skeleton moved up to ${motion}° in 2.8 s; chip highlighted=${active}`,
                     s
                 );
                 await page.locator('#poseResetBtn').click();
