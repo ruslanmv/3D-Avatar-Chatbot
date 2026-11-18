@@ -1030,6 +1030,60 @@ const POSE_PRESETS = {
             rightLowerArm: eulerDegToQuat(0, 25, 0),
         },
     },
+    // UN26. Two more, asked for by name: on her back with the knees up, and straddling. Same signs
+    // as UN24. Supine, a positive thigh X lifts the knee towards the ceiling (her front faces up).
+    lyingKneesUp: {
+        label: 'Lying (Knees Up)',
+        adult: true,
+        // On her back, knees raised and apart, feet flat on the floor, arms relaxed above her head,
+        // chin dropped a little so she looks along her body at the person. Thigh 55° up and the
+        // knee folded 110° bring the foot back to the floor (equal thigh and shin lengths).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head', 'leftFoot', 'rightFoot'] },
+        bones: {
+            hips: eulerDegToQuat(90, 0, 0), // Supine
+            spine: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-12, 0, 0), // Looking down her body
+            head: eulerDegToQuat(-6, 12, 0),
+            leftUpperLeg: eulerDegToQuat(55, 0, -35), // Knees up and apart
+            rightUpperLeg: eulerDegToQuat(55, 0, 35),
+            leftLowerLeg: eulerDegToQuat(-110, 0, 0), // Feet back down on the floor
+            rightLowerLeg: eulerDegToQuat(-110, 0, 0),
+            leftFoot: eulerDegToQuat(0, 0, 0),
+            rightFoot: eulerDegToQuat(0, 0, 0),
+            // Arms out along the floor towards her head, elbows folded in the same plane (Z, not
+            // the Y bend other presets use: on her back Y folds the forearm up at the ceiling).
+            leftUpperArm: eulerDegToQuat(0, 0, -40),
+            rightUpperArm: eulerDegToQuat(0, 0, 40),
+            leftLowerArm: eulerDegToQuat(0, 0, -70),
+            rightLowerArm: eulerDegToQuat(0, 0, 70),
+        },
+    },
+
+    straddle: {
+        label: 'Straddling',
+        adult: true,
+        // Kneeling up astride — knees wide on either side of the person's lap, shins on the floor
+        // behind her, back arched, hands forward at shoulder height as if resting on theirs.
+        // Thigh 15° + knee −105° leaves the shins horizontal (as UN6's kneeling).
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'] },
+        bones: {
+            hips: eulerDegToQuat(0, 0, 0),
+            spine: eulerDegToQuat(8, 0, 0), // Arched
+            chest: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-6, 0, 0),
+            head: eulerDegToQuat(-8, 0, 6), // Looking down at the person, a slight tilt
+            leftUpperLeg: eulerDegToQuat(15, 0, -38), // Knees wide
+            rightUpperLeg: eulerDegToQuat(15, 0, 38),
+            leftLowerLeg: eulerDegToQuat(-105, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-105, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
+            leftUpperArm: eulerDegToQuat(45, 0, 45), // Hands forward, on their shoulders
+            rightUpperArm: eulerDegToQuat(45, 0, -45),
+            leftLowerArm: eulerDegToQuat(0, -30, 0),
+            rightLowerArm: eulerDegToQuat(0, 30, 0),
+        },
+    },
     // =====================================================================
     // TOP 5 VR SIMULATION POSES (Steam Adult — Spicy Mode only)
     // =====================================================================
@@ -1437,6 +1491,8 @@ const PRESET_ORDER = [
     'sittingOpen',
     'floorOpen',
     'kneelingWide',
+    'lyingKneesUp', // UN26
+    'straddle',
     // Adult — Ground poses
     'allFoursArched',
     'handsKnees',

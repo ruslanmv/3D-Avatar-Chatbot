@@ -118,3 +118,10 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
   Studio's Adult category. Spicy mode only; no NL phrases (adult). Rendered on
   AvatarSample_A front and side before committing. The parity baseline was
   re-recorded for the five-line shift in `PoseStudioPanel.js` only.
+- **UN25.** Pose Studio ▸ Transition speed (Slow 1.6× / Normal / Fast 0.6×),
+  `PoseTransition.setSpeed`, stored per device in
+  `nexus_pose_transition_speed` (a setting: not in ConversationReset). Instant
+  stays instant.
+- **UN26.** Adult `lyingKneesUp` (on her back, knees up and apart, feet on the
+  floor; elbows fold about Z because Y folds a supine forearm up at the
+  ceiling) and `straddle` (kneeling up astride, knees wide, hands forward).

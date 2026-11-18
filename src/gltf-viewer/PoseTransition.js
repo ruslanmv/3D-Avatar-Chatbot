@@ -30,6 +30,11 @@
  *            acceleration at both ends, so there is no jolt when a bone starts or lands — the old
  *            smoothstep had a step in acceleration at both ends.
  *
+ * UN25. Transition speed is the person's: Slow, Normal or Fast in Pose Studio, one multiplier on
+ * the whole blend (cap included), stored per device under `nexus_pose_transition_speed`. A setting,
+ * not conversation, so ConversationReset neither erases nor lists it. Instant (0) stays instant at
+ * every speed; a storage that throws (private window) just means Normal.
+ *
  * Fail soft: unknown bone names get the limb delay, a missing or NaN input gives the caller's own
  * duration back. VRPoseSystem falls back to its old single-curve blend if this global is absent.
  */
@@ -52,6 +57,49 @@
     const HIPS_FULL = 0.5; // metres of hips travel for the full extra
     const HIPS_STRETCH = 0.35;
     const MAX_SECONDS = 1.6;
+
+    const SPEED_KEY = 'nexus_pose_transition_speed';
+    const SPEEDS = Object.freeze({ slow: 1.6, normal: 1, fast: 0.6 });
+    let speed = null; // read lazily from storage once
+
+    function storage() {
+        try {
+            return global && global.localStorage ? global.localStorage : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function getSpeed() {
+        if (speed) return speed;
+        speed = 'normal';
+        try {
+            const st = storage();
+            const saved = st && st.getItem(SPEED_KEY);
+            if (saved && Object.prototype.hasOwnProperty.call(SPEEDS, saved)) speed = saved;
+        } catch (e) {
+            console.warn('[PoseTransition] speed not read; Normal', e);
+        }
+        return speed;
+    }
+
+    /** Set Slow / Normal / Fast. Returns the speed now in force (unknown names are refused). */
+    function setSpeed(name) {
+        if (!Object.prototype.hasOwnProperty.call(SPEEDS, name)) return getSpeed();
+        speed = name;
+        try {
+            const st = storage();
+            if (st) st.setItem(SPEED_KEY, name);
+        } catch (e) {
+            console.warn('[PoseTransition] speed not saved (kept for this page)', e);
+        }
+        return speed;
+    }
+
+    /** Forget the cached choice (tests; another tab changing it). */
+    function reset() {
+        speed = null;
+    }
 
     function clamp01(x) {
         return x < 0 ? 0 : x > 1 ? 1 : x;
@@ -103,7 +151,8 @@
         const a = Number.isFinite(angle) ? angle : 0;
         const h = Number.isFinite(hipsTravel) ? Math.abs(hipsTravel) : 0;
         const scale = 1 + clamp01((a - BIG_FROM) / BIG_SPAN) * ANGLE_STRETCH + clamp01(h / HIPS_FULL) * HIPS_STRETCH;
-        return Math.max(base, Math.min(base * scale, MAX_SECONDS));
+        const k = SPEEDS[getSpeed()];
+        return Math.max(base, Math.min(base * scale, MAX_SECONDS)) * k;
     }
 
     const api = {
@@ -114,6 +163,11 @@
         maxAngle: maxAngle,
         durationFor: durationFor,
         MAX_SECONDS: MAX_SECONDS,
+        SPEEDS: SPEEDS,
+        SPEED_KEY: SPEED_KEY,
+        getSpeed: getSpeed,
+        setSpeed: setSpeed,
+        reset: reset,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

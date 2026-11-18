@@ -82,7 +82,47 @@ describe('UN23 PoseTransition', () => {
     });
 });
 
-describe('UN24 open-knees presets', () => {
+describe('UN25 transition speed', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        PT.reset();
+    });
+    afterAll(() => {
+        localStorage.clear();
+        PT.reset();
+    });
+
+    test('Normal by default; Slow is longer and Fast shorter for the same change', () => {
+        expect(PT.getSpeed()).toBe('normal');
+        const normal = PT.durationFor(0.5, 150 * DEG, 0.3);
+        PT.setSpeed('slow');
+        const slow = PT.durationFor(0.5, 150 * DEG, 0.3);
+        PT.setSpeed('fast');
+        const fast = PT.durationFor(0.5, 150 * DEG, 0.3);
+        expect(slow).toBeGreaterThan(normal);
+        expect(fast).toBeLessThan(normal);
+        expect(fast).toBeGreaterThan(0);
+    });
+
+    test('instant stays instant at every speed', () => {
+        for (const name of Object.keys(PT.SPEEDS)) {
+            PT.setSpeed(name);
+            expect(PT.durationFor(0, 180 * DEG, 1)).toBe(0);
+        }
+    });
+
+    test('the choice survives a reload, and an unknown one is refused', () => {
+        PT.setSpeed('slow');
+        PT.reset(); // as a new page would
+        expect(PT.getSpeed()).toBe('slow');
+        expect(PT.setSpeed('warp')).toBe('slow');
+        localStorage.setItem(PT.SPEED_KEY, 'warp');
+        PT.reset();
+        expect(PT.getSpeed()).toBe('normal');
+    });
+});
+
+describe('UN24 + UN26 open-knees presets', () => {
     const vps = fs.readFileSync(path.join(__dirname, '../src/gltf-viewer/VRPoseSystem.js'), 'utf8');
     const panel = fs.readFileSync(path.join(__dirname, '../src/PoseStudioPanel.js'), 'utf8');
     const order = vps.slice(
@@ -90,7 +130,7 @@ describe('UN24 open-knees presets', () => {
         vps.indexOf('];', vps.indexOf('const PRESET_ORDER'))
     );
 
-    for (const name of ['sittingOpen', 'floorOpen', 'kneelingWide']) {
+    for (const name of ['sittingOpen', 'floorOpen', 'kneelingWide', 'lyingKneesUp', 'straddle']) {
         test(`${name} is defined as adult, in the cycle and in Pose Studio as adult`, () => {
             const at = vps.indexOf(`    ${name}: {`);
             expect(at).toBeGreaterThan(0);
