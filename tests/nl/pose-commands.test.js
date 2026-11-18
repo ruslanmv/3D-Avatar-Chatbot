@@ -289,3 +289,26 @@ describe('animations, against the clip map’s own registry', () => {
         });
     });
 });
+
+describe('MO14. a gesture asked for with the word "pose" is not a position', () => {
+    test.each(['strike a pose', 'Strike a pose!', 'please strike a pose', 'pose for me', 'model pose', 'do a pose'])(
+        '"%s" is left to the fast path (model_pose), not refused as an unknown position',
+        (said) => {
+            expect(en(said)).toBeNull();
+        }
+    );
+
+    test.each(['fai una posa', 'posa da modella'])('Italian "%s" too, read with the Italian table', (said) => {
+        expect(it(said)).toBeNull();
+    });
+
+    test('positions framed with "pose" still resolve, and unknown ones are still said so', () => {
+        expect(en('Can you get into the lecturer pose')).toMatchObject({ kind: 'pose', preset: 'lecturerNeutral' });
+        expect(en('do the flying squirrel pose')).toMatchObject({ kind: 'unknown-position' });
+    });
+
+    test('each table only knows its own language', () => {
+        expect(it('strike a pose')).not.toEqual(expect.objectContaining({ kind: 'pose' }));
+        expect(en('fai una posa')).not.toEqual(expect.objectContaining({ kind: 'pose' }));
+    });
+});

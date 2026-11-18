@@ -221,6 +221,11 @@
                 shrug: ['shrug your shoulders', 'shrug'],
                 sing: ['sing for me', 'sing a song', 'sing'],
                 jumping_jacks: ['do jumping jacks', 'do some jumping jacks', 'jumping jacks'],
+                // MO14. The fast path's model_pose words (IntentFastPath). "Pose" is also how a
+                // position is framed ("the lecturer pose"), so without this "strike a pose" was read
+                // as a position called "strike", found in no catalogue, and refused with "I can't
+                // take that position" while the gesture it names was never tried.
+                model_pose: ['strike a pose', 'pose for me', 'model pose', 'do a pose'],
             },
         },
         it: {
@@ -339,6 +344,7 @@
                 clap: ['batti le mani', 'applaudi', 'fai un applauso'],
                 shrug: ['alza le spalle', 'fai spallucce'],
                 sing: ['canta per me', 'canta una canzone', 'canta'],
+                model_pose: ['fai una posa', 'posa da modella'],
             },
         },
     };
@@ -534,6 +540,8 @@
         const whole = stripTrails(stripLeads(said, L), L);
         if (among(whole, L.previous) || among(body, L.previous)) return { kind: 'previous' };
         if (among(whole, L.standExplicit) || among(body, L.standExplicit)) return { kind: 'stand', explicit: true };
+        // MO14. Exactly a gesture's words is a gesture request, not a position: the fast path's.
+        if (Object.keys(L.gestures || {}).some((name) => L.gestures[name].includes(whole))) return null;
         if (!body) return framed ? { kind: 'unknown-position', said: '' } : null;
         if ((o.held || framed) && among(body, L.stand)) return { kind: 'stand', explicit: Boolean(framed) };
 
