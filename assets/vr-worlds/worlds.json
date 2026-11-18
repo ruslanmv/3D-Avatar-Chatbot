@@ -3767,8 +3767,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-subway-car.glb",
-        "at": [-8.652, 0.665, 4.731],
-        "turn": -75
+        "at": [-8.713, 0.665, 2.887],
+        "turn": -80
       },
       "preview": "previews/anime-subway.webp",
       "category": "Going out"
@@ -3807,8 +3807,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-subway-car-light.glb",
-        "at": [-8.652, 0.665, 4.731],
-        "turn": -75
+        "at": [-8.713, 0.665, 2.887],
+        "turn": -80
       },
       "lightFor": "anime-subway"
     },

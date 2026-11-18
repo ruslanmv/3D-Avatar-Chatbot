@@ -102,18 +102,18 @@
             "rating": "general",
             "verified": true,
             "position": [
-                -2.33,
+                -1.33,
                 -0.665,
-                -9.582
+                -9.082
             ],
-            "facingDeg": 75,
+            "facingDeg": 80,
             "framing": "fullBody",
             "measured": {
                 "fromThingM": 0,
                 "viewOpenM": 6,
-                "thingOffBehindDeg": 169,
+                "thingOffBehindDeg": 170,
                 "framing": "fullBody",
-                "candidates": 58
+                "candidates": 520
             }
         },
         {
@@ -133,18 +133,18 @@
             "rating": "general",
             "verified": true,
             "position": [
-                -1.33,
+                0.17,
                 -0.665,
-                -8.582
+                -9.082
             ],
-            "facingDeg": 90,
+            "facingDeg": 85,
             "framing": "fullBody",
             "measured": {
                 "fromThingM": 0,
                 "viewOpenM": 6,
-                "thingOffBehindDeg": 176,
+                "thingOffBehindDeg": 175,
                 "framing": "fullBody",
-                "candidates": 65
+                "candidates": 499
             }
         }
     ]
