@@ -70,7 +70,9 @@
         { name: 'kneelingPresent', label: 'Present', category: 'Kneeling', adult: true },
         { name: 'lyingSideSeductive', label: 'Side Pose', category: 'Lying', adult: true },
         // Technical
-        { name: 'standing', label: 'T-Pose (Reset)', category: 'Reset' },
+        // UI3. Advanced only: out of the navigator's cycle and the Poses list (Advanced ▸ Start
+        // from T-pose), still in catalogue(), so asking for a T-pose in words keeps working.
+        { name: 'standing', label: 'T-Pose (Reset)', category: 'Reset', advanced: true },
     ];
 
     /**
@@ -82,6 +84,17 @@
         if (spicy) return NAV_PRESETS;
         return NAV_PRESETS.filter(function (p) {
             return !p.adult;
+        });
+    }
+
+    /**
+     * UI3. What the navigator steps through and the Poses list offers: the presets for this mode,
+     * minus the advanced ones. Someone pressing › through presets used to land on a T-pose as the
+     * 26th "pose", which reads as the avatar breaking.
+     */
+    function getNavPresets() {
+        return getFilteredPresets().filter(function (p) {
+            return !p.advanced;
         });
     }
 
@@ -177,18 +190,12 @@
             '    </div>' +
             '  </div>' +
             // Section 1b: T-Pose Correction — intensity slider + natural pose preset
+            // UI3. The everyday control — how her arms rest — stays in view. The T-pose and the
+            // correction strength move into a closed "Advanced" section (below): a T-pose is a
+            // rig's neutral, which to anyone else looks like a broken avatar, and the strength
+            // reaches every surface, not only this panel.
             '  <div class="pose-studio-section">' +
-            '    <label class="pose-studio-label">T-Pose Correction</label>' +
-            '    <div class="pose-slider-row">' +
-            '      <div class="pose-slider-head">' +
-            '        <span class="pose-slider-label">Intensity</span>' +
-            '        <span id="poseTposeIntensityValue" class="pose-slider-value">1.00</span>' +
-            '      </div>' +
-            '      <input id="poseTposeIntensitySlider" class="pose-slider pose-slider--tpose" type="range" min="0" max="150" value="100" step="1" />' +
-            '      <div class="pose-slider-scale"><span>0</span><span>0.5</span><span>1.0</span><span>1.5</span></div>' +
-            '    </div>' +
-            '    <div class="pose-toggle-hint">0 = raw T-pose, 1.0 = natural standing (recommended), &gt;1 = stronger correction</div>' +
-            '    <label class="pose-studio-label" style="margin-top:8px;">Natural Pose Style</label>' +
+            '    <label class="pose-studio-label">Natural Pose Style</label>' +
             '    <select id="poseTposePresetSelect" class="pose-studio-select">' +
             '      <option value="relaxedStanding">Relaxed Standing (40\u00B0 arms)</option>' +
             '      <option value="naturalIdle" selected>Natural Idle (55\u00B0 arms)</option>' +
@@ -196,6 +203,27 @@
             '      <option value="presentation">Presentation (30\u00B0 arms)</option>' +
             '    </select>' +
             '  </div>' +
+            // UI3. Advanced: the rig's neutral and the correction strength, for building a pose
+            // from zero or checking a model. Closed by default.
+            '  <details id="poseAdvanced" class="pose-studio-section pose-studio-advanced">' +
+            '    <summary class="pose-studio-label" style="cursor:pointer;user-select:none;">Advanced</summary>' +
+            '    <div style="padding-top:8px;">' +
+            '      <label class="pose-studio-label">T-Pose Correction</label>' +
+            '      <div class="pose-slider-row">' +
+            '        <div class="pose-slider-head">' +
+            '          <span class="pose-slider-label">Intensity</span>' +
+            '          <span id="poseTposeIntensityValue" class="pose-slider-value">1.00</span>' +
+            '        </div>' +
+            '        <input id="poseTposeIntensitySlider" class="pose-slider pose-slider--tpose" type="range" min="0" max="150" value="100" step="1" />' +
+            '        <div class="pose-slider-scale"><span>0</span><span>0.5</span><span>1.0</span><span>1.5</span></div>' +
+            '      </div>' +
+            '      <div class="pose-toggle-hint">1.0 = natural standing (recommended). Below 0.5 she is near a T-pose; that applies for this visit only and is not remembered.</div>' +
+            '      <div class="pose-studio-actions">' +
+            '        <button id="poseTposeRestoreBtn" class="secondary-btn small-btn">Restore recommended (1.0)</button>' +
+            '        <button id="poseTposeStartBtn" class="secondary-btn small-btn" title="The rig\u2019s neutral pose, to build a pose from zero">Start from T-pose</button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </details>' +
             // Section 2: Pose presets dropdown + user saved poses
             '  <div class="pose-studio-section">' +
             '    <label class="pose-studio-label">Poses</label>' +
@@ -657,9 +685,12 @@
         this._vrPoseListener = (e) => {
             if (e.detail && e.detail.preset) {
                 // UI2. An index into the list the navigator shows (filtered when Private is off).
-                const idx = getFilteredPresets().findIndex((p) => p.name === e.detail.preset);
+                const idx = getNavPresets().findIndex((p) => p.name === e.detail.preset);
                 if (idx !== -1) {
                     self._navIndex = idx;
+                    self._updateNavDisplay();
+                } else if (e.detail.preset === 'standing') {
+                    self._navIndex = -1; // UI3. the rig's neutral: shown, not in the cycle
                     self._updateNavDisplay();
                 }
             }
@@ -917,7 +948,7 @@
         wireClipPlayStop('poseVrmaPlayBtn', 'poseVrmaStopBtn', 'poseVrmaSelect');
 
         // --- BVH details arrow rotation ---
-        const bvhDetails = this.rootEl.querySelector('details.pose-studio-section');
+        const bvhDetails = this.rootEl.querySelector('#poseBvhArrow')?.closest('details');
         const bvhArrow = this.rootEl.querySelector('#poseBvhArrow');
         if (bvhDetails && bvhArrow) {
             bvhDetails.addEventListener('toggle', () => {
@@ -962,6 +993,38 @@
 
                 // Re-apply natural pose with new intensity
                 self._reapplyNaturalPose();
+            });
+        }
+
+        // --- UI3. Advanced: restore the recommended correction ---
+        const tposeRestoreBtn = this.rootEl.querySelector('#poseTposeRestoreBtn');
+        if (tposeRestoreBtn) {
+            tposeRestoreBtn.addEventListener('click', () => {
+                const pnorm = window.NEXUS_POSE_NORMALIZER;
+                if (pnorm && pnorm.updateSettings) pnorm.updateSettings({ intensity: 1 });
+                const sl = self.rootEl.querySelector('#poseTposeIntensitySlider');
+                const lab = self.rootEl.querySelector('#poseTposeIntensityValue');
+                if (sl) sl.value = '100';
+                if (lab) lab.textContent = '1.00';
+                self._reapplyNaturalPose();
+            });
+        }
+
+        // --- UI3. Advanced: start from the rig's T-pose ---
+        // The neutral every bone's rotation is measured from: arms straight out, no correction.
+        // One undo step, so Undo returns to the pose she was in.
+        const tposeStartBtn = this.rootEl.querySelector('#poseTposeStartBtn');
+        if (tposeStartBtn) {
+            tposeStartBtn.addEventListener('click', () => {
+                self._bindToStage();
+                self._enterPoseMode();
+                try {
+                    window.vrPoseSystem?.applyPreset?.('standing', 0);
+                } catch (_) {}
+                self.editor.resetAll && self.editor.resetAll();
+                self._navIndex = -1;
+                self._updateNavDisplay();
+                self._syncSlidersFromBone();
             });
         }
 
@@ -1403,11 +1466,9 @@
             // Sync navigator to this preset. UI2: its index in the list the navigator shows.
             // NAV_PRESETS also holds the adult presets, so with Private off "T-Pose (Reset)"
             // (index 43 there, 26 of 26 here) fell off the end and the navigator read "Lecturer".
-            const idx = getFilteredPresets().findIndex((p) => p.name === vrPreset.name);
-            if (idx !== -1) {
-                this._navIndex = idx;
-                this._updateNavDisplay();
-            }
+            const idx = getNavPresets().findIndex((p) => p.name === vrPreset.name);
+            this._navIndex = idx; // UI3. -1 for an advanced preset: shown, not in the cycle
+            this._updateNavDisplay();
         } else {
             // User-saved pose — apply via PoseEditor (delta quaternions)
             this.editor.applyPoseById(selectedValue);
@@ -1439,9 +1500,14 @@
 
     PoseStudioPanel.prototype._navigatePose = function (direction) {
         this._bindToStage();
-        const filtered = getFilteredPresets();
+        const filtered = getNavPresets();
         const len = filtered.length;
-        this._navIndex = (((this._navIndex + direction) % len) + len) % len;
+        if (this._navIndex < 0) {
+            // UI3. From the T-pose (off the list), › goes to the first preset and ‹ to the last.
+            this._navIndex = direction > 0 ? 0 : len - 1;
+        } else {
+            this._navIndex = (((this._navIndex + direction) % len) + len) % len;
+        }
 
         const preset = filtered[this._navIndex];
         this._updateNavDisplay();
@@ -1473,7 +1539,14 @@
      * Update the navigator display (label, counter, category badge).
      */
     PoseStudioPanel.prototype._updateNavDisplay = function () {
-        const filtered = getFilteredPresets();
+        const filtered = getNavPresets();
+        if (this._navIndex < 0) {
+            // UI3. The rig's neutral (Advanced ▸ Start from T-pose): named, but not counted.
+            if (this._navLabel) this._navLabel.textContent = 'T-Pose';
+            if (this._navCounter) this._navCounter.textContent = `\u2013 / ${filtered.length}`;
+            if (this._navCategory) this._navCategory.textContent = 'Advanced';
+            return;
+        }
         if (this._navIndex >= filtered.length) this._navIndex = 0;
         const preset = filtered[this._navIndex];
         if (this._navLabel) {
@@ -1597,7 +1670,7 @@
         let html = '';
 
         // VRPoseSystem presets (single source of truth, filtered by spicy mode)
-        var filtered = getFilteredPresets();
+        var filtered = getNavPresets();
         for (let i = 0; i < filtered.length; i++) {
             const p = filtered[i];
             html += `<option value="${p.name}">\u2605 ${p.category} \u2014 ${p.label}</option>`;
@@ -1820,7 +1893,7 @@
         try {
             var held = window.vrPoseSystem;
             if (held && held.isHoldingBones && held.isHoldingBones() && held.getCurrentPreset) {
-                var listed = getFilteredPresets();
+                var listed = getNavPresets();
                 for (var hi = 0; hi < listed.length; hi++) {
                     if (listed[hi].name === held.getCurrentPreset()) holding = hi;
                 }
@@ -1835,7 +1908,7 @@
         // On first open, apply the first pose (Lecturer) to the character
         if (!this._hasAppliedInitialPose) {
             this._hasAppliedInitialPose = true;
-            var filtered = getFilteredPresets();
+            var filtered = getNavPresets();
             if (filtered.length > 0) {
                 this._navIndex = 0;
                 var vps = window.vrPoseSystem;

@@ -6,6 +6,7 @@
  *    (an upper arm the T-pose correction had lowered 55° read "0°" and jumped back up).
  *  - Applying a preset from the Poses list puts the navigator on that preset in the list it shows.
  *    With Private off the list is filtered, and "T-Pose (Reset)" used to read "Lecturer 1 / 26".
+ *  - UI3: the T-pose is an Advanced action, out of the navigator's cycle and the Poses list.
  *  - After an avatar swap, the panel binds the editor to the avatar on stage before acting.
  *  - Close hands focus back to the control that opened the studio.
  */
@@ -105,22 +106,46 @@ describe('UI2 the panel', () => {
         delete window.NEXUS_SPICY;
     });
 
-    test('Apply "T-Pose (Reset)" with Private off puts the navigator on it, last of the filtered list', () => {
+    test('Apply from the Poses list puts the navigator on that preset in the list it shows', () => {
         build();
-        const list = window.NEXUS_POSE_STUDIO_PANEL.catalogue();
-        expect(list.some((p) => p.adult)).toBe(false);
-        document.getElementById('posePresetSelect').value = 'standing';
+        const shown = window.NEXUS_POSE_STUDIO_PANEL.catalogue().filter((p) => p.name !== 'standing');
+        const last = shown[shown.length - 1];
+        document.getElementById('posePresetSelect').value = last.name;
         document.getElementById('poseApplyBtn').click();
-        expect(applied).toContain('standing');
-        expect(document.getElementById('poseNavLabel').textContent).toBe('T-Pose (Reset)');
-        expect(document.getElementById('poseNavCounter').textContent).toBe(`${list.length} / ${list.length}`);
+        expect(applied).toContain(last.name);
+        expect(document.getElementById('poseNavLabel').textContent).toBe(last.label);
+        expect(document.getElementById('poseNavCounter').textContent).toBe(`${shown.length} / ${shown.length}`);
     });
 
-    test('a pose change announced by the pose system lands on the same filtered index', () => {
+    test('UI3: the T-pose is out of the navigator cycle and the Poses list, and still nameable in words', () => {
         build();
-        const list = window.NEXUS_POSE_STUDIO_PANEL.catalogue();
+        const options = [...document.querySelectorAll('#posePresetSelect option')].map((o) => o.value);
+        expect(options).not.toContain('standing');
+        expect(window.NEXUS_POSE_STUDIO_PANEL.catalogue().some((p) => p.name === 'standing')).toBe(true);
+        const n = options.length;
+        for (let i = 0; i < n; i++) document.getElementById('poseNavNext').click();
+        expect(applied).not.toContain('standing');
+        expect(document.getElementById('poseNavCounter').textContent).toBe(`1 / ${n}`);
+    });
+
+    test('UI3: held in the T-pose, the navigator names it without counting it, and › leaves it', () => {
+        build();
+        const n = document.querySelectorAll('#posePresetSelect option').length;
         window.dispatchEvent(new CustomEvent('vr-pose-changed', { detail: { preset: 'standing' } }));
-        expect(document.getElementById('poseNavCounter').textContent).toBe(`${list.length} / ${list.length}`);
+        expect(document.getElementById('poseNavLabel').textContent).toBe('T-Pose');
+        expect(document.getElementById('poseNavCounter').textContent).toBe(`\u2013 / ${n}`);
+        document.getElementById('poseNavNext').click();
+        expect(document.getElementById('poseNavCounter').textContent).toBe(`1 / ${n}`);
+    });
+
+    test('UI3: the correction strength and the T-pose live in a closed Advanced section', () => {
+        build();
+        const adv = document.getElementById('poseAdvanced');
+        expect(adv.tagName).toBe('DETAILS');
+        expect(adv.open).toBe(false);
+        expect(adv.contains(document.getElementById('poseTposeIntensitySlider'))).toBe(true);
+        expect(adv.contains(document.getElementById('poseTposeStartBtn'))).toBe(true);
+        expect(adv.contains(document.getElementById('poseTposePresetSelect'))).toBe(false);
     });
 
     test('actions bind the editor to the avatar on stage first', () => {
@@ -144,5 +169,33 @@ describe('UI2 the panel', () => {
         document.getElementById('poseStudioCloseBtn').click();
         expect(document.getElementById('poseStudioRoot').classList.contains('hidden')).toBe(true);
         expect(document.activeElement).toBe(opener);
+    });
+});
+
+describe('UI3 a near-T-pose correction is not remembered', () => {
+    const KEY = 'nexus_pose_normalizer';
+    const stored = () => JSON.parse(localStorage.getItem(KEY) || 'null');
+
+    beforeEach(() => {
+        localStorage.clear();
+        window.THREE = THREE;
+        jest.isolateModules(() => require('../src/PoseNormalizer.js'));
+    });
+
+    test('below 0.5 applies for this visit, and storage keeps the last value at or above it', () => {
+        const PN = window.NEXUS_POSE_NORMALIZER;
+        PN.updateSettings({ intensity: 0.8 });
+        expect(stored().intensity).toBe(0.8);
+        PN.updateSettings({ intensity: 0.1 });
+        expect(PN.getSettings().intensity).toBe(0.1); // the session sees what was asked for
+        expect(stored().intensity).toBe(0.8); // the next visit does not start in a T-pose
+        PN.updateSettings({ intensity: 1.2 });
+        expect(stored().intensity).toBe(1.2);
+    });
+
+    test('with nothing stored yet, a near-T-pose value stores the default', () => {
+        const PN = window.NEXUS_POSE_NORMALIZER;
+        PN.updateSettings({ intensity: 0 });
+        expect(stored().intensity).toBeGreaterThanOrEqual(0.5);
     });
 });

@@ -168,9 +168,30 @@
         return _deepClone(DEFAULT_SETTINGS);
     }
 
+    /**
+     * UI3. The lowest correction that is remembered across visits. Below it she stands in (or
+     * near) the raw T-pose — arms out like a scarecrow — and because this setting reaches every
+     * surface (chat, VR, Companion), one drag of a slider used to leave her that way for good.
+     * A lower value still applies for this visit, for someone checking a rig; it is not stored,
+     * and the next visit starts from the last value that was.
+     */
+    const MIN_STORED_INTENSITY = 0.5;
+
     function saveSettings() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            const toStore = _deepClone(settings);
+            if (typeof toStore.intensity === 'number' && toStore.intensity < MIN_STORED_INTENSITY) {
+                let kept = _DEFAULT_INTENSITY;
+                try {
+                    const prev = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+                    if (prev && typeof prev.intensity === 'number' && prev.intensity >= MIN_STORED_INTENSITY)
+                        kept = prev.intensity;
+                } catch (_) {
+                    /* unreadable: the default */
+                }
+                toStore.intensity = kept;
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
         } catch (e) {
             console.warn('[PoseNormalizer] Failed to save settings:', e);
         }
