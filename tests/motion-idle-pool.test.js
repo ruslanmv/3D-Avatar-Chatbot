@@ -23,10 +23,10 @@ const ClipMap = require('../src/xr/MotionClipMap');
 const manifest = require('../vendor/animations/manifest.json');
 
 // MO15. neutral.bvh, neutral_idle.bvh and neutral4.bvh are out: they stand her leaning.
+// MO17. neutral3.bvh is out: one arm out, the other against her side.
 const IDLE_POOL = [
     'vendor/animations/idle/neutral_idle2.bvh',
     'vendor/animations/idle/neutral2.bvh',
-    'vendor/animations/idle/neutral3.bvh',
     'vendor/animations/vrma/waiting-standard.vrma',
     'vendor/animations/vrma/idle_loop.vrma', // MO9/MO15 — weighted ×2 in the draw, listed once
 ];
@@ -118,18 +118,18 @@ describe('the pool holds ONLY standing idles', () => {
 });
 
 describe('MO9: the breathing idle is preferred, not exclusive', () => {
-    test('about a third of idles are the breathing loop, and every other idle still comes up', () => {
+    test('the breathing loop gets its share, and every other idle still comes up', () => {
         // The draw is a shuffle bag shared across tests, so count over many bags, not one.
         const counts = {};
-        const N = (IDLE_POOL.length + 1) * 100; // six tickets per bag (MO15)
+        const N = IDLE_POOL.length * 100; // four tickets per bag (MO17)
         for (let i = 0; i < N; i++) {
             const pick = ClipMap.resolve('idle').candidates[0];
             counts[pick] = (counts[pick] || 0) + 1;
         }
         const share = counts['vendor/animations/vrma/idle_loop.vrma'] / N;
-        // MO15: two tickets in a five-clip pool, 2 of every 6 draws.
-        expect(share).toBeGreaterThan(0.3);
-        expect(share).toBeLessThan(0.37);
+        // MO17: one ticket in a four-clip pool, 1 of every 4 draws.
+        expect(share).toBeGreaterThan(0.22);
+        expect(share).toBeLessThan(0.28);
         for (const p of new Set(IDLE_POOL)) expect(counts[p]).toBeGreaterThan(0);
     });
 });
@@ -187,9 +187,9 @@ describe('entering idle draws a fresh clip', () => {
                 if (picks[i] !== BREATHING) others++;
             }
             expect(repeats / picks.length).toBeLessThan(0.12);
-            // A one-ticket clip repeats only across a refill: 4 clips * (1/6 * 1/6) per refill, one
-            // refill per six draws: 1.9% of draws (MO15; it was 0.7% in the eight-clip pool).
-            expect(others / picks.length).toBeLessThan(0.03);
+            // A one-ticket clip repeats only across a refill: 3 clips * (1/4 * 1/4) per refill, one
+            // refill per four draws: 4.7% of draws (MO17; 1.9% in the five-clip pool of MO15).
+            expect(others / picks.length).toBeLessThan(0.07);
         } finally {
             random.mockRestore();
         }
@@ -233,7 +233,7 @@ describe('a running idle is never swapped mid-loop', () => {
         // This is the half a plain path-equality guard misses: a random entry
         // draws a different candidate each call, so comparing against the draw
         // would restart the loop every time.
-        playing = { clip: 'vendor/animations/idle/neutral3.bvh', category: null, isPlaying: true };
+        playing = { clip: 'vendor/animations/idle/neutral2.bvh', category: null, isPlaying: true };
         const res = await ClipMap.play('idle');
         expect(res.already).toBe(true);
         expect(playCalls).toHaveLength(0);

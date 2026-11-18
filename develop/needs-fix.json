@@ -225,6 +225,14 @@
       "measured": "2026-11-18",
       "evidence": "Standing idle that holds her hips off the point between her feet: mean balance 0.21 / 0.17 / 0.17 of leg length on AvatarSample_A / Vita / VRM_Viewer_Sample, against 0.05-0.12 for the other idles. Reads as leaning, weight thrown to one side.",
       "nextStep": "Re-centre the hips track over the feet (or retarget from a centred take), then re-measure with audits/gestures/run.mjs --only positions."
+    },
+    {
+      "file": "vendor/animations/idle/neutral3.bvh",
+      "tag": "needs-fix:uneven-arms",
+      "status": "quarantined",
+      "measured": "2026-11-18",
+      "evidence": "Standing idle with one arm held out and the other against her side: upper arms 28.4/10.0, 27.5/10.9 and 27.1/11.5 degrees out from her side on AvatarSample_A / Vita / VRM_Viewer_Sample, more than 14 degrees apart for 69 / 69 / 56% of the loop; every other idle stays under 14 degrees apart for at least 87% of its loop. Seen on a phone after 'stand up'.",
+      "nextStep": "Even out the arm tracks (or retarget from a symmetric take), then re-measure with tools/qa/idle-arm-check.mjs."
     }
   ]
 }
