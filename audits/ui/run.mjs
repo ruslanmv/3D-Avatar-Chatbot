@@ -861,6 +861,14 @@ async function tourPoseStudio(D, browser, base) {
         await page.locator('#poseApplyBtn').click();
         await settle(1100);
     };
+    // UI3. The rig's T-pose is an Advanced action now, not an entry in the Poses list.
+    const tpose = async () => {
+        await ev(() => {
+            document.getElementById('poseAdvanced').open = true;
+        });
+        await page.locator('#poseTposeStartBtn').click();
+        await settle(900);
+    };
     const step = async (name, fn) => {
         try {
             await fn();
@@ -881,9 +889,23 @@ async function tourPoseStudio(D, browser, base) {
             await openMenu(page);
         }
         await page.locator(opener).focus();
+        // UI3. Watch her arms while the studio opens: a frame with them out (near a T-pose) is
+        // the flash a person sees before the first preset blends in.
+        await ev(() => {
+            window.__openDrops = [];
+            const t0 = performance.now();
+            const tick = () => {
+                window.__openDrops.push(window.__ui.armDrop('left'));
+                if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        });
         await page.locator(opener).click();
         await settle(1500);
-        const cat = await ev(() => window.NEXUS_POSE_STUDIO_PANEL.catalogue());
+        const openDrops = await ev(() => window.__openDrops);
+        const words = await ev(() => window.NEXUS_POSE_STUDIO_PANEL.catalogue());
+        // The navigator's list: the catalogue minus the T-pose, which is an Advanced action (UI3).
+        const cat = words.filter((p) => p.name !== 'standing');
         const st0 = await ev(() => ({
             shown: window.__ui.shown('#poseStudioRoot'),
             editor: window.poseEditor.isActive(),
@@ -906,6 +928,22 @@ async function tourPoseStudio(D, browser, base) {
             ),
             `opened from ${opener}; editor active, edit and pose mode on; navigator "${n0.category} · ${n0.label}" ${n0.counter}, holding ${n0.preset}; Spicy grid shown=${st0.spicyShown}`,
             await shot(page, 'ps-open')
+        );
+        const minOpen = Math.min(...openDrops.filter((x) => x != null));
+        record(
+            'pose studio',
+            'no T-pose flash while opening',
+            pf(minOpen > 25),
+            `${openDrops.length} frames sampled over 1.2 s from the click; arms never higher than ${minOpen}° below horizontal (a T-pose is 0°)`
+        );
+        record(
+            'pose studio',
+            'T-pose out of the navigator, still nameable in words',
+            pf(
+                words.some((p) => p.name === 'standing') &&
+                    !(await page.locator('#posePresetSelect option[value="standing"]').count())
+            ),
+            `navigator and Poses list: ${cat.length} presets without the T-pose; catalogue for words: ${words.length} with it`
         );
         const adult = cat.filter((p) => p.adult);
         record(
@@ -980,7 +1018,7 @@ async function tourPoseStudio(D, browser, base) {
 
         // ── T-Pose Correction ────────────────────────────────────────────────
         await step('T-Pose Correction', async () => {
-            await apply('standing');
+            await tpose();
             const out = [];
             const shots = [];
             for (const v of [0, 50, 100, 150]) {
@@ -1017,6 +1055,18 @@ async function tourPoseStudio(D, browser, base) {
             await input('#poseTposeIntensitySlider', 100);
             await settle(500);
             restDrop = out.find((o) => o.v === 100).drop;
+            await input('#poseTposeIntensitySlider', 20);
+            const low = await ev(() => ({
+                live: window.NEXUS_POSE_NORMALIZER.getSettings().intensity,
+                stored: JSON.parse(localStorage.getItem('nexus_pose_normalizer') || '{}').intensity,
+            }));
+            record(
+                'pose studio',
+                'near-T-pose correction not remembered',
+                pf(low.live === 0.2 && low.stored >= 0.5),
+                `slider at 0.20: applies now (${low.live}), stored for the next visit ${low.stored}`
+            );
+            await input('#poseTposeIntensitySlider', 100);
             const toggles = await page
                 .locator('#poseStudioRoot input[type="checkbox"]')
                 .evaluateAll((els) => els.map((e) => e.id));
@@ -1085,29 +1135,48 @@ async function tourPoseStudio(D, browser, base) {
                 await shot(page, 'ps-apply-sitting')
             );
 
-            await apply('standing');
+            const beforeT = await N();
+            await tpose();
             const b = await nav();
             const tDrop = await ev(() => [window.__ui.armDrop('left'), window.__ui.armDrop('right')]);
             const hipsT = await ev(() => window.__ui.world('hips')[1]);
-            const wantIdx = cat.findIndex((p) => p.name === 'standing') + 1;
-            const navOk = b.label === 'T-Pose (Reset)' && b.counter === `${wantIdx} / ${cat.length}`;
+            const navOk = b.label === 'T-Pose' && b.counter === `\u2013 / ${cat.length}`;
+            const sT = await shot(page, 'ps-advanced-tpose');
             record(
                 'pose studio',
-                'Apply "Reset — T-Pose (Reset)"',
-                pf(
-                    b.preset === 'standing' &&
-                        navOk &&
-                        restDrop != null &&
-                        Math.abs(tDrop[0] - restDrop) < 3 &&
-                        hipsT > hipsSit + 0.1
-                ),
-                `holding ${b.preset}; navigator "${b.category} · ${b.label}" ${b.counter} (expected T-Pose (Reset) ${wantIdx} / ${cat.length}); arms ${tDrop[0]}°/${tDrop[1]}° below horizontal (the corrected rest pose: ${restDrop}° at intensity 1.0, Natural Idle; a bare T-pose is intensity 0); hips back up to ${hipsT.toFixed(2)} m`,
-                await shot(page, 'ps-apply-tpose'),
-                {
-                    repro: navOk
-                        ? null
-                        : 'Pick "Reset — T-Pose (Reset)" in Poses and press Apply: the avatar takes the rest pose but the navigator shows another pose.',
-                }
+                'Advanced ▸ Start from T-pose',
+                pf(navOk && Math.abs(tDrop[0]) < 6 && Math.abs(tDrop[1]) < 6 && hipsT > hipsSit + 0.1),
+                `navigator "${b.category} · ${b.label}" ${b.counter} (named, not counted); arms ${tDrop[0]}°/${tDrop[1]}° from horizontal (a T-pose); hips up to ${hipsT.toFixed(2)} m`,
+                sT
+            );
+            await page.locator('#poseUndoBtn').click();
+            await settle(400);
+            const back = (await diff(beforeT, await N())).max;
+            record(
+                'pose studio',
+                'Undo after Start from T-pose',
+                pf(back < 1),
+                `the pose before (Sitting) back within ${back}°`,
+                await shot(page, 'ps-advanced-tpose-undo')
+            );
+            await ev(() => {
+                document.getElementById('poseTposeIntensitySlider').value = '20';
+                document
+                    .getElementById('poseTposeIntensitySlider')
+                    .dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            await page.locator('#poseTposeRestoreBtn').click();
+            await settle(500);
+            const restored = await ev(() => ({
+                label: document.getElementById('poseTposeIntensityValue').textContent,
+                live: window.NEXUS_POSE_NORMALIZER.getSettings().intensity,
+                stored: JSON.parse(localStorage.getItem('nexus_pose_normalizer') || '{}').intensity,
+            }));
+            record(
+                'pose studio',
+                'Advanced ▸ Restore recommended (1.0)',
+                pf(restored.label === '1.00' && restored.live === 1 && restored.stored === 1),
+                `after 0.20: label ${restored.label}, live ${restored.live}, stored ${restored.stored}`
             );
 
             await page.locator('#poseResetBtn').click();
@@ -1162,7 +1231,7 @@ async function tourPoseStudio(D, browser, base) {
                     prev = cur;
                 }
             };
-            await apply('standing');
+            await tpose();
 
             // Off: a drag across her forearm orbits the camera and leaves her alone.
             await setToggle('#poseMouseEditToggle', false);
@@ -1184,7 +1253,7 @@ async function tourPoseStudio(D, browser, base) {
             await ev(() => document.getElementById('drawer-reset-view-btn').click());
             await settle(1300);
             await still();
-            await apply('standing');
+            await tpose();
 
             // On, Puppet off: drag the right forearm handle — that one bone turns.
             const on = await setToggle('#poseMouseEditToggle', true);
@@ -1218,7 +1287,7 @@ async function tourPoseStudio(D, browser, base) {
             );
 
             // On, Puppet on: drag the right hand handle up — the chain follows (IK).
-            await apply('standing');
+            await tpose();
             await setToggle('#posePuppetToggle', true);
             const puppetOn = await ev(() => window.NEXUS_POSE_PUPPET_IK.isEnabled());
             h = await ev(() => window.__ui.handleXY('rightHand'));
@@ -1244,7 +1313,7 @@ async function tourPoseStudio(D, browser, base) {
 
         // ── Bone picker, sliders, Reset Selected, Mirror Arms ────────────────
         await step('Selected bone sliders', async () => {
-            await apply('standing');
+            await tpose();
             const options = await page.locator('#poseBoneSelect option').allTextContents();
             const picked = [];
             for (const [lab, key] of [
@@ -1461,7 +1530,7 @@ async function tourPoseStudio(D, browser, base) {
 
         // ── Undo / Redo, Save, change avatar, reapply ────────────────────────
         await step('Save / Undo / Redo / other avatar', async () => {
-            await apply('standing');
+            await tpose();
             const S0 = await N();
             // A press on a slider starts an undo step, as when a person drags it.
             await page.selectOption('#poseBoneSelect', { label: 'Left Upper Arm' });
