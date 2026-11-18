@@ -91,9 +91,12 @@ describe('GO1 from Private', () => {
     test('the school is in Private’s destination list, marked general-only', () => {
         const { guard } = page();
         const list = guard.destinations(undefined, 'desktop');
-        expect(list.map((p) => p.id)).toEqual(['school']);
-        expect(list[0].generalOnly).toBe(true);
-        expect(guard.destinations(undefined, 'mobile')[0].world).toBe('school-light');
+        // VW12 added more school places: the property is that the school is there and every
+        // destination listed is general-only, not that it is the only one.
+        expect(list.map((p) => p.id)).toContain('school');
+        expect(list.every((p) => p.generalOnly === true)).toBe(true);
+        const mobile = guard.destinations(undefined, 'mobile');
+        expect(mobile.find((p) => p.id === 'school').world).toBe('school-light');
     });
 
     test('choosing it ends Private first, cancels a pending wear, then visits it as a place', async () => {
