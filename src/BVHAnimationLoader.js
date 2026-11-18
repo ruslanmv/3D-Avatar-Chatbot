@@ -351,10 +351,19 @@
 
         // Target the NORMALIZED rig: avatar-independent, so one clip plays the
         // same on every model and three-vrm composes normalized → raw itself.
-        if (!S.cachedBoneMap) {
-            S.cachedBoneMap = C.buildAvatarBoneMap(targetRoot, S.avatarVRM, { normalized: true });
+        //
+        // AN2. Its own map, not S.cachedBoneMap. registerAvatar fills that one with the RAW bones
+        // (VRMA reads the raw hips from it), and it runs before any clip loads, so the
+        // `if (!S.cachedBoneMap)` here never fired: every BVH track was named after a raw bone
+        // (J_Bip_L_UpperLeg) while playClip turned on three-vrm's normalized → raw copy for it.
+        // That copy rewrote the raw skeleton from the still normalized rig every frame, and the
+        // mixer only writes a bone when the clip's value changes — so whatever a clip HOLDS (a
+        // seated pair of legs, a kneel, a lying spine) showed the rest pose, and only bones moving
+        // at that instant got through. Found by audits/animations/run.mjs: sit_idle.bvh stood.
+        if (!S.bvhBoneMap) {
+            S.bvhBoneMap = C.buildAvatarBoneMap(targetRoot, S.avatarVRM, { normalized: true });
         }
-        var boneMap = S.cachedBoneMap;
+        var boneMap = S.bvhBoneMap;
         if (!boneMap || Object.keys(boneMap).length === 0) {
             console.warn('[BVHLoader] No avatar bones');
             clip._retargetFailed = true;
