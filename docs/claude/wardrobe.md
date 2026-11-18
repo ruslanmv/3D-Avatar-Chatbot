@@ -221,3 +221,18 @@ Clothing deformation in poses, Forge garments under motion, XPBD cloth: read
 `docs/IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md` (north star) first. Each opens
 with a dated status block; the pose corrector is still the default and the XPBD
 pilot (PR #149) was closed unmerged.
+
+## Body-detail variants from Forge (BD1, UN30)
+
+Forge can paint anatomical detail on a bare body (`options.bareDetail`: `natural`,
+`soft-pink`, `warm`, `defined`; all hairless), only for a source with a **full**
+adult-design review (its packet and real evidence) — the 2026-11-17 placeholder
+entries do not qualify. See Forge `docs/qa/BARE_DETAIL.md`. The look carries
+`extras.wardrobeForge.detail`. The client still takes the first bare look
+(`OutfitDecisionEngine.undressPlan`); choosing among variants is not built yet.
+
+To look at the variants close up in this app's viewer and poses: build previews
+with Forge's `tools/body_surface/detail_preview.py --out
+<this repo>/audits/poses/runs/detail` (its synthetic adult body only), then
+`node tools/qa/body-detail-render.mjs --vrm audits/poses/runs/detail/ref-natural.vrm`.
+The previews are explicit: they stay in the gitignored run folders.
