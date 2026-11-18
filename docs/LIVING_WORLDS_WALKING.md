@@ -1,6 +1,7 @@
 # Living Worlds walking: she walks a path, never through the furniture (LW6)
 
-Status: **design**, 2026-11-18. Nothing here is implemented yet. This fills in
+Status: **design**, 2026-11-18, on `claude/gestures-quest-mobile` (§9).
+Nothing here is implemented yet. This fills in
 the "LW6 — optional walking" line of `docs/LIVING_WORLDS.md`, which until now
 said only: _measured connection/door graph + baked navigation mesh +
 avatar-only walking … In VR, prefer user-controlled teleport/blink and stable
@@ -66,7 +67,7 @@ same place, so a spot and a path can never disagree about how wide she is.
    (same loader,      Recast (recast-navigation,        │ WorldPresence     │ TeleportArcPointer
     three r147,       MIT, devDependency)               ▼                   ▼
     double-sided)     radius 0.32, height 1.75     ┌──────────────────────────────────┐
-        │                                          │ WorldWalk  (LW6, the one owner)   │
+        │                                          │ walkTo → NavWalk (the one entry)  │
         ▼                                          │  target → NavQuery.closestPoint   │
  assets/vr-worlds/nav/<x>.nav.json ───────────────►│  path  ← NavQuery.findPath        │
    polygons + adjacency + sha256                   │  if none → LW3 goToSpot (blink)   │
@@ -258,7 +259,7 @@ watches is a glide of their whole world. So during a walk:
    Before LW6.3 lands, list and fix the readers: `VRProximityTracker`,
    `AvatarLocomotionSystem` (already moves the root), the screen camera presets
    and orbit target, `VRChatPanel` placement, `HandContactIK`, the ambience
-   camera contract. Add one accessor (`NEXUS_WORLD_WALK.avatarPosition()`) and
+   camera contract. Add one accessor (`NEXUS_NAV_WALK.avatarPosition()`) and
    move them to it, rather than patching each.
 3. **When she arrives, the person is where they were.** That is correct and not
    forced on them. They have two ways to join her, both their choice:
@@ -303,15 +304,15 @@ inside `animate()` in its own `try`, per the XL rule, and never calls
 
 Following the LLM capability pattern and Living Worlds' rules:
 
-- **`WorldWalk` (`src/gltf-viewer/WorldWalk.js`) is the one owner** of a walk,
-  next to `goToSpot` in the world runtime. `WorldPresence`, the arc pointer and
-  the NL motion entry (`NEXUS_MOTION.onUserUtterance`) all ask it. None of them
-  moves her root.
+- **`MotionIntegration.walkTo` is the one entry** for anything that moves her
+  across the floor (§9.1): the DSL's `approach`, `retreat`, `follow` and seat
+  walks, the arc pointer and `WorldPresence`. It plans through `NavWalk` and
+  steps `PathFollower`. Nothing else moves her root.
 - **The model never walks her on its own.** `<go spot/>` runs only on a turn
   where the person asked to move (LW3's rule, unchanged); walking is how the
   move is carried out when `reach` says it can be, and the blink when it cannot.
-- **Arrived only from the renderer**: `nexus-world-walked` with
-  `{ spot, ok: true }`, after she stopped inside 0.08 m and turned. Ends:
+- **Arrived only from the renderer**: `walkTo` resolves `true` only after
+  her root stopped inside 0.08 m of the goal and she turned. Ends:
   `arrived`, `blocked` (person), `stuck`, `stale` (world changed, Clear, session
   ended), `refused` (bones held, no navmesh, no path).
 - **Stuck detection:** less than 5 cm of progress in 1.5 s → re-path once → still
@@ -340,7 +341,7 @@ Each layer is tested where it can be, and looked at where it cannot:
    verified spot lies on its scene's navmesh; `reach` is symmetric.
 3. **Bake review:** `nav-shots.mjs` images committed beside the spot shots for
    each baked scene; nobody ships a navmesh they have not looked at.
-4. **Headless walk (`tools/vr/walk-audit.mjs`, Playwright):** load the place,
+4. **Headless walk (the `walks` stage of `audits/gestures/run.mjs`, §9.4):** load the place,
    walk between every reachable pair, sample her root every frame, and check
    each sample offline against the **real** geometry: the 24-direction
    clearance rays of `measure-spots` at four heights. That catches a navmesh
@@ -357,7 +358,7 @@ Each layer is tested where it can be, and looked at where it cannot:
 | -------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | **LW6.1** | `bake-navmesh.mjs`, `nav-shots.mjs`, `.nav.json` for `pixel-flat-home` (serves `apartment` and `bedroom-light`) | Review images look right; data tests pass                                    |
 | **LW6.2** | `NavQuery.js` + Jest property tests                                                     | All §6.1 properties hold                                                     |
-| **LW6.3** | `PathFollower.js`, `WorldWalk.js`; `AvatarLocomotionSystem` follows paths, not lines; the "where is she" accessor and its readers | Desktop/phone walk in the apartment, walk-audit clean, motion audit no worse |
+| **LW6.3** | `PathFollower.js`, `NavWalk.js`; `MotionIntegration.walkTo` (approach, retreat, follow, seat) walks on the navmesh; gestures off while walking | `audit:conversation` clean with its new `walks` stage; positions 20/20, gestures no worse |
 | **LW6.4** | `reach` from the nav file; `WorldPresence` walks when reachable, blinks otherwise        | Living Worlds tests extended; prompt says walk only when `reach` holds       |
 | **LW6.5** | VR: arc pointer on the navmesh with green/red marker; person disc; "come with you" blink | Quest 3 session: no dropped frames during walks, comfort checklist passed    |
 | **LW6.6** | Bake the remaining scenes that have spots; scenes without walking keep the blink        | Every scene with spots has a reviewed navmesh or a recorded reason not to    |
@@ -384,29 +385,114 @@ Each batch leaves `npm run validate` at exit 0, and updates
   and save the accessor work in §4 (point 2). It is also exactly the motion that makes
   headsets sick, and `docs/LIVING_WORLDS.md` forbids it.
 
-## 9. Implementation plan, file by file
+## 9. Implementation plan, file by file (on `claude/gestures-quest-mobile`)
 
-Checked against `ultimate` at `fa4e3ac` (2026-11-18). Every path and line below
-was read in that tree; re-check them if `ultimate` has moved when a batch
-starts.
+Built on `claude/gestures-quest-mobile` at `8e2a1de` (2026-11-18): `ultimate`
+plus the SG1–SG8 co-speech gestures and the MO15–MO16 motion fixes, 12 commits
+ahead and none behind. Every path and line below was read in that tree.
+Re-check them if the branch has moved when a batch starts.
 
-### 9.0 What the tree gives us to build on
+### 9.0 What this branch changes about the problem
 
-| Fact                                                                                                                                                  | Where                                                                                    | What it decides                                                                                                                                         |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WorldSpots` is an IIFE with the dual export, reaches the browser as a side-effect `import './WorldSpots.js'`, and fetches `spots/<stem>.json` once per scene through `fileFor` / `load` | `src/gltf-viewer/ViewerEngine.js:37`, `src/gltf-viewer/WorldSpots.js:266-290`            | `NavQuery` and `PathFollower` copy this exactly: IIFE, side-effect import from `ViewerEngine.js`, `nav/<stem>.json`. **No new `<script>` tag in `index.html`** |
-| The locomotion trio loads by `defer` tags                                                                                                             | `index.html:3811-3814`                                                                   | Leave those tags alone (the parity harness counts lines); `AvatarLocomotionSystem` reads `window.NEXUS_PATH_FOLLOWER` lazily, at walk time             |
-| Today's walk is a straight line toward a target, root lerped in x/z                                                                                   | `src/AvatarLocomotionSystem.js:254-279`                                                  | The one block LW6.3 replaces; the state machine (`IDLE/TURNING/WALKING/STOPPING`) stays                                                                |
-| The arc pointer lands on the plane `groundY: 0` and calls `loco.walkToPoint(x, z)`                                                                    | `src/TeleportArcPointer.js:44`, `:187-191`, `:345`                                       | LW6.5 swaps the plane test for the navmesh and gates the call on a path                                                                                 |
-| `goToSpot` keeps her at the origin and moves the room, behind a fade                                                                                  | `src/gltf-viewer/VRWorlds.js:1166-1203`                                                  | The blink fallback, and the "come with you" re-base, reuse it unchanged                                                                                 |
-| Places that frame her assume she is at the origin                                                                                                     | `src/gltf-viewer/CameraPresets.js:179` (`x = 0`), `src/gltf-viewer/ViewerEngine.js:103`, `:706` (`controls.target.set(0, …, 0)`) | The origin readers LW6.3 must move to the accessor. Most other readers (`VRPoseSystem`, `HandContactIK`, `VRChatPanel`, …) use `getWorldPosition` and need no change, but each gets a check |
-| The apartment is one file on every device: `scenes/pixel-flat-home.glb`, 26 468 triangles, **8 verified spots**, used by `apartment` and `bedroom-light` | `assets/vr-worlds/worlds.json`, `assets/vr-worlds/spots/pixel-flat-home.json`            | The first bake. It is already inside the Quest budget, so the first real-headset test needs no new scene                                                |
-| The desktop bedroom is `scenes/bedroom-flat.glb`, 39 772 triangles, one spot                                                                          | same                                                                                     | Second bake; desktop only, so not a Quest test                                                                                                          |
-| Living Worlds tests live in `tests/living-worlds/` (`place-spots`, `world-presence`, `world-spots`)                                                   | `tests/living-worlds/`                                                                   | New tests go beside them                                                                                                                                |
-| Headless driving of the real app already exists, waiting on state, never sleeping                                                                     | `tools/vr/page-driver.mjs`                                                               | `walk-audit.mjs` and `nav-shots.mjs` use it; no new harness                                                                                             |
-| No navmesh, physics or BVH dependency today; `dependencies` is only `cors` and `express`                                                              | `package.json`                                                                           | `recast-navigation@0.44.0` (MIT) goes in **`devDependencies`** only; nothing new is shipped to the browser                                              |
+The `ultimate` plan treated the Living Worlds spot move as the walk to fix. On
+this branch there is a more common one, and it decides where the work goes:
 
-### 9.1 LW6.1 — bake and look
+1. **She already walks, model-driven, in straight lines, in every place.**
+   `MotionIntegration.walkTo(target, stopDist)` (`src/xr/MotionIntegration.js:785`)
+   is called by four DSL handlers the model can trigger:
+    - `approach`, to the person or a seat (`:988-995`);
+    - `retreat`, which walks 2 m **straight backwards** from the person, into
+      whatever is behind her (`:997-1006`);
+    - `follow`, which re-targets the person every 0.25 s (`:839-856`, config
+      `followRefreshS`);
+    - `sit` with a seat anchor (`:1061-1065`).
+
+   `walkTo` drives either the dev-only `AvatarLocomotionSystem`, or, by default
+   (locomotion is off), a **manual glide** in `_updateWalk` (`:821-837`): her
+   root moves at 0.9 m/s toward the goal while
+   `vendor/animations/action/action_walk.bvh` plays through
+   `NEXUS_CLIP_LOADER`. Neither path knows a wall exists. In a place, `retreat`
+   walks her through the wall behind her spot. **`walkTo` is the one choke
+   point**: put the navmesh behind it, and all four, plus the arc pointer and
+   Living Worlds, are covered at once.
+2. **Gestures now run on her arms while she talks**
+   (`src/features/gestures/SpeechGestures.js`, the SG3 additive layer applied by
+   `ProceduralAnimator.update`). They step aside only when `NEXUS_CLIP_LOADER`
+   reports a clip playing, or in pose mode, edit mode or Pose Studio
+   (`src/ProceduralAnimator.js:781-793`). The manual glide plays its walk
+   through `NEXUS_CLIP_LOADER`, so gestures stop. `AnimationBlendController`
+   plays its walk on **its own mixer**, which that check does not see, so
+   gestures would land on top of the arm swing. The walk must switch gestures
+   off explicitly, whichever path plays it.
+3. **Turning has one correct clock now (MO16).** `_turnBy` advances on
+   `update()`'s capped `dt`, with a time budget on the same clock and a
+   wall-clock net that finishes the turn (`:311-357`). The walk's turn in place
+   and final facing reuse `_turnBy` / `_faceTarget`; `PathFollower` adds no
+   second turning implementation.
+4. **Standing still after a walk now has a balanced idle pool (MO15).**
+   `neutral.bvh`, `neutral_idle.bvh` and `neutral4.bvh` are quarantined
+   (`MotionClipMap.js:632-633`). The walk's stop must hand over to
+   `_scheduleIdle` (the pool that respects the quarantine), never to a clip
+   `AnimationBlendController` loads by path.
+5. **Postures are handled already.** `walkTo` stands her up first when she sits
+   or lies (`_inPosture` → `_standRoutine`, `:791`), and UN21 prepends `stand`
+   to any body plan made while seated (`:1235-1244`). The walk inherits this
+   unchanged.
+6. **There is an audit to extend, not a new harness to write.**
+   `audits/gestures/run.mjs` already measures, in the real renderer:
+    - posture coherence (body and motion state agree);
+    - balance (hips over the point between her feet, limit 0.15 of leg
+      length);
+    - feet against the floor (6 cm);
+    - facing the camera.
+
+   It does this across a 20-transition positions matrix, and
+   `npm run audit:conversation` (SG8) runs it with the motion audit as one
+   verdict. Walking becomes a stage of that suite.
+
+Unchanged from the `ultimate` reading:
+- `WorldSpots` is an IIFE side-effect-imported by `ViewerEngine.js:37`.
+- `goToSpot` is at `VRWorlds.js:1166-1203`.
+- The arc pointer's `groundY: 0` is at `TeleportArcPointer.js:44`, `:187-191`,
+  and `walkToPoint` at `:345`.
+- `CameraPresets.js:179` and `ViewerEngine.js:103` and `:706` assume the
+  origin.
+- `pixel-flat-home.glb` (26 468 triangles, 8 verified spots) serves
+  `apartment` and `bedroom-light`.
+- `recast-navigation@0.44.0` is MIT and goes in `devDependencies` only.
+
+### 9.1 Where things live now
+
+The owner changes from the first draft. There is no separate `WorldWalk`
+competing with `walkTo`:
+
+```
+approach · retreat · follow · sit(seat)   arc pointer    WorldPresence <go spot/>
+                 \            |               /                 |
+                  ▼           ▼              ▼                  ▼
+          MotionIntegration.walkTo(target, stopDist, opts)  ← the ONE entry (exists today)
+                  │   stands her up first (exists), snapshots her root
+                  ▼
+          NEXUS_NAV_WALK.plan(from, goal, stopDist)   src/xr/NavWalk.js (new, IIFE)
+                  │   scene-local ⇄ world via the vr-world-scene node's matrix
+                  │   NavQuery: closestPoint → findPath → straightPath
+                  │   no navmesh: §9.4 rules (no place → today's line; place → measured corridor only)
+                  ▼
+          _updateWalk(dt)  — per frame, both modes (manual glide and locomotion)
+                  │   PathFollower.step → moveAlongSurface (the hard clamp)
+                  │   turn in place > 60° → _turnBy (MO16 clock)
+                  │   person disc (VR), stuck detection
+                  ▼
+          arrive: _faceTarget, _scheduleIdle (MO15 pool), resolve(true)
+```
+
+`AvatarLocomotionSystem.walkToPoint` and `TeleportArcPointer` stop moving her
+root themselves. The pointer calls `NEXUS_MOTION.walkTo`, and the locomotion
+system becomes only the clip and blend driver when it is switched on.
+
+### 9.2 LW6.1 — bake and look (unchanged)
+
+It shares nothing with the gesture work, so it is the safe first commit.
 
 New files:
 
@@ -446,7 +532,7 @@ Tests (`tests/living-worlds/nav-data.test.js`), over every file in
 Done when: the PNGs have been looked at (doors open, the sofa and bed are holes
 with a margin, no walkable island on a table), and `npm run validate` exits 0.
 
-### 9.2 LW6.2 — `NavQuery`
+### 9.3 LW6.2 — `NavQuery` (unchanged)
 
 - `src/gltf-viewer/NavQuery.js`: an IIFE exporting `window.NEXUS_NAV_QUERY`.
     - API: `load(json, spots)`, `fileFor(sceneSrc)`, `fetchFor(sceneSrc)`
@@ -464,76 +550,131 @@ with a margin, no walkable island on a table), and `npm run validate` exits 0.
     - one test runs `findPath` + `straightPath` against the real apartment file
       from LW6.1.
 
-### 9.3 LW6.3 — walk on a screen
+### 9.4 LW6.3 — `walkTo` walks on the navmesh
 
-- `src/gltf-viewer/PathFollower.js`: IIFE, `window.NEXUS_PATH_FOLLOWER`.
-    - `create(path, opts)` returns a state; `step(state, pos, poly, person, dt,
-      out)` writes into `out`.
-    - Implements §3.4 (look-ahead 0.4 m, turn before walking above 60°, arrive
-      ramp over 0.6 m, `dt` capped at 0.05 s, every move through
-      `moveAlongSurface`) and §3.5 (the person disc).
-    - Side-effect import from `ViewerEngine.js`.
-- `src/gltf-viewer/WorldWalk.js`: IIFE, `window.NEXUS_WORLD_WALK`, the one
-  owner of a walk.
-    - `walkTo(target, opts)` returns `{ ok, why }` and, on success, emits
-      `nexus-world-walked`.
-    - Also: `cancel()`, `avatarPosition()`, `isWalking()`.
-    - Snapshots her root on start; `stale` restores it.
-    - Refuses while bones are held: it asks `vrPoseSystem` / Pose Studio / the
-      Private pose controller, never takes.
-- `src/AvatarLocomotionSystem.js:254-279`: when `NEXUS_WORLD_WALK` has a
-  follower, the WALKING state takes position and heading from it instead of the
-  straight lerp. Its own `walkToPoint` becomes a call to `WorldWalk.walkTo`. The
-  old line stays only where no navmesh exists _and_ no place is up (plain
-  viewer, unchanged behaviour).
-- Origin readers moved to `NEXUS_WORLD_WALK.avatarPosition()`:
-  `CameraPresets.js:179`, and `ViewerEngine.js:103` and `:706`, by following
-  her rather than writing `0`. Every other module in the reader list below
-  gets checked, and the check is recorded in the commit message.
-- Walk clip: `playbackRate = speed / clipStrideSpeed`. The stride speed is
-  measured by the motion audit and stored with the clip's `MotionClipMap.USE`
-  hint. `npm run audit:motion` before and after, frames looked at.
-- Tests: `tests/living-worlds/path-follower.test.js` (never outside the mesh
-  over 10 000 random steps; arrives within 0.08 m; never inside the person
-  disc; zero allocations per `step`) and `world-walk.test.js` (ownership,
-  refusal while bones are held, `stale` restores the snapshot).
-- `tools/vr/walk-audit.mjs` (§6.4) on the apartment: all 28 spot pairs.
+This is the batch that fixes the bug people see on this branch.
 
-Readers to check in LW6.3. This is the list from
-`grep getWorldPosition|avatar…position` on `ultimate`, with the most hits
-first; most of them are already position-independent:
-`VRPoseSystem`, `experiences/SceneRuntime`, `SkeletonLineOverlay`,
-`VRPuppetInteraction`, `VRControllers`, `PosePuppetIK`,
-`xr/MotionIntegration`, `xr/HandContactIK`, `VRIntimacySystem`,
-`VRChatPanel`, `PoseGizmoOverlay`, `xr/MotionExecutor`,
-`xr/MotionResponseHandler`, `VRProximityTracker`, `CameraPresets`,
-`VRMLoader`, `PoseNormalizer`, `XRSplash`, `VRWorlds`, `VRContactAnchors`,
-`VRBoneGrabber`, `PuppetSkeleton`, `ARSupport`, `PrivatePoseController`.
+- **`src/gltf-viewer/PathFollower.js`**: as designed in §3.4, but **without a
+  turn of its own**. It returns `{ point, poly, heading, speed, turnFirst }`.
+  `turnFirst` tells the caller to turn in place with `_turnBy` before moving.
+- **`src/xr/NavWalk.js`**: IIFE, `window.NEXUS_NAV_WALK`, loaded by a `defer`
+  tag right after `MotionIntegration.js` (`index.html:3832`). It is one line,
+  well above the wardrobe tags at the end of `<body>`; run the parity harness
+  test to confirm no frozen line moved, or else side-effect-import it from
+  `ViewerEngine.js` like `NavQuery`.
+    - `plan(fromWorld, goalWorld, stopDist)` returns
+      `{ ok, path, why }`:
+        - converts to scene-local through the active `vr-world-scene:` node's
+          `matrixWorld`;
+        - snaps the goal with `closestPoint`;
+        - stops `stopDist` short **along the path**, not along the straight
+          line;
+        - returns `why: 'no-path'` when the goal is unreachable.
+    - `retreatGoal(her, person, metres)`: `moveAlongSurface` from her position
+      directly away from the person. It returns how far back she really can go
+      (0 with her back to a wall), so `retreat` steps back as far as the room
+      allows and no further.
+    - `seatApproach(seat)`: the nearest navmesh point to a seat anchor. The
+      seat itself is a hole in the mesh; the sit clip covers the last
+      centimetres, as it does now with `stopDist` 0.1.
+- **`src/xr/MotionIntegration.js`**:
+    - `walkTo` (`:785`) asks `NavWalk.plan` first. On `ok`, `_walk` holds the
+      path and a `PathFollower` state instead of a single `goal`. On `no-path`,
+      it resolves `false` without moving (the handler's reply stays truthful;
+      the model was told nothing happened).
+    - `_updateWalk` (`:821`) steps the follower in **both** modes. In manual
+      mode it writes position and heading. In locomotion mode it feeds the
+      follower's point to the locomotion system as its next target, which then
+      only plays and blends clips.
+    - `retreat` (`:997`) uses `NavWalk.retreatGoal`.
+    - The `sit` seat walk (`:1065`) uses `seatApproach`.
+    - `follow` (`:839`) re-plans at its existing 4 Hz. A path search at that
+      rate costs under 1 ms a second.
+    - Arrival: the follower's own arrive (0.08 m), then `_faceTarget` toward
+      the person, `_scheduleIdle(0.1)`. The old `d < 0.3` and `d < 0.6`
+      thresholds go.
+    - Stuck: under 5 cm of progress in 1.5 s → re-plan once → still stuck →
+      `_stopWalk(false)`.
+    - Snapshot and restore: her root is captured at the start of `walkTo`. A
+      world change, Clear or avatar swap mid-walk writes it back.
+- **No navmesh: two cases, decided by whether a place is up**
+  (`NEXUS_VIEWER.vrWorlds.activeId`):
+    - *No place* (the plain viewer, plain VR, AR): there are no walls to hit.
+      `walkTo` behaves exactly as today. Nothing changes for the desktop viewer
+      or for passthrough.
+    - *A place with no nav file*: only the corridor `measure-spots` measured is
+      known clear. That is the 2.2 m of open view in front of her spot, at
+      chest and eye height, with the person 1 m ahead. So `approach` toward the
+      person, along that facing, is allowed up to the person's disc. `retreat`,
+      `follow` and seat walks are refused with `why: 'no-navmesh'`, and she
+      stays put. One `console.warn` per scene.
+- **Gestures off while walking**: `ProceduralAnimator.update`'s `allowed`
+  (`src/ProceduralAnimator.js:793`) gains
+  `&& !window.NEXUS_MOTION?.state?.walking`. `walkTo` keeps a `state.walking`
+  flag, which `state.lastActivity` already reports as `'walking'` through
+  `bodyStatus` (`:1842`). Gestures come back with the next words after she
+  stops. SG measured gestures only on a standing body. Gesturing while walking
+  is a later, audited addition, not a side effect.
+- **Tests**:
+    - `tests/living-worlds/path-follower.test.js` (§6.1 properties, no
+      allocation per step);
+    - `tests/living-worlds/nav-walk.test.js`, on a synthetic mesh:
+        - `retreatGoal` returns 0 against a wall;
+        - stopping short is measured along the path;
+        - the no-place, place-without-nav and place-with-nav cases each do
+          what the bullet above says;
+    - extend `tests/motion-runtime-mo.test.js`:
+        - `walkTo` with a nav file never puts her root outside the mesh over
+          600 simulated frames at 72 fps and at 4 fps (MO16's lesson: test the
+          slow clock);
+        - `retreat` in a corner does not move;
+        - gestures are released while `state.walking`.
+- **Audit**: `audits/gestures/run.mjs` gains a `walks` stage, and
+  `--only walks` runs it alone. In `apartment` it runs:
+    - `approach`, `retreat` from three spots (one with a wall behind);
+    - `follow` across the room;
+    - "go to the sofa".
 
-### 9.4 LW6.4 — words walk her
+  Every frame it records her root against the navmesh (inside) and against
+  the real geometry (the 24-direction clearance rays of `measure-spots` at
+  four heights). After each walk it reuses the positions checks: coherent
+  (`walking` only while moving), balanced (≤ 0.15), feet on the floor,
+  facing. Both hands are checked out of her body during the walk.
+  `audit:conversation` includes the stage, so SG8's single verdict covers
+  walking.
+
+### 9.5 LW6.4 — words walk her to spots
+
+The design, from the `ultimate` reading, followed by what this branch changes:
 
 - `src/companion/WorldPresence.js` (spot move around `:278-287`): when the
-  current scene's nav file has `reach[here][there]`, call `WorldWalk.walkTo`
+  current scene's nav file has `reach[here][there]`, call `NEXUS_MOTION.walkTo`
   first. Otherwise, or on `blocked` / `stuck` on a screen, call `goToSpot`
   as today.
-- "Arrived" waits on `nexus-world-walked` the way it waits on
-  `nexus-world-shown`, with the same 45 s timeout.
+- "Arrived" waits on `walkTo` resolving `true` (with her root at the
+  spot), the way it waits on `nexus-world-shown`, with the same 45 s timeout.
 - The prompt's presence line says she can walk somewhere only when `reach`
   holds (sanitised as today).
 - NL entry (`NEXUS_MOTION.onUserUtterance`) gains nothing new. "Go to the sofa"
   already resolves to a spot through `WorldSpots.intentOf`; only how the move
   is carried out changes.
 - Tests: extend `tests/living-worlds/world-presence.test.js`. Walk when
-  reachable, blink when not, and never "arrived" before the event. A `<go/>`
+  reachable, blink when not, and never "arrived" before `walkTo` resolves. A `<go/>`
   on a turn without the person's ask still only offers.
 
-### 9.5 LW6.5 — VR on Quest 3
+One change on this branch: `WorldPresence` calls
+`NEXUS_MOTION.walkTo(spotPoint, 0, { spot })`, not a separate walker. It falls
+back to `goToSpot` (the blink) on `no-path` or `no-navmesh`. "Arrived" waits for
+`walkTo` to resolve `true` **and** her root within 0.08 m of the spot. The prompt
+says she can walk somewhere only where `reach` holds.
+
+### 9.6 LW6.5 — VR on Quest 3
 
 - `src/TeleportArcPointer.js:187-191`: intersect the parabola with navmesh
   polygons (bounding-grid first), not `y = 0`. Snap with `closestPoint`
   (0.5 m). The marker turns green only if `findPath` from her polygon succeeds,
   red otherwise; on release, red does nothing. `:345` calls
-  `WorldWalk.walkTo`.
+  `NEXUS_MOTION.walkTo`.
 - During a walk in VR: the room and the rig are untouched, and only her root
   moves (§4).
 - "Come with you": a VR panel button and a phrase. It runs `goToSpot` on the
@@ -545,24 +686,31 @@ first; most of them are already position-independent:
   a person in the doorway. Results recorded in
   `docs/LIVING_WORLDS_IMPLEMENTATION_REPORT.md`.
 
-### 9.6 LW6.6 — the other places
+On this branch, the pointer's release calls `NEXUS_MOTION.walkTo`, so a pointed walk gets the
+same stand-up, gesture release, clamp and arrival as a spoken one. One
+gesture-branch item to check in the headset: SG5 scales expressive gestures by
+device, and the Quest's size must not bring them back mid-walk. The
+`state.walking` gate covers it, and the headset check confirms it.
 
-- Bake every scene in `assets/vr-worlds/spots/` that has at least two verified
-  spots, desktop file and Quest file separately.
-- A scene that cannot get a clean navmesh (open-sided, stairs Recast cannot
-  climb, a floor made of props) gets a line in its spot file's notes saying
-  why, and keeps the blink.
-- Update `docs/claude/living-worlds.md`: "a move is a walk when the nav file
-  says it is reachable, a blink otherwise; nav files are measured, never
-  typed, and re-baked with their scene".
+### 9.7 LW6.6 — the other places (unchanged)
 
-### 9.7 Order and size
+Bake every scene with at least two verified spots. A scene that cannot get a
+clean navmesh records why and keeps the §9.4 "place without nav file" rules.
 
-LW6.1 and LW6.2 can be built in parallel: the synthetic-mesh tests do not need
-the bake. LW6.3 needs both. LW6.4 and LW6.5 need LW6.3 but not each other.
-Every batch is one commit series with `LW6.n:` subjects, `npm run validate`
-at exit 0, and lab data regenerated if any lab check (motion, worlds) covers
-what it touched.
+### 9.8 Order, and what can go wrong between the two lines of work
+
+1. **LW6.1 and LW6.2** first, in parallel. They touch no file the gesture work
+   touched.
+2. **LW6.3** next. It edits `MotionIntegration.js` and `ProceduralAnimator.js`,
+   both changed by SG3 and MO16 on this branch. Merge `ultimate` (and this
+   branch's own updates) into the work branch **before** starting it, and
+   run `npm run audit:conversation` before and after: the positions matrix
+   (20/20 ok at `8e2a1de`) and the gesture audit (78 ok) must not regress.
+3. **LW6.4** and **LW6.5** after LW6.3, in either order.
+4. Each batch: `LW6.n:` commit subjects, `npm run validate` at exit 0, and
+   `develop/NEEDS_FIX.md` for any walk clip the audit fails, never shipped.
+   For example, if `action_walk.bvh` turns out to lean or float the way the
+   MO15 idles did.
 
 ## Sources
 
