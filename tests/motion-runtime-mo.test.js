@@ -188,7 +188,7 @@ describe('MO4 — clips measured broken are never drawn', () => {
         ClipMap._setLibraryOnly(false);
         try {
             expect(ClipMap.resolve('wave').candidates[0]).toBe('vendor/animations/action/action_greeting.bvh');
-            expect(ClipMap.resolve('talking').candidates[0]).toBe('vendor/animations/idle/neutral3.bvh'); // MO15: a balanced idle
+            expect(ClipMap.resolve('talking').candidates[0]).toBe('vendor/animations/idle/neutral2.bvh'); // MO17: balanced, arms even
         } finally {
             ClipMap._setLibraryOnly(null);
         }
@@ -199,7 +199,7 @@ describe('MO4 — clips measured broken are never drawn', () => {
         const path = require('path');
         for (const [p, why] of Object.entries(ClipMap.QUARANTINE)) {
             expect(fs.existsSync(path.join(__dirname, '..', p))).toBe(true);
-            expect(['sink', 'float', 'contorted', 'lean']).toContain(why);
+            expect(['sink', 'float', 'contorted', 'lean', 'uneven']).toContain(why);
         }
     });
 });

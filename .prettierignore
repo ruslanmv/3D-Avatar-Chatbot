@@ -51,3 +51,4 @@ audits/nl-motion/runs/
 audits/gestures/runs/
 tools/qa/gesture-tune.out.json
 audits/suite/runs/
+audits/ui/runs/

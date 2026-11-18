@@ -128,11 +128,34 @@
         this._emitChange();
     };
 
+    /**
+     * UI3. An undo step is the whole pose on screen: bone rotations plus where her hips are. A
+     * preset (sitting, lying) lowers the hips, and an undo that restored rotations alone put a
+     * sitting pose back at standing height, in the air. Undo-only: saved poses stay rotations,
+     * so they fit avatars of any height.
+     */
+    PoseEditor.prototype._snapshot = function () {
+        const snap = PoseState.captureFromRig(this.rigMap, this.neutralPose);
+        const hips = this.rigMap.getBone('hips');
+        if (hips) snap.hipsPos = hips.position.toArray();
+        return snap;
+    };
+
+    PoseEditor.prototype._restore = function (snap) {
+        this.applier.resetAll();
+        this.applier.applyPose(snap, 1);
+        const hips = this.rigMap.getBone('hips');
+        if (hips && Array.isArray(snap.hipsPos)) {
+            hips.position.fromArray(snap.hipsPos);
+            hips.updateMatrixWorld(true);
+        }
+    };
+
     PoseEditor.prototype._pushUndoSnapshot = function () {
         if (!this.rigMap) {
             return;
         }
-        const snapshot = PoseState.captureFromRig(this.rigMap, this.neutralPose);
+        const snapshot = this._snapshot();
         this.undoStack.push(snapshot);
         if (this.undoStack.length > 50) {
             this.undoStack.shift();
@@ -144,11 +167,9 @@
         if (!this.undoStack.length || !this.applier) {
             return;
         }
-        const current = PoseState.captureFromRig(this.rigMap, this.neutralPose);
-        this.redoStack.push(current);
+        this.redoStack.push(this._snapshot());
         const prev = this.undoStack.pop();
-        this.applier.resetAll();
-        this.applier.applyPose(prev, 1);
+        this._restore(prev);
         this._emitChange();
     };
 
@@ -156,11 +177,9 @@
         if (!this.redoStack.length || !this.applier) {
             return;
         }
-        const current = PoseState.captureFromRig(this.rigMap, this.neutralPose);
-        this.undoStack.push(current);
+        this.undoStack.push(this._snapshot());
         const next = this.redoStack.pop();
-        this.applier.resetAll();
-        this.applier.applyPose(next, 1);
+        this._restore(next);
         this._emitChange();
     };
 

@@ -262,8 +262,12 @@
             // core
             if (!map.head && n.includes('head')) map.head = o;
             else if (!map.neck && (n.includes('neck') || n.includes('cervical'))) map.neck = o;
-            else if (!map.hips && (n.includes('hip') || n.includes('pelvis') || n === 'hips' || n.includes('root')))
-                map.hips = o;
+            // MO17. Not 'root' here: VRoid's armature bone "Root" is the hips' parent, sitting on the
+            // floor, and the traversal reaches it first. Mapped as the hips, every sway and weight
+            // shift rolled her whole body about her feet — a 4° lean on AvatarSample_A that left
+            // one arm against her side and the other held out after "stand up". A bone named
+            // root is only the fallback, below, when nothing is named like hips.
+            else if (!map.hips && (n.includes('hip') || n.includes('pelvis') || n === 'hips')) map.hips = o;
             else if (!map.spine && (n.includes('spine') || n.includes('abdomen') || n.includes('body'))) map.spine = o;
             else if (!map.chest && (n.includes('chest') || n.includes('thorax') || n.includes('upperchest')))
                 map.chest = o;
@@ -329,6 +333,20 @@
 
         // fallback preference
         if (!map.chest && map.spine) map.chest = map.spine;
+        // MO17. The hips: the VRM's own raw hips bone when there is one, else a bone named root.
+        if (!map.hips) {
+            const h =
+                root.userData?.vrm?.humanoid ||
+                root.userData?.vrmHumanoid ||
+                window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+            const raw = h && typeof h.getRawBoneNode === 'function' ? h.getRawBoneNode('hips') : null;
+            if (raw) map.hips = raw;
+        }
+        if (!map.hips) {
+            root.traverse((o) => {
+                if (!map.hips && o && o.isBone && (o.name || '').toLowerCase().includes('root')) map.hips = o;
+            });
+        }
 
         // Try to find lowerArm from upperArm children if not found by name
         if (map.leftUpperArm && !map.leftLowerArm) {
@@ -1113,5 +1131,9 @@
         // exactly as they were (src/gltf-viewer/PuppetSkeleton.js).
         isPoseMode: () => poseMode,
         isEditMode: () => editMode,
+        // UI2. The mode she is in right now, read-only. The UI tour (audits/ui/run.mjs) checks that
+        // a Behavior chip in Pose Studio really put her in its mode; a highlighted chip proves only
+        // that the click landed.
+        getMode: () => mode,
     };
 })();
