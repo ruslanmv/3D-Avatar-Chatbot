@@ -3456,6 +3456,7 @@
       "note": "A small Japanese classroom with desks and a blackboard. Always General. Model: “Japanese Classroom” by ouz209, CC BY 4.0 (Sketchfab).",
       "place": true,
       "rating": "general",
+      "generalOnly": true,
       "tiers": ["mobile", "desktop", "vr"],
       "triangles": 13264,
       "activities": [],

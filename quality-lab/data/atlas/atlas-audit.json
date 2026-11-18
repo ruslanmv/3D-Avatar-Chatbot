@@ -76,7 +76,18 @@
             "jungle-ruins-light",
             "shopping-street",
             "school",
-            "school-light"
+            "school-light",
+            "anime-classroom",
+            "anime-classroom-light",
+            "anime-classroom-small",
+            "anime-corridor",
+            "anime-corridor-light",
+            "anime-stairs",
+            "anime-stairs-light",
+            "anime-subway",
+            "anime-subway-light",
+            "anime-tatami",
+            "anime-tatami-light"
         ]
     },
     "zones": [
