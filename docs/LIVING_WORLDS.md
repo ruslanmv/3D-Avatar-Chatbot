@@ -136,7 +136,7 @@ Keep a short-lived, destination-scoped **SharedMoment** from *confirmed* world a
 
 **LW5 — external destinations:** user-approved cross-world travel, private authorization, existing world fallback, async generation/rollback and consistent story context; first implement forest and discoteca from the existing catalogue.
 
-**LW6 — optional walking and polish:** measure/bake navmesh, connect door graph, avatar-only walking on flat devices when collision-safe; content upgrades, better grounded pose clips, asset provenance, performance and real-device QA.
+**LW6 — optional walking and polish:** measure/bake navmesh, connect door graph, avatar-only walking on flat devices when collision-safe; content upgrades, better grounded pose clips, asset provenance, performance and real-device QA. Designed in `docs/LIVING_WORLDS_WALKING.md` (navmesh baked offline, path followed on it, VR included).
 
 ## Test/release gates
 
