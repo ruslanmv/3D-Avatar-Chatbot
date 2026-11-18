@@ -31,6 +31,9 @@ list: [`needs-fix.json`](needs-fix.json).
 | `addons/vrma-dance/dance_ontop.vrma`        | `needs-fix:sinks`         | hips below the floor        |
 | `addons/vrma-dance/dance_pushback.vrma`     | `needs-fix:sinks`         | hips below the floor        |
 | `addons/vrma-dance/breakdanceUprock.vrma`   | `needs-fix:sinks`         | hips below the floor        |
+| `vendor/animations/idle/neutral4.bvh`       | `needs-fix:lean`          | stands leaning (2026-11-18) |
+| `vendor/animations/idle/neutral_idle.bvh`   | `needs-fix:lean`          | stands leaning (2026-11-18) |
+| `vendor/animations/idle/neutral.bvh`        | `needs-fix:lean`          | stands leaning (2026-11-18) |
 
 ## How they were checked
 

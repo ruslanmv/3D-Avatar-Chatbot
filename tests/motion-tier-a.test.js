@@ -170,3 +170,46 @@ describe('B4: fast-path false-positive gate', () => {
         expect(guarded).toEqual(['stop']);
     });
 });
+
+describe('MO16: a turn finishes on a slow frame rate', () => {
+    const Motion = require('../src/xr/MotionIntegration.js');
+
+    test('at four frames a second "turn around" still ends a half turn round, not side-on', async () => {
+        const root = { rotation: { y: 0 }, position: { x: 0, y: 0, z: 0 } };
+        Motion.onAvatarChanged(root, null);
+        let clock = 1000;
+        const now = jest.spyOn(performance, 'now').mockImplementation(() => clock * 1000);
+        try {
+            const done = Motion._turnBy(180);
+            // Each frame takes 0.25 s of wall clock; update() hands the turn dt capped at 0.1 s.
+            for (let i = 0; i < 40; i += 1) {
+                clock += 0.25;
+                Motion._updateTurn(Math.min(0.1, 0.25));
+            }
+            await expect(done).resolves.toBe(true);
+            expect(Math.abs(Math.abs(Motion._normAngle(root.rotation.y)) - Math.PI)).toBeLessThan(1e-6);
+        } finally {
+            now.mockRestore();
+            Motion.onAvatarChanged(null, null);
+        }
+    });
+
+    test('at a normal frame rate the turn is the same half turn', async () => {
+        const root = { rotation: { y: 0.4 }, position: { x: 0, y: 0, z: 0 } };
+        Motion.onAvatarChanged(root, null);
+        let clock = 2000;
+        const now = jest.spyOn(performance, 'now').mockImplementation(() => clock * 1000);
+        try {
+            const done = Motion._turnBy(180);
+            for (let i = 0; i < 200; i += 1) {
+                clock += 1 / 72;
+                Motion._updateTurn(1 / 72);
+            }
+            await expect(done).resolves.toBe(true);
+            expect(Math.abs(Motion._normAngle(root.rotation.y - 0.4 - Math.PI))).toBeLessThan(1e-6);
+        } finally {
+            now.mockRestore();
+            Motion.onAvatarChanged(null, null);
+        }
+    });
+});

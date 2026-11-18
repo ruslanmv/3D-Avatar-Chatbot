@@ -201,6 +201,30 @@
       "measured": "2026-11-14",
       "evidence": "Hips drop to about -0.1..0.03 m (below the floor) on all three avatar heights. The BVH originals of the same dances play correctly and ship instead.",
       "nextStep": "Reconvert from the BVH originals with a hips track in the same units as the rest, or drop in favour of the BVH."
+    },
+    {
+      "file": "vendor/animations/idle/neutral4.bvh",
+      "tag": "needs-fix:lean",
+      "status": "quarantined",
+      "measured": "2026-11-18",
+      "evidence": "Standing idle that holds her hips off the point between her feet: mean balance 0.28 / 0.24 / 0.24 of leg length on AvatarSample_A / Vita / VRM_Viewer_Sample, against 0.05-0.12 for the other idles. Reads as leaning, weight thrown to one side.",
+      "nextStep": "Re-centre the hips track over the feet (or retarget from a centred take), then re-measure with audits/gestures/run.mjs --only positions."
+    },
+    {
+      "file": "vendor/animations/idle/neutral_idle.bvh",
+      "tag": "needs-fix:lean",
+      "status": "quarantined",
+      "measured": "2026-11-18",
+      "evidence": "Standing idle that holds her hips off the point between her feet: mean balance 0.22 / 0.18 / 0.18 of leg length on AvatarSample_A / Vita / VRM_Viewer_Sample, against 0.05-0.12 for the other idles. Reads as leaning, weight thrown to one side.",
+      "nextStep": "Re-centre the hips track over the feet (or retarget from a centred take), then re-measure with audits/gestures/run.mjs --only positions."
+    },
+    {
+      "file": "vendor/animations/idle/neutral.bvh",
+      "tag": "needs-fix:lean",
+      "status": "quarantined",
+      "measured": "2026-11-18",
+      "evidence": "Standing idle that holds her hips off the point between her feet: mean balance 0.21 / 0.17 / 0.17 of leg length on AvatarSample_A / Vita / VRM_Viewer_Sample, against 0.05-0.12 for the other idles. Reads as leaning, weight thrown to one side.",
+      "nextStep": "Re-centre the hips track over the feet (or retarget from a centred take), then re-measure with audits/gestures/run.mjs --only positions."
     }
   ]
 }
