@@ -145,8 +145,18 @@ async function applyPose(value) {
         await page.$eval('#openPoseStudioBtn', (e) => e.click()); // 🎭 in the avatar toolbar
         await page.waitForSelector('#posePresetSelect', { state: 'visible', timeout: 15000 });
     }
-    await page.selectOption('#posePresetSelect', value);
-    await page.click('#poseApplyBtn');
+    const listed = await page.$$eval('#posePresetSelect option', (os, v) => os.some((o) => o.value === v), value);
+    if (listed) {
+        await page.selectOption('#posePresetSelect', value);
+        await page.click('#poseApplyBtn');
+    } else {
+        // UI3. A preset the Poses list no longer offers ('standing', the rest pose, is Advanced
+        // only): applied the way Apply applies a preset — pose mode, then the pose system.
+        await page.evaluate((v) => {
+            window.poseStudioPanel?._enterPoseMode?.();
+            window.vrPoseSystem.applyPreset(v, 0.5);
+        }, value);
+    }
     await page.waitForTimeout(1200); // the blend
 }
 

@@ -4,33 +4,37 @@ Clips that failed review on **2026-11-14** and are **not** integrated. Each one
 is already unreachable in the app (`MotionClipMap.QUARANTINE`). Machine-readable
 list: [`needs-fix.json`](needs-fix.json).
 
-| Clip                                        | Tag                       | What is wrong               |
-| ------------------------------------------- | ------------------------- | --------------------------- |
-| `addons/vrma-actions/backflip.vrma`         | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/bowing.vrma`           | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/happyIdle.vrma`        | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/jumpingJacks.vrma`     | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/sadIdle.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/shrugging.vrma`        | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/singing.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/standingClap.vrma`     | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/standingGreeting.vrma` | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/talking.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/victory.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-actions/waving.vrma`           | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/dancingTwerk.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/hipHopDancing.vrma`      | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/rumbaDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/sambaDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/sillyDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head |
-| `addons/vrma-dance/dance_1.vrma`            | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_2.vrma`            | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_backup.vrma`       | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_dab.vrma`          | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_headdrop.vrma`     | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_ontop.vrma`        | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/dance_pushback.vrma`     | `needs-fix:sinks`         | hips below the floor        |
-| `addons/vrma-dance/breakdanceUprock.vrma`   | `needs-fix:sinks`         | hips below the floor        |
+| Clip                                        | Tag                       | What is wrong                                  |
+| ------------------------------------------- | ------------------------- | ---------------------------------------------- |
+| `addons/vrma-actions/backflip.vrma`         | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/bowing.vrma`           | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/happyIdle.vrma`        | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/jumpingJacks.vrma`     | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/sadIdle.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/shrugging.vrma`        | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/singing.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/standingClap.vrma`     | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/standingGreeting.vrma` | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/talking.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/victory.vrma`          | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-actions/waving.vrma`           | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/dancingTwerk.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/hipHopDancing.vrma`      | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/rumbaDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/sambaDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/sillyDancing.vrma`       | `needs-fix:legs-inverted` | legs flipped above the head                    |
+| `addons/vrma-dance/dance_1.vrma`            | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_2.vrma`            | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_backup.vrma`       | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_dab.vrma`          | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_headdrop.vrma`     | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_ontop.vrma`        | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/dance_pushback.vrma`     | `needs-fix:sinks`         | hips below the floor                           |
+| `addons/vrma-dance/breakdanceUprock.vrma`   | `needs-fix:sinks`         | hips below the floor                           |
+| `vendor/animations/idle/neutral4.bvh`       | `needs-fix:lean`          | stands leaning (2026-11-18)                    |
+| `vendor/animations/idle/neutral_idle.bvh`   | `needs-fix:lean`          | stands leaning (2026-11-18)                    |
+| `vendor/animations/idle/neutral.bvh`        | `needs-fix:lean`          | stands leaning (2026-11-18)                    |
+| `vendor/animations/idle/neutral3.bvh`       | `needs-fix:uneven-arms`   | one arm out, one against her side (2026-11-18) |
 
 ## How they were checked
 
@@ -43,3 +47,19 @@ list: [`needs-fix.json`](needs-fix.json).
 
 Fix it, re-run the same two checks on three avatar heights, take it off
 `QUARANTINE` in `src/xr/MotionClipMap.js` and remove its row here.
+
+## Pose presets
+
+Pose Studio presets that failed review and are kept out of every list (the Pose
+Navigator, `VRPoseSystem.PRESET_ORDER`, Private's positions). The definition
+stays in `src/gltf-viewer/VRPoseSystem.js` for the fix.
+
+| Preset      | Tag                | What is wrong                                                                                                                                |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `floorOpen` | `needs-fix:floats` | seat and palms 25–30 cm above the floor on AvatarSample_A (2026-11-18); the arm IK cannot reach, `JOINT_LIMITS` clamp the upper arm at Z 30° |
+
+To bring it back: make the seat and both palms rest on the floor
+(`lastSupport.hands.*.palmAfterMm` within 20 mm — Private's own check), look at
+it from the side, then put it back in `PRESET_ORDER`, Pose Studio's
+`NAV_PRESETS`, `PrivatePoseController.POSES`/`INTIMATE`, the policy's pose
+lists, the intent words and the ⋯ menu's `POSITION_KEYS` with its locale lines.

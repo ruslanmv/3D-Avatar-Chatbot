@@ -58,6 +58,12 @@
         { name: 'embraceStanding', label: 'Embrace', category: 'Adult', adult: true },
         { name: 'kneelSubmissive', label: 'Submissive', category: 'Adult', adult: true },
         { name: 'lyingSprawl', label: 'Sprawl', category: 'Adult', adult: true },
+        // UN24. Seated and kneeling with the knees apart (VRPoseSystem has the measured signs).
+        { name: 'sittingOpen', label: 'Sitting Open', category: 'Adult', adult: true },
+        { name: 'kneelingWide', label: 'Kneeling Wide', category: 'Adult', adult: true },
+        { name: 'seatedChair', label: 'Seated (Chair)', category: 'Adult', adult: true },
+        { name: 'lyingKneesUp', label: 'Knees Up', category: 'Adult', adult: true }, // UN26
+        { name: 'straddle', label: 'Straddling', category: 'Adult', adult: true },
         // Adult — Top 5 VR Simulation (Spicy Mode only)
         { name: 'missionary', label: 'Missionary', category: 'VR Sim', adult: true },
         { name: 'doggyStyle', label: 'Doggy Style', category: 'VR Sim', adult: true },
@@ -70,7 +76,9 @@
         { name: 'kneelingPresent', label: 'Present', category: 'Kneeling', adult: true },
         { name: 'lyingSideSeductive', label: 'Side Pose', category: 'Lying', adult: true },
         // Technical
-        { name: 'standing', label: 'T-Pose (Reset)', category: 'Reset' },
+        // UI3. Advanced only: out of the navigator's cycle and the Poses list (Advanced ▸ Start
+        // from T-pose), still in catalogue(), so asking for a T-pose in words keeps working.
+        { name: 'standing', label: 'T-Pose (Reset)', category: 'Reset', advanced: true },
     ];
 
     /**
@@ -82,6 +90,17 @@
         if (spicy) return NAV_PRESETS;
         return NAV_PRESETS.filter(function (p) {
             return !p.adult;
+        });
+    }
+
+    /**
+     * UI3. What the navigator steps through and the Poses list offers: the presets for this mode,
+     * minus the advanced ones. Someone pressing › through presets used to land on a T-pose as the
+     * 26th "pose", which reads as the avatar breaking.
+     */
+    function getNavPresets() {
+        return getFilteredPresets().filter(function (p) {
+            return !p.advanced;
         });
     }
 
@@ -175,20 +194,21 @@
             '        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
             '      </button>' +
             '    </div>' +
+            // UN25. How fast she moves from one pose to the next (PoseTransition's multiplier).
+            '    <label class="pose-studio-label" for="poseTransitionSpeed">Transition speed</label>' +
+            '    <select id="poseTransitionSpeed" class="pose-studio-select">' +
+            '      <option value="slow">Slow</option>' +
+            '      <option value="normal" selected>Normal</option>' +
+            '      <option value="fast">Fast</option>' +
+            '    </select>' +
             '  </div>' +
             // Section 1b: T-Pose Correction — intensity slider + natural pose preset
+            // UI3. The everyday control — how her arms rest — stays in view. The T-pose and the
+            // correction strength move into a closed "Advanced" section (below): a T-pose is a
+            // rig's neutral, which to anyone else looks like a broken avatar, and the strength
+            // reaches every surface, not only this panel.
             '  <div class="pose-studio-section">' +
-            '    <label class="pose-studio-label">T-Pose Correction</label>' +
-            '    <div class="pose-slider-row">' +
-            '      <div class="pose-slider-head">' +
-            '        <span class="pose-slider-label">Intensity</span>' +
-            '        <span id="poseTposeIntensityValue" class="pose-slider-value">1.00</span>' +
-            '      </div>' +
-            '      <input id="poseTposeIntensitySlider" class="pose-slider pose-slider--tpose" type="range" min="0" max="150" value="100" step="1" />' +
-            '      <div class="pose-slider-scale"><span>0</span><span>0.5</span><span>1.0</span><span>1.5</span></div>' +
-            '    </div>' +
-            '    <div class="pose-toggle-hint">0 = raw T-pose, 1.0 = natural standing (recommended), &gt;1 = stronger correction</div>' +
-            '    <label class="pose-studio-label" style="margin-top:8px;">Natural Pose Style</label>' +
+            '    <label class="pose-studio-label">Natural Pose Style</label>' +
             '    <select id="poseTposePresetSelect" class="pose-studio-select">' +
             '      <option value="relaxedStanding">Relaxed Standing (40\u00B0 arms)</option>' +
             '      <option value="naturalIdle" selected>Natural Idle (55\u00B0 arms)</option>' +
@@ -205,6 +225,29 @@
             '      <button id="poseResetBtn" class="secondary-btn small-btn">Reset All</button>' +
             '    </div>' +
             '  </div>' +
+            // UI3/UI4. Advanced, closed by default: the tools for building a pose by hand — the
+            // T-pose and correction strength, bone editing (mouse, Puppet IK, per-bone sliders, reset,
+            // mirror) and saving with undo. Hard to use well from a panel, and the everyday path (pick
+            // a pose, Apply, Reset All, a Behavior chip) needs none of it, so it stays out of sight
+            // until someone opens it.
+            '  <details id="poseAdvanced" class="pose-studio-section pose-studio-advanced">' +
+            '    <summary class="pose-studio-label" style="cursor:pointer;user-select:none;">Advanced</summary>' +
+            '    <div style="padding-top:8px;">' +
+            '      <div class="pose-toggle-hint" style="margin-bottom:8px;">For building a pose by hand. Pick a pose above for everyday use.</div>' +
+            '      <label class="pose-studio-label">T-Pose Correction</label>' +
+            '      <div class="pose-slider-row">' +
+            '        <div class="pose-slider-head">' +
+            '          <span class="pose-slider-label">Intensity</span>' +
+            '          <span id="poseTposeIntensityValue" class="pose-slider-value">1.00</span>' +
+            '        </div>' +
+            '        <input id="poseTposeIntensitySlider" class="pose-slider pose-slider--tpose" type="range" min="0" max="150" value="100" step="1" />' +
+            '        <div class="pose-slider-scale"><span>0</span><span>0.5</span><span>1.0</span><span>1.5</span></div>' +
+            '      </div>' +
+            '      <div class="pose-toggle-hint">1.0 = natural standing (recommended). Below 0.5 she is near a T-pose; that applies for this visit only and is not remembered.</div>' +
+            '      <div class="pose-studio-actions">' +
+            '        <button id="poseTposeRestoreBtn" class="secondary-btn small-btn">Restore recommended (1.0)</button>' +
+            '        <button id="poseTposeStartBtn" class="secondary-btn small-btn" title="The rig\u2019s neutral pose, to build a pose from zero">Start from T-pose</button>' +
+            '      </div>' +
             // Section 3: Mouse Bone Editing Toggle
             '  <div class="pose-studio-section">' +
             '    <div class="pose-toggle-row">' +
@@ -296,6 +339,8 @@
             '      <button id="poseRedoBtn" class="secondary-btn small-btn">Redo</button>' +
             '    </div>' +
             '  </div>' +
+            '    </div>' +
+            '  </details>' +
             // Section 6: Animations — organized into Behavior / Motion / Talk
             '  <div class="pose-studio-section">' +
             '    <label class="pose-studio-label">\uD83C\uDFAD Behavior (Live)</label>' +
@@ -372,6 +417,22 @@
     };
 
     PoseStudioPanel.prototype._bind = function () {
+        // UN25. Transition speed: shown as stored, saved on change. Without PoseTransition (the
+        // module failed to load) the control is hidden rather than offered and ignored.
+        const speedSelect = this.rootEl.querySelector('#poseTransitionSpeed');
+        if (speedSelect) {
+            const PT = window.NEXUS_POSE_TRANSITION;
+            if (PT && typeof PT.getSpeed === 'function') {
+                speedSelect.value = PT.getSpeed();
+                speedSelect.addEventListener('change', () => {
+                    speedSelect.value = PT.setSpeed(speedSelect.value);
+                });
+            } else {
+                speedSelect.hidden = true;
+                const label = this.rootEl.querySelector('label[for="poseTransitionSpeed"]');
+                if (label) label.hidden = true;
+            }
+        }
         const self = this;
 
         // --- Close ---
@@ -383,6 +444,7 @@
             closeBtn.addEventListener('click', () => {
                 self.hide();
                 self.editor.exit();
+                self._returnFocus();
 
                 // Cancel any VRPoseSystem blending so it doesn't fight
                 try {
@@ -557,6 +619,7 @@
         const resetSelectedBtn = this.rootEl.querySelector('#poseResetSelectedBtn');
         if (resetSelectedBtn) {
             resetSelectedBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.resetSelected();
                 self._resetSliders();
             });
@@ -566,6 +629,7 @@
         const mirrorBtn = this.rootEl.querySelector('#poseMirrorBtn');
         if (mirrorBtn) {
             mirrorBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.mirrorArms('left');
                 self._syncSlidersFromBone();
             });
@@ -575,6 +639,7 @@
         const saveBtn = this.rootEl.querySelector('#poseSaveBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', () => {
+                self._bindToStage();
                 const name = self.saveInput.value.trim() || 'Custom Pose';
                 self.editor.saveCurrentPose(name);
                 self.saveInput.value = '';
@@ -599,6 +664,7 @@
         const undoBtn = this.rootEl.querySelector('#poseUndoBtn');
         if (undoBtn) {
             undoBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.undo();
                 self._syncSlidersFromBone();
             });
@@ -607,6 +673,7 @@
         const redoBtn = this.rootEl.querySelector('#poseRedoBtn');
         if (redoBtn) {
             redoBtn.addEventListener('click', () => {
+                self._bindToStage();
                 self.editor.redo();
                 self._syncSlidersFromBone();
             });
@@ -650,9 +717,13 @@
         // Sync navigator when VR-side changes the pose
         this._vrPoseListener = (e) => {
             if (e.detail && e.detail.preset) {
-                const idx = NAV_PRESETS.findIndex((p) => p.name === e.detail.preset);
+                // UI2. An index into the list the navigator shows (filtered when Private is off).
+                const idx = getNavPresets().findIndex((p) => p.name === e.detail.preset);
                 if (idx !== -1) {
                     self._navIndex = idx;
+                    self._updateNavDisplay();
+                } else if (e.detail.preset === 'standing') {
+                    self._navIndex = -1; // UI3. the rig's neutral: shown, not in the cycle
                     self._updateNavDisplay();
                 }
             }
@@ -669,6 +740,7 @@
         // --- Bone selector ---
         if (this.boneSelect) {
             this.boneSelect.addEventListener('change', () => {
+                self._bindToStage();
                 self.editor.selectBone(self.boneSelect.value);
                 self._syncSlidersFromBone();
             });
@@ -685,6 +757,7 @@
 
             // Push undo on first drag interaction
             slider.addEventListener('mousedown', () => {
+                self._bindToStage();
                 if (!sliderUndoPushed) {
                     sliderUndoPushed = true;
                     if (self.editor._pushUndoSnapshot) {
@@ -908,7 +981,7 @@
         wireClipPlayStop('poseVrmaPlayBtn', 'poseVrmaStopBtn', 'poseVrmaSelect');
 
         // --- BVH details arrow rotation ---
-        const bvhDetails = this.rootEl.querySelector('details.pose-studio-section');
+        const bvhDetails = this.rootEl.querySelector('#poseBvhArrow')?.closest('details');
         const bvhArrow = this.rootEl.querySelector('#poseBvhArrow');
         if (bvhDetails && bvhArrow) {
             bvhDetails.addEventListener('toggle', () => {
@@ -953,6 +1026,61 @@
 
                 // Re-apply natural pose with new intensity
                 self._reapplyNaturalPose();
+            });
+        }
+
+        // --- UI4. Bone editing follows the Advanced section: closing it puts the joint handles
+        // away (the switch keeps its setting), opening it brings them back if the switch is on.
+        const advancedEl = this.rootEl.querySelector('#poseAdvanced');
+        if (advancedEl) {
+            advancedEl.addEventListener('toggle', () => {
+                const gizmo = window.NEXUS_POSE_GIZMO_OVERLAY;
+                const sw = self.rootEl.querySelector('#poseMouseEditToggle');
+                if (!gizmo || !sw) return;
+                if (!advancedEl.open) {
+                    if (gizmo.isEnabled && gizmo.isEnabled()) gizmo.disable();
+                    self._mouseEditEnabled = false;
+                } else if (sw.checked && gizmo.enable) {
+                    self._mouseEditEnabled = gizmo.enable() !== false;
+                    sw.checked = self._mouseEditEnabled;
+                }
+            });
+        }
+
+        // --- UI3. Advanced: restore the recommended correction ---
+        const tposeRestoreBtn = this.rootEl.querySelector('#poseTposeRestoreBtn');
+        if (tposeRestoreBtn) {
+            tposeRestoreBtn.addEventListener('click', () => {
+                const pnorm = window.NEXUS_POSE_NORMALIZER;
+                if (pnorm && pnorm.updateSettings) pnorm.updateSettings({ intensity: 1 });
+                const sl = self.rootEl.querySelector('#poseTposeIntensitySlider');
+                const lab = self.rootEl.querySelector('#poseTposeIntensityValue');
+                if (sl) sl.value = '100';
+                if (lab) lab.textContent = '1.00';
+                self._reapplyNaturalPose();
+            });
+        }
+
+        // --- UI3. Advanced: start from the rig's T-pose ---
+        // The neutral every bone's rotation is measured from: arms straight out, no correction.
+        // One undo step, so Undo returns to the pose she was in.
+        const tposeStartBtn = this.rootEl.querySelector('#poseTposeStartBtn');
+        if (tposeStartBtn) {
+            tposeStartBtn.addEventListener('click', () => {
+                self._bindToStage();
+                self._enterPoseMode();
+                // The undo step is the pose she is in now, taken before anything moves (UI3).
+                if (self.editor._pushUndoSnapshot) self.editor._pushUndoSnapshot();
+                try {
+                    window.vrPoseSystem?.applyPreset?.('standing', 0);
+                } catch (_) {}
+                if (self.editor.applier) {
+                    self.editor.applier.resetAll();
+                    if (self.editor._emitChange) self.editor._emitChange();
+                }
+                self._navIndex = -1;
+                self._updateNavDisplay();
+                self._syncSlidersFromBone();
             });
         }
 
@@ -1381,6 +1509,8 @@
         // Check if it's a VRPoseSystem preset (matches NAV_PRESETS name)
         const vrPreset = NAV_PRESETS.find((p) => p.name === selectedValue);
 
+        this._bindToStage();
+
         if (vrPreset) {
             // Ensure pose mode is active (stops clips, yields ProceduralAnimator)
             this._enterPoseMode();
@@ -1389,12 +1519,12 @@
             if (vps) {
                 vps.applyPreset(vrPreset.name, 0.5);
             }
-            // Sync navigator to this preset
-            const idx = NAV_PRESETS.indexOf(vrPreset);
-            if (idx !== -1) {
-                this._navIndex = idx;
-                this._updateNavDisplay();
-            }
+            // Sync navigator to this preset. UI2: its index in the list the navigator shows.
+            // NAV_PRESETS also holds the adult presets, so with Private off "T-Pose (Reset)"
+            // (index 43 there, 26 of 26 here) fell off the end and the navigator read "Lecturer".
+            const idx = getNavPresets().findIndex((p) => p.name === vrPreset.name);
+            this._navIndex = idx; // UI3. -1 for an advanced preset: shown, not in the cycle
+            this._updateNavDisplay();
         } else {
             // User-saved pose — apply via PoseEditor (delta quaternions)
             this.editor.applyPoseById(selectedValue);
@@ -1407,10 +1537,33 @@
      * Navigate poses: direction = -1 (back) or +1 (next).
      * Always applies via VRPoseSystem for smooth blended transition on the 3D character.
      */
+    /**
+     * UI2. If the avatar was swapped while the studio stayed open, bind the editor to the one on
+     * stage before acting. Only the gizmo and skeleton overlays used to rebind, and only while
+     * shown, so with Mouse Bone Editing off a saved pose, a slider or Undo was written to the
+     * skeleton that had been taken off the stage. Re-entering resets the new rig to its neutral,
+     * which is the right start for whatever the person does next.
+     */
+    PoseStudioPanel.prototype._bindToStage = function () {
+        try {
+            if (this.editor && this.editor.rebindIfStale && this.editor.rebindIfStale()) {
+                this.refresh();
+            }
+        } catch (err) {
+            console.warn('[PoseStudio] could not bind to the avatar on stage:', err);
+        }
+    };
+
     PoseStudioPanel.prototype._navigatePose = function (direction) {
-        const filtered = getFilteredPresets();
+        this._bindToStage();
+        const filtered = getNavPresets();
         const len = filtered.length;
-        this._navIndex = (((this._navIndex + direction) % len) + len) % len;
+        if (this._navIndex < 0) {
+            // UI3. From the T-pose (off the list), › goes to the first preset and ‹ to the last.
+            this._navIndex = direction > 0 ? 0 : len - 1;
+        } else {
+            this._navIndex = (((this._navIndex + direction) % len) + len) % len;
+        }
 
         const preset = filtered[this._navIndex];
         this._updateNavDisplay();
@@ -1442,7 +1595,14 @@
      * Update the navigator display (label, counter, category badge).
      */
     PoseStudioPanel.prototype._updateNavDisplay = function () {
-        const filtered = getFilteredPresets();
+        const filtered = getNavPresets();
+        if (this._navIndex < 0) {
+            // UI3. The rig's neutral (Advanced ▸ Start from T-pose): named, but not counted.
+            if (this._navLabel) this._navLabel.textContent = 'T-Pose';
+            if (this._navCounter) this._navCounter.textContent = `\u2013 / ${filtered.length}`;
+            if (this._navCategory) this._navCategory.textContent = 'Advanced';
+            return;
+        }
         if (this._navIndex >= filtered.length) this._navIndex = 0;
         const preset = filtered[this._navIndex];
         if (this._navLabel) {
@@ -1484,7 +1644,10 @@
             return;
         }
 
-        const state = editor.applier.axisState && editor.applier.axisState[editor.selectedBone];
+        // UI2. Read the bone, not a cached slider value: a preset, a drag or Undo moves it too.
+        const state = editor.applier.readAxes
+            ? editor.applier.readAxes(editor.selectedBone)
+            : editor.applier.axisState && editor.applier.axisState[editor.selectedBone];
         if (!state) {
             this._resetSliders();
             return;
@@ -1563,7 +1726,7 @@
         let html = '';
 
         // VRPoseSystem presets (single source of truth, filtered by spicy mode)
-        var filtered = getFilteredPresets();
+        var filtered = getNavPresets();
         for (let i = 0; i < filtered.length; i++) {
             const p = filtered[i];
             html += `<option value="${p.name}">\u2605 ${p.category} \u2014 ${p.label}</option>`;
@@ -1740,6 +1903,9 @@
     };
 
     PoseStudioPanel.prototype.show = function () {
+        // UI2. Remember what opened the studio, so Close can hand focus back to it.
+        var active = document.activeElement;
+        this._opener = active && active !== document.body && !this.rootEl.contains(active) ? active : null;
         this.rootEl.classList.remove('hidden');
         this.refresh();
 
@@ -1757,11 +1923,14 @@
                 wantMouseEdit = localStorage.getItem('nexus-pose-mouse-edit') === '1';
             } catch (_) {}
             var gizmoOn = gizmoRef.isEnabled ? gizmoRef.isEnabled() : false;
-            if (wantMouseEdit && !gizmoOn && gizmoRef.enable) {
+            // UI4. The switch lives in the closed Advanced section: the remembered preference only
+            // comes back with it, so nobody meets joint handles on her with no visible switch.
+            var advancedOpen = !!(this.rootEl.querySelector('#poseAdvanced') || {}).open;
+            if (wantMouseEdit && advancedOpen && !gizmoOn && gizmoRef.enable) {
                 gizmoOn = gizmoRef.enable() !== false;
             }
             this._mouseEditEnabled = gizmoOn;
-            mouseToggleEl.checked = gizmoOn;
+            mouseToggleEl.checked = gizmoOn || (wantMouseEdit && !advancedOpen);
         }
         var puppetToggleEl = this.rootEl.querySelector('#posePuppetToggle');
         if (puppetToggleEl && window.NEXUS_POSE_PUPPET_IK) {
@@ -1783,7 +1952,7 @@
         try {
             var held = window.vrPoseSystem;
             if (held && held.isHoldingBones && held.isHoldingBones() && held.getCurrentPreset) {
-                var listed = getFilteredPresets();
+                var listed = getNavPresets();
                 for (var hi = 0; hi < listed.length; hi++) {
                     if (listed[hi].name === held.getCurrentPreset()) holding = hi;
                 }
@@ -1798,7 +1967,7 @@
         // On first open, apply the first pose (Lecturer) to the character
         if (!this._hasAppliedInitialPose) {
             this._hasAppliedInitialPose = true;
-            var filtered = getFilteredPresets();
+            var filtered = getNavPresets();
             if (filtered.length > 0) {
                 this._navIndex = 0;
                 var vps = window.vrPoseSystem;
@@ -1808,6 +1977,37 @@
                 this._updateNavDisplay();
             }
         }
+    };
+
+    /**
+     * UI2. Close hands keyboard focus back to the control that opened the studio, as a dialog
+     * should; it used to fall to <body>, so a keyboard or switch user lost their place. When the
+     * opener is inside the closed ☰ drawer (hidden now), the menu button is the visible way back.
+     */
+    PoseStudioPanel.prototype._returnFocus = function () {
+        var visible = function (el) {
+            if (!el || !el.isConnected) return false;
+            var r = el.getBoundingClientRect();
+            var cs = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+        };
+        var drawer = document.getElementById('mobile-drawer');
+        var opener = this._opener;
+        var inClosedDrawer = opener && drawer && drawer.contains(opener) && !drawer.classList.contains('open');
+        var candidates = [
+            inClosedDrawer ? null : opener,
+            document.getElementById('mobile-menu-btn'),
+            document.getElementById('openPoseStudioBtn'),
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+            if (visible(candidates[i])) {
+                try {
+                    candidates[i].focus({ preventScroll: true });
+                } catch (_) {}
+                break;
+            }
+        }
+        this._opener = null;
     };
 
     /**

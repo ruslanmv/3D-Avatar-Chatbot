@@ -39,7 +39,53 @@
         'bend-forward': { preset: 'standingBendForward', adult: false },
         'arch-back': { preset: 'standingBentBackward', adult: false },
         lounge: { preset: 'sittingLegsUp', adult: false },
+        // UN27. The closer positions from Pose Studio's Adult set (UN24, UN26), each by its own key
+        // and gated exactly as all fours is: open only at the top of the pace (the policy), and only
+        // while Spicy mode lists them (`known` below reads Pose Studio's own list).
+        'sit-open': { preset: 'sittingOpen', adult: true },
+        'kneel-wide': { preset: 'kneelingWide', adult: true },
+        'knees-up': { preset: 'lyingKneesUp', adult: true },
+        straddle: { preset: 'straddle', adult: true },
     });
+
+    /**
+     * UN27. What her body is doing in each held position, in the second person, for the model.
+     *
+     * "Your body is in that position now (kneel wide)" gave the model a key and nothing else, so it
+     * guessed — and a guess is how she says "I lie back on the bed" while the renderer shows her
+     * kneeling on the floor, or narrates hands somewhere they are not. These are what the presets
+     * actually do, read off `VRPoseSystem.POSE_PRESETS` and the renders (front and side, AvatarSample_A),
+     * so her words can follow her body. Only what is visible: no sensation is put in her mouth here;
+     * how it feels is hers to say, in character. A preset retuned in VRPoseSystem changes its line here.
+     */
+    const BODY = Object.freeze({
+        kneel: 'kneeling on both knees, body upright',
+        'kneel-up': 'kneeling upright, hands on your thighs',
+        'all-fours': 'on your hands and knees, palms flat on the floor, back level, head up',
+        'lie-back': 'lying on your back, arms open',
+        'lie-front': 'lying on your stomach, propped on your forearms, chest lifted',
+        'lie-side': 'lying on your side',
+        'bend-forward': 'standing, bent forward from the hips',
+        'arch-back': 'standing, arching your back',
+        lounge: 'sitting on the floor, legs stretched out, leaning back a little',
+        'sit-open':
+            'sitting on the edge of the seat, leaning back a little, knees wide apart, hands resting on the inside of your knees, head tilted towards them',
+        'kneel-wide':
+            'kneeling with your knees wide apart, sitting back towards your heels, back arched, hands on your thighs',
+        'knees-up':
+            'lying on your back, knees raised and apart, feet flat on the floor, arms resting up by your head, looking down along your body at them',
+        straddle:
+            'kneeling up astride their lap, knees wide on either side of them, back arched, hands resting on their shoulders',
+    });
+
+    /** UN27. The closer positions, in the order they are offered: key and a short name for lists. */
+    const INTIMATE = Object.freeze([
+        Object.freeze({ key: 'sit-open', name: 'sitting with your legs open' }),
+        Object.freeze({ key: 'kneel-wide', name: 'kneeling with your knees wide' }),
+        Object.freeze({ key: 'knees-up', name: 'on your back with your knees up' }),
+        Object.freeze({ key: 'straddle', name: 'straddling them' }),
+        Object.freeze({ key: 'all-fours', name: 'on all fours' }),
+    ]);
 
     /**
      * NL1. A preset asked for by its Pose Studio name: `preset:kneelingUp`. The words' keys above
@@ -71,6 +117,12 @@
         'lie-front': 'Lying',
         'lie-side': 'Lying',
         lounge: 'Sitting',
+        // UN27. Grounded like the categories they share: the chair seat lowers her hips to her
+        // feet, the floor seat to the floor, straddling kneels up (hips at kneel-up's height).
+        'sit-open': 'Sitting',
+        'kneel-wide': 'Kneeling',
+        'knees-up': 'Lying',
+        straddle: 'Kneeling',
     });
 
     function create(options) {
@@ -295,11 +347,27 @@
             presetKey,
             /** NL1. The rendered skeleton right now (`null` when it cannot be read). */
             measure,
+            /**
+             * UN27. Could this keyed position run right now — is its preset in the runtime's list?
+             * The adult presets are listed only while Spicy mode is on, so the model is never
+             * offered a position `apply` would refuse as unknown.
+             */
+            available(key) {
+                const entry = POSES[key];
+                const vps = system();
+                return Boolean(entry && vps && known(vps, entry.preset));
+            },
             /** NL1. The preset and category a key stands for, or `null`. */
             describe(key) {
                 const entry = entryOf(key);
+                // UN27. `body`: what she looks like in it, for the reply (BODY above). Keyed only.
                 return entry
-                    ? { preset: entry.preset, category: entry.category, label: entry.label || entry.preset }
+                    ? {
+                          preset: entry.preset,
+                          category: entry.category,
+                          label: entry.label || entry.preset,
+                          body: BODY[key] || null,
+                      }
                     : null;
             },
             /**
@@ -376,7 +444,7 @@
         };
     }
 
-    const api = { POSES, EXPECT, create, presetKey };
+    const api = { POSES, EXPECT, BODY, INTIMATE, create, presetKey };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_POSES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

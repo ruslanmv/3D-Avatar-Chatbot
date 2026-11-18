@@ -1,0 +1,22 @@
+{
+  "purpose": "Clips whose performance is meant to leave the standing envelope, reviewed frame by frame. The animation review judges them against this intent instead of the category default, and lists them as 'reviewed — intended' rather than passing them silently. Add a clip only after looking at its frames; give what it does and when it was reviewed.",
+  "reviewed": "2026-11-18, AvatarSample_A, audits/animations/run.mjs frame sequences",
+  "clips": {
+    "action/action_jump.bvh": { "airborne": true, "why": "a jump: she leaves the floor and lands" },
+    "action/action_crawling.bvh": { "posture": "lay", "why": "crawls on all fours" },
+    "action/action_laydown.bvh": { "posture": "lay", "why": "lies down on the floor" },
+    "exercise/exercise_crunch.bvh": { "posture": "lay", "why": "a crunch on her back, knees raised" },
+    "exercise/exercise_crunches.bvh": { "posture": "lay", "why": "crunches on her back, legs up" },
+    "dance/dance_northern_soul_spin.bvh": {
+      "posture": "lay",
+      "why": "a spin that drops into floor work (splits) and back up"
+    },
+    "emotion/remorse3.bvh": { "posture": "lay", "why": "collapses to the floor, curled over" },
+    "emotion/remorse.bvh": { "posture": "low", "why": "kneels, hands clasped" },
+    "emotion/remorse2.bvh": { "posture": "low", "why": "kneels, then rises" },
+    "emotion/joy2.bvh": { "posture": "low", "why": "drops into a squat for joy, then stands" },
+    "dance/dance_headdrop.bvh": { "posture": "bend", "why": "the head drop: she folds forward and back up" },
+    "emotion/desire1.bvh": { "posture": "bend", "why": "hunches forward, shy" },
+    "emotion/fear.bvh": { "posture": "bend", "why": "cowers, hunched" }
+  }
+}

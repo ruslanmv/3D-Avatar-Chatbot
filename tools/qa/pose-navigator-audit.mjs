@@ -41,7 +41,12 @@ function chromium() {
     }
 }
 
-/** NAV_PRESETS, parsed from the panel source: name, label, category, adult. */
+/**
+ * NAV_PRESETS, parsed from the panel source: name, label, category, adult. UI3: an entry marked
+ * `advanced: true` (the T-pose, 'standing') is out of the navigator's cycle — it is only reached
+ * from Pose Studio's Advanced section — so it is not a navigator entry here either; this audit
+ * still uses it as the reset pose between presets.
+ */
 function navPresets() {
     const src = fs.readFileSync(path.join(ROOT, 'src/PoseStudioPanel.js'), 'utf8');
     const block = src.slice(
@@ -49,10 +54,11 @@ function navPresets() {
         src.indexOf('];', src.indexOf('const NAV_PRESETS = ['))
     );
     const out = [];
-    const re = /\{\s*name:\s*'([^']+)',\s*label:\s*'([^']+)',\s*category:\s*'([^']+)'(,\s*adult:\s*true)?\s*\}/g;
+    const re =
+        /\{\s*name:\s*'([^']+)',\s*label:\s*'([^']+)',\s*category:\s*'([^']+)'(,\s*adult:\s*true)?(,\s*advanced:\s*true)?\s*\}/g;
     let m;
-    while ((m = re.exec(block))) out.push({ name: m[1], label: m[2], category: m[3], adult: !!m[4] });
-    return out;
+    while ((m = re.exec(block))) out.push({ name: m[1], label: m[2], category: m[3], adult: !!m[4], advanced: !!m[5] });
+    return out.filter((p) => !p.advanced);
 }
 
 async function main() {

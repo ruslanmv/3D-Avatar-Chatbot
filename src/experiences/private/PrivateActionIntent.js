@@ -499,6 +499,31 @@
      * ordinary stand-up motion otherwise.
      */
     const POSE_WORDS = [
+        // UN27. The closer positions (PrivatePoseController.INTIMATE), first: each is a more
+        // specific form of a plainer one below ("in ginocchio a gambe aperte" starts like "in
+        // ginocchio", "仰向けで膝を立てて" contains "仰向け"), and the first match wins. Gated like all
+        // fours: the policy opens them only at the top of the pace. Every line the ⋯ menu sends
+        // (PrivateLocale `position.*.say`) is matched here, in its own language — a test holds it.
+        [
+            'sit-open',
+            '(?:siediti |stai seduta )?(?:a|con le) gambe (?:aperte|larghe)|apri le gambe|allarga le gambe|sit with your legs (?:open|apart|spread)|(?:open|spread) your legs|(?:siéntate |sientate )?con las piernas abiertas|abre las piernas|(?:assieds-toi |assois-toi )?les jambes écartées|écarte les jambes|setz dich breitbeinig(?: hin)?|spreiz die beine|(?:senta(?:-te)? |sente )?de pernas abertas|abr[ae] as pernas',
+            /脚を開いて座って|脚を開いて|다리를\s?벌리고\s?앉아|다리를\s?벌려|张开腿坐下|张开腿|分开腿/u,
+        ],
+        [
+            'kneel-wide',
+            '(?:mettiti |metti |stai )?in ginocc?hio (?:a|con le) (?:gambe|ginocchia) (?:aperte|larghe)|inginocchiati (?:a|con le) (?:gambe|ginocchia) (?:aperte|larghe)|kneel(?: down)? with your (?:knees|legs) (?:apart|open|wide)|kneel wide|(?:arrodíllate|arrodillate) con las (?:rodillas separadas|piernas abiertas)|de rodillas con las rodillas separadas|(?:mets-toi )?à genoux,? les genoux écartés|knie dich breitbeinig hin|(?:ajoelha-te|ajoelhe(?:-se)?|de joelhos) com os joelhos afastados',
+            /膝を開いてひざまずいて|膝を開いて跪いて|무릎을\s?벌리고\s?꿇어|分开膝盖跪下|分开腿跪下/u,
+        ],
+        [
+            'knees-up',
+            '(?:sdraiati |stenditi |mettiti )?(?:sulla schiena|a pancia in su),? (?:con le|a) ginocchia (?:alzate|su|piegate)|(?:lie |lay )?on your back with your knees (?:up|bent|raised)|(?:túmbate |tumbate |acuéstate |acuestate )?boca arriba con las rodillas (?:dobladas|arriba|levantadas)|(?:allonge-toi |couche-toi )?sur le dos,? les genoux (?:relevés|pliés)|leg dich auf den rücken und stell die knie auf|(?:leg dich )?auf den rücken mit (?:aufgestellten|angezogenen) knien|(?:deita-te |deite(?:-se)? )?de costas com os joelhos (?:dobrados|para cima)',
+            /仰向けで膝を立てて|仰向けで膝を立てる|누워서\s?무릎을\s?세워|仰躺屈膝|躺下屈膝/u,
+        ],
+        [
+            'straddle',
+            '(?:mettiti |siediti |stai )?a cavalcioni(?: su di me| sopra di me)?|straddle me|straddle|sit astride(?: me)?|(?:siéntate |sientate |ponte )?a horcajadas(?: sobre mí| sobre mi)?|súbete encima de mí|(?:mets-toi |assieds-toi )?à califourchon(?: sur moi)?|setz dich rittlings(?: auf mich)?|mont[ae] em mim|(?:senta(?:-te)? )?escarranchada em mim',
+            /私にまたがって|またがって|내\s?위에\s?올라타|올라타|跨坐在我身上|跨坐/u,
+        ],
         [
             // The everyday adult name for the same static position maps to it too (owner
             // decision): the pose, held, nothing more — and it opens only where all fours does.
