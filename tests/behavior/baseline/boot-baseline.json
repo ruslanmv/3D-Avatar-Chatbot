@@ -113,31 +113,31 @@
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 320,
+      "line": 333,
       "guarded": true,
       "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 322,
+      "line": 335,
       "guarded": true,
       "comment": false
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 621,
+      "line": 650,
       "guarded": true,
       "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 626,
+      "line": 655,
       "guarded": true,
       "comment": false
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 628,
+      "line": 657,
       "guarded": true,
       "comment": false
     }

@@ -22,6 +22,8 @@
     "audit:ui": "node audits/ui/run.mjs",
     "audit:animations": "node audits/animations/run.mjs",
     "audit:nl-motion": "node tools/qa/natural-language-motion-acceptance.mjs",
+    "audit:poses": "node tools/qa/pose-shots.mjs",
+    "audit:private-positions": "node tools/qa/private-positions-live.mjs",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
     "wardrobe:import": "node scripts/import-wardrobe-pack.mjs",
     "wardrobe:check": "node scripts/import-wardrobe-pack.mjs --check",

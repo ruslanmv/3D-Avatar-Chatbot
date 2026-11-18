@@ -47,3 +47,19 @@ list: [`needs-fix.json`](needs-fix.json).
 
 Fix it, re-run the same two checks on three avatar heights, take it off
 `QUARANTINE` in `src/xr/MotionClipMap.js` and remove its row here.
+
+## Pose presets
+
+Pose Studio presets that failed review and are kept out of every list (the Pose
+Navigator, `VRPoseSystem.PRESET_ORDER`, Private's positions). The definition
+stays in `src/gltf-viewer/VRPoseSystem.js` for the fix.
+
+| Preset      | Tag                | What is wrong                                                                                                                                |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `floorOpen` | `needs-fix:floats` | seat and palms 25–30 cm above the floor on AvatarSample_A (2026-11-18); the arm IK cannot reach, `JOINT_LIMITS` clamp the upper arm at Z 30° |
+
+To bring it back: make the seat and both palms rest on the floor
+(`lastSupport.hands.*.palmAfterMm` within 20 mm — Private's own check), look at
+it from the side, then put it back in `PRESET_ORDER`, Pose Studio's
+`NAV_PRESETS`, `PrivatePoseController.POSES`/`INTIMATE`, the policy's pose
+lists, the intent words and the ⋯ menu's `POSITION_KEYS` with its locale lines.

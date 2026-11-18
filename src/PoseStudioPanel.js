@@ -58,6 +58,12 @@
         { name: 'embraceStanding', label: 'Embrace', category: 'Adult', adult: true },
         { name: 'kneelSubmissive', label: 'Submissive', category: 'Adult', adult: true },
         { name: 'lyingSprawl', label: 'Sprawl', category: 'Adult', adult: true },
+        // UN24. Seated and kneeling with the knees apart (VRPoseSystem has the measured signs).
+        { name: 'sittingOpen', label: 'Sitting Open', category: 'Adult', adult: true },
+        { name: 'kneelingWide', label: 'Kneeling Wide', category: 'Adult', adult: true },
+        { name: 'seatedChair', label: 'Seated (Chair)', category: 'Adult', adult: true },
+        { name: 'lyingKneesUp', label: 'Knees Up', category: 'Adult', adult: true }, // UN26
+        { name: 'straddle', label: 'Straddling', category: 'Adult', adult: true },
         // Adult — Top 5 VR Simulation (Spicy Mode only)
         { name: 'missionary', label: 'Missionary', category: 'VR Sim', adult: true },
         { name: 'doggyStyle', label: 'Doggy Style', category: 'VR Sim', adult: true },
@@ -188,6 +194,13 @@
             '        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
             '      </button>' +
             '    </div>' +
+            // UN25. How fast she moves from one pose to the next (PoseTransition's multiplier).
+            '    <label class="pose-studio-label" for="poseTransitionSpeed">Transition speed</label>' +
+            '    <select id="poseTransitionSpeed" class="pose-studio-select">' +
+            '      <option value="slow">Slow</option>' +
+            '      <option value="normal" selected>Normal</option>' +
+            '      <option value="fast">Fast</option>' +
+            '    </select>' +
             '  </div>' +
             // Section 1b: T-Pose Correction — intensity slider + natural pose preset
             // UI3. The everyday control — how her arms rest — stays in view. The T-pose and the
@@ -404,6 +417,22 @@
     };
 
     PoseStudioPanel.prototype._bind = function () {
+        // UN25. Transition speed: shown as stored, saved on change. Without PoseTransition (the
+        // module failed to load) the control is hidden rather than offered and ignored.
+        const speedSelect = this.rootEl.querySelector('#poseTransitionSpeed');
+        if (speedSelect) {
+            const PT = window.NEXUS_POSE_TRANSITION;
+            if (PT && typeof PT.getSpeed === 'function') {
+                speedSelect.value = PT.getSpeed();
+                speedSelect.addEventListener('change', () => {
+                    speedSelect.value = PT.setSpeed(speedSelect.value);
+                });
+            } else {
+                speedSelect.hidden = true;
+                const label = this.rootEl.querySelector('label[for="poseTransitionSpeed"]');
+                if (label) label.hidden = true;
+            }
+        }
         const self = this;
 
         // --- Close ---
