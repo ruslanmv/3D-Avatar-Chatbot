@@ -3404,8 +3404,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-classroom.glb",
-        "at": [0.973, 0.0, 1.429],
-        "turn": 90
+        "at": [0.023, 0, 2.65],
+        "turn": 0
       },
       "preview": "previews/anime-classroom.webp",
       "category": "School"
@@ -3445,8 +3445,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-classroom-light.glb",
-        "at": [0.973, 0.0, 1.429],
-        "turn": 90
+        "at": [0.023, 0, 2.65],
+        "turn": 0
       },
       "lightFor": "anime-classroom"
     },
@@ -3484,8 +3484,8 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-classroom-small.glb",
-        "at": [1.665, 1.246, 7.589],
-        "turn": 0
+        "at": [-0.267, 1.246, 1.278],
+        "turn": -75
       },
       "preview": "previews/anime-classroom-small.webp",
       "category": "School"
@@ -3606,7 +3606,7 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-stairs.glb",
-        "at": [-91.204, 4.766, 20.161],
+        "at": [-91.704, 4.766, 18.661],
         "turn": 0
       },
       "preview": "previews/anime-stairs.webp",
@@ -3647,7 +3647,7 @@
       "props": [],
       "scene": {
         "src": "scenes/anime-school-stairs-light.glb",
-        "at": [-91.204, 4.766, 20.161],
+        "at": [-91.704, 4.766, 18.661],
         "turn": 0
       },
       "lightFor": "anime-stairs"

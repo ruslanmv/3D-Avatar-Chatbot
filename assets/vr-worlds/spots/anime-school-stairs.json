@@ -102,9 +102,9 @@
             "rating": "general",
             "verified": true,
             "position": [
-                91.204,
+                91.704,
                 -4.766,
-                -20.161
+                -18.661
             ],
             "facingDeg": 0,
             "framing": "fullBody",
@@ -113,7 +113,7 @@
                 "viewOpenM": 6,
                 "thingOffBehindDeg": 163,
                 "framing": "fullBody",
-                "candidates": 117
+                "candidates": 392
             }
         },
         {
@@ -135,16 +135,16 @@
             "position": [
                 91.204,
                 -4.766,
-                -18.661
+                -20.161
             ],
             "facingDeg": 0,
             "framing": "fullBody",
             "measured": {
                 "fromThingM": 0,
                 "viewOpenM": 6,
-                "thingOffBehindDeg": 156,
+                "thingOffBehindDeg": 163,
                 "framing": "fullBody",
-                "candidates": 107
+                "candidates": 371
             }
         }
     ]
