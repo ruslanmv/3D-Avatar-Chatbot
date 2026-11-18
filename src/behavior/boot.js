@@ -396,7 +396,14 @@
         booting = (async () => {
             const started = (global.performance || Date).now();
 
-            for (const src of MODULES) await loadScript(src);
+            // PG4. Every module requested at once. Awaiting each one before asking for the next
+            // made 149 round trips in a row: on a phone the Together button (and with it the
+            // Playground) appeared about 25 s after the page was ready, with nothing saying
+            // why. Dynamically inserted scripts with `async = false` still execute in the order
+            // they were inserted (the HTML "in order as soon as possible" list), so load order,
+            // which this list depends on, is unchanged; only the downloads overlap. One
+            // failure still rejects the boot, as before.
+            await Promise.all(MODULES.map(loadScript));
             const config = await loadConfig();
 
             const EventBus = global.NEXUS_BD_EVENT_BUS;

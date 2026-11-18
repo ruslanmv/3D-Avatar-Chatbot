@@ -133,6 +133,18 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   sentence with a next step and never echoes the error.
   `tests/playground-pg3.test.js`, `tests/chat-error-text.test.js`;
   `docs/V5_PRODUCTION_READINESS.md` holds the evidence and the rollback.
+- **PG4: the playground on a phone.** Two defects found by clicking through
+  the real UI on a Pixel 7 (Menu ▸ Together ▸ Playground ▸ Experiences ▸ Visit
+  a place ▸ a venue ▸ each chip). (1) `boot.js` awaited each of its 149 modules
+  before requesting the next, so Together (and everything behind it) appeared
+  about 25 s after the page on a phone; they are now requested at once
+  (`async = false` keeps execution order) and the director is up in under a
+  second. Keep that list ordered and requested together; do not go back to a
+  sequential loop. (2) A `say` chip on a phone sent its line into a chat sheet
+  collapsed to the composer, so nothing visibly happened; the router now opens
+  the sheet to its middle height through `#chat-overlay-toggle` (the Private
+  and Scene Tale pattern), only from collapsed. On a phone Together is reached
+  only through the ☰ menu (the 👥 button is in the desktop toolbar).
 - **Every place has a picture (PG2).** `preview` (an image under
   `assets/vr-worlds/`, safe-path checked) and `category` on each place in
   `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky
