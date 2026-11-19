@@ -41,6 +41,11 @@ const ALL = {
     // UN31. Whole-torso effects (flush, sweat, tan lines): front and back, belly-centred.
     torso: ['standing', 'belly', [0, 0.05, 1], 0.75],
     back: ['standing', 'belly', [0, 0.05, -1], 0.8],
+    // VA4. A whole look, head to heels: the show outfits are judged on her, not at a spot. 'fit'
+    // frames her posed bounds in the camera's own field of view — a fixed distance did not
+    // (Codex, #195: 2.1 m at the viewer's 30° shows 1.13 m of her, and cut her head and feet).
+    full: ['standing', 'belly', [0, 0.05, 1], 'fit'],
+    fullback: ['standing', 'belly', [0, 0.05, -1], 'fit'],
 };
 const VIEWS = arg('--views', Object.keys(ALL).join(',')).split(',');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -107,8 +112,17 @@ async function main() {
                         vps.applyPreset(pose, 0);
                         await settle();
                         const m = hips().matrixWorld;
-                        const target = local.clone().applyMatrix4(m);
+                        let target = local.clone().applyMatrix4(m);
                         const dir = nLocal.clone().transformDirection(m);
+                        if (dist === 'fit') {
+                            const box = new T.Box3().setFromObject(root);
+                            const size = box.getSize(new T.Vector3());
+                            target = box.getCenter(new T.Vector3());
+                            const half = T.MathUtils.degToRad(v.camera.fov) / 2;
+                            const tall = (size.y * 1.08) / 2 / Math.tan(half);
+                            const wide = (Math.max(size.x, size.z) * 1.08) / 2 / Math.tan(half) / v.camera.aspect;
+                            dist = Math.max(tall, wide) + Math.max(size.x, size.z) / 2;
+                        }
                         v.controls.minDistance = 0.01;
                         v.camera.near = 0.005;
                         v.camera.updateProjectionMatrix();
