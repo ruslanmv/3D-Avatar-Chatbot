@@ -62,7 +62,16 @@
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
     /** UN36. The routines (PrivateRoutines.ORDER) and `choose`: the boldest the evening allows. */
-    const ROUTINE_IDS = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything', 'choose']);
+    const ROUTINE_IDS = Object.freeze([
+        'tease',
+        'ride',
+        'table-dance',
+        'open-for-you',
+        'from-behind',
+        'everything',
+        'striptease',
+        'choose',
+    ]);
 
     /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
     const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'belly', 'chest', 'choose']);

@@ -154,12 +154,15 @@ async function main() {
             let preset = null;
             for (let n = 0; n < steps.length; n++) {
                 const step = steps[n];
-                const want = step.pose === 'turn' ? null : Poses.POSES[step.pose].preset;
+                // VA3. A danced step plays a clip: the clip on her must be that one, and moving.
+                const want = step.clip || step.pose === 'turn' ? null : Poses.POSES[step.pose].preset;
                 await page
                     .waitForFunction(
                         ([n]) => {
                             const r = window.NEXUS_PRIVATE_ACTIONS.snapshot().routine;
-                            return r && r.step >= n;
+                            // This step has begun (each step is read at its own start: the run's
+                            // reads and photos take seconds, and fixed sleeps drifted into the next).
+                            return r && (r.step >= n || r.state === 'done');
                         },
                         [n],
                         { timeout: 30000, polling: 200 }
@@ -167,6 +170,54 @@ async function main() {
                     .catch(() => {});
                 await page.waitForTimeout(Math.min(2600, step.hold - 400)); // the blend, then her held
                 const now = await read();
+                if (step.clip) {
+                    // A cue step: the layer comes off (a new look loads), then the dance goes on.
+                    // Read once that change has settled, as the person sees it.
+                    if (step.undress)
+                        await page
+                            .waitForFunction(
+                                () => {
+                                    const l = window.NEXUS_PRIVATE_ACTIONS.log()
+                                        .filter((a) => a.name === 'wardrobe.undress')
+                                        .pop();
+                                    return l && l.status !== 'pending';
+                                },
+                                null,
+                                { timeout: 30000, polling: 200 }
+                            )
+                            .catch(() => {});
+                    const clip = await page.evaluate(async () => {
+                        const L = window.NEXUS_CLIP_LOADER;
+                        const a = L.getCurrentAction && L.getCurrentAction();
+                        const s = L.getCurrentPlaybackState ? L.getCurrentPlaybackState() : {};
+                        const t0 = a ? a.time : null;
+                        await new Promise((r) => setTimeout(r, 600));
+                        return { path: s.clipPath || s.path || s.currentClipPath || null, t0, t1: a ? a.time : null };
+                    });
+                    run.steps.push({
+                        n: n + 1,
+                        clip: step.clip,
+                        undress: !!step.undress,
+                        ...clip,
+                        routine: now.routine,
+                    });
+                    await photo(`${id}-${n + 1}-${step.clip.split('/').pop().replace('.vrma', '')}`);
+                    const moving = clip.t0 != null && clip.t1 != null && clip.t1 !== clip.t0;
+                    const here = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.snapshot().routine);
+                    if (here && here.step !== n) {
+                        // The look change outlasted the step on this renderer: not seen, not failed.
+                        report.unobserved = (report.unobserved || []).concat(`${id} step ${n + 1}`);
+                        console.log(
+                            `skip ${id} ${n + 1}/${steps.length}: the step ended before the look change settled`
+                        );
+                        continue;
+                    }
+                    if (!moving) fail(`${id} step ${n + 1}: clip not advancing (${JSON.stringify(clip)})`);
+                    console.log(
+                        `${moving ? 'ok  ' : 'FAIL'} ${id} ${n + 1}/${steps.length} clip ${step.clip.split('/').pop()}${step.undress ? ' + undress cue' : ''}`
+                    );
+                    continue;
+                }
                 preset = want || preset || now.preset;
                 run.steps.push({ n: n + 1, pose: step.pose, want: preset, ...now });
                 await photo(`${id}-${n + 1}-${step.pose}`);
@@ -178,9 +229,13 @@ async function main() {
                 console.log(
                     `${now.preset === preset ? 'ok  ' : 'FAIL'} ${id} ${n + 1}/${steps.length} ${step.pose} → ${now.preset}`
                 );
-                await page.waitForTimeout(Math.max(0, step.hold - Math.min(2600, step.hold - 400)));
             }
-            await page.waitForTimeout(1200);
+            await page
+                .waitForFunction(() => window.NEXUS_PRIVATE_ACTIONS.snapshot().routine?.state === 'done', null, {
+                    timeout: 60000,
+                    polling: 250,
+                })
+                .catch(() => {});
             const end = await read();
             run.end = end;
             if (!end.now.some((l) => /finished the show/.test(l))) fail(`${id}: not told the show ended`);

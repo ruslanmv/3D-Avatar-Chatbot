@@ -244,11 +244,14 @@ doing what the conversation says; `docs/audits/animation-runtime-audit.md`),
 (`docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`), `RP` for the review packets
 of a body state (Forge's RP1; here `tools/qa/look-turntable.mjs`), `CG` for
 character gates (one adult confirmation per device; Forge's per-file `bodyState`
-said for her) and `CV` for clothing visibility
-(`src/wardrobe/ClothingVisibility.js`: hidden only where Forge's
-`/v1/visibility` allows it for the exact bytes on stage). Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+said for her) and `VA` for VRMA dances and VRM 1.0 facing
+(`addons/vrma-cc0/README.md`: CC0 clips with their sources and hashes, rebuilt
+by `tools/anim/glb2vrma.py`; a VRM 1.0 avatar faces +Z, so read
+`root.userData.vrmForwardNegZ`, never `isVRM`, for her forward), `CV` for
+clothing visibility (`src/wardrobe/ClothingVisibility.js`: hidden only where
+Forge's `/v1/visibility` allows it for the exact bytes on stage). Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

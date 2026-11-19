@@ -2700,3 +2700,105 @@ describe('UN37. missionary and cowgirl: her skin and the finish follow the posit
         }
     });
 });
+
+describe('VA3. danced shows: the striptease takes layers off at its cues, the table dance ends on their lap', () => {
+    const LOOKS_VA3 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    function stubs() {
+        const played = [];
+        let stops = 0;
+        const applied = [];
+        let held = null;
+        window.NEXUS_CLIP_LOADER = {
+            playClip: (path) => {
+                played.push([path, Date.now()]);
+                return Promise.resolve(true);
+            },
+            stopClip: () => {
+                stops += 1;
+            },
+        };
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key) => {
+                    applied.push([key, Date.now()]);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        return { played, applied, stops: () => stops };
+    }
+    const turn = async (text) => {
+        Surface.renderUser(text);
+        for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    };
+    let real;
+    beforeEach(() => {
+        real = { poses: window.NEXUS_PRIVATE_POSES, clips: window.NEXUS_CLIP_LOADER };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+    });
+    afterEach(() => {
+        window.NEXUS_PRIVATE_POSES = real.poses;
+        window.NEXUS_CLIP_LOADER = real.clips;
+        jest.useRealTimers();
+    });
+
+    test('striptease: two clips danced in turn, a layer off at 8 s, 24 s and 32 s, then she kneels', async () => {
+        const st = stubs();
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 4;
+        jest.useFakeTimers();
+        const t0 = Date.now();
+        await turn('Do a striptease for me');
+        for (let i = 0; i < 5; i += 1) {
+            jest.advanceTimersByTime(8000);
+            for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        }
+        const cues = Actions.log()
+            .filter((a) => a.name === 'wardrobe.undress')
+            .map((a) => a.at - t0);
+        expect(cues).toEqual([8000, 24000, 32000]);
+        // Each step starts its clip; a cue step starts it again once the layer has come off (a new
+        // look is a new body, and the dance bound to the old one stops with it).
+        const starts = [...new Map(st.played.map(([p, at]) => [at - t0, p.split('/').pop()])).entries()];
+        expect(starts).toEqual([
+            [0, 'slow_body_roll.vrma'],
+            [8000, 'slow_body_roll.vrma'],
+            [16000, 'club_phrase.vrma'],
+            [24000, 'club_phrase.vrma'],
+            [32000, 'slow_body_roll.vrma'],
+        ]);
+        // Restarted after a layer comes off while still on that step; never once she has moved on.
+        expect(st.played.length).toBeGreaterThan(starts.length);
+        expect(st.played.every(([, at]) => at - t0 < 40000)).toBe(true);
+        expect(st.applied.map(([k, at]) => [k, at - t0])).toEqual([['kneel-wide', 40000]]);
+        expect(st.stops()).toBeGreaterThanOrEqual(1); // the dance stops as she kneels
+    });
+
+    test('striptease is not open below the closest step; the table dance is, and ends astride them', async () => {
+        const st = stubs();
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 3;
+        await turn('Do a striptease for me');
+        expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
+        expect(st.played).toHaveLength(0);
+        jest.useFakeTimers();
+        await turn('Give me a table dance');
+        for (let i = 0; i < 5; i += 1) {
+            jest.advanceTimersByTime(8000);
+            for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        }
+        expect(st.played.map(([p]) => p.split('/').pop())).toEqual(['club_phrase.vrma', 'slow_body_roll.vrma']);
+        expect(st.applied[st.applied.length - 1][0]).toBe('straddle');
+        expect(Actions.log().filter((a) => a.name === 'wardrobe.undress')).toHaveLength(0);
+    });
+});

@@ -880,8 +880,21 @@
         return s.turnId - s.routine.doneTurn <= ROUTINE_DONE_TURNS ? 'done' : null;
     }
 
+    /** VA3. The clip a show started stops with it (or when it moves on to a held position). */
+    function stopShowClip(s, r) {
+        if (!r || !r.clip) return;
+        r.clip = null;
+        try {
+            const L = s.win.NEXUS_CLIP_LOADER;
+            if (L && typeof L.stopClip === 'function') L.stopClip();
+        } catch (_) {
+            /* nothing playing */
+        }
+    }
+
     function stopRoutine(s) {
         if (!s || !s.routine) return;
+        stopShowClip(s, s.routine);
         try {
             (s.win.clearTimeout || clearTimeout)(s.routine.timer);
         } catch (_) {
@@ -957,18 +970,58 @@
             return;
         }
         const step = steps[r.index];
-        if (poseLevelFn(s)(step.pose) > (levelOf(s) || 1)) {
+        if (step.pose && poseLevelFn(s)(step.pose) > (levelOf(s) || 1)) {
             stopRoutine(s);
             emit();
             return;
         }
         let ok = true;
         try {
-            if (step.pose === 'turn') {
+            if (step.clip) {
+                // VA3. A danced step: her held position lets go, the clip plays looped (as Pose
+                // Studio's Play does), and an undress cue takes a layer off as the step begins.
+                const L = s.win.NEXUS_CLIP_LOADER;
+                if (!L || typeof L.playClip !== 'function') ok = false;
+                else {
+                    if (s.poses && typeof s.poses.held === 'function' && s.poses.held()) s.poses.release();
+                    r.clip = step.clip;
+                    Promise.resolve(L.playClip(step.clip, { loop: true }))
+                        .then((played) => {
+                            if (!played && s.routine === r) {
+                                console.warn('[Private] a show clip did not play', step.clip);
+                                stopRoutine(s);
+                                emit();
+                            }
+                        })
+                        .catch(() => {});
+                    if (step.undress) {
+                        r.cues = r.cues || [];
+                        r.cues.push({ step: r.index, at: Date.now() });
+                        const at = r.index;
+                        // A layer off is another look: a new avatar file, and the clip loader is
+                        // registered afresh for her (AvatarManager → registerAvatar), so the dance
+                        // bound to the body that left stops. Still on this step when it settles, she
+                        // dances on in what she has now — measured live: without this, every cue
+                        // step stood still from the cue to the end of the step.
+                        request('wardrobe.undress', { step: 'next' }, { source: 'control', turnId: r.turnId })
+                            .catch(() => null)
+                            .then(() => {
+                                if (s.routine !== r || r.index !== at || r.clip !== step.clip) return;
+                                try {
+                                    Promise.resolve(L.playClip(step.clip, { loop: true })).catch(() => {});
+                                } catch (_) {
+                                    /* the next step moves on regardless */
+                                }
+                            });
+                    }
+                }
+            } else if (step.pose === 'turn') {
+                // Fail soft: a show does not end because she cannot turn round here; it goes on.
                 const turner = turnerOf(s);
                 if (turner) turner.toggle();
-                else ok = false;
+                else console.warn('[Private] a show turn was skipped: nothing can turn her here');
             } else {
+                stopShowClip(s, r);
                 ok = Boolean(s.poses.apply(step.pose, { duration: R.BLEND_S / r.speed }).ok);
             }
         } catch (error) {

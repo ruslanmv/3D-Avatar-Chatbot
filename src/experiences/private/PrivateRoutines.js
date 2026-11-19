@@ -25,7 +25,7 @@
     /** Speed: holds and blends multiply by 1 / speed. "Slower" and "faster" step through these. */
     const SPEEDS = Object.freeze([0.5, 0.7, 1, 1.4, 1.8]);
 
-    const ROUTINES = Object.freeze({
+    const ROUTINES_BASE = Object.freeze({
         // A tease that opens early in the evening: nothing in it needs more than Romantic.
         tease: Object.freeze({
             label: 'Tease',
@@ -120,15 +120,100 @@
         }),
     });
 
-    /** In the order they are offered, gentlest first. */
-    const ORDER = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything']);
+    /*
+     * VA3. Shows danced to clips. A `clip` step lets go of the position she holds and plays a CC0
+     * dance (addons/vrma-cc0/, provenance in its README) looped for `hold`; `undress: true` takes one
+     * layer off as that step begins — through the bridge's own `wardrobe.undress`, so the pace, her
+     * looks and her eligibility decide exactly as when it is asked for in words. A `turn` step turns
+     * her round while the clip goes on. `level` raises a show to the step its cues need (undressing
+     * opens at 4), above what its positions alone would.
+     */
+    const CLIPS = Object.freeze({
+        roll: 'addons/vrma-cc0/slow_body_roll.vrma',
+        club: 'addons/vrma-cc0/club_phrase.vrma',
+    });
+    const ROUTINES_EXTRA = Object.freeze({
+        striptease: Object.freeze({
+            label: 'Striptease',
+            name: 'a striptease for them',
+            level: 4,
+            steps: Object.freeze([
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    body: 'dancing for them, rolling your body slowly, hands on your hips, eyes on theirs',
+                },
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    undress: true,
+                    body: 'still rolling your hips as the first layer comes off and drops away',
+                },
+                {
+                    clip: CLIPS.club,
+                    hold: 8000,
+                    body: 'dancing closer, arms up over your head, showing them what is left',
+                },
+                {
+                    clip: CLIPS.club,
+                    hold: 8000,
+                    undress: true,
+                    body: 'dancing on as the next layer comes off, letting them watch',
+                },
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    undress: true,
+                    body: 'rolling your body slowly as the last of it comes off, nothing left on',
+                },
+                {
+                    pose: 'kneel-wide',
+                    hold: 12000,
+                    body: 'sinking down to kneel in front of them, knees wide apart, naked for them',
+                },
+            ]),
+        }),
+        'table-dance': Object.freeze({
+            label: 'Table dance',
+            name: 'a table dance for them',
+            steps: Object.freeze([
+                { clip: CLIPS.club, hold: 8000, body: 'dancing close in front of them, arms rising over your head' },
+                { clip: CLIPS.roll, hold: 7000, body: 'rolling your body slowly right in front of them' },
+                {
+                    pose: 'turn',
+                    hold: 7000,
+                    body: 'turning round as you dance, your back and your ass to them, looking over your shoulder',
+                },
+                { pose: 'turn', hold: 3000, body: 'turning back to face them' },
+                {
+                    pose: 'straddle',
+                    hold: 15000,
+                    body: 'climbing onto their lap to finish, knees wide on either side of them, back arched, hands on their shoulders',
+                },
+            ]),
+        }),
+    });
 
-    /** The step of the pace a routine needs: the highest any of its positions opens at. */
+    /** In the order they are offered, gentlest first. */
+    const ORDER = Object.freeze([
+        'tease',
+        'ride',
+        'table-dance',
+        'open-for-you',
+        'from-behind',
+        'everything',
+        'striptease',
+    ]);
+
+    const ROUTINES = Object.freeze({ ...ROUTINES_BASE, ...ROUTINES_EXTRA });
+
+    /** The step of the pace a routine needs: the highest any of its positions opens at, or its own. */
     function level(id, poseLevel) {
         const routine = ROUTINES[id];
         if (!routine) return Infinity;
-        let need = 1;
+        let need = Number(routine.level) || 1;
         for (const step of routine.steps) {
+            if (!step.pose) continue; // a clip step needs no position
             const at = typeof poseLevel === 'function' ? Number(poseLevel(step.pose)) || 1 : 1;
             if (at > need) need = at;
         }
@@ -153,7 +238,7 @@
         return SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, at + (direction > 0 ? 1 : -1)))];
     }
 
-    const api = { ROUTINES, ORDER, BLEND_S, SPEEDS, level, openAt, boldest, stepSpeed };
+    const api = { ROUTINES, ORDER, CLIPS, BLEND_S, SPEEDS, level, openAt, boldest, stepSpeed };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ROUTINES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

@@ -275,7 +275,12 @@ const MotionIntegration = (() => {
      * again". Plain GLB roots rest at 0 and face +Z, hence the offset switch.
      */
     function _yawToward(dx, dz) {
-        const vrmForward = !!((_avatarRoot && _avatarRoot.userData && _avatarRoot.userData.isVRM) || _vrm);
+        // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+        const ud = (_avatarRoot && _avatarRoot.userData) || {};
+        const vrmForward =
+            'vrmForwardNegZ' in ud
+                ? !!ud.vrmForwardNegZ
+                : !!(ud.isVRM || (_vrm && !(_vrm.meta && _vrm.meta.metaVersion === '1')));
         return _normAngle(Math.atan2(dx, dz) + (vrmForward ? Math.PI : 0));
     }
 
