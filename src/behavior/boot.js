@@ -163,6 +163,8 @@
         'src/experiences/private/InSceneWardrobe.js',
         // UN5. Her held positions (Pose Studio's presets), read by the bridge.
         'src/experiences/private/PrivatePoseController.js',
+        // UN36. The shows she knows: series of her positions, run by the bridge.
+        'src/experiences/private/PrivateRoutines.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.
         'src/features/together/StoryWeaver.js',
         'src/features/together/StoryDirector.js',

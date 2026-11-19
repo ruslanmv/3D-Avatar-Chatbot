@@ -297,10 +297,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the seventeen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the eighteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(17);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(18);
+        expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
@@ -2548,5 +2549,76 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 window.NEXUS_PRIVATE_POSES = real;
             }
         });
+    });
+});
+
+describe('UN36. shows: she moves through a series of positions on her own', () => {
+    test('step by step on a clock, slower on request, finished, again, and a position stops it', async () => {
+        const applied = [];
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key, options) => {
+                    applied.push([key, options && options.duration]);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const prompt = () => Actions.promptLines().join('\n');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 4;
+            expect(prompt()).toMatch(/Shows you know, open now: .*Open for you/);
+            expect(Actions.snapshot().routines).toContain('open-for-you');
+            jest.useFakeTimers();
+            try {
+                await turn('Open up for me');
+                expect(applied).toEqual([['kneel-wide', 1.6]]);
+                expect(prompt()).toMatch(/You are giving them a show — opening yourself for them, step 1 of 3/);
+                jest.advanceTimersByTime(8000);
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                await turn('slower');
+                jest.advanceTimersByTime(12000); // at speed 0.7 this step lasts 12 / 0.7 s
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                jest.advanceTimersByTime(6000);
+                expect(applied[applied.length - 1][0]).toBe('knees-up');
+                expect(applied[applied.length - 1][1]).toBeGreaterThan(1.6); // slower blends too
+                jest.advanceTimersByTime(30000);
+                expect(prompt()).toMatch(/You have finished the show .*if they want more/);
+                await turn('ancora');
+                expect(applied[applied.length - 1][0]).toBe('kneel-wide');
+                // A position they ask for ends the show where it is.
+                await turn('Straddle me');
+                const count = applied.length;
+                jest.advanceTimersByTime(60000);
+                expect(applied.length).toBe(count);
+                expect(prompt()).not.toMatch(/You are giving them a show/);
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('a show not open at this step is refused, and she is told why', async () => {
+        const w = await begin({ adult: true });
+        w.adult.level = 2;
+        await say('Show me everything');
+        await flush();
+        expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
     });
 });
