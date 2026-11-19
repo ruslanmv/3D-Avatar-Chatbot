@@ -27,6 +27,11 @@ describe('UN35 every finish chip line is its own place, in every language', () =
         });
     }
 
+    test.each(['ホテルにいく', '外に出る', 'ゴミを出す', '射击游戏很好玩', '一緒にいく?'])(
+        'Codex (#193): "%s" is ordinary talk, not a finish',
+        (said) => expect(finish(said)).toBeNull()
+    );
+
     test('a finish line is a finish, never a position', () => {
         const parsed = Intent.parse("I'm cumming on your back", {});
         expect(parsed.name).toBe('body.finish');

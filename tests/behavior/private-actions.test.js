@@ -2532,6 +2532,15 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                     held = null;
                     Actions.noticePose();
                     expect(calls[calls.length - 1]).toBe('apply:lower-back-cum-second');
+                    // Codex (#193). Dressed again (her position let go): the sweat does not come back.
+                    held = 'all-fours';
+                    Actions.noticePose();
+                    jest.advanceTimersByTime(3 * 60 * 1000);
+                    held = null;
+                    await Actions.request('wardrobe.redress', {}, { source: 'control' });
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    jest.advanceTimersByTime(7 * 60 * 1000); // the finish fades
+                    expect(calls.slice(-3)).not.toContain('apply:doggy-sweaty-open');
                 } finally {
                     jest.useRealTimers();
                 }

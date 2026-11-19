@@ -464,7 +464,11 @@
      * boundaries in those scripts, so plain substrings. The back comes before inside because
      * 背中に (on your back) contains 中に (inside).
      */
-    const FINISH_VERB_CJK = /イク|いく|出す|出る|쌀게|싼다|쌀 것 같|射/u;
+    // Codex (#193). Only words that mean climax on their own count alone: いく and 出る are also "go"
+    // and "go out" (ホテルにいく), and 射 alone is "shoot" (射击). 出す ("let out") counts only
+    // with a place on her body (中に出す), never alone (ゴミを出す).
+    const FINISH_VERB_CJK = /イク|イっ|イキそう|射精|쌀게|싼다|쌀 것 같|射了|要射|射在|射满|射进/u;
+    const FINISH_WITH_PLACE_CJK = /出す|出して|出すよ/u;
     const FINISH_PLACES_CJK = [
         ['all', /全身|온몸/u],
         ['both', /両方|둘 다|两个洞/u],
@@ -480,11 +484,12 @@
             }
             return action('body.finish', { where: 'choose' }, 'body');
         }
-        if (FINISH_VERB_CJK.test(body)) {
+        const strong = FINISH_VERB_CJK.test(body);
+        if (strong || FINISH_WITH_PLACE_CJK.test(body)) {
             for (const [where, words] of FINISH_PLACES_CJK) {
                 if (words.test(body)) return action('body.finish', { where }, 'body');
             }
-            return action('body.finish', { where: 'choose' }, 'body');
+            if (strong) return action('body.finish', { where: 'choose' }, 'body');
         }
         return null;
     }

@@ -774,8 +774,12 @@
                 });
             case 'wardrobe.undress':
                 return undress(s, action, alive);
-            case 'wardrobe.redress':
-                return redress(s, action, alive);
+            case 'wardrobe.redress': {
+                // Codex (#193). Dressing again lets go of her position: the sweat clock follows.
+                const out = await redress(s, action, alive);
+                watchDoggy(s);
+                return out;
+            }
             case 'avatar.pose': {
                 // UN35. Whatever position she ends up in, the doggy sweat clock follows it.
                 const out = await pose(s, action);
@@ -1185,6 +1189,16 @@
             s.skinStates = [];
             clearAfterglow(s); // another look starts from the pace, not from the last one's afterglow
             clearFinish(s);
+            // Codex (#193). Sweat stays only while she is still held on all fours on the new look.
+            if (s.doggySweaty || s.doggyTimer) {
+                let held = null;
+                try {
+                    held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+                } catch (_) {
+                    held = null;
+                }
+                if (held !== 'all-fours') stopDoggy(s);
+            }
             s.skinLevel = null;
             const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
             if (!look || !Skin || !Skin.mayHavePack(look)) {
