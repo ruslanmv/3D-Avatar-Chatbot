@@ -188,6 +188,7 @@
         if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
         clearAfterglow(s);
         clearFinish(s);
+        stopDoggy(s);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -775,8 +776,12 @@
                 return undress(s, action, alive);
             case 'wardrobe.redress':
                 return redress(s, action, alive);
-            case 'avatar.pose':
-                return pose(s, action);
+            case 'avatar.pose': {
+                // UN35. Whatever position she ends up in, the doggy sweat clock follows it.
+                const out = await pose(s, action);
+                watchDoggy(s);
+                return out;
+            }
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
                 const out = await s.closet.undo();
@@ -1136,6 +1141,11 @@
         return true;
     }
 
+    /** UN35. For callers that move her body outside this bridge (Pose Studio): re-read it. */
+    function noticePose() {
+        if (state) watchDoggy(state);
+    }
+
     /**
      * UN32. Her skin follows the pace live when the look on stage is a bare look with a skin pack
      * (Forge BD7): Romantic and below closed, Sensual flushed, Intimate open — each only if the
@@ -1191,6 +1201,7 @@
                     if (state !== s || s.skinLook !== look) return;
                     s.skinStates = states || [];
                     fitSkinToPace();
+                    emit(); // UN35. the ⋯ menu's finish chips follow what the pack holds
                 })
                 .catch((error) => console.warn('[Private] skin pack not attached', error));
         } catch (error) {
@@ -1247,7 +1258,12 @@
         const fading = s.afterglow && names.includes(s.afterglow.stage) ? s.afterglow.stage : null;
         // UN34. Where they finished stays on her through pace changes until its hold ends.
         const finished = s.finish && names.includes(s.finish.state) ? s.finish.state : null;
-        const want = finished || fading || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
+        // UN35. Held on all fours a while at Sensual or closer: sweat builds on her back.
+        const sweating =
+            s.doggySweaty && level >= 3
+                ? (level >= 4 ? ['doggy-sweaty-open', 'doggy-sweaty'] : ['doggy-sweaty']).find((n) => names.includes(n))
+                : null;
+        const want = finished || fading || sweating || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
         if (!want || s.skin.current() === want) return false;
         s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
         return true;
@@ -1270,10 +1286,28 @@
     /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
     const FINISH_ORDER = ['back', 'inside', 'both', 'ass', 'all'];
 
+    /**
+     * UN35. Again, while the first is still on her: a second load (Forge BD19) instead of showing
+     * the first one a second time, which read as nothing having happened.
+     */
+    const AGAIN_AFTER_MS = 30 * 1000;
+    const AGAIN_STATES = Object.freeze({
+        back: ['lower-back-cum-second'],
+        inside: ['doggy-second-creampie'],
+    });
+
     function finishState(s, where) {
         const names = (s.skinStates || []).map((x) => x.name);
         const places = where === 'choose' ? FINISH_ORDER : [where];
+        // Again only from a later turn and after a real pause: the same line heard twice, or two
+        // quick messages about one climax, are one finish, never a second load.
+        const again = Boolean(s.finish && s.finish.turnId !== s.turnId && Date.now() - s.finish.at >= AGAIN_AFTER_MS);
         for (const place of places) {
+            // Said again too soon for a second load: what is shown stays (never back to the first).
+            if (s.finish && !again && s.finish.place === place && names.includes(s.finish.state))
+                return { place, state: s.finish.state };
+            const second = again ? (AGAIN_STATES[place] || []).find((n) => names.includes(n)) : null;
+            if (second) return { place, state: second };
             const found = (FINISH_STATES[place] || []).find((n) => names.includes(n));
             if (found) return { place, state: found };
         }
@@ -1291,6 +1325,7 @@
             state: chosen.state,
             place: chosen.place,
             turnId: action.turnId,
+            at: Date.now(),
             timer: later(() => {
                 if (state !== s || !s.finish) return;
                 s.finish = null;
@@ -1305,6 +1340,56 @@
         return Promise.resolve(s.skin.apply(chosen.state))
             .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
             .catch(() => settle(action, 'failed', 'not-shown'));
+    }
+
+    /**
+     * UN35. How long she is held on all fours before sweat shows on her back. Watched from the
+     * position she holds (read, never set): taken, the clock starts; any other position, standing
+     * or the end of the session stops it, and her skin goes back to what the pace shows.
+     */
+    const DOGGY_SWEAT_MS = 150 * 1000;
+
+    function watchDoggy(s) {
+        if (!s || !s.poses || typeof s.poses.held !== 'function') return;
+        let held = null;
+        try {
+            held = s.poses.held();
+        } catch (_) {
+            held = null;
+        }
+        if (held === 'all-fours') {
+            if (s.doggyTimer || s.doggySweaty) return;
+            s.doggyTimer = (s.win.setTimeout || setTimeout)(() => {
+                s.doggyTimer = null;
+                if (state !== s) return;
+                let still = null;
+                try {
+                    still = s.poses.held();
+                } catch (_) {
+                    still = null;
+                }
+                if (still !== 'all-fours') return;
+                s.doggySweaty = true;
+                fitSkinToPace();
+                emit();
+            }, DOGGY_SWEAT_MS);
+            return;
+        }
+        stopDoggy(s);
+        fitSkinToPace();
+    }
+
+    function stopDoggy(s) {
+        if (!s) return;
+        if (s.doggyTimer) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.doggyTimer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        s.doggyTimer = null;
+        s.doggySweaty = false;
     }
 
     function clearFinish(s) {
@@ -1904,6 +1989,9 @@
                 : null,
             offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
+            // UN35. Where they can finish that this look can show on her, at the closest step only:
+            // the ⋯ menu draws a chip for each, so no chip is offered that could only be refused.
+            finishPlaces: levelOf(s) >= UNDRESS_AT ? FINISH_ORDER.filter((place) => finishState(s, place)) : [],
             // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.
             story: s.story
                 ? {
@@ -2414,6 +2502,7 @@
         active,
         request,
         fitPoseToPace,
+        noticePose,
         onUserTurn,
         ownsBody,
         whenPoseSettled,

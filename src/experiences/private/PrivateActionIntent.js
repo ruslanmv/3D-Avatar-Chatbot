@@ -459,12 +459,34 @@
         ],
     ];
 
+    /**
+     * UN35. Japanese, Korean and Chinese, which the ⋯ menu's finish chips speak too: no word
+     * boundaries in those scripts, so plain substrings. The back comes before inside because
+     * 背中に (on your back) contains 中に (inside).
+     */
+    const FINISH_VERB_CJK = /イク|いく|出す|出る|쌀게|싼다|쌀 것 같|射/u;
+    const FINISH_PLACES_CJK = [
+        ['all', /全身|온몸/u],
+        ['both', /両方|둘 다|两个洞/u],
+        ['ass', /お尻|엉덩이|屁股/u],
+        ['back', /背中|등에|背上/u],
+        ['inside', /中に|中で|안에|里面/u],
+    ];
+
     function finishFrom(body) {
-        if (!FINISH_VERB.test(body)) return null;
-        for (const [where, words] of FINISH_PLACES) {
-            if (new RegExp(word(words), 'iu').test(body)) return action('body.finish', { where }, 'body');
+        if (FINISH_VERB.test(body)) {
+            for (const [where, words] of FINISH_PLACES) {
+                if (new RegExp(word(words), 'iu').test(body)) return action('body.finish', { where }, 'body');
+            }
+            return action('body.finish', { where: 'choose' }, 'body');
         }
-        return action('body.finish', { where: 'choose' }, 'body');
+        if (FINISH_VERB_CJK.test(body)) {
+            for (const [where, words] of FINISH_PLACES_CJK) {
+                if (words.test(body)) return action('body.finish', { where }, 'body');
+            }
+            return action('body.finish', { where: 'choose' }, 'body');
+        }
+        return null;
     }
 
     /** "yes" to something she offered, in the app's languages — a short message and nothing else. */
