@@ -297,10 +297,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the sixteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the seventeen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(16);
+        // wardrobe.redress, UN34 body.finish; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(17);
+        expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.undress']).toBeTruthy();
@@ -2398,5 +2399,80 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
         } finally {
             jest.useRealTimers();
         }
+    });
+
+    describe('UN34. finishing: their words, where they came shown on her', () => {
+        const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+
+        test('a climax word and a place, in several languages; "come here" is not one', () => {
+            const where = (t) => {
+                const parsed = Intent.parse(t, {});
+                return parsed && parsed.name === 'body.finish' ? parsed.params.where : null;
+            };
+            expect(where("I'm cumming on your back")).toBe('back');
+            expect(where('sto venendo dentro di te')).toBe('inside');
+            expect(where('vengo nel culo')).toBe('ass');
+            expect(where('I am coming all over you')).toBe('all');
+            expect(where('me corro dentro')).toBe('inside');
+            expect(where('cum in both holes')).toBe('both');
+            expect(where("I'm cumming")).toBe('choose');
+            expect(where('come here')).toBeNull();
+            expect(where("don't cum yet")).toBeNull();
+        });
+
+        test('only the person, and only at the closest step', () => {
+            const facts = { active: true, care: false, asked: {}, autonomy: 'autonomous' };
+            const finish = (source) => ({ name: 'body.finish', params: { where: 'back' }, source });
+            expect(Policy.decide(finish('user'), { ...facts, level: 3 }).why).toBe('pace');
+            expect(Policy.decide(finish('model'), { ...facts, level: 4 }).allow).toBe(false);
+            expect(Policy.decide(finish('user'), { ...facts, level: 4 }).allow).toBe(true);
+            expect(Policy.validate('body.finish', { where: 'face' }).ok).toBe(false);
+        });
+
+        test('on her lower back is shown live, she is told, it holds, then the afterglow fades it', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'afterglow', body: 'you are glowing after coming' },
+                    { name: 'lower-back-cum', body: 'a pool of cum in the small of your back' },
+                    { name: 'doggy-creampie', body: 'your pussy is full of cum' },
+                ];
+                return skin;
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            expect(Actions.promptLines().join('\n')).toMatch(
+                /ask where they want to finish — on your lower back, inside you/
+            );
+            jest.useFakeTimers();
+            try {
+                // `say` waits on a real timer, frozen here: the turn is handed over and its promises run.
+                Surface.renderUser("I'm cumming on your back");
+                for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                const lines = Actions.promptLines().join('\n');
+                expect(lines).toMatch(/They just came/);
+                expect(lines).toMatch(/Your body right now: a pool of cum in the small of your back/);
+                // Lowering the pace does not take it off her while it holds.
+                w.adult.level = 2;
+                Actions.fitPoseToPace();
+                expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                jest.advanceTimersByTime(6 * 60 * 1000);
+                expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
     });
 });

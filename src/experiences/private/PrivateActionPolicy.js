@@ -61,6 +61,10 @@
     ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
+    /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
+    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'choose']);
+    const FINISH_LEVEL = 4;
+
     /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
     const POSE_KEYS = [
         'kneel',
@@ -196,6 +200,8 @@
             required: ['pose'],
         },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
+        // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
+        'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
         'world.travel': {
@@ -287,6 +293,12 @@
             if (need && !(Number(f.level) >= need)) return { allow: false, why: 'pace' };
         }
 
+        // UN34. Finishing is theirs, at the top of the pace, and never her tag's.
+        if (action.name === 'body.finish') {
+            if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
+            if (action.source === 'model') return { allow: false, why: 'user-only' };
+        }
+
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
 
@@ -331,6 +343,8 @@
         GENERATES,
         QUIETING,
         UNDRESS_LEVEL,
+        FINISH_PLACES,
+        FINISH_LEVEL,
         POSE_KEYS,
         ADULT_POSES,
         POSE_LEVEL,
