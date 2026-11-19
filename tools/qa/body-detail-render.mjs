@@ -41,6 +41,9 @@ const ALL = {
     // UN31. Whole-torso effects (flush, sweat, tan lines): front and back, belly-centred.
     torso: ['standing', 'belly', [0, 0.05, 1], 0.75],
     back: ['standing', 'belly', [0, 0.05, -1], 0.8],
+    // VA4. A whole look, head to heels: the show outfits are judged on her, not at a spot.
+    full: ['standing', 'belly', [0, 0.05, 1], 2.1],
+    fullback: ['standing', 'belly', [0, 0.05, -1], 2.1],
 };
 const VIEWS = arg('--views', Object.keys(ALL).join(',')).split(',');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
