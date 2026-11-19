@@ -23,6 +23,7 @@ never committed.
 | The living layer live: misses, cost, what the model is told | `tools/qa/living-motion-live.mjs`                                      |
 | A look (outfit, skin) head to heels                         | `tools/qa/body-detail-render.mjs --views full,fullback`                |
 | Private shows (routines) step by step                       | `tools/qa/private-shows-live.mjs`                                      |
+| A whole evening: room, every step, clothes changes, her lines | `tools/qa/evening-stages.mjs` → `index.html` contact sheet          |
 | Forge outfits built end to end                              | Forge `tools/body_surface/build_outfits.py`, then the render tool here |
 | A gallery of every motion we support, as GIFs               | `tools/qa/motion-gallery.mjs` → `review_sheets.py gallery`             |
 
@@ -57,6 +58,34 @@ off. The layer runs on a fixed simulated clock (60 steps a second from a fresh
 stepper), so "1.3 s" is the same instant on both sides and on every run. A
 wall-clock capture once took the finish frames after the finish had ebbed and
 read as "no head-back".
+
+## A whole evening, stage by stage (EA1)
+
+```bash
+npm start   # the app on :8080, in another shell
+NEXUS_LAB_BASE=http://127.0.0.1:8080 node tools/qa/evening-stages.mjs --show window-evening --persona gina --lang it
+# other evenings: --show striptease --room strip-stage · --show table-dance --persona yuki · --show ride --persona isabelle
+# a real undress: --looks path/to/lingerie.vrm,path/to/bare.vrm (Forge's private looks, never committed)
+# open audits/poses/runs/<stamp>-evening-<show>/index.html
+```
+
+Plays one show's own steps (PrivateRoutines) in its room on a real avatar and
+photographs each one, framed from her posed bones (a skinned mesh's box is its
+standing shape), from the side with nothing of the room in the way. Each stage
+says what she does and says there (in `--lang`) and what was measured: the
+largest bone rotation since the stage before (a step that did nothing shows
+~0°), whether an undress cue really swapped the avatar on stage, and whether the
+room is the one asked for. Without `--looks` the avatar's shipped looks stand in
+for clothes: that proves the swap, not the undress, and the report says so.
+`private-shows-live.mjs` is its complement: it drives the real Private UI (pace,
+⋯ menu) and checks what the bridge and the model are told, not the room or the
+clothes.
+
+First run (2026-11-19, Gina's evening, AvatarSample_A): all 8 steps ran and
+moved her, both clothes cues swapped the avatar, the room was right throughout.
+Seen on the frames, not caught by any number: every position is on the rug in
+front of the bed, never on it (step 2 says "sitting back on the bed"), and
+`knees-up` on this avatar reads face-down rather than on her back.
 
 ## The gallery (MP2)
 

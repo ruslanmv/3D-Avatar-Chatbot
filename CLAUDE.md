@@ -275,10 +275,13 @@ finish stays the person's). `PS` for Private's personas
 in setup as "Chi vuoi stasera?" — each a stated adult over 21 by her own choice,
 her voice per language, her room and her menu at the door; a test bans
 young-coded words in every persona text and line; PS2 `body.fist`, the person's
-words only at step 4, shows Forge's fisted states). `SW` for the safety words
-and the moments around them (`PrivateTurnDirector.js`: end and ease-off in all
-nine languages, hesitation eases off and checks in once; the bridge's
-proportionate finish and three replies of aftercare). Commit subjects match:
+words only at step 4, shows Forge's fisted states). `EA` for evening audits
+(`tools/qa/evening-stages.mjs`: one show played in its room on a real avatar, a
+frame per step with what moved, which clothes changed and what she says;
+`docs/claude/visual-review.md`). `SW` for the safety words and the moments
+around them (`PrivateTurnDirector.js`: end and ease-off in all nine languages,
+hesitation eases off and checks in once; the bridge's proportionate finish and
+three replies of aftercare). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 
