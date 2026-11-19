@@ -662,9 +662,14 @@
         }
     }
 
-    /** Is the living layer on? Absent or unreadable storage is on: it is the shipped default. */
+    /**
+     * Is the living layer on? Absent or unreadable storage is on: it is the shipped default. MP1:
+     * it is also off while "Living motion layer" is off under Motion created by Claude.
+     */
     function isOn() {
         try {
+            const MP = global && global.NEXUS_MOTION_PROVENANCE;
+            if (MP && !MP.allowed('layer:living')) return false;
             const st = store();
             return !st || st.getItem(STORAGE_KEY) !== '0';
         } catch (_) {

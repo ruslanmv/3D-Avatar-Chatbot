@@ -1005,6 +1005,9 @@
                   ? R.boldest(at, levels)
                   : p.routine;
         if (!id || !R.ROUTINES[id]) return settle(action, 'failed', p.move === 'again' ? 'no-routine' : 'none-open');
+        // MP1. Switched off in Settings (Motion created by Claude): not a matter of the pace.
+        if (typeof R.available === 'function' && !R.available(id))
+            return settle(action, 'failed', 'show-off', { routine: id });
         if (R.level(id, levels) > at) return settle(action, 'blocked', 'pace', { routine: id });
         // The same show asked for again in the same moment (one line heard twice) is the one running.
         if (live && live.id === id && live.index === 0 && Date.now() - live.stepAt < 1500)

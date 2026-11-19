@@ -25,6 +25,7 @@ import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 import { PoseClothCorrector } from './PoseClothCorrector.js';
 import './PuppetSkeleton.js'; // VP1. side effect: window.NEXUS_PUPPET_SKELETON
 import './PoseTransition.js'; // UN23. side effect: window.NEXUS_POSE_TRANSITION
+import './MotionProvenance.js'; // MP1. side effect: window.NEXUS_MOTION_PROVENANCE
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -2892,12 +2893,16 @@ export class VRPoseSystem {
      */
     static getPresetNames() {
         const spicy = typeof window !== 'undefined' && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
+        // MP1. A preset Claude made by hand is listed only while that method is switched on
+        // (Settings ▸ Private Mode ▸ Motion created by Claude). Everything else is unaffected.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        const made = (name) => !MP || MP.presetAllowed(name);
         if (spicy) {
-            return [...PRESET_ORDER];
+            return PRESET_ORDER.filter(made);
         }
         // Filter out adult poses when spicy mode is off
         return PRESET_ORDER.filter((name) => {
-            return !POSE_PRESETS[name] || !POSE_PRESETS[name].adult;
+            return (!POSE_PRESETS[name] || !POSE_PRESETS[name].adult) && made(name);
         });
     }
 
@@ -3057,7 +3062,9 @@ export class VRPoseSystem {
         // caller's duration and the single curve below are what is left without it.
         this._blendStagger = false;
         const PT = typeof window !== 'undefined' ? window.NEXUS_POSE_TRANSITION : null;
-        if (PT) {
+        // MP1. Claude's staggered blend, only while that method is on: off is the single curve.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        if (PT && (!MP || MP.allowed('transition:stagger'))) {
             try {
                 const travel =
                     this._hipsPositionFrom && this._hipsPositionTo

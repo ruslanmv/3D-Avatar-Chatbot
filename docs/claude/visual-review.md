@@ -24,6 +24,7 @@ never committed.
 | A look (outfit, skin) head to heels                         | `tools/qa/body-detail-render.mjs --views full,fullback`                |
 | Private shows (routines) step by step                       | `tools/qa/private-shows-live.mjs`                                      |
 | Forge outfits built end to end                              | Forge `tools/body_surface/build_outfits.py`, then the render tool here |
+| A gallery of every motion we support, as GIFs               | `tools/qa/motion-gallery.mjs` → `review_sheets.py gallery`             |
 
 ## A source clip beside hers (VA5)
 
@@ -56,6 +57,34 @@ off. The layer runs on a fixed simulated clock (60 steps a second from a fresh
 stepper), so "1.3 s" is the same instant on both sides and on every run. A
 wall-clock capture once took the finish frames after the finish had ebbed and
 read as "no head-back".
+
+## The gallery (MP2)
+
+```bash
+node tools/qa/motion-gallery.mjs --vrm vendor/avatars/Vita.vrm --out audits/poses/runs/gallery
+node audits/animations/run.mjs --avatars Vita --files addons/vrma-cc0/slow_body_roll.vrma,addons/vrma-cc0/club_phrase.vrma --tag cc0 --frames 12
+python3 tools/qa/review_sheets.py gallery audits/poses/runs/gallery audits/animations/runs/<…-cc0>
+# open audits/poses/runs/gallery/gallery/index.html
+```
+
+Every item of the provenance registry (`src/gltf-viewer/MotionProvenance.js`) as
+a GIF, grouped by how it was made: hand-authored presets (held, then with the
+living layer), the staggered transition, every show step by step, the living
+layer in its positions, and the CC0 dances. Add any other
+`audits/animations/run.mjs` run (the whole clip library) to the same command
+and it joins the gallery under "Clip library". Run it at the end of any motion
+work and look through it before calling the work done.
+
+## What Claude made, and switching it off (MP1)
+
+`src/gltf-viewer/MotionProvenance.js` lists every motion Claude created — five
+hand-authored presets, the staggered transition, two converted CC0 clips, seven
+shows, the living layer — each with its method, batch, files and the exact steps
+to remove it. Settings ▸ Private Mode ▸ "Motion created by Claude" has one switch
+per method; off hides it everywhere it is offered and deletes nothing.
+`tests/motion-provenance.test.js` fails when a new clip, show or preset is added
+without an entry, or an entry names a file that is gone. **Anything Claude adds
+that moves her body gets an entry in the same commit.**
 
 ## Mistakes these tools were built from
 

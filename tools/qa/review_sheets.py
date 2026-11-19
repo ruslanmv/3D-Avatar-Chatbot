@@ -4,6 +4,7 @@ VA5 / LM5. Review sheets from the motion tools' frames: what a person looks at, 
 
     python3 tools/qa/review_sheets.py pair <ref run> <target run> [--out pair.png]
     python3 tools/qa/review_sheets.py compare <living-motion-compare out dir>
+    python3 tools/qa/review_sheets.py gallery <motion-gallery out dir> [animation review runs ...]
 
 pair     Two `audits/animations/run.mjs` runs of the same clip(s): the reference (an outside clip
          on its own rig, `--avatar-file`) and hers (`--avatars`). One block per clip: the
@@ -14,6 +15,10 @@ compare  The folders `tools/qa/living-motion-compare.mjs` writes (one per scenar
          scenario (the held preset over the layered frame, per view, per instant), a playback GIF
          at 10 fps, and a plot of the pelvis, spine, chest and head angles off the held pose over
          six seconds (+ is backwards: arching, head back).
+
+gallery  GIFs and one index.html of every motion we support, grouped by how it was made: the
+         frames `tools/qa/motion-gallery.mjs` writes (presets, transition, shows, living layer)
+         plus any `audits/animations/run.mjs` runs (the CC0 dances, the clip library).
 
 Needs Pillow only (the system python3 has it). Output goes beside the input, under
 `audits/*/runs/` — gitignored; frames of Private poses are never committed.
@@ -141,6 +146,95 @@ def plot(traj, out, title):
     im.save(out)
 
 
+# --------------------------------------------------------------------------------------- gallery
+METHOD_LABEL = {
+    "hand-authored-preset": "Hand-authored poses",
+    "procedural-transition": "Procedural pose blending",
+    "converted-cc0-clip": "Converted CC0 dances",
+    "composed-show": "Composed shows",
+    "procedural-layer": "Living motion layer",
+    "library": "Clip library (not made by Claude)",
+}
+
+
+def gif(frames, out, fps, height=360):
+    ims = []
+    for p in frames:
+        im = Image.open(p).convert("RGB")
+        w, h = im.size
+        im = im.crop((int(w * 0.18), int(h * 0.06), int(w * 0.82), int(h * 0.94)))
+        ims.append(im.resize((int(im.width * height / im.height), height)))
+    if ims:
+        ims[0].save(out, save_all=True, append_images=ims[1:], duration=int(1000 / fps), loop=0)
+    return bool(ims)
+
+
+def gallery(base, runs):
+    """GIFs and an index.html: motion-gallery frames (manifest.json) plus animation-review runs."""
+    out = os.path.join(base, "gallery")
+    os.makedirs(out, exist_ok=True)
+    cards = []
+    man = os.path.join(base, "manifest.json")
+    if os.path.exists(man):
+        m = json.load(open(man))
+        for it in m["items"]:
+            frames = sorted(glob.glob(os.path.join(base, it["dir"], "*.jpg")))
+            name = it["dir"] + ".gif"
+            if gif(frames, os.path.join(out, name), it.get("fps", 8)):
+                cards.append(dict(it, gif=name, avatar=m.get("vrm", "")))
+    for run in runs:
+        rep = os.path.join(run, "report.json")
+        info = {}
+        if os.path.exists(rep):
+            r = json.load(open(rep))
+            for c in r.get("rows") or r.get("clips") or (r if isinstance(r, list) else []):
+                if isinstance(c, dict) and c.get("id"):
+                    info[re.sub(r"[^A-Za-z0-9]+", "_", str(c["id"]))] = c
+        for key, frames in shots_by_clip(run).items():
+            c = info.get(key, {})
+            cid = str(c.get("id", key))
+            cc0 = "vrma-cc0" in cid or "vrma_cc0" in key
+            name = f"{os.path.basename(run)}-{key}.gif"[-120:]
+            if gif(frames, os.path.join(out, name), 4):
+                cards.append({
+                    "id": cid.split("/")[-1],
+                    "kind": "clip",
+                    "method": "converted-cc0-clip" if cc0 else "library",
+                    "batch": "VA2" if cc0 else "",
+                    "what": c.get("category", "") + (f" · verdict {c['verdict']}" if c.get("verdict") else ""),
+                    "note": f"animation review run {os.path.basename(run)}",
+                    "gif": name,
+                })
+    order = list(METHOD_LABEL)
+    cards.sort(key=lambda c: (order.index(c["method"]) if c.get("method") in order else 99, c["id"]))
+    html = [
+        "<!doctype html><meta charset=utf-8><title>Motion gallery</title>",
+        "<style>body{background:#111;color:#ddd;font:14px system-ui;margin:16px}h2{margin:28px 0 8px}"
+        ".g{display:flex;flex-wrap:wrap;gap:12px}.c{background:#1c1c1c;border-radius:8px;padding:8px;width:260px}"
+        ".c img{width:100%;border-radius:4px;background:#000}.t{font-weight:600;margin:6px 0 2px}"
+        ".m{display:inline-block;font-size:11px;padding:1px 6px;border-radius:9px;background:#333;margin-right:4px}"
+        ".w{font-size:12px;color:#aaa}</style>",
+        "<h1>Motion gallery</h1><p class=w>Every motion we support, tagged by how it was made "
+        "(src/gltf-viewer/MotionProvenance.js). Built by tools/qa/motion-gallery.mjs and review_sheets.py gallery.</p>",
+    ]
+    for method in order + [None]:
+        group = [c for c in cards if (c.get("method") == method) or (method is None and c.get("method") not in order)]
+        if not group:
+            continue
+        html.append(f"<h2>{METHOD_LABEL.get(method, 'Other')} ({len(group)})</h2><div class=g>")
+        for c in group:
+            html.append(
+                f"<div class=c><img src='{c['gif']}' loading=lazy><div class=t>{c['id']}</div>"
+                f"<span class=m>{c.get('kind','')}</span><span class=m>{c.get('method') or ''}</span>"
+                f"<span class=m>{c.get('batch') or ''}</span><div class=w>{c.get('what','')}</div>"
+                f"<div class=w>{c.get('note','')}</div></div>"
+            )
+        html.append("</div>")
+    open(os.path.join(out, "index.html"), "w").write("\n".join(html))
+    json.dump(cards, open(os.path.join(out, "gallery.json"), "w"), indent=1)
+    print(os.path.join(out, "index.html"), len(cards), "items")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -151,8 +245,13 @@ if __name__ == "__main__":
     p.add_argument("--height", type=int, default=380)
     c = sub.add_parser("compare")
     c.add_argument("base")
+    g = sub.add_parser("gallery")
+    g.add_argument("base", help="motion-gallery.mjs output (with manifest.json)")
+    g.add_argument("runs", nargs="*", help="audits/animations/run.mjs run folders to include")
     a = ap.parse_args()
     if a.cmd == "pair":
         pair(a.ref, a.target, a.out or os.path.join(a.target, "pair.png"), a.height)
+    elif a.cmd == "gallery":
+        gallery(a.base, a.runs)
     else:
         compare(a.base)
