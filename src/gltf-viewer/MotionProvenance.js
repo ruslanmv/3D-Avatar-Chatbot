@@ -85,7 +85,11 @@
         });
 
     const ITEMS = Object.freeze([
-        preset('sittingOpen', 'UN24', 'Seated on the edge, knees apart, leaning back a little'),
+        preset(
+            'sittingOpen',
+            'OL1',
+            'Seated on the floor, legs open in a wide V, leaning back a little (was a chair seat, UN24)'
+        ),
         preset('kneelingWide', 'UN24', 'Kneeling, knees wide, sitting back towards the heels, back arched'),
         preset(
             'floorOpen',

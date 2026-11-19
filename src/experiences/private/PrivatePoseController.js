@@ -69,7 +69,7 @@
         'arch-back': 'standing, arching your back',
         lounge: 'sitting on the floor, legs stretched out, leaning back a little',
         'sit-open':
-            'sitting on the edge of the seat, leaning back a little, knees wide apart, hands resting on the inside of your knees, head tilted towards them',
+            'sitting on the floor with your legs open wide in a V, leaning back a little, hands resting on the floor beside your hips, head tilted towards them',
         'kneel-wide':
             'kneeling with your knees wide apart, sitting back towards your heels, back arched, hands on your thighs',
         'knees-up':

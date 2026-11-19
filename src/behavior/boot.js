@@ -505,6 +505,21 @@
                  */
                 handleIntent(intent) {
                     if (!intent || !intent.name) return null;
+                    // OL2. A held position owns her body (Private's "sdraiati con le ginocchia su",
+                    // the VR puppet). A clip picked for a reply's mood played over it: the mixer
+                    // wrote her standing into the normalized rig, the hold copied it onto her
+                    // skeleton, so she stood up to speak — and when the clip ended three.js put
+                    // the saved values back and she lay down again (reported 2026-11-19). The
+                    // face still follows the mood (expressions are not clips); the body stays.
+                    try {
+                        const vps = global.vrPoseSystem;
+                        if (vps && typeof vps.isHoldingBones === 'function' && vps.isHoldingBones()) {
+                            if (this.pickLog) this.pickLog.record(intent, null, blackboard.snapshot());
+                            return null;
+                        }
+                    } catch (_) {
+                        /* no pose system: nothing is held */
+                    }
                     const candidates = selector.topK(intent, registry, config.topK || 3);
                     const picked = ranker.best(candidates, intent, blackboard);
                     // Recorded before the early return, because "she did nothing" is the

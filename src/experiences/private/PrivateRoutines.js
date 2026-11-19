@@ -74,7 +74,7 @@
                 {
                     pose: 'sit-open',
                     hold: 12000,
-                    body: 'sitting back on the edge of the seat and slowly opening your legs for them, hands on the insides of your knees',
+                    body: 'sitting down on the floor and slowly opening your legs wide for them, leaning back on your hands',
                 },
                 {
                     pose: 'knees-up',
@@ -103,7 +103,7 @@
                 {
                     pose: 'sit-open',
                     hold: 9000,
-                    body: 'sitting on the edge of the seat with your legs open wide for them',
+                    body: 'sitting on the floor with your legs open wide for them',
                 },
                 {
                     pose: 'knees-up',

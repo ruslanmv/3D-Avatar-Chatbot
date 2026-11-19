@@ -3020,6 +3020,27 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
         for (let i = 0; i < 40; i += 1) await Promise.resolve();
     };
 
+    test('OL1 "apri le gambe" opens her legs where she is: on her back she stays on her back', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        const applied = poses();
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 4;
+            await turn('Sdraiati sulla schiena con le ginocchia alzate');
+            await turn('apri le gambe');
+            expect(applied).not.toContain('sit-open');
+            expect(new Set(applied)).toEqual(new Set(['knees-up']));
+            await turn('mettiti in ginocchio');
+            await turn('apri le gambe');
+            expect(applied.slice(-1)).toEqual(['kneel-wide']);
+            // Asked to sit, it is the seat (on the floor now, OL1).
+            await turn('siediti a gambe aperte');
+            expect(applied.slice(-1)).toEqual(['sit-open']);
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
     test('an invitation is an offer: only an open show, and their yes runs it', async () => {
         const real = window.NEXUS_PRIVATE_POSES;
         const applied = poses();
