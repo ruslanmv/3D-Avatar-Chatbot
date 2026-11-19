@@ -1419,7 +1419,10 @@
             s.doggySweaty && level >= 3
                 ? (level >= 4 ? ['doggy-sweaty-open', 'doggy-sweaty'] : ['doggy-sweaty']).find((n) => names.includes(n))
                 : null;
-        const want = finished || fading || sweating || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
+        // UN37. Held in missionary or cowgirl at the closest step: wet, open and flushed for it.
+        const held = level >= 4 ? (HELD_SKIN[poseGroup(s)] || []).find((n) => names.includes(n)) : null;
+        const want =
+            finished || fading || sweating || held || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
         if (!want || s.skin.current() === want) return false;
         s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
         return true;
@@ -1435,12 +1438,64 @@
         inside: ['doggy-creampie', 'lower-back-cum-creampie', 'creampie', 'doggy-double-creampie', 'cum'],
         ass: ['anal-creampie', 'doggy-anal-fisted-cum', 'lower-back-cum-gaping', 'doggy-double-creampie'],
         both: ['doggy-double-creampie', 'doggy-anal-fisted-cum', 'doggy-open-cum', 'doggy-finish'],
-        all: ['doggy-finish', 'doggy-cum-covered', 'sado-full', 'doggy-gaping-cum', 'sado-used-cum'],
+        all: [
+            'doggy-finish',
+            'doggy-cum-covered',
+            'sado-full',
+            'doggy-gaping-cum',
+            'sado-used-cum',
+            'missionary-covered',
+            'cowgirl-everything',
+        ],
+        // UN37. Facing them (Forge BD20).
+        belly: ['missionary-belly', 'cowgirl-belly'],
+        chest: ['missionary-chest', 'missionary-covered'],
     });
+
+    /**
+     * UN37. The position she holds decides how it lies on her: lying back it runs off her sides and
+     * down to her anus (missionary), upright on top it runs down her belly and her thighs
+     * (cowgirl), on all fours it runs forward and up her spine (the doggy states above). Tried
+     * before the general lists; the order of places for "I'm coming" alone follows the position.
+     */
+    const POSE_GROUP = Object.freeze({
+        'all-fours': 'doggy',
+        'knees-up': 'missionary',
+        'lie-back': 'missionary',
+        straddle: 'cowgirl',
+    });
+    const FINISH_BY_POSE = Object.freeze({
+        missionary: {
+            inside: ['missionary-creampie'],
+            belly: ['missionary-belly'],
+            chest: ['missionary-chest'],
+            all: ['missionary-covered'],
+        },
+        cowgirl: {
+            inside: ['cowgirl-creampie'],
+            belly: ['cowgirl-belly'],
+            all: ['cowgirl-everything'],
+        },
+    });
+    const CHOOSE_BY_POSE = Object.freeze({
+        doggy: ['back', 'inside', 'both', 'ass', 'all'],
+        missionary: ['belly', 'inside', 'chest', 'all'],
+        cowgirl: ['inside', 'belly', 'chest', 'all'],
+    });
+    /** UN37. While she holds one of these at the closest step, her skin shows it (Forge BD20). */
+    const HELD_SKIN = Object.freeze({ missionary: ['missionary-open'], cowgirl: ['cowgirl-riding'] });
+
+    function poseGroup(s) {
+        try {
+            return POSE_GROUP[s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null] || null;
+        } catch (_) {
+            return null;
+        }
+    }
     /** How long where they finished stays on her before the afterglow fade (UN33) takes over. */
     const FINISH_HOLD_MS = 6 * 60 * 1000;
     /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
-    const FINISH_ORDER = ['back', 'inside', 'both', 'ass', 'all'];
+    const FINISH_ORDER = ['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest'];
 
     /**
      * UN35. Again, while the first is still on her: a second load (Forge BD19) instead of showing
@@ -1454,7 +1509,8 @@
 
     function finishState(s, where) {
         const names = (s.skinStates || []).map((x) => x.name);
-        const places = where === 'choose' ? FINISH_ORDER : [where];
+        const group = poseGroup(s);
+        const places = where === 'choose' ? CHOOSE_BY_POSE[group] || FINISH_ORDER : [where];
         // Again only from a later turn and after a real pause: the same line heard twice, or two
         // quick messages about one climax, are one finish, never a second load.
         const again = Boolean(s.finish && s.finish.turnId !== s.turnId && Date.now() - s.finish.at >= AGAIN_AFTER_MS);
@@ -1464,6 +1520,8 @@
                 return { place, state: s.finish.state };
             const second = again ? (AGAIN_STATES[place] || []).find((n) => names.includes(n)) : null;
             if (second) return { place, state: second };
+            const posed = ((FINISH_BY_POSE[group] || {})[place] || []).find((n) => names.includes(n));
+            if (posed) return { place, state: posed };
             const found = (FINISH_STATES[place] || []).find((n) => names.includes(n));
             if (found) return { place, state: found };
         }
@@ -2383,6 +2441,8 @@
                     ass: 'in your ass',
                     both: 'in both your holes',
                     all: 'all over you',
+                    belly: 'on your belly',
+                    chest: 'on your breasts',
                 };
                 lines.push(
                     `- Bringing them to climax: this is the closest part of the evening, and it is about their pleasure. Follow their rhythm and what they tell you they like; say what you feel and want in short, vivid, unhurried sentences; build it slowly and let them lead the pace. When they are close, ask where they want to finish — ${places.map((p) => said[p]).join(', ')} — and when they say they are coming and where, the app shows it on your body. Respond to it in the moment, then stay close and tender afterwards. Never describe it on your body before RIGHT NOW below says it is there.`

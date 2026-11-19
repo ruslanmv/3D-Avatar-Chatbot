@@ -65,7 +65,7 @@
     const ROUTINE_IDS = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything', 'choose']);
 
     /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
-    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'choose']);
+    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'belly', 'chest', 'choose']);
     const FINISH_LEVEL = 4;
 
     /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */

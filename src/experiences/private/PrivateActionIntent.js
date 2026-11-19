@@ -453,6 +453,9 @@
         ['both', 'both holes|in both|entrambi i buchi|in entrambi|ambos agujeros|les deux trous|beide löcher|nos dois'],
         ['ass', 'ass|asshole|butt|culo|culetto|nel sedere|cul|arsch|bunda|cu'],
         ['back', 'back|lower back|schiena|sulla schiena|espalda|dos|rücken|costas'],
+        // UN37. Facing them: her belly and her breasts.
+        ['belly', 'belly|tummy|stomach|pancia|pancino|ventre|vientre|barriga|bauch'],
+        ['chest', 'chest|tits|boobs|breasts|seno|tette|pecho|tetas|seins|poitrine|nichons|brüste|titten|peitos|mamas'],
         [
             'inside',
             'inside|in you|in your pussy|in her|dentro|dentro di te|en ti|adentro|en toi|dedans|in dir|rein|dentro de (?:você|voce)',
@@ -559,6 +562,8 @@
         ['both', /両方|둘 다|两个洞/u],
         ['ass', /お尻|엉덩이|屁股/u],
         ['back', /背中|등에|背上/u],
+        ['belly', /お腹|おなか|배에|肚子/u],
+        ['chest', /胸|おっぱい|가슴|奶子/u],
         ['inside', /中に|中で|안에|里面/u],
     ];
 

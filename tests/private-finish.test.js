@@ -9,7 +9,7 @@
 const Intent = require('../src/experiences/private/PrivateActionIntent.js');
 const Policy = require('../src/experiences/private/PrivateActionPolicy.js');
 
-const PLACES = ['back', 'inside', 'both', 'ass', 'all'];
+const PLACES = ['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest'];
 const finish = (said) => {
     const r = Intent.parse(said, {});
     return r && r.name === 'body.finish' ? r.params.where : null;

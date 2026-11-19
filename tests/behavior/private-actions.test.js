@@ -2622,3 +2622,81 @@ describe('UN36. shows: she moves through a series of positions on her own', () =
         expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
     });
 });
+
+describe('UN37. missionary and cowgirl: her skin and the finish follow the position she holds', () => {
+    const LOOKS_UN32 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    test('held on her back she is open for it, "I am coming" lands on her belly; astride, inside drips', async () => {
+        const calls = [];
+        let current = null;
+        window.NEXUS_SKIN_STATES = {
+            mayHavePack: () => true,
+            create: () => ({
+                attach: async () => [
+                    { name: 'closed', body: 'relaxed' },
+                    { name: 'open', body: 'aroused and open' },
+                    { name: 'missionary-open', body: 'on your back, open and wet' },
+                    { name: 'missionary-belly', body: 'cum pooled in your navel' },
+                    { name: 'cowgirl-riding', body: 'riding them, flushed' },
+                    { name: 'cowgirl-creampie', body: 'cum running down your thighs' },
+                ],
+                apply: async (name) => {
+                    calls.push(name);
+                    current = name;
+                    return true;
+                },
+                current: () => current,
+                detach: () => true,
+            }),
+        };
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            held = 'knees-up';
+            Actions.noticePose();
+            expect(calls[calls.length - 1]).toBe('missionary-open');
+            jest.useFakeTimers();
+            try {
+                await turn("I'm cumming");
+                expect(calls[calls.length - 1]).toBe('missionary-belly');
+                expect(Actions.promptLines().join('\n')).toMatch(/cum pooled in your navel/);
+                jest.advanceTimersByTime(7 * 60 * 1000); // that finish fades
+                held = 'straddle';
+                Actions.noticePose();
+                expect(calls[calls.length - 1]).toBe('cowgirl-riding');
+                jest.advanceTimersByTime(60 * 1000);
+                await turn("I'm cumming inside you");
+                expect(calls[calls.length - 1]).toBe('cowgirl-creampie');
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+            delete window.NEXUS_SKIN_STATES;
+        }
+    });
+});

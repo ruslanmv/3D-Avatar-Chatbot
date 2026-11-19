@@ -108,7 +108,7 @@ const PrivateConversationView = (() => {
     /** UN27. The ⋯ menu's closer positions, in order (PrivatePoseController.INTIMATE's keys). */
     const POSITION_KEYS = Object.freeze(['sit-open', 'kneel-wide', 'knees-up', 'straddle', 'all-fours']);
     /** UN35. The finish chips, in the bridge's order of places (PrivateActionBridge FINISH_ORDER). */
-    const FINISH_KEYS = Object.freeze(['back', 'inside', 'both', 'ass', 'all']);
+    const FINISH_KEYS = Object.freeze(['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest']);
     /** UN36. The show chips, gentlest first (PrivateRoutines.ORDER). */
     const ROUTINE_KEYS = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything']);
 
