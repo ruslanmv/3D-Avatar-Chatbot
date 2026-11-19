@@ -172,6 +172,8 @@
         'src/experiences/private/PrivatePersonas.js',
         // BS1. Positions done on a bed are done on the room's bed. Before the bridge, which asks it.
         'src/experiences/private/PrivateBed.js',
+        // PB2. What she knows of her body: an index always, details when asked. Before the bridge.
+        'src/experiences/private/PrivateBodyKnowledge.js',
         // ID1. The standing idle's arms, solved for her body; read by NaturalPosePlugin on load.
         'src/gltf-viewer/RelaxedIdle.js',
         // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.

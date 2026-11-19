@@ -2490,8 +2490,10 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             expect(calls[calls.length - 1]).toBe('apply:missionary-fisted');
             // PB1. She is told what her body can show, from this pack only, at the closest step.
             const told = Actions.promptLines().join('\n');
-            expect(told).toMatch(/What your body can show tonight[^\n]*fisting: missionary fisted/);
-            expect(told).toMatch(/arousal: flushed, open/);
+            // PB2: an index always, and the family their words touched ("pugno") in detail.
+            expect(told).toMatch(/Your body can show tonight — [^\n]*fisting 1/);
+            expect(told).toMatch(/What they are asking about[^\n]*fisting: missionary fisted/);
+            expect(told).not.toMatch(/arousal: flushed/); // not asked this turn: counted, not listed
             expect(told).not.toMatch(/sado/);
         });
 

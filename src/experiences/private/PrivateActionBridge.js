@@ -1932,34 +1932,31 @@
 
     /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
     /**
-     * PB1. What her bare look can show, so she knows her own body (reported: in Private she did not
-     * know which states existed). Only at the closest step and only for the states this look's skin
-     * pack really holds, grouped the way a person would ask. Information, never an action: a state
-     * changes only through the pace, a finish or their fist (the bridge), never her words.
+     * PB1–PB2. What her bare look can show (PrivateBodyKnowledge): a short index of families every
+     * reply at the closest step, and a family's names only on the turn the person's words touch
+     * it, filtered by the position she holds — so she knows her body without the whole catalogue
+     * in every prompt. Her other bare looks are named when extras (piercings, tattoos…) are asked
+     * about: those come with a look, never live. Information, never an action.
      */
-    const PACK_GROUPS = Object.freeze([
-        ['arousal', /^(aroused|flushed|goosebumps|sweaty|afterglow|open|wide-open|anus-open|both-open)$/],
-        ['pumped or oiled', /^(pumped|pumped-open|oiled|oiled-aroused)$/],
-        ['fisting', /fisted|stretched/],
-        ['rough (sado)', /^sado-/],
-        ['finishes', /cum|creampie|finish/],
-        ['in a position', /^(doggy|missionary|cowgirl)-/],
-    ]);
-
-    function packLine(s) {
-        if (!s.skin || !Array.isArray(s.skinStates) || !s.skinStates.length) return null;
-        if ((levelOf(s) || 1) < 4) return null;
-        const groups = new Map();
-        for (const st of s.skinStates) {
-            const name = String((st && st.name) || '');
-            if (!name || name === 'closed') continue;
-            const g = (PACK_GROUPS.find(([, re]) => re.test(name)) || ['other'])[0];
-            if (!groups.has(g)) groups.set(g, []);
-            groups.get(g).push(name.replace(/-/g, ' '));
+    function packLines(s) {
+        if ((levelOf(s) || 1) < 4) return [];
+        const K = pick(s.win, 'NEXUS_PRIVATE_BODY_KNOWLEDGE', './PrivateBodyKnowledge.js');
+        if (!K) return [];
+        const names = s.skin && Array.isArray(s.skinStates) ? s.skinStates.map((x) => x && x.name) : [];
+        let bareLooks = [];
+        try {
+            const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+            const current = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+            bareLooks = ((s.closet && s.closet.looks) || [])
+                .filter((l) => l && Engine && Engine.isBare(l) && (!current || keyOf(l) !== keyOf(current)))
+                .slice(0, 8)
+                .map((l) => ({ name: String(l.name || '').slice(0, 60) }));
+        } catch (_) {
+            bareLooks = [];
         }
-        if (!groups.size) return null;
-        const parts = [...groups].map(([g, names]) => `${g}: ${names.join(', ')}`);
-        return `What your body can show tonight, each only when it really happens (the pace, their fist, where they finish): ${parts.join('; ')}. Speak of it when it fits; never claim one that is not shown.`;
+        const out = K.lines({ names, pose: poseGroup(s), text: s.turnText, bareLooks });
+        return [out.index, out.detail].filter(Boolean);
     }
 
     function skinLine(s) {
@@ -3166,8 +3163,7 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
-        const can = packLine(s);
-        if (can) now.push(can);
+        for (const line of packLines(s)) now.push(line);
         // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
         let hands = null;
         try {
