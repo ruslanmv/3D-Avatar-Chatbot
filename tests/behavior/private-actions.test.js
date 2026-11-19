@@ -297,10 +297,12 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the sixteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the nineteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(16);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(19);
+        expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
+        expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.undress']).toBeTruthy();
@@ -2194,4 +2196,732 @@ describe('UN18. the reported session: "Togliete vestiti" moved nothing and she s
         // Once the wardrobe confirmed the change, the same words stand.
         expect(said('Va bene, li tolgo.', 'changed')).toMatch(/li tolgo/);
     });
+});
+
+describe('UN27. the closer positions, described to her as her body is', () => {
+    const CLOSER_PRESETS = ['sittingOpen', 'kneelingWide', 'lyingKneesUp', 'straddle', 'handsKnees'];
+    function poseSystem(spicy = true) {
+        const calls = [];
+        const presets = ['kneeling', 'lyingBack'];
+        if (spicy) presets.push(...CLOSER_PRESETS);
+        let current = 'standing';
+        return {
+            calls,
+            lastSupport: null,
+            claimBones: () => calls.push('claim'),
+            releaseBones: () => calls.push('release') && true,
+            applyPreset: (name) => {
+                calls.push(`apply:${name}`);
+                if (presets.includes(name)) current = name;
+            },
+            getCurrentPreset: () => current,
+            getPresetList: () => presets.map((name) => ({ name })),
+        };
+    }
+    async function at(level, options) {
+        const pose = poseSystem(!(options && options.spicyOff));
+        window.vrPoseSystem = pose;
+        const w = await begin({ adult: true });
+        w.adult.level = level;
+        w.pose = pose;
+        return w;
+    }
+    const prompt = () => Actions.promptLines().join('\n');
+
+    test('at the top of the pace she is told which closer positions are open, by name', async () => {
+        await at(4);
+        await say('ciao');
+        await flush();
+        expect(prompt()).toMatch(/Closer positions open at this step of the evening \(4 of 4\)/);
+        for (const name of ['straddling them', 'on your back with your knees up', 'on all fours'])
+            expect(prompt()).toContain(name);
+    });
+
+    test('below it she is told they are not open yet, and nothing runs when asked', async () => {
+        const w = await at(2);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(prompt()).toMatch(
+            /Closer positions open at this step of the evening \(2 of 4\): kneeling with your knees wide\./
+        );
+        expect(prompt()).toMatch(/Not open yet: .*straddling them \(at 3 of 4\)/);
+        expect(prompt()).toMatch(/opens at 3 of 4; the evening is at 2/);
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
+    });
+
+    test('with Spicy off the presets are not listed, so they are never offered', async () => {
+        await at(4, { spicyOff: true });
+        await say('ciao');
+        await flush();
+        expect(prompt()).not.toMatch(/Closer positions/);
+    });
+
+    test('asked for, the position runs and the reply is told what her body is doing', async () => {
+        const w = await at(4);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        expect(prompt()).toMatch(/Your body is in that position now \(straddle\): kneeling up astride their lap/);
+    });
+
+    test('UN28 at Sensual she can straddle them; at Romantic only kneel wide', async () => {
+        const w = await at(3);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        const v = await at(2);
+        await say('Mettiti in ginocchio a gambe aperte');
+        await flush();
+        expect(v.pose.calls).toContain('apply:kneelingWide');
+    });
+
+    test('UN28 easing below the step of the position she holds stands her up', async () => {
+        const w = await at(3);
+        await say('Mettiti a cavalcioni su di me');
+        await flush();
+        expect(w.pose.calls).toContain('apply:straddle');
+        w.adult.level = 3;
+        expect(Actions.fitPoseToPace()).toBe(false); // still open: nothing happens
+        w.adult.level = 2;
+        expect(Actions.fitPoseToPace()).toBe(true);
+        await flush();
+        expect(w.pose.calls).toContain('release');
+        expect(Actions.fitPoseToPace()).toBe(false); // she stands: nothing more to do
+    });
+
+    test('her own tag or invitation never moves her into one', async () => {
+        const w = await at(4);
+        await say('ciao');
+        await flush();
+        const out = Actions.request('avatar.pose', { pose: 'straddle' }, { source: 'model' });
+        await Promise.resolve(out);
+        await flush();
+        expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
+    });
+});
+
+describe('UN32. her skin follows the pace live when the look has a skin pack', () => {
+    const LOOKS_UN32 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    function stubSkin() {
+        const calls = [];
+        let current = null;
+        window.NEXUS_SKIN_STATES = {
+            mayHavePack: () => true,
+            create: () => ({
+                attach: async (root, look) => {
+                    calls.push(`attach:${look.name}`);
+                    return [
+                        { name: 'closed', body: 'relaxed' },
+                        { name: 'flushed', body: 'a flush on your chest' },
+                        { name: 'open', body: 'you are aroused and open' },
+                    ];
+                },
+                apply: async (name) => {
+                    calls.push(`apply:${name}`);
+                    current = name;
+                    return true;
+                },
+                current: () => current,
+                detach: () => calls.push('detach') && true,
+            }),
+        };
+        return calls;
+    }
+    afterEach(() => {
+        delete window.NEXUS_SKIN_STATES;
+    });
+
+    test('a look that lands at Intimate shows open, a step down shows flushed, and she is told', async () => {
+        const calls = stubSkin();
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const w = await begin({ adult: true, looks: LOOKS_UN32 });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = 4;
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('spogliati');
+        await flush();
+        expect(calls).toContain('attach:Black Lingerie Set');
+        expect(calls).toContain('apply:open');
+        expect(Actions.promptLines().join('\n')).toMatch(/Your body right now: you are aroused and open/);
+        w.adult.level = 3;
+        Actions.fitPoseToPace();
+        await flush();
+        expect(calls[calls.length - 1]).toBe('apply:flushed');
+    });
+
+    test('UN33. coming down from Intimate she glows, cools to flushed, then settles; Intimate again ends it', async () => {
+        const calls = stubSkin();
+        const create = window.NEXUS_SKIN_STATES.create;
+        window.NEXUS_SKIN_STATES.create = () => {
+            const skin = create();
+            const attach = skin.attach;
+            skin.attach = async (root, look) => [
+                ...(await attach(root, look)),
+                { name: 'afterglow', body: 'you are glowing after coming' },
+            ];
+            return skin;
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const w = await begin({ adult: true, looks: LOOKS_UN32 });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = 4;
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('spogliati');
+        await flush();
+        expect(calls).toContain('apply:open');
+        jest.useFakeTimers();
+        try {
+            w.adult.level = 2;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            expect(Actions.promptLines().join('\n')).toMatch(/glowing after coming/);
+            jest.advanceTimersByTime(4 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:flushed');
+            jest.advanceTimersByTime(3 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:closed');
+            // Back up to Intimate and down again, then up before it cools: the fade is over.
+            w.adult.level = 4;
+            Actions.fitPoseToPace();
+            w.adult.level = 3;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            w.adult.level = 4;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:open');
+            jest.advanceTimersByTime(10 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:open');
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    describe('UN34. finishing: their words, where they came shown on her', () => {
+        const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+
+        test('a climax word and a place, in several languages; "come here" is not one', () => {
+            const where = (t) => {
+                const parsed = Intent.parse(t, {});
+                return parsed && parsed.name === 'body.finish' ? parsed.params.where : null;
+            };
+            expect(where("I'm cumming on your back")).toBe('back');
+            expect(where('sto venendo dentro di te')).toBe('inside');
+            expect(where('vengo nel culo')).toBe('ass');
+            expect(where('I am coming all over you')).toBe('all');
+            expect(where('me corro dentro')).toBe('inside');
+            expect(where('cum in both holes')).toBe('both');
+            expect(where("I'm cumming")).toBe('choose');
+            expect(where('come here')).toBeNull();
+            expect(where("don't cum yet")).toBeNull();
+        });
+
+        test('only the person, and only at the closest step', () => {
+            const facts = { active: true, care: false, asked: {}, autonomy: 'autonomous' };
+            const finish = (source) => ({ name: 'body.finish', params: { where: 'back' }, source });
+            expect(Policy.decide(finish('user'), { ...facts, level: 3 }).why).toBe('pace');
+            expect(Policy.decide(finish('model'), { ...facts, level: 4 }).allow).toBe(false);
+            expect(Policy.decide(finish('user'), { ...facts, level: 4 }).allow).toBe(true);
+            expect(Policy.validate('body.finish', { where: 'face' }).ok).toBe(false);
+        });
+
+        test('on her lower back is shown live, she is told, it holds, then the afterglow fades it', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'afterglow', body: 'you are glowing after coming' },
+                    { name: 'lower-back-cum', body: 'a pool of cum in the small of your back' },
+                    { name: 'doggy-creampie', body: 'your pussy is full of cum' },
+                ];
+                return skin;
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            expect(Actions.promptLines().join('\n')).toMatch(
+                /ask where they want to finish — on your lower back, inside you/
+            );
+            jest.useFakeTimers();
+            try {
+                // `say` waits on a real timer, frozen here: the turn is handed over and its promises run.
+                Surface.renderUser("I'm cumming on your back");
+                for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                const lines = Actions.promptLines().join('\n');
+                expect(lines).toMatch(/They just came/);
+                expect(lines).toMatch(/Your body right now: a pool of cum in the small of your back/);
+                // SW4. In proportion, never a performance.
+                expect(lines).toMatch(/in proportion/);
+                expect(lines).toMatch(/never a scripted crescendo/);
+                // SW5. The next few replies are aftercare; then ordinary again.
+                const turnOn = async (t) => {
+                    Surface.renderUser(t);
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    return Actions.promptLines().join('\n');
+                };
+                const after = await turnOn('that was amazing');
+                expect(after).toMatch(/Afterwards: stay close and unhurried/);
+                expect(after).toMatch(/Offer nothing new/);
+                expect(after).not.toMatch(/They just came/);
+                await turnOn('mmm');
+                await turnOn('stay with me');
+                expect(await turnOn('tell me about your day')).not.toMatch(/Afterwards: stay close/);
+                // Lowering the pace does not take it off her while it holds.
+                w.adult.level = 2;
+                Actions.fitPoseToPace();
+                expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                jest.advanceTimersByTime(6 * 60 * 1000);
+                expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            } finally {
+                jest.useRealTimers();
+            }
+        });
+
+        test('UN35. on all fours a while she sweats; finishing on her back again is a second load', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'doggy-sweaty-open', body: 'sweat runs down your spine' },
+                    { name: 'lower-back-cum', body: 'a pool of cum in the small of your back' },
+                    { name: 'lower-back-cum-second', body: 'a second load across your back' },
+                ];
+                return skin;
+            };
+            // Her position, as the pose controller reports it: read by the bridge, set here.
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                expect(Actions.snapshot().finishPlaces).toEqual(['back']);
+                jest.useFakeTimers();
+                try {
+                    held = 'all-fours';
+                    Actions.noticePose();
+                    jest.advanceTimersByTime(60 * 1000);
+                    expect(calls).not.toContain('apply:doggy-sweaty-open'); // not yet
+                    jest.advanceTimersByTime(2 * 60 * 1000);
+                    expect(calls[calls.length - 1]).toBe('apply:doggy-sweaty-open');
+                    expect(Actions.promptLines().join('\n')).toMatch(/sweat runs down your spine/);
+                    Surface.renderUser("I'm cumming on your back");
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                    jest.advanceTimersByTime(60 * 1000); // a while later, not the same moment twice
+                    Surface.renderUser("I'm cumming on your back again");
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum-second');
+                    // Standing up stops the sweat clock; the finish still holds until it fades.
+                    held = null;
+                    Actions.noticePose();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum-second');
+                    // Codex (#193). Dressed again (her position let go): the sweat does not come back.
+                    held = 'all-fours';
+                    Actions.noticePose();
+                    jest.advanceTimersByTime(3 * 60 * 1000);
+                    held = null;
+                    await Actions.request('wardrobe.redress', {}, { source: 'control' });
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    jest.advanceTimersByTime(7 * 60 * 1000); // the finish fades
+                    expect(calls.slice(-3)).not.toContain('apply:doggy-sweaty-open');
+                } finally {
+                    jest.useRealTimers();
+                }
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
+    });
+});
+
+describe('UN36. shows: she moves through a series of positions on her own', () => {
+    test('step by step on a clock, slower on request, finished, again, and a position stops it', async () => {
+        const applied = [];
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key, options) => {
+                    applied.push([key, options && options.duration]);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const prompt = () => Actions.promptLines().join('\n');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 4;
+            expect(prompt()).toMatch(/Shows you know, open now: .*Open for you/);
+            expect(Actions.snapshot().routines).toContainEqual({ id: 'open-for-you', level: 4 });
+            jest.useFakeTimers();
+            try {
+                await turn('Open up for me');
+                expect(applied).toEqual([['kneel-wide', 1.6]]);
+                expect(prompt()).toMatch(/You are giving them a show — opening yourself for them, step 1 of 3/);
+                jest.advanceTimersByTime(8000);
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                await turn('slower');
+                jest.advanceTimersByTime(12000); // at speed 0.7 this step lasts 12 / 0.7 s
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                jest.advanceTimersByTime(6000);
+                expect(applied[applied.length - 1][0]).toBe('knees-up');
+                expect(applied[applied.length - 1][1]).toBeGreaterThan(1.6); // slower blends too
+                jest.advanceTimersByTime(30000);
+                expect(prompt()).toMatch(/You have finished the show .*if they want more/);
+                await turn('ancora');
+                expect(applied[applied.length - 1][0]).toBe('kneel-wide');
+                // A position they ask for ends the show where it is.
+                await turn('Straddle me');
+                const count = applied.length;
+                jest.advanceTimersByTime(60000);
+                expect(applied.length).toBe(count);
+                expect(prompt()).not.toMatch(/You are giving them a show/);
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('a show not open at this step is refused, and she is told why', async () => {
+        const w = await begin({ adult: true });
+        w.adult.level = 2;
+        await say('Show me everything');
+        await flush();
+        expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
+    });
+});
+
+describe('UN37. missionary and cowgirl: her skin and the finish follow the position she holds', () => {
+    const LOOKS_UN32 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    test('held on her back she is open for it, "I am coming" lands on her belly; astride, inside drips', async () => {
+        const calls = [];
+        let current = null;
+        window.NEXUS_SKIN_STATES = {
+            mayHavePack: () => true,
+            create: () => ({
+                attach: async () => [
+                    { name: 'closed', body: 'relaxed' },
+                    { name: 'open', body: 'aroused and open' },
+                    { name: 'missionary-open', body: 'on your back, open and wet' },
+                    { name: 'missionary-belly', body: 'cum pooled in your navel' },
+                    { name: 'cowgirl-riding', body: 'riding them, flushed' },
+                    { name: 'cowgirl-creampie', body: 'cum running down your thighs' },
+                ],
+                apply: async (name) => {
+                    calls.push(name);
+                    current = name;
+                    return true;
+                },
+                current: () => current,
+                detach: () => true,
+            }),
+        };
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            held = 'knees-up';
+            Actions.noticePose();
+            expect(calls[calls.length - 1]).toBe('missionary-open');
+            jest.useFakeTimers();
+            try {
+                await turn("I'm cumming");
+                expect(calls[calls.length - 1]).toBe('missionary-belly');
+                expect(Actions.promptLines().join('\n')).toMatch(/cum pooled in your navel/);
+                jest.advanceTimersByTime(7 * 60 * 1000); // that finish fades
+                held = 'straddle';
+                Actions.noticePose();
+                expect(calls[calls.length - 1]).toBe('cowgirl-riding');
+                jest.advanceTimersByTime(60 * 1000);
+                await turn("I'm cumming inside you");
+                expect(calls[calls.length - 1]).toBe('cowgirl-creampie');
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+            delete window.NEXUS_SKIN_STATES;
+        }
+    });
+});
+
+describe('VA3. danced shows: the striptease takes layers off at its cues, the table dance ends on their lap', () => {
+    const LOOKS_VA3 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    function stubs() {
+        const played = [];
+        let stops = 0;
+        const applied = [];
+        let held = null;
+        window.NEXUS_CLIP_LOADER = {
+            playClip: (path) => {
+                played.push([path, Date.now()]);
+                return Promise.resolve(true);
+            },
+            stopClip: () => {
+                stops += 1;
+            },
+        };
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key) => {
+                    applied.push([key, Date.now()]);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        return { played, applied, stops: () => stops };
+    }
+    const turn = async (text) => {
+        Surface.renderUser(text);
+        for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    };
+    let real;
+    beforeEach(() => {
+        real = { poses: window.NEXUS_PRIVATE_POSES, clips: window.NEXUS_CLIP_LOADER };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+    });
+    afterEach(() => {
+        window.NEXUS_PRIVATE_POSES = real.poses;
+        window.NEXUS_CLIP_LOADER = real.clips;
+        jest.useRealTimers();
+    });
+
+    test('striptease: two clips danced in turn, a layer off at 8 s, 24 s and 32 s, then she kneels', async () => {
+        const st = stubs();
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 4;
+        jest.useFakeTimers();
+        const t0 = Date.now();
+        await turn('Do a striptease for me');
+        for (let i = 0; i < 5; i += 1) {
+            jest.advanceTimersByTime(8000);
+            for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        }
+        const cues = Actions.log()
+            .filter((a) => a.name === 'wardrobe.undress')
+            .map((a) => a.at - t0);
+        expect(cues).toEqual([8000, 24000, 32000]);
+        // Each step starts its clip; a cue step starts it again once the layer has come off (a new
+        // look is a new body, and the dance bound to the old one stops with it).
+        const starts = [...new Map(st.played.map(([p, at]) => [at - t0, p.split('/').pop()])).entries()];
+        expect(starts).toEqual([
+            [0, 'slow_body_roll.vrma'],
+            [8000, 'slow_body_roll.vrma'],
+            [16000, 'club_phrase.vrma'],
+            [24000, 'club_phrase.vrma'],
+            [32000, 'slow_body_roll.vrma'],
+        ]);
+        // Restarted after a layer comes off while still on that step; never once she has moved on.
+        expect(st.played.length).toBeGreaterThan(starts.length);
+        expect(st.played.every(([, at]) => at - t0 < 40000)).toBe(true);
+        expect(st.applied.map(([k, at]) => [k, at - t0])).toEqual([['kneel-wide', 40000]]);
+        // Codex (#194). Two looks, three cues: what could not come off is not announced.
+        const done = Actions.log().filter((a) => a.name === 'wardrobe.undress');
+        if (done.some((a) => a.status !== 'completed')) {
+            const lines = Actions.promptLines().join('\n');
+            expect(lines).not.toMatch(/naked for them/);
+            expect(lines).toMatch(/in what you still have on/);
+        }
+        expect(st.stops()).toBeGreaterThanOrEqual(1); // the dance stops as she kneels
+    });
+
+    test('Codex (#194): a clip that finishes loading after the show stopped never plays over what came next', async () => {
+        const st = stubs();
+        let release;
+        window.NEXUS_CLIP_LOADER.playClip = (path) => {
+            st.played.push([path, Date.now()]);
+            return new Promise((r) => (release = r));
+        };
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 4;
+        await turn('Give me a table dance');
+        await turn('Straddle me');
+        const before = st.stops();
+        release(true); // the load finishes after the show ended
+        for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        // The late load is stopped at once (beyond whatever the position's own stop did), never left dancing.
+        expect(st.stops()).toBeGreaterThan(before);
+        expect(st.applied[st.applied.length - 1][0]).toBe('straddle');
+    });
+
+    test('striptease is not open below the closest step; the table dance is, and ends astride them', async () => {
+        const st = stubs();
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 3;
+        await turn('Do a striptease for me');
+        expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
+        expect(st.played).toHaveLength(0);
+        jest.useFakeTimers();
+        await turn('Give me a table dance');
+        for (let i = 0; i < 5; i += 1) {
+            jest.advanceTimersByTime(8000);
+            for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        }
+        expect(st.played.map(([p]) => p.split('/').pop())).toEqual(['club_phrase.vrma', 'slow_body_roll.vrma']);
+        expect(st.applied[st.applied.length - 1][0]).toBe('straddle');
+        expect(Actions.log().filter((a) => a.name === 'wardrobe.undress')).toHaveLength(0);
+    });
+});
+
+describe('LM1. her body alive in a held position: the bridge drives the layer and tells the model', () => {
+    let real;
+    let layer;
+    beforeEach(() => {
+        real = { poses: window.NEXUS_PRIVATE_POSES, vps: window.vrPoseSystem };
+        layer = null;
+        window.vrPoseSystem = { setLayer: (l) => (layer = l), getLayer: () => layer };
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => 'sit-open',
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+    });
+    afterEach(() => {
+        window.NEXUS_PRIVATE_POSES = real.poses;
+        window.vrPoseSystem = real.vps;
+    });
+
+    test('LM7: still until they ask; "move for me" moves her (hands from the third step), "stay still" stills her', async () => {
+        const w = await begin({ adult: true });
+        expect(layer).toBeTruthy();
+        const run = (seconds) => {
+            for (let i = 0; i < seconds * 60; i += 1) layer.apply(1 / 60, { bone: () => null, node: () => null }, null);
+        };
+        const said = () => Actions.promptLines().join('\n');
+        w.adult.level = 4;
+        run(30);
+        // Not asked: still, and the model is told so — no hands, no motion.
+        expect(said()).not.toMatch(/Your hands right now/);
+        expect(said()).toMatch(/You hold that position still; you move in it only if they ask/);
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
+        let seen = false;
+        for (let k = 0; k < 12 && !seen; k += 1) {
+            run(5);
+            seen = /Your hands right now: your (left|right) hand/.test(said());
+        }
+        expect(seen).toBe(true);
+        await say('slower');
+        expect(said()).toMatch(/moving in that position for them, slowly/);
+        // "stop" alone is consent's (it eases or ends the evening, before any action is read);
+        // holding still and going on is "stay still".
+        await say('stay still');
+        expect(said()).toMatch(/You have stopped moving and hold still/);
+        // Codex (#196). Easing off stills her too, whatever the position.
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
+        await say('wait');
+        expect(said()).not.toMatch(/You are moving in that position for them/);
+        run(10);
+        expect(said()).not.toMatch(/Your hands right now/);
+        Actions.end();
+        expect(layer).toBeNull();
+    });
+});
+
+describe('Codex (#196): a negated movement request is a no', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    const posed = { poseHeld: true };
+    const moving = { poseHeld: true, moving: true };
+    const move = (t, c) => {
+        const p = Intent.parse(t, c);
+        return p && p.name === 'avatar.move' ? p.params.move : null;
+    };
+    test.each([
+        ["don't rock your hips", posed, null],
+        ["don't grind on me", posed, null],
+        ["don't rock your hips", moving, 'still'],
+        ["I don't want you to keep moving", moving, 'still'],
+        ['non muoverti', moving, 'still'],
+        ["don't stop", moving, 'start'],
+        ['non fermarti', moving, 'start'],
+        ['no pares', moving, 'start'],
+        ['move for me', posed, 'start'],
+    ])('%s (%o) → %s', (text, c, want) => expect(move(text, c)).toBe(want));
 });

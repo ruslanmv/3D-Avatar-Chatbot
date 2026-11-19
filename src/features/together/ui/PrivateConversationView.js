@@ -105,6 +105,21 @@ const PrivateConversationView = (() => {
         return (typeof window !== 'undefined' && window.NEXUS_PRIVATE_LOCALE) || LocaleApi;
     }
 
+    /** UN27. The ⋯ menu's closer positions, in order (PrivatePoseController.INTIMATE's keys). */
+    const POSITION_KEYS = Object.freeze(['sit-open', 'kneel-wide', 'knees-up', 'straddle', 'all-fours']);
+    /** UN35. The finish chips, in the bridge's order of places (PrivateActionBridge FINISH_ORDER). */
+    const FINISH_KEYS = Object.freeze(['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest']);
+    /** UN36. The show chips, gentlest first (PrivateRoutines.ORDER). */
+    const ROUTINE_KEYS = Object.freeze([
+        'tease',
+        'ride',
+        'table-dance',
+        'open-for-you',
+        'from-behind',
+        'everything',
+        'striptease',
+    ]);
+
     /**
      * One string, and the key back if there is no locale module at all.
      *
@@ -210,6 +225,16 @@ const PrivateConversationView = (() => {
 }
 #${ROW_ID} .nexus-private-more-close:focus-visible{outline:2px solid #f2aec6;outline-offset:2px;opacity:1}
 #${ROW_ID} .nexus-private-action-slot{display:block;min-width:0;padding:0;border:0}
+/* UN27. The closer positions, first in the menu, only at the top of the pace. */
+#${ROW_ID} .nexus-private-positions{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+#${ROW_ID} .nexus-private-positions-title{flex:0 0 100%;font-size:.66rem;letter-spacing:.06em;color:#f3bbcd;opacity:.75}
+#${ROW_ID} .nexus-private-position{
+  min-height:32px;padding:.3rem .7rem;border-radius:999px;border:1px solid rgba(240,143,182,.45);
+  background:rgba(240,143,182,.1);color:#eef3f8;font:600 .74rem/1.2 system-ui,sans-serif;cursor:pointer
+}
+#${ROW_ID} .nexus-private-position:hover{background:rgba(240,143,182,.22)}
+#${ROW_ID} .nexus-private-position:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
+@media (pointer:coarse){#${ROW_ID} .nexus-private-position{min-height:44px}}
 #${ROW_ID} #nexus-playground-bar{
   position:static;display:flex;width:100%;max-width:100%;margin:0;padding:0;
   background:none;box-shadow:none;border:0;border-radius:0;
@@ -328,6 +353,8 @@ const PrivateConversationView = (() => {
             this.doc = doc || (typeof document !== 'undefined' ? document : null);
             this.win = win || (typeof window !== 'undefined' ? window : null);
             this.handlers = { onCloser, onEase, onEnd, onUserMessage };
+            this._paceLevel = 1; // UN27. read by _paintPositions
+            this._onPosition = null;
             this.row = null;
             this.card = null;
             /**
@@ -901,6 +928,11 @@ const PrivateConversationView = (() => {
             if (this.title) this.title.textContent = pace;
             this._paintLadder(state);
             this._paintControls(state);
+            // UN27. The positions in the ⋯ menu follow the level, so a step down hides them at once.
+            this._paceLevel = Number(state.level) || 1;
+            this._paintPositions();
+            this._paintFinish();
+            this._paintRoutines();
             const gentle = state.atFloor === true;
             if (this.shell) this.shell.classList.toggle('is-gentle', gentle);
             if (this.row) this.row.classList.toggle('is-gentle', gentle);
@@ -1116,7 +1148,215 @@ const PrivateConversationView = (() => {
             this._paintMusic(slot, (now && now.music) || null, handlers);
             this._paintOutfit(slot, now || {}, handlers);
             slot.hidden = !slot.children.length;
+            // UN35. The places the bridge says this look can show (none below the closest step).
+            this._finishPlaces = Array.isArray(now && now.finishPlaces) ? now.finishPlaces.slice() : [];
+            // UN36. The shows the bridge says are open at this step.
+            this._routines = Array.isArray(now && now.routines) ? now.routines.slice() : [];
+            // UN27. The session hands in how a position chip speaks; a reset (`showActions({})`)
+            // hands in nothing and the chips go with it.
+            this._onPosition = typeof handlers.onPosition === 'function' ? handlers.onPosition : null;
+            this._paintPositions();
+            this._paintFinish();
+            this._paintRoutines();
             return true;
+        }
+
+        /**
+         * UN35. Finishing, as chips under the positions in the ⋯ menu: "On her back", "Inside"…
+         *
+         * The same contract as a position chip: tapping sends their line ("I'm cumming on your
+         * back", in the card's language) as their own turn, so PrivateActionIntent reads it, the
+         * policy checks the step and that it is theirs, and the bridge shows it on her from the
+         * look's skin pack — and she answers it in the moment. Only the places the bridge reports
+         * (`finishPlaces`: the closest step, and a state the pack holds) get a chip: a chip that
+         * could only be refused reads as a broken button.
+         */
+        /**
+         * UN36. The shows she knows, as chips above the positions: "Tease", "Open for you"… Same
+         * contract as a position chip — the line is sent as their own turn, so the parser, the
+         * policy and the bridge's pace check all apply, and she answers it. Only the shows the
+         * bridge reports open at this step get a chip.
+         */
+        _paintRoutines() {
+            const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
+            if (!slot) return null;
+            let group = slot.querySelector('.nexus-private-routines');
+            // Every show with the step it opens at, cut here to the pace this card shows.
+            const ids = (this._routines || [])
+                .filter((r) => r && ROUTINE_KEYS.includes(r.id) && r.level <= (this._paceLevel || 1))
+                .map((r) => r.id);
+            let spicy = false;
+            try {
+                spicy = Boolean(this.win && this.win.NEXUS_SPICY && this.win.NEXUS_SPICY.isEnabled());
+            } catch (_) {
+                spicy = false;
+            }
+            if (!this._onPosition || !spicy || !ids.length) {
+                if (group) group.remove();
+                return null;
+            }
+            if (group && group.dataset.keys !== ids.join(',')) {
+                group.remove();
+                group = null;
+            }
+            if (!group) {
+                group = this.doc.createElement('div');
+                group.className = 'nexus-private-positions nexus-private-routines';
+                group.setAttribute('role', 'group');
+                const title = this.doc.createElement('span');
+                title.className = 'nexus-private-positions-title';
+                group.appendChild(title);
+                group.dataset.keys = ids.join(',');
+                for (const key of ids) {
+                    const button = this.doc.createElement('button');
+                    button.type = 'button';
+                    button.className = 'nexus-private-position';
+                    button.dataset.privateRoutine = key;
+                    group.appendChild(button);
+                }
+                slot.insertBefore(group, slot.firstChild);
+            }
+            group.setAttribute('aria-label', t('routines.title'));
+            group.querySelector('.nexus-private-positions-title').textContent = t('routines.title');
+            for (const button of group.querySelectorAll('.nexus-private-position')) {
+                const key = button.dataset.privateRoutine;
+                button.textContent = t(`routine.${key}.label`);
+                button.title = t(`routine.${key}.say`);
+                button.onclick = () => {
+                    if (this._onPosition) this._onPosition(t(`routine.${key}.say`), key);
+                };
+            }
+            return group;
+        }
+
+        _paintFinish() {
+            const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
+            if (!slot) return null;
+            let group = slot.querySelector('.nexus-private-finish');
+            const places = (this._finishPlaces || []).filter((p) => FINISH_KEYS.includes(p));
+            let spicy = false;
+            try {
+                spicy = Boolean(this.win && this.win.NEXUS_SPICY && this.win.NEXUS_SPICY.isEnabled());
+            } catch (_) {
+                spicy = false;
+            }
+            if (!this._onPosition || !spicy || !places.length || (this._paceLevel || 1) < 4) {
+                if (group) group.remove();
+                return null;
+            }
+            if (group && group.dataset.keys !== places.join(',')) {
+                group.remove();
+                group = null;
+            }
+            if (!group) {
+                group = this.doc.createElement('div');
+                group.className = 'nexus-private-positions nexus-private-finish';
+                group.setAttribute('role', 'group');
+                const title = this.doc.createElement('span');
+                title.className = 'nexus-private-positions-title';
+                group.appendChild(title);
+                group.dataset.keys = places.join(',');
+                for (const key of places) {
+                    const button = this.doc.createElement('button');
+                    button.type = 'button';
+                    button.className = 'nexus-private-position';
+                    button.dataset.privateFinish = key;
+                    group.appendChild(button);
+                }
+                const positions = slot.querySelector('.nexus-private-positions:not(.nexus-private-finish)');
+                slot.insertBefore(group, positions ? positions.nextSibling : slot.firstChild);
+            }
+            group.setAttribute('aria-label', t('finish.title'));
+            group.querySelector('.nexus-private-positions-title').textContent = t('finish.title');
+            for (const button of group.querySelectorAll('.nexus-private-position')) {
+                const key = button.dataset.privateFinish;
+                button.textContent = t(`finish.${key}.label`);
+                button.title = t(`finish.${key}.say`);
+                button.onclick = () => {
+                    if (this._onPosition) this._onPosition(t(`finish.${key}.say`), key);
+                };
+            }
+            return group;
+        }
+
+        /** UN27. How a position chip speaks, from the session's start (null takes the chips away). */
+        setPositionHandler(fn) {
+            this._onPosition = typeof fn === 'function' ? fn : null;
+            this._paintFinish();
+            this._paintRoutines();
+            return this._paintPositions();
+        }
+
+        /**
+         * UN27. The closer positions, as chips at the top of the ⋯ menu.
+         *
+         * A chip is a line, not a shortcut: tapping "Straddle" sends "Straddle me" (in the card's
+         * language) as the person's own turn, through the same path a typed line takes. So the
+         * words are parsed by PrivateActionIntent, decided by PrivateActionPolicy and run by
+         * PrivateActionBridge exactly as if typed — the pace gate, the Spicy list and the check on
+         * her rendered body all apply — and she answers it in character, which a silent control
+         * action could not give. Drawn only at the top of the pace and while Spicy mode lists the
+         * presets, because a chip offered where it can only be refused reads as a broken button.
+         * The level and Spicy are read, never written.
+         */
+        _paintPositions() {
+            const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
+            if (!slot) return null;
+            let group = slot.querySelector('.nexus-private-positions');
+            const win = this.win || (typeof window !== 'undefined' ? window : null);
+            const policy = win && win.NEXUS_PRIVATE_ACTION_POLICY;
+            const opensAt = (policy && Number(policy.UNDRESS_LEVEL)) || 4;
+            let spicy = false;
+            try {
+                spicy = Boolean(win && win.NEXUS_SPICY && win.NEXUS_SPICY.isEnabled());
+            } catch (_) {
+                spicy = false;
+            }
+            // UN28. Each position at its own step (PrivateActionPolicy.POSE_LEVEL); the group is drawn
+            // when at least one is open, and rebuilt when the set changes with the pace.
+            const level = this._paceLevel || 1;
+            const needOf = (key) =>
+                policy && typeof policy.poseLevel === 'function' ? policy.poseLevel(key) || opensAt : opensAt;
+            const keys = POSITION_KEYS.filter((key) => level >= needOf(key));
+            const open = Boolean(this._onPosition) && spicy && keys.length > 0;
+            if (!open) {
+                if (group) group.remove();
+                return null;
+            }
+            if (group && group.dataset.keys !== keys.join(',')) {
+                group.remove();
+                group = null;
+            }
+            if (!group) {
+                group = this.doc.createElement('div');
+                group.className = 'nexus-private-positions';
+                group.setAttribute('role', 'group');
+                const title = this.doc.createElement('span');
+                title.className = 'nexus-private-positions-title';
+                group.appendChild(title);
+                group.dataset.keys = keys.join(',');
+                for (const key of keys) {
+                    const button = this.doc.createElement('button');
+                    button.type = 'button';
+                    button.className = 'nexus-private-position';
+                    button.dataset.privatePosition = key;
+                    group.appendChild(button);
+                }
+                slot.insertBefore(group, slot.firstChild);
+            }
+            // Words are set on every paint: the person can change the language mid-session.
+            group.setAttribute('aria-label', t('positions.title'));
+            group.querySelector('.nexus-private-positions-title').textContent = t('positions.title');
+            for (const button of group.querySelectorAll('.nexus-private-position')) {
+                const key = button.dataset.privatePosition;
+                button.textContent = t(`position.${key}.label`);
+                button.title = t(`position.${key}.say`);
+                // Reassigned, not added: one listener however many times it is redrawn.
+                button.onclick = () => {
+                    if (this._onPosition) this._onPosition(t(`position.${key}.say`), key);
+                };
+            }
+            return group;
         }
 
         _paintMusic(slot, music, handlers) {

@@ -5659,9 +5659,9 @@ function resetCompanionView() {
     const groundedByXR = !!v?.renderer?.xr?.isPresenting;
     if (root && !groundedByXR) {
         root.position.set(0, 0, 0);
-        // VRM forward is −Z and ViewerEngine rests VRM roots at yaw π, so this
-        // is "facing the camera", not "unrotated".
-        root.rotation.set(0, root.userData?.isVRM ? Math.PI : 0, 0);
+        // VRM 0.x faces −Z and rests at yaw π ("facing the camera"); VA1: VRM 1.0 faces +Z and
+        // rests at 0. Same line count as before: the parity harness pins lines below this one.
+        root.rotation.set(0, ((root.userData || {}).vrmForwardNegZ ?? root.userData?.isVRM) ? Math.PI : 0, 0);
     }
     // Delegate the camera half rather than repeating it: resetCamera() already
     // frames the avatar at 1.35 when one is loaded and falls back to the

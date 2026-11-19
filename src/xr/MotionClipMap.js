@@ -110,13 +110,14 @@ const MotionClipMap = (() => {
         // idempotence guard in play(). Variety happens when she ENTERS idle,
         // not every time _scheduleIdle fires.
         idle: {
+            // MO15. neutral.bvh, neutral_idle.bvh and neutral4.bvh left the pool: they stand her
+            // leaning (QUARANTINE, develop/NEEDS_FIX.md). The five here measured balanced on three
+            // avatar heights.
             candidates: [
-                VEND + 'idle/neutral_idle.bvh',
                 VEND + 'idle/neutral_idle2.bvh',
-                VEND + 'idle/neutral.bvh',
                 VEND + 'idle/neutral2.bvh',
-                VEND + 'idle/neutral3.bvh',
-                VEND + 'idle/neutral4.bvh',
+                // MO17. neutral3.bvh left too: one arm 27-28° out, the other 10-12° against her
+                // side, uneven for 56-69% of the loop on all three avatars (QUARANTINE).
                 VEND + 'vrma/waiting-standard.vrma',
                 // MO9. ChatVRM's breathing idle (MIT, audited in PR #153): a calm, centred loop
                 // that reads as "listening" rather than a mocap performer shifting her weight.
@@ -126,7 +127,14 @@ const MotionClipMap = (() => {
             // MO9. Preferred, not exclusive: three tickets in the shuffle bag, so it is 3 of every
             // 10 idles — the single most likely one — and the BVH idles keep their variety. The
             // weight lives here, not as repeated candidates, so the pool stays a list of files.
-            weights: { [VEND + 'vrma/idle_loop.vrma']: 3 },
+            // MO15. Two tickets now that the pool is five clips: 2 of every 6 idles, still "about a
+            // third" as MO9 meant, where three tickets in the smaller pool made it 3 of 7 and had it
+            // repeat back to back twice as often.
+            // MO17. One ticket now that the pool is four clips: 1 of every 4 idles. Two tickets would
+            // make it 2 of 5 and repeat it back to back in about 14% of draws (measured over 4000
+            // seeded draws), past what MO9 wanted; equal shares keep it the calm default it was
+            // meant to be, beside three others. Kept as an explicit weight so the knob stays here.
+            weights: { [VEND + 'vrma/idle_loop.vrma']: 1 },
             loop: true,
             sticky: true,
             random: true,
@@ -135,8 +143,10 @@ const MotionClipMap = (() => {
         },
         // MO4. The VRMA first is quarantined (it floats); a standing BVH idle keeps her on her feet.
         idle_happy: { candidates: [ACT + 'happyIdle.vrma', VEND + 'idle/neutral2.bvh'], loop: true, sticky: true },
-        idle_sad: { candidates: [ACT + 'sadIdle.vrma', VEND + 'idle/neutral4.bvh'], loop: true, sticky: true },
-        talking: { candidates: [ACT + 'talking.vrma', VEND + 'idle/neutral_idle.bvh'], loop: true, sticky: true },
+        // MO15. The fallbacks after a quarantined VRMA were two of the leaning idles; now balanced ones.
+        idle_sad: { candidates: [ACT + 'sadIdle.vrma', VEND + 'idle/neutral2.bvh'], loop: true, sticky: true },
+        // MO17. The fallback is a balanced idle with even arms (neutral3 holds one arm out).
+        talking: { candidates: [ACT + 'talking.vrma', VEND + 'idle/neutral2.bvh'], loop: true, sticky: true },
 
         wave: { candidates: [ACT + 'waving.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
         greeting: { candidates: [ACT + 'standingGreeting.vrma', VEND + 'action/action_greeting.bvh'], loop: false },
@@ -619,6 +629,17 @@ const MotionClipMap = (() => {
         'addons/vrma-actions/victory.vrma': 'float',
         'addons/vrma-actions/waving.vrma': 'float',
         'addons/vrma-actions/bowing.vrma': 'contorted',
+        // MO15. Three standing idles hold her hips well off the point between her feet (balance 0.17-
+        // 0.28 of her leg length on AvatarSample_A, Vita and VRM_Viewer_Sample, against 0.05-0.12 for
+        // the other five): she stands leaning, weight thrown to one side. After "stand up" or "turn
+        // around" the idle shuffle drew one of them about a third of the time, which is the "not
+        // balanced" stand-up seen on a phone. Measured by audits/gestures/run.mjs --only positions.
+        'vendor/animations/idle/neutral.bvh': 'lean',
+        'vendor/animations/idle/neutral_idle.bvh': 'lean',
+        'vendor/animations/idle/neutral4.bvh': 'lean',
+        // MO17. Stands with one arm out and the other pressed to her side — the "left arm too
+        // close to the body" seen on a phone after "stand up". tools/qa/idle-arm-check.mjs.
+        'vendor/animations/idle/neutral3.bvh': 'uneven',
     };
 
     let _quarantineOn = true;

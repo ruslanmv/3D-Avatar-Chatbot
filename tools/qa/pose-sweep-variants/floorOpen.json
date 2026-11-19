@@ -1,0 +1,39 @@
+[
+  {
+    "note": "as shipped in UN24 (out since UN27): feet ground her, seat and palms ~30 cm up",
+    "bones": {
+      "hips": [30, 0, 0],
+      "spine": [-8, 0, 0],
+      "chest": [-4, 0, 0],
+      "neck": [-8, 0, 0],
+      "head": [-6, 0, -5],
+      "leftUpperLeg": [95, 0, -40],
+      "rightUpperLeg": [95, 0, 40],
+      "leftLowerLeg": [-115, 0, 0],
+      "rightLowerLeg": [-115, 0, 0],
+      "leftFoot": [5, 0, 0],
+      "rightFoot": [5, 0, 0],
+      "leftUpperArm": [-45, 0, 65],
+      "rightUpperArm": [-45, 0, -65],
+      "leftLowerArm": [0, -5, 0],
+      "rightLowerArm": [0, 5, 0]
+    },
+    "support": { "ground": ["hips", "leftFoot", "rightFoot"], "reach": ["leftHand", "rightHand"] }
+  },
+  {
+    "note": "shin brought back down at the thigh's angle (knee -70): the next thing to try with arm swings on Y",
+    "bones": {
+      "hips": [30, 0, 0],
+      "spine": [-8, 0, 0],
+      "chest": [-4, 0, 0],
+      "neck": [-8, 0, 0],
+      "leftUpperLeg": [95, 0, -40],
+      "rightUpperLeg": [95, 0, 40],
+      "leftLowerLeg": [-70, 0, 0],
+      "rightLowerLeg": [-70, 0, 0],
+      "leftUpperArm": [-45, 0, 65],
+      "rightUpperArm": [-45, 0, -65]
+    },
+    "support": { "ground": ["hips", "leftFoot", "rightFoot"], "reach": ["leftHand", "rightHand"] }
+  }
+]

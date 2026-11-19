@@ -163,6 +163,10 @@
         'src/experiences/private/InSceneWardrobe.js',
         // UN5. Her held positions (Pose Studio's presets), read by the bridge.
         'src/experiences/private/PrivatePoseController.js',
+        // UN36. The shows she knows: series of her positions, run by the bridge.
+        'src/experiences/private/PrivateRoutines.js',
+        // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.
+        'src/experiences/private/PrivateLivingMotion.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.
         'src/features/together/StoryWeaver.js',
         'src/features/together/StoryDirector.js',
@@ -259,6 +263,9 @@
         'src/features/clips/ClipRecorder.js',
         'src/features/clips/ShareCard.js',
         'src/features/clips/ui/ClipButton.js',
+        // SG1. Co-speech gestures: read by ProceduralAnimator each frame and started beside lip
+        // sync in main.js, both by lookup, so its place in this list depends on nothing.
+        'src/features/gestures/SpeechGestures.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
         // IC1–IC3. Destinations and the experience runtime. After the activities

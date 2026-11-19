@@ -570,9 +570,10 @@ describe('VRContactAnchors', () => {
 describe('VRIntimacySystem — integration', () => {
     const systemSrc = fs.readFileSync(path.join(__dirname, '../src/gltf-viewer/VRIntimacySystem.js'), 'utf-8');
 
-    test('VRM facing fix: adds Math.PI for VRM avatars', () => {
-        expect(systemSrc).toContain('isVRM ? worldYaw + Math.PI : worldYaw');
-        expect(systemSrc).toContain('this.avatarRoot.userData?.isVRM');
+    test('VRM facing fix: adds Math.PI for avatars that face -Z (VRM 0.x), not for VRM 1.0 (VA1)', () => {
+        expect(systemSrc).toContain('negZ ? worldYaw + Math.PI : worldYaw');
+        expect(systemSrc).toContain('vrmForwardNegZ');
+        expect(systemSrc).toContain('ud.isVRM'); // the old reading when the flag is not there
     });
 
     test('expression override is applied in _updateBehaviorBridge', () => {

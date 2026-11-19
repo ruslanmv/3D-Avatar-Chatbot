@@ -61,6 +61,22 @@
     ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
+    /** UN36. The routines (PrivateRoutines.ORDER) and `choose`: the boldest the evening allows. */
+    const ROUTINE_IDS = Object.freeze([
+        'tease',
+        'ride',
+        'table-dance',
+        'open-for-you',
+        'from-behind',
+        'everything',
+        'striptease',
+        'choose',
+    ]);
+
+    /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
+    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'belly', 'chest', 'choose']);
+    const FINISH_LEVEL = 4;
+
     /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
     const POSE_KEYS = [
         'kneel',
@@ -72,6 +88,11 @@
         'bend-forward',
         'arch-back',
         'lounge',
+        // UN27. The closer positions (PrivatePoseController.INTIMATE).
+        'sit-open',
+        'kneel-wide',
+        'knees-up',
+        'straddle',
         'stand',
         'back',
         'turn',
@@ -83,7 +104,33 @@
     ];
     /** NL1. A Pose Studio preset's own name: `sittingCrossed`. Never free text. */
     const PRESET_NAME = /^[A-Za-z][A-Za-z0-9]{1,39}$/;
-    const ADULT_POSES = ['all-fours'];
+    /**
+     * UN28. The pace each closer position opens at — the evening's steps are 1 Warm, 2 Romantic,
+     * 3 Sensual, 4 Intimate. One position at a time, from teasing to explicit, so every step of the
+     * pace the person chooses changes what she can do, and the next one is something to want:
+     *
+     *   2  kneel-wide          kneeling, hands on her thighs: a tease that works fully dressed
+     *   3  sit-open, straddle  legs open, astride their lap: closer, still dressed
+     *   4  knees-up, all-fours the explicit two, with undressing (UN1), at the top
+     *
+     * Before UN28 every one opened at 4, so a Sensual evening (its ceiling is 3) had none, and a
+     * Mature one had nothing new until the top. Read only to decide; never moved here (the level is
+     * ConsentFlow's, moved by the person). Moving a position is one line in this table.
+     */
+    const POSE_LEVEL = Object.freeze({
+        'kneel-wide': 2,
+        'sit-open': 3,
+        straddle: 3,
+        'knees-up': 4,
+        'all-fours': 4,
+    });
+    /** The adult positions: every key with an opening level. */
+    const ADULT_POSES = Object.keys(POSE_LEVEL);
+
+    /** UN28. The pace a position opens at, or 0 for one that is not gated (kneel, lie-back…). */
+    function poseLevel(key) {
+        return Object.prototype.hasOwnProperty.call(POSE_LEVEL, key) ? POSE_LEVEL[key] : 0;
+    }
 
     const ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
     const GARMENT = /^[a-z0-9][a-z0-9 ,'+&-]{1,119}$/;
@@ -165,6 +212,28 @@
             required: ['pose'],
         },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
+        // UN36. A show she moves through (PrivateRoutines): start one by name or the boldest open
+        // (`choose`), stop it, change its speed, or play the last one again.
+        'avatar.routine': {
+            family: 'avatar',
+            params: {
+                routine: oneOf(ROUTINE_IDS),
+                move: oneOf(['start', 'stop', 'slower', 'faster', 'again']),
+            },
+            required: ['move'],
+        },
+        // LM7. Moving in the position she holds: start (at a tempo), slower, faster, still. The
+        // person's words only — the model never sets her moving.
+        'avatar.move': {
+            family: 'avatar',
+            params: {
+                move: oneOf(['start', 'slower', 'faster', 'still']),
+                tempo: oneOf(['slow', 'normal', 'fast']),
+            },
+            required: ['move'],
+        },
+        // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
+        'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
         'world.travel': {
@@ -250,13 +319,20 @@
         // UN1. Before who asked: the person's own words below the top of the pace are refused too.
         if (action.name === 'wardrobe.undress' && !(Number(f.level) >= UNDRESS_LEVEL))
             return { allow: false, why: 'pace' };
-        // UN5. The adult positions open exactly when undressing does.
-        if (
-            action.name === 'avatar.pose' &&
-            ADULT_POSES.includes(action.params && action.params.pose) &&
-            !(Number(f.level) >= UNDRESS_LEVEL)
-        )
-            return { allow: false, why: 'pace' };
+        // UN5/UN28. An adult position opens at its own step of the pace (POSE_LEVEL), never below.
+        if (action.name === 'avatar.pose') {
+            const need = poseLevel(action.params && action.params.pose);
+            if (need && !(Number(f.level) >= need)) return { allow: false, why: 'pace' };
+        }
+
+        // UN34. Finishing is theirs, at the top of the pace, and never her tag's.
+        if (action.name === 'body.finish') {
+            if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
+            if (action.source === 'model') return { allow: false, why: 'user-only' };
+        }
+
+        // LM7. Her body moves because they asked, never because the model wrote it.
+        if (action.name === 'avatar.move' && action.source === 'model') return { allow: false, why: 'user-only' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
@@ -302,8 +378,13 @@
         GENERATES,
         QUIETING,
         UNDRESS_LEVEL,
+        FINISH_PLACES,
+        FINISH_LEVEL,
+        ROUTINE_IDS,
         POSE_KEYS,
         ADULT_POSES,
+        POSE_LEVEL,
+        poseLevel,
         validate,
         decide,
         autonomy,

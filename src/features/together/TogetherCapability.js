@@ -366,7 +366,17 @@
      * transcript: a companion who keeps referring to the fact that you asked her to slow down has
      * made the asking into the topic.
      */
-    function slowedLines() {
+    function slowedLines(session) {
+        // SW3. They sounded unsure, this turn: the one reply that checks in, gently, once. Read and
+        // cleared here, so the turn after it is ordinary slowed-down conversation again.
+        const hesitated = Boolean(session && session._hesitatedAt);
+        if (session) session._hesitatedAt = null;
+        if (hesitated)
+            return [
+                'THEY SOUNDED UNSURE. You have eased right off, to the gentlest pace.',
+                'In this reply only: check in once, warmly and briefly — whether they would like to stay like this, go on, or stop. Any answer is fine, and you say so. No pressure, no persuading, no listing what they would miss.',
+                'Do not propose, hint at, or ask about anything more intense. Only a clear, explicit request from them changes the pace.',
+            ];
         return [
             'THE USER ASKED TO SLOW DOWN.',
             'Stay at the gentlest pace. Do not propose, hint at, or ask about anything more intense — not once.',
@@ -700,7 +710,7 @@
                 ? profile.lengthLines(turn, session && session.style, level)
                 : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
-            ...(session && session._styleLocked ? slowedLines() : []),
+            ...(session && session._styleLocked ? slowedLines(session) : []),
             // PX6. What she can do in this room, and what is happening right now because they
             // asked. Facts from the bridge: she never says music is playing unless the player did.
             ...privateActionLines(),
@@ -1153,8 +1163,12 @@
             '\\bmi (?:sto )?(?:mett(?:o|endo)|inginocchi(?:o|ando)|sdrai(?:o|ando)|stend(?:o|endo)|pieg(?:o|ando)|gir(?:o|ando)|sied(?:o|endo)|accovacci(?:o|ando))\\b',
             '\\bmi sono (?:mess[ao]|inginocchiat[ao]|sdraiat[ao]|stes[ao]|piegat[ao]|girat[ao]|sedut[ao])\\b',
             '\\b(?:eccomi|sono) (?:a quattro zampe|carponi|in ginocchio|sdraiat[ao]|a pancia)',
+            // UN27. The closer positions: "mi metto a cavalcioni" is caught above; these are not.
+            '\\b(?:eccomi|sono|resto) (?:a cavalcioni|a gambe aperte|seduta a gambe aperte|per terra a gambe aperte)',
             // en
             "\\bi(?:'m| am) (?:now |already )?(?:getting (?:on|down)|kneeling|lying|bending|turning|on (?:all fours|my knees))",
+            "\\bi(?:'m| am) (?:now |already )?(?:straddling|astride|sitting with my legs (?:open|apart)|spreading my legs)",
+            "\\b(?:i'?ll|i will|let me) (?:straddle|spread my legs|open my legs)\\b",
             "\\b(?:i'?ll|i will|let me) (?:get on|kneel|lie|bend|turn)\\b",
             // es / fr / de / pt
             '\\bme (?:pongo|arrodillo|tumbo|acuesto|doblo|giro)\\b',
@@ -1660,6 +1674,10 @@
                             ? actions.onChange((now) => this._showActions(now))
                             : null;
                 }
+                // UN27. The ⋯ menu's position chips speak from the start, not from the first
+                // action the bridge reports: they are drawn the moment the pace allows them.
+                if (this.view && typeof this.view.setPositionHandler === 'function')
+                    this.view.setPositionHandler((line) => this._chooseReply(line));
             } catch (error) {
                 console.warn('[Private] actions are unavailable for this session', error);
             }
@@ -1899,6 +1917,8 @@
                 return turn;
             }
             if (turn.intent === 'pace-down') {
+                // SW3. Hesitation eases off the same way; the next reply alone checks in, once.
+                if (turn.hesitant) this._hesitatedAt = this._turnCount || Date.now();
                 // Typed, so it is a *word* rather than a step on a dial — and a word asking to slow
                 // down is answered the way `cozy` is: all the way down, in one tick, from anywhere.
                 // The stepping control is for somebody steering; this is for somebody who wants it
@@ -1940,6 +1960,8 @@
                     onUndo: () => actions.request('wardrobe.undo', {}, { source: 'control' }),
                     onApprove: () => actions.approveOffer('control'),
                     onDecline: () => actions.declineOffer(),
+                    // UN27. A position chip in the ⋯ menu is their line, sent as their turn.
+                    onPosition: (line) => this._chooseReply(line),
                 });
             } catch (error) {
                 console.warn('[Private] the action strip could not be drawn', error);
@@ -3004,6 +3026,13 @@
                 ? pace.describe({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
             this.view.setPace(shown);
+            // UN28. A position above the step the evening is now at is let go of (she stands).
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.fitPoseToPace === 'function') actions.fitPoseToPace();
+            } catch (error) {
+                console.warn('[Private] the held position was not checked against the pace', error);
+            }
         }
 
         /**

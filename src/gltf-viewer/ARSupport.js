@@ -677,7 +677,10 @@ export class ARSupport {
             // everything (as this started out doing) turns a VRM's BACK to the
             // user — a perfect 180° error on the app's own default avatar.
             // root.userData.isVRM is set by AvatarManager for exactly this.
-            const localFwd = root.userData?.isVRM ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 0, 1);
+            // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+            const ud = root.userData || {};
+            const negZ = 'vrmForwardNegZ' in ud ? ud.vrmForwardNegZ : !!ud.isVRM;
+            const localFwd = negZ ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 0, 1);
             const fwd = localFwd.applyQuaternion(root.quaternion);
             fwd.y = 0;
             if (fwd.lengthSq() < 1e-6) return 0;

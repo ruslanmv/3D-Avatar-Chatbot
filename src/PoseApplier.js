@@ -99,13 +99,14 @@
             return;
         }
 
-        if (!this.axisState[boneKey]) {
-            this.axisState[boneKey] = { x: 0, y: 0, z: 0 };
-        }
-
-        this.axisState[boneKey][axis] = radians;
-
-        const state = this.axisState[boneKey];
+        // UI2. Start from where the bone IS, not from a remembered slider value. The cache went
+        // stale whenever anything else moved the bone — the navigator, a drag, Puppet IK, Mirror,
+        // Undo, the T-pose correction — and the first touch of a slider then snapped the limb:
+        // an upper arm the correction had already lowered 55° read "0°" and jumped back to the
+        // T-pose. Read the bone, change one axis, write it back; the other two keep their angle.
+        const state = this.readAxes(boneKey) || { x: 0, y: 0, z: 0 };
+        state[axis] = radians;
+        this.axisState[boneKey] = state;
 
         // Start from neutral pose quaternion for this bone
         if (this.neutralPose && this.neutralPose[boneKey] && this.neutralPose[boneKey].q) {
@@ -120,6 +121,30 @@
         const offset = new THREE.Quaternion().setFromEuler(euler);
         bone.quaternion.multiply(offset);
         bone.updateMatrixWorld(true);
+    };
+
+    /**
+     * UI2. The bone's rotation from neutral as Pitch/Yaw/Roll (XYZ Euler, radians), read from
+     * the bone itself, so the sliders show the pose on screen whoever put it there.
+     *
+     * @param {string} boneKey
+     * @returns {{x:number,y:number,z:number}|null}
+     */
+    PoseApplier.prototype.readAxes = function (boneKey) {
+        const bone = this.rigMap.getBone(boneKey);
+        if (!bone) {
+            return null;
+        }
+        const delta = bone.quaternion.clone();
+        if (this.neutralPose && this.neutralPose[boneKey] && this.neutralPose[boneKey].q) {
+            const nq = this.neutralPose[boneKey].q;
+            delta.premultiply(new THREE.Quaternion(nq[0], nq[1], nq[2], nq[3]).invert());
+        }
+        const e = new THREE.Euler().setFromQuaternion(delta, 'XYZ');
+        const tidy = (v) => (Math.abs(v) < 1e-6 ? 0 : v);
+        const axes = { x: tidy(e.x), y: tidy(e.y), z: tidy(e.z) };
+        this.axisState[boneKey] = axes;
+        return { x: axes.x, y: axes.y, z: axes.z };
     };
 
     PoseApplier.prototype.setBoneEuler = function (boneKey, x, y, z) {
