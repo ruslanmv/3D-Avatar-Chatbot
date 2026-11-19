@@ -87,6 +87,16 @@ Seen on the frames, not caught by any number: every position is on the rug in
 front of the bed, never on it (step 2 says "sitting back on the bed"), and
 `knees-up` on this avatar reads face-down rather than on her back.
 
+Fixed after it (BS1): bed positions are now on the room's bed — the bed is
+measured from its model by `node tools/vr/measure-bed.mjs` (written into
+worlds.json as `bed`, never typed; `tests/private-bed.test.js` measures again),
+and `src/experiences/private/PrivateBed.js` moves the room under her (VRWorlds
+`nestle`, faded, snapshot and restore) for a bed position, back for anything
+else. The "face-down" knees-up was a maxi dress tented over raised knees, seen
+from behind the footboard: the audit now films a lying body from above (lying
+is her head near her lowest bone, not a flat box) and dresses the positions in
+the fitted stand-in.
+
 ## The gallery (MP2)
 
 ```bash

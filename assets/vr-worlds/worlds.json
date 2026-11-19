@@ -1007,6 +1007,13 @@
         "color": "#7a6250",
         "radius": 4.5
       },
+      "bed": {
+        "at": [0, -2.5],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "preview": "previews/hotel-suite.webp",
       "category": "Romantic"
     },
@@ -1439,6 +1446,13 @@
       "note": "A motel room under neon, light enough for phones. Private only.",
       "place": true,
       "rating": "private",
+      "bed": {
+        "at": [0, -2.4],
+        "top": 0.422,
+        "length": 1.9,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "tiers": ["mobile"],
       "triangles": 1500,
       "activities": [],
@@ -1592,6 +1606,13 @@
       "ground": {
         "color": "#4a2a24",
         "radius": 4.5
+      },
+      "bed": {
+        "at": [0, -2.5],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
       },
       "preview": "previews/candlelit-suite.webp",
       "category": "Private"
@@ -1848,6 +1869,13 @@
         "color": "#2a0a14",
         "radius": 4.5
       },
+      "bed": {
+        "at": [0, -2.6],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "preview": "previews/window-room.webp",
       "category": "Private"
     },
@@ -1962,6 +1990,13 @@
       "ground": {
         "color": "#c9b8a6",
         "radius": 4.5
+      },
+      "bed": {
+        "at": [0, -2.6],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
       },
       "preview": "previews/bright-hotel.webp",
       "category": "Private"

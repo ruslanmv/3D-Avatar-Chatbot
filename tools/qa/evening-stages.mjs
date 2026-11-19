@@ -63,7 +63,9 @@ function shippedLooks(vrm) {
         const file = path.join(dir, look, versions[versions.length - 1], 'look.vrm');
         if (fs.existsSync(file)) found.push(path.relative(ROOT, file));
     }
-    return found;
+    // Dresses first, fitted trousers last: the stand-in on her for the positions is then a fitted
+    // one (a maxi dress tents over raised knees and hid a whole knees-up frame).
+    return found.sort((a, b) => Number(/dress/.test(b)) - Number(/dress/.test(a)));
 }
 
 const givenLooks = arg('--looks', '').split(',').filter(Boolean);
@@ -187,6 +189,8 @@ async function main() {
                             vps.releaseBones({ blendSeconds: 0 });
                             window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode(false);
                             const played = L ? await L.playClip(step.clip, { loop: true, fadeIn: 0 }) : false;
+                            // BS1. Off the bed for a danced step, as in Private.
+                            await window.NEXUS_PRIVATE_BED?.sync(window, null, { instant: true });
                             await wait(settle);
                             return { ok: Boolean(played), why: played ? null : 'clip did not play' };
                         }
@@ -202,8 +206,10 @@ async function main() {
                         vps.applyPreset(preset, 0.4);
                         const t0 = performance.now();
                         while (vps.isSettling() && performance.now() - t0 < 8000) await wait(100);
+                        // BS1. A bed position on the room's bed, as Private does (PrivateBed).
+                        const bed = await window.NEXUS_PRIVATE_BED?.sync(window, step.pose, { instant: true });
                         await wait(settle);
-                        return { ok: true };
+                        return { ok: true, onBed: Boolean(bed && bed.onBed) };
                     } catch (e) {
                         return { ok: false, why: String(e && e.message ? e.message : e).slice(0, 160) };
                     }
@@ -211,6 +217,7 @@ async function main() {
                 { step, preset: plan.presets[step.pose] || null, settle: SETTLE_MS }
             );
             did.ok = res.ok;
+            if (res.onBed) did.onBed = true;
             if (res.why) did.why = res.why;
             const after = await skeleton(page);
             did.moved = moved(before, after);
@@ -355,7 +362,10 @@ async function shoot(page, index, label, text, did, room) {
         // film her from the side of her body's long axis, from above, looking down at her. Either
         // way, of two candidate spots the one with nothing of the room between the lens and her
         // (a bed edge hid a whole position) is used.
-        const lying = size.y < 0.75;
+        // Lying is her head near the lowest point of her body (raised knees made the box tall and
+        // a knees-up frame was filmed from behind the footboard), or a flat box.
+        const headY = boneB('head') ? boneB('head').getWorldPosition(new T.Vector3()).y : box.max.y;
+        const lying = headY - (box.min.y + 0.22) < 0.5 || size.y < 0.75;
         const spots = [];
         if (lying) {
             const long = size.x > size.z ? 0 : Math.PI / 2;
@@ -433,6 +443,7 @@ function sheet(r) {
         if (d) {
             flags.push(d.ok ? `<b class=ok>ran</b>` : `<b class=bad>failed: ${esc(d.why)}</b>`);
             flags.push(d.moved < 5 ? `<b class=bad>moved ${d.moved}°</b>` : `moved ${d.moved}°`);
+            if (d.onBed) flags.push('on the bed');
             if (d.look)
                 flags.push(
                     d.look.swapped

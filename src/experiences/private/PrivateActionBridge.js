@@ -201,6 +201,8 @@
         clearFinish(s);
         stopDoggy(s);
         stopRoutine(s);
+        // BS1. The room back where it was if she was on its bed.
+        syncBed(s, null);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -1860,6 +1862,19 @@
      */
     const DOGGY_SWEAT_MS = 150 * 1000;
 
+    /**
+     * BS1. The room follows the position she holds: on the bed for a bed position in a room with
+     * a measured bed (PrivateBed), back where it was for anything else. Once per change of position.
+     */
+    function syncBed(s, held) {
+        const Bed = pick(s.win, 'NEXUS_PRIVATE_BED', './PrivateBed.js');
+        if (!Bed) return;
+        const want = Bed.isBedPose(held) ? held : null;
+        if (s.bedPose === want) return;
+        s.bedPose = want;
+        Bed.sync(s.win, want).catch(() => {});
+    }
+
     function watchDoggy(s) {
         if (!s || !s.poses || typeof s.poses.held !== 'function') return;
         let held = null;
@@ -1868,6 +1883,7 @@
         } catch (_) {
             held = null;
         }
+        syncBed(s, held);
         if (held === 'all-fours') {
             if (s.doggyTimer || s.doggySweaty) return;
             s.doggyTimer = (s.win.setTimeout || setTimeout)(() => {
