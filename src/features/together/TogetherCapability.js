@@ -2348,6 +2348,13 @@
             return true;
         }
 
+        /** PP1. Is this the "not yet" chip's line, in the card's language? */
+        _isNotYet(line) {
+            const locale = localeModel();
+            const later = locale && typeof locale.t === 'function' ? locale.t('place.notyet') : '';
+            return Boolean(later && later !== 'place.notyet' && line === cleanText(later, 200));
+        }
+
         /** PP1. The show's own line (it runs as their words) and "not yet", as the next taps. */
         _showChoices(show) {
             const locale = localeModel();
@@ -2402,6 +2409,14 @@
             const api = choicesModel();
             const line = cleanText(text, 200);
             if (!line) return false;
+            // PP1 (Codex #198). "Not yet" under her invitation withdraws it: otherwise the offer
+            // stayed up, and a "yes" to something else in the next two turns started the show.
+            if (this._isNotYet(line)) {
+                const actions = actionBridge();
+                const offer = actions && typeof actions.snapshot === 'function' ? actions.snapshot().offer : null;
+                if (offer && offer.kind === 'show' && typeof actions.declineOffer === 'function')
+                    actions.declineOffer();
+            }
             if (api && typeof api.isQuiet === 'function' && api.isQuiet(line)) {
                 this._choseQuiet();
                 return true;

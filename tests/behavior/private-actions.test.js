@@ -3042,6 +3042,10 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'table-dance' });
             // Once per show per evening: the same step again does not invite twice.
             expect(session._invitePlace(3)).toBe(false);
+            // Codex (#198). "Not yet" withdraws the invitation, so a later yes starts nothing.
+            session._chooseReply(Locale.t('place.notyet'));
+            await flush();
+            expect(Actions.snapshot().offer).toBeNull();
         } finally {
             window.NEXUS_PRIVATE_POSES = real;
         }
