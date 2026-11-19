@@ -33,6 +33,22 @@
             shows: Object.freeze(['table-dance', 'tease']),
             brief: 'This room is a dim velvet lounge: a long sofa, a low glass table beside you, the two of you alone. It is where you give them a table dance, close enough to touch, and finish on their lap when they say yes; you lead the evening here, with confidence, and still follow their pace.',
         }),
+        /*
+         * WR1. The Window Room. She is an adult escort working her own window, by her own choice:
+         * her room, her menu, her rules — the fantasy's confidence comes from that, and it keeps
+         * the scene clear of any coercion, debt or trafficking story, which never appears. The
+         * price and the clock are part of the story only: nothing is ever charged.
+         *
+         * `deals` are the door's menu, as chips answered locally (TogetherCapability `_takeDeal`):
+         * the person's choice is remembered for the evening and decides which show she invites
+         * them to once the pace opens it. Whatever they did not choose, she does not lead them to.
+         */
+        'window-room': Object.freeze({
+            id: 'window-room',
+            shows: Object.freeze(['window-evening', 'striptease', 'tease']),
+            deals: Object.freeze(['window-evening', 'striptease', 'tease']),
+            brief: 'You are a self-employed escort, over 25, working your own window in the red-light district by your own choice: a small room behind red-lit glass onto the canal, a bed, a sink and mirror, a curtain you draw. It is your room and you run it your way — your menu, your price, your rules — and you are confident, warm and playful, the woman who makes him feel wanted and takes the lead from the first look to the goodbye. You agree what he wants at the door, then you lead him through it one step at a time, always checking he is enjoying it, never rushing him, and you end with tenderness: lying close, talking softly, helping him dress, asking him to come back. Price and time are only part of the game, never real money, and nothing outside what he chose happens unless he asks.',
+        }),
     });
 
     /** The script for a world id; a light stand-in answers for the place it stands in for. */
@@ -46,10 +62,13 @@
      * switched on (MP1), and not already offered this evening. `routines` is PrivateRoutines;
      * `poseLevel` is the policy's step for a position. Null when there is nothing (new) to offer.
      */
-    function showToOffer(script, { level, routines, poseLevel, offered } = {}) {
+    function showToOffer(script, { level, routines, poseLevel, offered, wish } = {}) {
         if (!script || !routines || !routines.ROUTINES) return null;
         const done = offered instanceof Set ? offered : new Set(offered || []);
-        for (const id of script.shows) {
+        // WR1. The deal made at the door: their choice first, and only the gentler ones after it.
+        const from = wish ? script.shows.indexOf(wish) : -1;
+        const shows = from >= 0 ? script.shows.slice(from) : script.shows;
+        for (const id of shows) {
             if (!routines.ROUTINES[id]) continue;
             if (typeof routines.available === 'function' && !routines.available(id)) continue;
             const needs = typeof routines.level === 'function' ? routines.level(id, poseLevel) : 1;
@@ -60,10 +79,18 @@
         return null;
     }
 
-    /** The lines for her prompt while this room is on screen. Empty for any other room. */
-    function promptLines(script) {
+    /**
+     * The lines for her prompt while this room is on screen. Empty for any other room. `deal` is
+     * the name of what they chose at the door (WR1), so she keeps to it and can refer to it.
+     */
+    function promptLines(script, deal) {
         if (!script) return [];
-        return [`THIS ROOM: ${script.brief}`];
+        const lines = [`THIS ROOM: ${script.brief}`];
+        if (deal)
+            lines.push(
+                `TONIGHT'S DEAL: they chose ${String(deal).slice(0, 80)} at the door. Lead them to it as the pace allows; anything else only if they ask.`
+            );
+        return lines;
     }
 
     const api = { PLACES, forWorld, showToOffer, promptLines };

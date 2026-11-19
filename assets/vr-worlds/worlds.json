@@ -1762,6 +1762,96 @@
       "category": "Private"
     },
     {
+      "id": "window-room",
+      "title": "Window room",
+      "note": "A small room behind a red-lit window onto the canal: a bed, a sink and mirror, a curtain she draws. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 1500,
+      "activities": [],
+      "sky": {
+        "top": "#140408",
+        "horizon": "#4a0a18",
+        "bottom": "#0a0206"
+      },
+      "fog": {
+        "color": "#22060e",
+        "near": 6,
+        "far": 22
+      },
+      "light": {
+        "sky": "#b03048",
+        "ground": "#1a0610",
+        "hemi": 0.45,
+        "key": "#ff4a5a",
+        "keyIntensity": 0.95,
+        "fill": "#a060ff",
+        "fillIntensity": 0.4,
+        "rim": "#ff8090",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.4,
+          "at": [0, 0, -0.4],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.5, 0, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.5, 0.5, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bathroomSink.glb",
+          "height": 0.9,
+          "at": [2.4, 0, -1.0],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bathroomMirror.glb",
+          "height": 0.6,
+          "at": [2.45, 0.95, -1.0],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/wallWindow.glb",
+          "width": 2.0,
+          "at": [-2.6, 0, -1.2],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/speakerSmall.glb",
+          "height": 0.4,
+          "at": [-1.6, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeChair.glb",
+          "width": 0.9,
+          "at": [-2.2, 0, 0.3],
+          "turn": 60
+        }
+      ],
+      "ground": {
+        "color": "#2a0a14",
+        "radius": 4.5
+      },
+      "preview": "previews/window-room.webp",
+      "category": "Private"
+    },
+    {
       "id": "irish-pub",
       "title": "Irish pub",
       "note": "A warm bar with booths and pendant lamps.",

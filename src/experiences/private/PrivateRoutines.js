@@ -175,6 +175,63 @@
                 },
             ]),
         }),
+        /*
+         * WR1. The Window Room's whole evening (PrivatePlaceScripts 'window-room'): the window, the
+         * curtain, the undressing, three positions she leads them through, and the moment she asks
+         * where they want to finish. Each step is re-checked against the pace when it comes, like
+         * every show; the finish itself stays the person's words or tap (body.finish), so the last
+         * step only asks. Aftercare follows the finish as it always does.
+         */
+        'window-evening': Object.freeze({
+            label: 'The full evening',
+            name: 'the whole evening, from the window to the end',
+            level: 4,
+            steps: Object.freeze([
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    body: 'at your window in red lingerie, rolling your body slowly behind the glass for them',
+                },
+                {
+                    pose: 'lounge',
+                    hold: 8000,
+                    body: 'the curtain drawn, sitting back on the bed and patting the sheet beside you for them',
+                },
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    undress: true,
+                    body: 'dancing for them at the foot of the bed as the first layer comes off',
+                },
+                {
+                    clip: CLIPS.roll,
+                    hold: 8000,
+                    undress: true,
+                    body: 'letting the last of it fall, naked for them now, smiling at their face',
+                    kept: 'smiling at their face in what you still have on, letting them look',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 20000,
+                    body: 'lying back on the bed for them, knees up and apart, pulling them down onto you',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 20000,
+                    body: 'on top of them now, riding them slowly, your hands on their chest',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    body: 'on all fours on the bed, looking back at them over your shoulder, pushing back against them',
+                },
+                {
+                    pose: 'lie-back',
+                    hold: 15000,
+                    body: 'lying back breathless and smiling, asking them where they want to finish',
+                },
+            ]),
+        }),
         'table-dance': Object.freeze({
             label: 'Table dance',
             name: 'a table dance for them',
@@ -204,6 +261,9 @@
         'open-for-you',
         'from-behind',
         'everything',
+        // WR1. Before the striptease: "show me" (the boldest open) stays a striptease, not the
+        // whole evening, which is asked for by name or chosen at the Window Room's door.
+        'window-evening',
         'striptease',
     ]);
 

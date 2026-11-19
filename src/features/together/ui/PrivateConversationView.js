@@ -117,6 +117,9 @@ const PrivateConversationView = (() => {
         'open-for-you',
         'from-behind',
         'everything',
+        // WR1. Before the striptease: "show me" (the boldest open) stays a striptease, not the
+        // whole evening, which is asked for by name or chosen at the Window Room's door.
+        'window-evening',
         'striptease',
     ]);
 

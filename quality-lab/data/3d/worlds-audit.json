@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 72,
-        "places": 35,
+        "worlds": 73,
+        "places": 36,
         "standIns": 21,
         "withSpots": 42,
         "fails": 0,
         "warns": 25,
         "offered": {
-            "desktop": 51,
-            "mobile": 49,
-            "vr": 50
+            "desktop": 52,
+            "mobile": 50,
+            "vr": 51
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -1520,6 +1520,54 @@
                 "vr": {
                     "ok": true,
                     "shows": "dance-lounge",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "window-room",
+            "title": "Window room",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1500,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/window-room.webp",
+                "exists": true,
+                "bytes": 12368
+            },
+            "props": 9,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "window-room",
+                "actions": [
+                    "evening",
+                    "striptease",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "window-room",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "window-room",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "window-room",
                     "why": "loads itself"
                 }
             },

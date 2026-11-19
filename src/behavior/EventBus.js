@@ -102,6 +102,8 @@ const BehaviorEventBus = (() => {
         // P17. Which stage of a silence she has reached. Carries no level and never a consent
         // state — the timer advances liveness, never intimacy. See `PrivateIdleClock`.
         'private:idle',
+        // WR1. The deal made at the Window Room's door: which show, never a level or a consent state.
+        'private:deal',
     ];
 
     class EventBus {

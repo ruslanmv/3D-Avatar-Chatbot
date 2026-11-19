@@ -41,7 +41,8 @@ describe('the new spaces', () => {
             .filter((w) => w.rating === 'private' && !w.lightFor)
             .map((w) => w.id)
             .sort();
-        // PP1: the striptease stage and the table dance lounge, the rooms made for her two shows.
+        // PP1: the striptease stage and the table dance lounge, the rooms made for her two shows;
+        // WR1: the Window Room, made for her whole evening.
         expect(priv).toEqual([
             'candlelit-suite',
             'dance-lounge',
@@ -49,6 +50,7 @@ describe('the new spaces', () => {
             'private-stream-studio',
             'roadside-motel',
             'strip-stage',
+            'window-room',
         ]);
         // A light stand-in is rated like the world it stands in for.
         for (const w of worlds.filter((x) => x.lightFor)) {

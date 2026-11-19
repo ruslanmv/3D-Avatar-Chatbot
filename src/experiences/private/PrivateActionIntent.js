@@ -492,6 +492,11 @@
             'table-dance',
             'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
         ],
+        // WR1. The Window Room's whole evening.
+        [
+            'window-evening',
+            'the full evening|give me the full evening|la serata completa|dammi la serata completa|la noche completa|dame la noche completa|la soirée complète|donne-moi la soirée complète|den ganzen abend|gib mir den ganzen abend|a noite completa|dá-me a noite completa|da-me a noite completa|フルコースでして|풀코스로 해 줘|给我整晚全套',
+        ],
         [
             'everything',
             'show me everything|fammi vedere tutto|enséñamelo todo|ensenamelo todo|montre-moi tout|zeig mir alles|mostra-me tudo|全部見せて|다 보여줘|全部给我看',
