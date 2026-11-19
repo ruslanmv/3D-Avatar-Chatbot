@@ -715,9 +715,16 @@ export class AvatarManager {
             const vrm = gltf.userData?.vrm;
             const isVRM = !!vrm || url.toLowerCase().endsWith('.vrm');
 
-            // VRM models face -Z (VRM spec: forward = -Z). Camera is at +Z,
-            // so rotate VRM models Math.PI to face the camera.
-            root.rotation.set(0, isVRM ? Math.PI : 0, 0);
+            // VRM 0.x models face -Z; the camera is at +Z, so they are turned Math.PI to face it.
+            // VA1. VRM 1.0 changed the convention: its models face +Z, like a plain glTF. Turning
+            // every VRM by Math.PI showed every VRM 1.0 avatar from behind (the 3D Retarget CC0
+            // reference mannequin, uploaded through the avatar picker, danced with its back to the
+            // camera). The version is the model's own (`meta.metaVersion`); without a VRM object,
+            // a .vrm file is assumed 0.x as before. Every system that needs her forward reads
+            // `vrmForwardNegZ` below rather than guessing from `isVRM`.
+            const vrm1 = !!(vrm && vrm.meta && vrm.meta.metaVersion === '1');
+            const forwardNegZ = isVRM && !vrm1;
+            root.rotation.set(0, forwardNegZ ? Math.PI : 0, 0);
             // A wardrobe swap is the same person turning in new clothes. The avatar
             // picker does not ask for this, so a different character still faces the camera.
             if (
@@ -734,6 +741,7 @@ export class AvatarManager {
             // Store VRM flag on root for downstream systems (VRIntimacySystem
             // facing calculation needs to know whether to add Math.PI offset).
             root.userData.isVRM = isVRM;
+            root.userData.vrmForwardNegZ = forwardNegZ;
 
             // Optimize VRM if utilities available
             if (vrm && window.THREE_VRM?.VRMUtils) {

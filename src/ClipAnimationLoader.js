@@ -264,6 +264,13 @@
             hips.userData = hips.userData || {};
             if (norm && norm.position) hips.userData.nexusRestHips = norm.position.clone();
             else if (!hips.userData.nexusRestHips) hips.userData.nexusRestHips = hips.position.clone();
+            // AN2. BVH now retargets onto the normalized hips, and once a clip has played those
+            // stand wherever it left them (0.49 m after a kneel). Stamp the rest on them too, once,
+            // so a clip first loaded after a kneel is still scaled to her standing height.
+            if (norm && norm.position) {
+                norm.userData = norm.userData || {};
+                if (!norm.userData.nexusRestHips) norm.userData.nexusRestHips = norm.position.clone();
+            }
         } catch (e) {
             console.warn('[ClipAnimationLoader] could not record the rest hips height:', e);
         }
@@ -281,6 +288,7 @@
         S.loadedClips = {};
         S.loadingQueue = {};
         S.cachedBoneMap = null;
+        S.bvhBoneMap = null; // AN2. BVH's normalized-rig map, rebuilt for the new avatar
         S.vrmaProxyRoot = null;
         S.vrmaProxyEntries = [];
         S.vrmaExpressionEntries = [];
@@ -402,6 +410,15 @@
         getManifest: getManifest,
         getCategories: getCategories,
         getCurrentPlaybackState: getCurrentPlaybackState,
+        // AN1. Read access to the playing clip's mixer and action, for the animation review
+        // (audits/animations/run.mjs), which pauses a clip and steps it to exact times so its
+        // measurements do not depend on the frame rate. Nothing in the app calls these.
+        getCurrentAction: function () {
+            return S.currentAction || null;
+        },
+        getCurrentMixer: function () {
+            return S.currentMixer || null;
+        },
         getAllAnimations: getAllAnimations,
         preloadEmotion: preloadEmotion,
         playEmotionClip: playEmotionClip,

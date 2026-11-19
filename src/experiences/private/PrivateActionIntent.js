@@ -433,6 +433,166 @@
         return { name, params: params || {}, family };
     }
 
+    /**
+     * UN34. Finishing: the person says they are coming, and where. It is their climax, so their words
+     * are the only way in: the policy refuses her tag, and the pace must be at its top. What
+     * happens is on her skin (the look's skin pack): where they came is shown on her, live, and the
+     * conversation is told the same, so what she says matches what is seen.
+     *
+     * A climax word is needed, never "come" alone ("come here" is not one). The place is optional:
+     * without it the bridge chooses from what the look can show and the position she holds.
+     */
+    const FINISH_VERB = new RegExp(
+        word(
+            "i[’']?m cumming|i am cumming|cumming|cum|i[’']?m coming|i am coming|gonna come|going to come|about to come|let me finish|i[’']?m finishing|vengo|sto venendo|sto per venire|venirti|ti vengo|me corro|me vengo|correrme|voy a acabar|acabo|je jouis|je vais jouir|jouir|ich komme|ich spritze|abspritzen|vou gozar|estou gozando|gozar|gozo"
+        ),
+        'iu'
+    );
+    const FINISH_PLACES = [
+        ['all', 'all over|everywhere|ovunque|dappertutto|addosso|por todas partes|partout|überall|toda (?:você|voce)'],
+        ['both', 'both holes|in both|entrambi i buchi|in entrambi|ambos agujeros|les deux trous|beide löcher|nos dois'],
+        ['ass', 'ass|asshole|butt|culo|culetto|nel sedere|cul|arsch|bunda|cu'],
+        ['back', 'back|lower back|schiena|sulla schiena|espalda|dos|rücken|costas'],
+        // UN37. Facing them: her belly and her breasts.
+        ['belly', 'belly|tummy|stomach|pancia|pancino|ventre|vientre|barriga|bauch'],
+        ['chest', 'chest|tits|boobs|breasts|seno|tette|pecho|tetas|seins|poitrine|nichons|brüste|titten|peitos|mamas'],
+        [
+            'inside',
+            'inside|in you|in your pussy|in her|dentro|dentro di te|en ti|adentro|en toi|dedans|in dir|rein|dentro de (?:você|voce)',
+        ],
+    ];
+
+    /**
+     * UN36. Routines: a show she moves through on her own (PrivateRoutines). By name, or "show me"
+     * for the boldest the evening allows; while one runs, "slower" / "faster" / "stop the show";
+     * after one, "again" / "more" plays it again. Position words are read first (so "straddle me"
+     * stays a position): these are only the show's own phrases. Japanese, Korean and Chinese are
+     * the ⋯ menu's lines, matched as substrings.
+     */
+    const ROUTINE_NAMES = [
+        [
+            'tease',
+            'tease me|stuzzicami|provocami|provócame|provocame|allume-moi|reiz mich|provoca-me|じらして|애태워줘|挑逗我',
+        ],
+        ['ride', 'ride me|cavalcami|cabálgame|cabalgame|chevauche-moi|reite mich|cavalga-me|乗って|기승위로 해줘|骑我'],
+        [
+            'open-for-you',
+            'open (?:up |yourself )?for me|apriti per me|ábrete para mí|abrete para mi|ouvre-toi pour moi|öffne dich für mich|abre-te para mim|私のために開いて|나를 위해 벌려줘|为我张开',
+        ],
+        [
+            'from-behind',
+            'offer yourself (?:to me )?from behind|present yourself(?: to me)?|offriti (?:a me )?da dietro|ofrécete por detrás|ofrecete por detras|offre-toi par derrière|biete dich von hinten an|oferece-te por trás|後ろから誘って|뒤에서 나를 유혹해줘|从后面诱惑我',
+        ],
+        // VA3. The danced shows.
+        [
+            'striptease',
+            'striptease|strip tease|do a striptease for me|spogliarello|fammi uno spogliarello|haz(?:me)? un striptease|fais-moi un strip-?tease|strip-?tease|mach (?:mir )?einen striptease|faz(?:-me)? um striptease(?: para mim)?|ストリップして|스트립쇼 해줘|跳脱衣舞',
+        ],
+        [
+            'table-dance',
+            'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
+        ],
+        [
+            'everything',
+            'show me everything|fammi vedere tutto|enséñamelo todo|ensenamelo todo|montre-moi tout|zeig mir alles|mostra-me tudo|全部見せて|다 보여줘|全部给我看',
+        ],
+    ];
+    const ROUTINE_ANY = new RegExp(
+        word(
+            'show me|(?:do|put on|give me) (?:a |me a )?(?:little )?show|fammi (?:uno|un) spettacolo|hazme un (?:show|espectáculo|espectaculo)|fais-moi un (?:show|spectacle)|mach mir eine show|faz(?:-me)? um show(?: para mim)?'
+        ),
+        'iu'
+    );
+    const ROUTINE_STOP = new RegExp(
+        word(
+            'stop the show|enough of the show|ferma lo spettacolo|basta spettacolo|para el (?:show|espectáculo)|arrête le (?:show|spectacle)|hör auf mit der show|para o show'
+        ),
+        'iu'
+    );
+    const ROUTINE_SLOWER = new RegExp(
+        word(
+            'slower|slow down|more slowly|più piano|più lentamente|rallenta|más despacio|mas despacio|más lento|plus lentement|langsamer|mais devagar'
+        ),
+        'iu'
+    );
+    const ROUTINE_FASTER = new RegExp(
+        word(
+            'faster|speed up|più veloce|più in fretta|más rápido|mas rapido|plus vite|schneller|mais rápido|mais rapido'
+        ),
+        'iu'
+    );
+    const ROUTINE_AGAIN = new RegExp(
+        word(
+            'again|more|once more|one more time|ancora|di nuovo|otra vez|más|encore|nochmal|noch mal|mehr|de novo|mais'
+        ),
+        'iu'
+    );
+    const ROUTINE_SLOWER_CJK = /ゆっくり|천천히|慢一点|慢点/u;
+    const ROUTINE_FASTER_CJK = /速く|もっと早く|빨리|快一点|快点/u;
+    const ROUTINE_AGAIN_CJK = /もう一回|もっと|한 번 더|더 해줘|再来|还要/u;
+
+    const CJK_TEXT = /[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/u;
+
+    function routineFrom(body, context) {
+        const c = context || {};
+        for (const [id, words] of ROUTINE_NAMES) {
+            const all = words.split('|');
+            const latin = all.filter((w) => !CJK_TEXT.test(w));
+            const asian = all.filter((w) => CJK_TEXT.test(w));
+            if (new RegExp(word(latin.join('|')), 'iu').test(body) || asian.some((w) => body.includes(w)))
+                return action('avatar.routine', { routine: id, move: 'start' }, 'avatar');
+        }
+        if (ROUTINE_ANY.test(body)) return action('avatar.routine', { routine: 'choose', move: 'start' }, 'avatar');
+        if (c.routine === 'running') {
+            if (ROUTINE_STOP.test(body)) return action('avatar.routine', { move: 'stop' }, 'avatar');
+            if (ROUTINE_SLOWER.test(body) || ROUTINE_SLOWER_CJK.test(body))
+                return action('avatar.routine', { move: 'slower' }, 'avatar');
+            if (ROUTINE_FASTER.test(body) || ROUTINE_FASTER_CJK.test(body))
+                return action('avatar.routine', { move: 'faster' }, 'avatar');
+        }
+        // "Ancora!" after a show is asking for it again — only then, and only a short line.
+        if (c.routine === 'done' && body.length <= 40 && (ROUTINE_AGAIN.test(body) || ROUTINE_AGAIN_CJK.test(body)))
+            return action('avatar.routine', { move: 'again' }, 'avatar');
+        return null;
+    }
+
+    /**
+     * UN35. Japanese, Korean and Chinese, which the ⋯ menu's finish chips speak too: no word
+     * boundaries in those scripts, so plain substrings. The back comes before inside because
+     * 背中に (on your back) contains 中に (inside).
+     */
+    // Codex (#193). Only words that mean climax on their own count alone: いく and 出る are also "go"
+    // and "go out" (ホテルにいく), and 射 alone is "shoot" (射击). 出す ("let out") counts only
+    // with a place on her body (中に出す), never alone (ゴミを出す).
+    const FINISH_VERB_CJK = /イク|イっ|イキそう|射精|쌀게|싼다|쌀 것 같|射了|要射|射在|射满|射进/u;
+    const FINISH_WITH_PLACE_CJK = /出す|出して|出すよ/u;
+    const FINISH_PLACES_CJK = [
+        ['all', /全身|온몸/u],
+        ['both', /両方|둘 다|两个洞/u],
+        ['ass', /お尻|엉덩이|屁股/u],
+        ['back', /背中|등에|背上/u],
+        ['belly', /お腹|おなか|배에|肚子/u],
+        ['chest', /胸|おっぱい|가슴|奶子/u],
+        ['inside', /中に|中で|안에|里面/u],
+    ];
+
+    function finishFrom(body) {
+        if (FINISH_VERB.test(body)) {
+            for (const [where, words] of FINISH_PLACES) {
+                if (new RegExp(word(words), 'iu').test(body)) return action('body.finish', { where }, 'body');
+            }
+            return action('body.finish', { where: 'choose' }, 'body');
+        }
+        const strong = FINISH_VERB_CJK.test(body);
+        if (strong || FINISH_WITH_PLACE_CJK.test(body)) {
+            for (const [where, words] of FINISH_PLACES_CJK) {
+                if (words.test(body)) return action('body.finish', { where }, 'body');
+            }
+            if (strong) return action('body.finish', { where: 'choose' }, 'body');
+        }
+        return null;
+    }
+
     /** "yes" to something she offered, in the app's languages — a short message and nothing else. */
     const YES =
         /^(?:yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|volentieri|oui|d[’']accord|vas-y|ja|klar|gern|mach das|sim|claro|pode|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行)(?:[\s,]+(?:please|per favore|por favor|bitte|grazie|thanks))?[\s.!]*$/iu;
@@ -499,6 +659,31 @@
      * ordinary stand-up motion otherwise.
      */
     const POSE_WORDS = [
+        // UN27. The closer positions (PrivatePoseController.INTIMATE), first: each is a more
+        // specific form of a plainer one below ("in ginocchio a gambe aperte" starts like "in
+        // ginocchio", "仰向けで膝を立てて" contains "仰向け"), and the first match wins. Gated like all
+        // fours: the policy opens them only at the top of the pace. Every line the ⋯ menu sends
+        // (PrivateLocale `position.*.say`) is matched here, in its own language — a test holds it.
+        [
+            'sit-open',
+            '(?:siediti |stai seduta )?(?:a|con le) gambe (?:aperte|larghe)|apri le gambe|allarga le gambe|sit with your legs (?:open|apart|spread)|(?:open|spread) your legs|(?:siéntate |sientate )?con las piernas abiertas|abre las piernas|(?:assieds-toi |assois-toi )?les jambes écartées|écarte les jambes|setz dich breitbeinig(?: hin)?|spreiz die beine|(?:senta(?:-te)? |sente )?de pernas abertas|abr[ae] as pernas',
+            /脚を開いて座って|脚を開いて|다리를\s?벌리고\s?앉아|다리를\s?벌려|张开腿坐下|张开腿|分开腿/u,
+        ],
+        [
+            'kneel-wide',
+            '(?:mettiti |metti |stai )?in ginocc?hio (?:a|con le) (?:gambe|ginocchia) (?:aperte|larghe)|inginocchiati (?:a|con le) (?:gambe|ginocchia) (?:aperte|larghe)|kneel(?: down)? with your (?:knees|legs) (?:apart|open|wide)|kneel wide|(?:arrodíllate|arrodillate) con las (?:rodillas separadas|piernas abiertas)|de rodillas con las rodillas separadas|(?:mets-toi )?à genoux,? les genoux écartés|knie dich breitbeinig hin|(?:ajoelha-te|ajoelhe(?:-se)?|de joelhos) com os joelhos afastados',
+            /膝を開いてひざまずいて|膝を開いて跪いて|무릎을\s?벌리고\s?꿇어|分开膝盖跪下|分开腿跪下/u,
+        ],
+        [
+            'knees-up',
+            '(?:sdraiati |stenditi |mettiti )?(?:sulla schiena|a pancia in su),? (?:con le|a) ginocchia (?:alzate|su|piegate)|(?:lie |lay )?on your back with your knees (?:up|bent|raised)|(?:túmbate |tumbate |acuéstate |acuestate )?boca arriba con las rodillas (?:dobladas|arriba|levantadas)|(?:allonge-toi |couche-toi )?sur le dos,? les genoux (?:relevés|pliés)|leg dich auf den rücken und stell die knie auf|(?:leg dich )?auf den rücken mit (?:aufgestellten|angezogenen) knien|(?:deita-te |deite(?:-se)? )?de costas com os joelhos (?:dobrados|para cima)',
+            /仰向けで膝を立てて|仰向けで膝を立てる|누워서\s?무릎을\s?세워|仰躺屈膝|躺下屈膝/u,
+        ],
+        [
+            'straddle',
+            '(?:mettiti |siediti |stai )?a cavalcioni(?: su di me| sopra di me)?|straddle me|straddle|sit astride(?: me)?|(?:siéntate |sientate |ponte )?a horcajadas(?: sobre mí| sobre mi)?|súbete encima de mí|(?:mets-toi |assieds-toi )?à califourchon(?: sur moi)?|setz dich rittlings(?: auf mich)?|mont[ae] em mim|(?:senta(?:-te)? )?escarranchada em mim',
+            /私にまたがって|またがって|내\s?위에\s?올라타|올라타|跨坐在我身上|跨坐/u,
+        ],
         [
             // The everyday adult name for the same static position maps to it too (owner
             // decision): the pose, held, nothing more — and it opens only where all fours does.
@@ -799,6 +984,12 @@
         // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
         const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
         if (posed) return posed;
+        // UN34. Coming, and where: before anything could read "on your back" as a position.
+        const finished = !NEGATED.test(body) ? finishFrom(body) : null;
+        if (finished) return finished;
+        // UN36. A show, after positions (their words win) and finishing.
+        const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
+        if (show) return show;
         // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
         if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
             return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');
@@ -952,6 +1143,8 @@
         storyCue,
         travelFrom,
         bodyFrom,
+        finishFrom,
+        routineFrom,
         queryFrom,
         stylesIn,
         coloursIn,

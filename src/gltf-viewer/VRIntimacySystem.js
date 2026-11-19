@@ -205,8 +205,10 @@ export class VRIntimacySystem {
         // Fix: add Math.PI for VRM so the avatar's native -Z forward points
         // toward the user. GLB avatars (native forward = +Z) use raw atan2.
         const worldYaw = Math.atan2(toUser.x, toUser.z);
-        const isVRM = !!this.avatarRoot.userData?.isVRM;
-        const targetYaw = isVRM ? worldYaw + Math.PI : worldYaw;
+        // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+        const ud = this.avatarRoot.userData || {};
+        const negZ = 'vrmForwardNegZ' in ud ? !!ud.vrmForwardNegZ : !!ud.isVRM;
+        const targetYaw = negZ ? worldYaw + Math.PI : worldYaw;
         const targetQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetYaw);
 
         this.avatarRoot.quaternion.slerp(targetQ, Math.min(1, dt * 2.4));

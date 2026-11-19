@@ -133,7 +133,7 @@ const MotionIntegration = (() => {
     const _contact = { active: false, side: 'right', radius: 0.14, resolve: null, deadline: 0 };
     const _reach = { active: false, side: 'right', high: false, until: 0 };
     const _headFx = { active: false, kind: 'nod', t: 0, dur: 1.0, held: Object.create(null) };
-    const _turn = { active: false, remaining: 0, speed: 2.6, resolve: null, deadline: 0 };
+    const _turn = { active: false, remaining: 0, speed: 2.6, resolve: null, deadline: 0, budget: 0, elapsed: 0 };
     const _expr = Object.create(null); // name → { w, until }
 
     function _log() {
@@ -275,7 +275,12 @@ const MotionIntegration = (() => {
      * again". Plain GLB roots rest at 0 and face +Z, hence the offset switch.
      */
     function _yawToward(dx, dz) {
-        const vrmForward = !!((_avatarRoot && _avatarRoot.userData && _avatarRoot.userData.isVRM) || _vrm);
+        // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+        const ud = (_avatarRoot && _avatarRoot.userData) || {};
+        const vrmForward =
+            'vrmForwardNegZ' in ud
+                ? !!ud.vrmForwardNegZ
+                : !!(ud.isVRM || (_vrm && !(_vrm.meta && _vrm.meta.metaVersion === '1')));
         return _normAngle(Math.atan2(dx, dz) + (vrmForward ? Math.PI : 0));
     }
 
@@ -311,7 +316,16 @@ const MotionIntegration = (() => {
         // Fixed angular speed, so a 180 takes about twice as long as a 90 and
         // the motion reads as one deliberate movement rather than a snap.
         _turn.speed = 2.6; // rad/s
-        _turn.deadline = _now() + Math.abs(rad) / _turn.speed + 1.5;
+        // MO16. Two clocks, for two jobs. The turn advances by update()'s dt, which is capped at
+        // 0.1 s, so below ten frames a second it moves slower than the wall clock — and a
+        // wall-clock deadline of the turn's own length cut it off part-way: "turn around" left her
+        // side-on (about 90°) on a slow frame rate. Its time budget now runs on that same capped
+        // dt, so a slow device turns as far, only more slowly. The wall-clock deadline stays as a
+        // safety net for a frame loop that stopped, and finishes the turn rather than leave her
+        // half-turned.
+        _turn.budget = Math.abs(rad) / _turn.speed + 1.5;
+        _turn.elapsed = 0;
+        _turn.deadline = _now() + Math.max(10, _turn.budget * 4);
         return new Promise((resolve) => {
             _turn.resolve = resolve;
         });
@@ -331,8 +345,16 @@ const MotionIntegration = (() => {
     /** @private */
     function _updateTurn(dt) {
         if (!_turn.active) return;
-        if (!_avatarRoot || _now() > _turn.deadline) {
+        if (!_avatarRoot) {
             _stopTurn(false);
+            return;
+        }
+        _turn.elapsed += dt;
+        if (_turn.elapsed > _turn.budget || _now() > _turn.deadline) {
+            // MO16. Out of time: arrive where she was asked to face, rather than stop short.
+            _avatarRoot.rotation.y = _normAngle(_avatarRoot.rotation.y + _turn.remaining);
+            _turn.remaining = 0;
+            _stopTurn(true);
             return;
         }
         const step = Math.sign(_turn.remaining) * Math.min(Math.abs(_turn.remaining), _turn.speed * dt);
@@ -2129,6 +2151,8 @@ const MotionIntegration = (() => {
         debugMotion,
         _faceTarget,
         _normAngle,
+        _turnBy,
+        _updateTurn,
         _startPoseRestore,
         state,
         config,

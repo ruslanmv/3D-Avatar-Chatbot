@@ -154,7 +154,9 @@ const MotionExecutor = (() => {
         // here, so this path is dormant — but it is one registration-order
         // change away from being live again, and a fixed bug should not be
         // left duplicated in the tree.
-        const vrmForward = !!(avatar.userData && avatar.userData.isVRM);
+        // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+        const ud = avatar.userData || {};
+        const vrmForward = 'vrmForwardNegZ' in ud ? !!ud.vrmForwardNegZ : !!ud.isVRM;
         const targetAngle = _normAngle(Math.atan2(dx, dz) + (vrmForward ? Math.PI : 0));
         const diff = _normAngle(targetAngle - avatar.rotation.y);
         avatar.rotation.y = _normAngle(avatar.rotation.y + diff * Math.min(speed, 1.0));

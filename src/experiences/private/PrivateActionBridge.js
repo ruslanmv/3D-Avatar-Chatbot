@@ -171,7 +171,9 @@
         if (s.closet && typeof s.closet.onChange === 'function') {
             s.unwatch.push(
                 s.closet.onChange(() => {
-                    if (state === s) emit();
+                    if (state !== s) return;
+                    syncSkin(s); // UN32. a bare look with a skin pack switches state live
+                    emit();
                 })
             );
         }
@@ -183,6 +185,11 @@
     function end(session, options) {
         const s = state;
         if (!s || (session && s.session !== session)) return false;
+        if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
+        clearAfterglow(s);
+        clearFinish(s);
+        stopDoggy(s);
+        stopRoutine(s);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -768,10 +775,22 @@
                 });
             case 'wardrobe.undress':
                 return undress(s, action, alive);
-            case 'wardrobe.redress':
-                return redress(s, action, alive);
-            case 'avatar.pose':
-                return pose(s, action);
+            case 'wardrobe.redress': {
+                // Codex (#193). Dressing again lets go of her position: the sweat clock follows.
+                const out = await redress(s, action, alive);
+                watchDoggy(s);
+                return out;
+            }
+            case 'avatar.routine':
+                return routine(s, action);
+            case 'avatar.pose': {
+                // UN36. A position they ask for ends any show she is giving: their words lead.
+                stopRoutine(s);
+                // UN35. Whatever position she ends up in, the doggy sweat clock follows it.
+                const out = await pose(s, action);
+                watchDoggy(s);
+                return out;
+            }
             case 'wardrobe.undo': {
                 if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
                 const out = await s.closet.undo();
@@ -781,6 +800,8 @@
                 return dance(s, action);
             case 'avatar.react':
                 return react(s, action);
+            case 'body.finish':
+                return finishOn(s, action);
             case 'world.travel':
                 return travel(s, action);
             case 'scene.change': {
@@ -833,6 +854,221 @@
      * root's yaw and keeps it across an outfit swap, so a layer coming off does not spin her
      * back to the front). Made once per session, on first use.
      */
+    /*
+     * UN36. Routines: a show she moves through on her own (PrivateRoutines). Started by their words
+     * or a chip, never by her tag alone (the policy's `asked` rule for the avatar family). Every
+     * step is re-checked against the pace when it comes — a show never reaches further than its
+     * positions could one by one — and a position they ask for, the pace easing below the show,
+     * or the session ending stops it where it is. When it ends she holds the last step, and for a
+     * few turns "again" / "ancora" plays it once more.
+     */
+    const ROUTINE_DONE_TURNS = 3;
+
+    function routinesOf(s) {
+        return pick(s.win, 'NEXUS_PRIVATE_ROUTINES', './PrivateRoutines.js');
+    }
+
+    function poseLevelFn(s) {
+        const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
+        return (key) => (Policy && typeof Policy.poseLevel === 'function' ? Policy.poseLevel(key) || 1 : 1);
+    }
+
+    /** `running`, `done` (for a few turns after it ended) or null. */
+    function routineState(s) {
+        if (!s || !s.routine) return null;
+        if (!s.routine.done) return 'running';
+        return s.turnId - s.routine.doneTurn <= ROUTINE_DONE_TURNS ? 'done' : null;
+    }
+
+    /**
+     * Codex (#194). A step's line as it really is: an undress step whose layer did not come off
+     * says she dances on still dressed, and the closing step drops "naked" when any layer stayed.
+     */
+    function showBody(r, steps, k) {
+        const step = steps[k];
+        const kept = r.kept && r.kept.size > 0;
+        if (step.undress && r.kept && r.kept.has(k))
+            return 'still dancing for them, the layer you meant to take off still on you (it could not come off here)';
+        if (kept && step.kept) return step.kept;
+        return step.body;
+    }
+
+    /** VA3. The clip a show started stops with it (or when it moves on to a held position). */
+    function stopShowClip(s, r) {
+        if (!r || !r.clip) return;
+        r.clip = null;
+        try {
+            const L = s.win.NEXUS_CLIP_LOADER;
+            if (L && typeof L.stopClip === 'function') L.stopClip();
+        } catch (_) {
+            /* nothing playing */
+        }
+    }
+
+    function stopRoutine(s) {
+        if (!s || !s.routine) return;
+        stopShowClip(s, s.routine);
+        try {
+            (s.win.clearTimeout || clearTimeout)(s.routine.timer);
+        } catch (_) {
+            /* already fired */
+        }
+        s.routine = null;
+    }
+
+    function routine(s, action) {
+        const R = routinesOf(s);
+        if (!R || !s.poses) return settle(action, 'failed', 'no-routines');
+        const p = action.params;
+        const at = levelOf(s) || 1;
+        const live = routineState(s) === 'running' ? s.routine : null;
+        if (p.move === 'stop') {
+            if (!live) return settle(action, 'failed', 'no-routine');
+            stopRoutine(s);
+            return settle(action, 'completed', null, { move: 'stop' });
+        }
+        if (p.move === 'slower' || p.move === 'faster') {
+            if (!live) return settle(action, 'failed', 'no-routine');
+            // One line heard twice changes the speed once.
+            if (live.speedAt != null && Date.now() - live.speedAt < 1000)
+                return settle(action, 'completed', null, { move: p.move, speed: live.speed });
+            live.speedAt = Date.now();
+            const before = live.speed;
+            live.speed = R.stepSpeed(live.speed, p.move === 'faster' ? 1 : -1);
+            // The step she is in now changes pace too: what is left of it, at the new speed.
+            if (live.timer && live.stepAt != null) {
+                const steps = R.ROUTINES[live.id].steps;
+                const hold = steps[live.index] ? steps[live.index].hold : 0;
+                const left = Math.max(0, hold - (Date.now() - live.stepAt) * before);
+                try {
+                    (s.win.clearTimeout || clearTimeout)(live.timer);
+                } catch (_) {
+                    /* already fired */
+                }
+                live.stepAt = Date.now() - (hold - left) / live.speed;
+                live.timer = (s.win.setTimeout || setTimeout)(() => nextStep(s, live), left / live.speed);
+            }
+            return settle(action, 'completed', null, { move: p.move, speed: live.speed });
+        }
+        const levels = poseLevelFn(s);
+        const id =
+            p.move === 'again'
+                ? s.routine && s.routine.id
+                : !p.routine || p.routine === 'choose'
+                  ? R.boldest(at, levels)
+                  : p.routine;
+        if (!id || !R.ROUTINES[id]) return settle(action, 'failed', p.move === 'again' ? 'no-routine' : 'none-open');
+        if (R.level(id, levels) > at) return settle(action, 'blocked', 'pace', { routine: id });
+        // The same show asked for again in the same moment (one line heard twice) is the one running.
+        if (live && live.id === id && live.index === 0 && Date.now() - live.stepAt < 1500)
+            return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
+        const speed = s.routine ? s.routine.speed : 1;
+        stopRoutine(s);
+        const r = { id, index: -1, speed, timer: null, done: false, doneTurn: null, turnId: action.turnId };
+        s.routine = r;
+        nextStep(s, r);
+        if (s.routine !== r) return settle(action, 'failed', 'not-rendered', { routine: id });
+        return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
+    }
+
+    function nextStep(s, r) {
+        if (state !== s || s.routine !== r || r.done) return;
+        const R = routinesOf(s);
+        const steps = R.ROUTINES[r.id].steps;
+        r.index += 1;
+        if (r.index >= steps.length) {
+            r.done = true;
+            r.doneTurn = s.turnId;
+            emit();
+            return;
+        }
+        const step = steps[r.index];
+        if (step.pose && poseLevelFn(s)(step.pose) > (levelOf(s) || 1)) {
+            stopRoutine(s);
+            emit();
+            return;
+        }
+        let ok = true;
+        try {
+            if (step.clip) {
+                // VA3. A danced step: her held position lets go, the clip plays looped (as Pose
+                // Studio's Play does), and an undress cue takes a layer off as the step begins.
+                const L = s.win.NEXUS_CLIP_LOADER;
+                if (!L || typeof L.playClip !== 'function') ok = false;
+                else {
+                    if (s.poses && typeof s.poses.held === 'function' && s.poses.held()) s.poses.release();
+                    r.clip = step.clip;
+                    const at = r.index;
+                    // Codex (#194). A clip loads before it plays, and the loader has no cancel: a
+                    // show stopped (or moved on) while it loaded would start dancing over whatever
+                    // came next. The load only plays if this show is still on this step.
+                    const owns = () => s.routine === r && r.index === at && r.clip === step.clip;
+                    Promise.resolve(L.playClip(step.clip, { loop: true }))
+                        .then((played) => {
+                            if (played && !owns()) {
+                                try {
+                                    L.stopClip();
+                                } catch (_) {
+                                    /* already stopped */
+                                }
+                                return;
+                            }
+                            if (!played && s.routine === r) {
+                                console.warn('[Private] a show clip did not play', step.clip);
+                                stopRoutine(s);
+                                emit();
+                            }
+                        })
+                        .catch(() => {});
+                    if (step.undress) {
+                        r.cues = r.cues || [];
+                        r.cues.push({ step: r.index, at: Date.now() });
+                        // A layer off is another look: a new avatar file, and the clip loader is
+                        // registered afresh for her (AvatarManager → registerAvatar), so the dance
+                        // bound to the body that left stops. Still on this step when it settles, she
+                        // dances on in what she has now — measured live: without this, every cue
+                        // step stood still from the cue to the end of the step.
+                        request('wardrobe.undress', { step: 'next' }, { source: 'control', turnId: r.turnId })
+                            .catch(() => null)
+                            .then((done) => {
+                                // Codex (#194). What came off is the wardrobe's answer, not the
+                                // show's script: a layer that did not (no lower look, no bare look,
+                                // a load that failed) is recorded, and her lines say she is still
+                                // dressed rather than announcing what did not happen.
+                                if (!done || done.status !== 'completed') (r.kept = r.kept || new Set()).add(at);
+                                if (!owns()) return;
+                                try {
+                                    Promise.resolve(L.playClip(step.clip, { loop: true })).catch(() => {});
+                                } catch (_) {
+                                    /* the next step moves on regardless */
+                                }
+                            });
+                    }
+                }
+            } else if (step.pose === 'turn') {
+                // Fail soft: a show does not end because she cannot turn round here; it goes on.
+                const turner = turnerOf(s);
+                if (turner) turner.toggle();
+                else console.warn('[Private] a show turn was skipped: nothing can turn her here');
+            } else {
+                stopShowClip(s, r);
+                ok = Boolean(s.poses.apply(step.pose, { duration: R.BLEND_S / r.speed }).ok);
+            }
+        } catch (error) {
+            console.warn('[Private] a show step could not run', error);
+            ok = false;
+        }
+        if (!ok) {
+            stopRoutine(s);
+            emit();
+            return;
+        }
+        watchDoggy(s);
+        emit();
+        r.stepAt = Date.now();
+        r.timer = (s.win.setTimeout || setTimeout)(() => nextStep(s, r), step.hold / r.speed);
+    }
+
     function turnerOf(s) {
         if (s.turner !== undefined) return s.turner;
         const haul = pick(s.win, 'NEXUS_TRY_ON_HAUL_ACTIVITY', '../../wardrobe/TryOnHaulActivity.js');
@@ -1084,6 +1320,410 @@
             return 'Closer';
         }
     }
+    /**
+     * UN27. The closer positions this session can run: `PrivatePoseController.INTIMATE`, kept to
+     * the ones the pose system lists now. A controller without `available` (a test double) is
+     * taken at its word.
+     */
+    function closerPositions(s) {
+        try {
+            const Poses = pick(s.win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+            const all = (Poses && Poses.INTIMATE) || [];
+            if (!s.poses) return [];
+            if (typeof s.poses.available !== 'function') return all.slice();
+            return all.filter((p) => s.poses.available(p.key));
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /** UN28. The step of the pace a keyed position opens at (`PrivateActionPolicy.POSE_LEVEL`). */
+    function poseLevelOf(s, key) {
+        try {
+            const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
+            return Policy && typeof Policy.poseLevel === 'function' ? Policy.poseLevel(key) : UNDRESS_AT;
+        } catch (_) {
+            return UNDRESS_AT;
+        }
+    }
+
+    /**
+     * UN28. Easing off means easing off. When the pace is lowered (Ease up, cozy) below the step
+     * the position she holds opened at, she stands — through this bridge, as the person's own
+     * control, like every other action. Called after every repaint of the pace; does nothing when
+     * what she holds is still open, or when she holds nothing. Never raises or lowers the level.
+     */
+    function fitPoseToPace() {
+        fitSkinToPace();
+        const s = state;
+        // UN36. Easing below what a running show needs stops it where it is.
+        if (s && routineState(s) === 'running') {
+            const R = routinesOf(s);
+            if (R && R.level(s.routine.id, poseLevelFn(s)) > (levelOf(s) || 1)) stopRoutine(s);
+        }
+        if (!s || s.session._stopped || !s.poses || typeof s.poses.held !== 'function') return false;
+        const held = s.poses.held();
+        if (!held) return false;
+        const need = poseLevelOf(s, held);
+        if (!need || levelOf(s) >= need) return false;
+        request('avatar.pose', { pose: 'stand' }, { source: 'control' }).catch(() => null);
+        return true;
+    }
+
+    /** UN35. For callers that move her body outside this bridge (Pose Studio): re-read it. */
+    function noticePose() {
+        if (state) watchDoggy(state);
+    }
+
+    /**
+     * UN32. Her skin follows the pace live when the look on stage is a bare look with a skin pack
+     * (Forge BD7): Romantic and below closed, Sensual flushed, Intimate open — each only if the
+     * pack holds it, else the next listed. Read on every pace repaint; never moves the pace.
+     */
+    const SKIN_FOR_LEVEL = Object.freeze({
+        1: ['closed'],
+        2: ['closed'],
+        3: ['flushed', 'aroused'],
+        4: ['open', 'aroused', 'flushed'],
+    });
+
+    function skinSwitcher(s) {
+        if (s.skin) return s.skin;
+        const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+        if (!Skin || typeof Skin.create !== 'function') return null;
+        const forge = (() => {
+            try {
+                return s.win.NEXUS_WARDROBE.service.controller.forge;
+            } catch (_) {
+                return null;
+            }
+        })();
+        s.skin = Skin.create({
+            fetch: s.win.fetch && s.win.fetch.bind(s.win),
+            headersFor: async (url) =>
+                forge && typeof forge.downloadHeadersNow === 'function' ? forge.downloadHeadersNow(url) : {},
+        });
+        return s.skin;
+    }
+
+    function syncSkin(s) {
+        try {
+            const look = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            if (look === s.skinLook) return;
+            s.skinLook = look;
+            s.skinStates = [];
+            clearAfterglow(s); // another look starts from the pace, not from the last one's afterglow
+            clearFinish(s);
+            // Codex (#193). Sweat stays only while she is still held on all fours on the new look.
+            if (s.doggySweaty || s.doggyTimer) {
+                let held = null;
+                try {
+                    held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+                } catch (_) {
+                    held = null;
+                }
+                if (held !== 'all-fours') stopDoggy(s);
+            }
+            s.skinLevel = null;
+            const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+            if (!look || !Skin || !Skin.mayHavePack(look)) {
+                if (s.skin) s.skin.detach();
+                return;
+            }
+            const switcher = skinSwitcher(s);
+            const root =
+                s.win.NEXUS_VIEWER && s.win.NEXUS_VIEWER.avatarManager && s.win.NEXUS_VIEWER.avatarManager.currentRoot;
+            if (!switcher || !root) return;
+            switcher
+                .attach(root, look)
+                .then((states) => {
+                    if (state !== s || s.skinLook !== look) return;
+                    s.skinStates = states || [];
+                    fitSkinToPace();
+                    emit(); // UN35. the ⋯ menu's finish chips follow what the pack holds
+                })
+                .catch((error) => console.warn('[Private] skin pack not attached', error));
+        } catch (error) {
+            console.warn('[Private] skin states skipped', error);
+        }
+    }
+
+    /**
+     * UN33. Afterglow fades. Coming down from Intimate, her body does not snap back to closed: when
+     * the pack holds it she shows `afterglow` (flushed, nipples still hard, wet, a little open) for
+     * a few minutes, then cools to `flushed`, then settles to what the pace shows. Going back up to
+     * Intimate ends the fade at once. The timers live on the session and die with it (or with the
+     * look); they only ever re-read the pace, never move it.
+     */
+    const AFTERGLOW_MS = 4 * 60 * 1000;
+    const COOLING_MS = 3 * 60 * 1000;
+
+    function clearAfterglow(s) {
+        if (s && s.afterglow) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.afterglow.timer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        if (s) s.afterglow = null;
+    }
+
+    function startAfterglow(s, names) {
+        clearAfterglow(s);
+        const later = (fn, ms) => (s.win.setTimeout || setTimeout)(fn, ms);
+        const step = () => {
+            if (state !== s || !s.afterglow) return;
+            if (s.afterglow.stage === 'afterglow' && names.includes('flushed')) {
+                s.afterglow.stage = 'flushed';
+                s.afterglow.timer = later(step, COOLING_MS);
+            } else {
+                s.afterglow = null;
+            }
+            fitSkinToPace();
+        };
+        s.afterglow = { stage: 'afterglow', timer: later(step, AFTERGLOW_MS) };
+    }
+
+    function fitSkinToPace() {
+        const s = state;
+        if (!s || !s.skin || !s.skinStates || !s.skinStates.length) return false;
+        const names = s.skinStates.map((x) => x.name);
+        const level = Math.max(1, Math.min(4, levelOf(s) || 1));
+        const was = s.skinLevel;
+        s.skinLevel = level;
+        if (level >= 4) clearAfterglow(s);
+        else if (was >= 4 && names.includes('afterglow') && !s.finish) startAfterglow(s, names);
+        const fading = s.afterglow && names.includes(s.afterglow.stage) ? s.afterglow.stage : null;
+        // UN34. Where they finished stays on her through pace changes until its hold ends.
+        const finished = s.finish && names.includes(s.finish.state) ? s.finish.state : null;
+        // UN35. Held on all fours a while at Sensual or closer: sweat builds on her back.
+        const sweating =
+            s.doggySweaty && level >= 3
+                ? (level >= 4 ? ['doggy-sweaty-open', 'doggy-sweaty'] : ['doggy-sweaty']).find((n) => names.includes(n))
+                : null;
+        // UN37. Held in missionary or cowgirl at the closest step: wet, open and flushed for it.
+        const held = level >= 4 ? (HELD_SKIN[poseGroup(s)] || []).find((n) => names.includes(n)) : null;
+        const want =
+            finished || fading || sweating || held || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
+        if (!want || s.skin.current() === want) return false;
+        s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
+        return true;
+    }
+
+    /**
+     * UN34. Where they finished, as her body can show it: the skin-pack states for each place, best
+     * first. Doggy states lead (the position this is most asked in), then the general ones; the
+     * first the look's pack holds is shown. Names are Forge's (assets/body_detail/states.json).
+     */
+    const FINISH_STATES = Object.freeze({
+        back: ['lower-back-cum-heavy', 'lower-back-cum', 'lower-back-cum-open', 'cum-on-back', 'doggy-cum-covered'],
+        inside: ['doggy-creampie', 'lower-back-cum-creampie', 'creampie', 'doggy-double-creampie', 'cum'],
+        ass: ['anal-creampie', 'doggy-anal-fisted-cum', 'lower-back-cum-gaping', 'doggy-double-creampie'],
+        both: ['doggy-double-creampie', 'doggy-anal-fisted-cum', 'doggy-open-cum', 'doggy-finish'],
+        all: [
+            'doggy-finish',
+            'doggy-cum-covered',
+            'sado-full',
+            'doggy-gaping-cum',
+            'sado-used-cum',
+            'missionary-covered',
+            'cowgirl-everything',
+        ],
+        // UN37. Facing them (Forge BD20).
+        belly: ['missionary-belly', 'cowgirl-belly'],
+        chest: ['missionary-chest', 'missionary-covered'],
+    });
+
+    /**
+     * UN37. The position she holds decides how it lies on her: lying back it runs off her sides and
+     * down to her anus (missionary), upright on top it runs down her belly and her thighs
+     * (cowgirl), on all fours it runs forward and up her spine (the doggy states above). Tried
+     * before the general lists; the order of places for "I'm coming" alone follows the position.
+     */
+    const POSE_GROUP = Object.freeze({
+        'all-fours': 'doggy',
+        'knees-up': 'missionary',
+        'lie-back': 'missionary',
+        straddle: 'cowgirl',
+    });
+    const FINISH_BY_POSE = Object.freeze({
+        missionary: {
+            inside: ['missionary-creampie'],
+            belly: ['missionary-belly'],
+            chest: ['missionary-chest'],
+            all: ['missionary-covered'],
+        },
+        cowgirl: {
+            inside: ['cowgirl-creampie'],
+            belly: ['cowgirl-belly'],
+            all: ['cowgirl-everything'],
+        },
+    });
+    const CHOOSE_BY_POSE = Object.freeze({
+        doggy: ['back', 'inside', 'both', 'ass', 'all'],
+        missionary: ['belly', 'inside', 'chest', 'all'],
+        cowgirl: ['inside', 'belly', 'chest', 'all'],
+    });
+    /** UN37. While she holds one of these at the closest step, her skin shows it (Forge BD20). */
+    const HELD_SKIN = Object.freeze({ missionary: ['missionary-open'], cowgirl: ['cowgirl-riding'] });
+
+    function poseGroup(s) {
+        try {
+            return POSE_GROUP[s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null] || null;
+        } catch (_) {
+            return null;
+        }
+    }
+    /** How long where they finished stays on her before the afterglow fade (UN33) takes over. */
+    const FINISH_HOLD_MS = 6 * 60 * 1000;
+    /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
+    const FINISH_ORDER = ['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest'];
+
+    /**
+     * UN35. Again, while the first is still on her: a second load (Forge BD19) instead of showing
+     * the first one a second time, which read as nothing having happened.
+     */
+    const AGAIN_AFTER_MS = 30 * 1000;
+    const AGAIN_STATES = Object.freeze({
+        back: ['lower-back-cum-second'],
+        inside: ['doggy-second-creampie'],
+    });
+
+    function finishState(s, where) {
+        const names = (s.skinStates || []).map((x) => x.name);
+        const group = poseGroup(s);
+        const places = where === 'choose' ? CHOOSE_BY_POSE[group] || FINISH_ORDER : [where];
+        // Again only from a later turn and after a real pause: the same line heard twice, or two
+        // quick messages about one climax, are one finish, never a second load.
+        const again = Boolean(s.finish && s.finish.turnId !== s.turnId && Date.now() - s.finish.at >= AGAIN_AFTER_MS);
+        for (const place of places) {
+            // Said again too soon for a second load: what is shown stays (never back to the first).
+            if (s.finish && !again && s.finish.place === place && names.includes(s.finish.state))
+                return { place, state: s.finish.state };
+            const second = again ? (AGAIN_STATES[place] || []).find((n) => names.includes(n)) : null;
+            if (second) return { place, state: second };
+            const posed = ((FINISH_BY_POSE[group] || {})[place] || []).find((n) => names.includes(n));
+            if (posed) return { place, state: posed };
+            const found = (FINISH_STATES[place] || []).find((n) => names.includes(n));
+            if (found) return { place, state: found };
+        }
+        return null;
+    }
+
+    function finishOn(s, action) {
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = finishState(s, action.params.where);
+        if (!chosen) return settle(action, 'failed', 'no-finish-state');
+        clearAfterglow(s);
+        clearFinish(s);
+        const later = (fn, ms) => (s.win.setTimeout || setTimeout)(fn, ms);
+        s.finish = {
+            state: chosen.state,
+            place: chosen.place,
+            turnId: action.turnId,
+            at: Date.now(),
+            timer: later(() => {
+                if (state !== s || !s.finish) return;
+                s.finish = null;
+                // Then the UN33 fade: afterglow, flushed, the pace — if the pack has them.
+                const names = s.skinStates.map((x) => x.name);
+                if (names.includes('afterglow')) startAfterglow(s, names);
+                fitSkinToPace();
+                emit();
+            }, FINISH_HOLD_MS),
+        };
+        action.result = { place: chosen.place, state: chosen.state };
+        return Promise.resolve(s.skin.apply(chosen.state))
+            .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
+            .catch(() => settle(action, 'failed', 'not-shown'));
+    }
+
+    /**
+     * UN35. How long she is held on all fours before sweat shows on her back. Watched from the
+     * position she holds (read, never set): taken, the clock starts; any other position, standing
+     * or the end of the session stops it, and her skin goes back to what the pace shows.
+     */
+    const DOGGY_SWEAT_MS = 150 * 1000;
+
+    function watchDoggy(s) {
+        if (!s || !s.poses || typeof s.poses.held !== 'function') return;
+        let held = null;
+        try {
+            held = s.poses.held();
+        } catch (_) {
+            held = null;
+        }
+        if (held === 'all-fours') {
+            if (s.doggyTimer || s.doggySweaty) return;
+            s.doggyTimer = (s.win.setTimeout || setTimeout)(() => {
+                s.doggyTimer = null;
+                if (state !== s) return;
+                let still = null;
+                try {
+                    still = s.poses.held();
+                } catch (_) {
+                    still = null;
+                }
+                if (still !== 'all-fours') return;
+                s.doggySweaty = true;
+                fitSkinToPace();
+                emit();
+            }, DOGGY_SWEAT_MS);
+            return;
+        }
+        stopDoggy(s);
+        fitSkinToPace();
+    }
+
+    function stopDoggy(s) {
+        if (!s) return;
+        if (s.doggyTimer) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.doggyTimer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        s.doggyTimer = null;
+        s.doggySweaty = false;
+    }
+
+    function clearFinish(s) {
+        if (s && s.finish) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.finish.timer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        if (s) s.finish = null;
+    }
+
+    /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    function skinLine(s) {
+        if (!s.skin || !s.skinStates) return null;
+        const now = s.skin.current();
+        if (!now || now === 'closed') return null;
+        const entry = s.skinStates.find((x) => x.name === now);
+        return entry && entry.body ? entry.body : null;
+    }
+
+    /** UN27. What her body is doing in the position this action asked for, or `null`. */
+    function bodyOf(s, action) {
+        try {
+            if (!s.poses || typeof s.poses.describe !== 'function' || !action || !action.params) return null;
+            const key =
+                action.params.pose === 'preset' && typeof s.poses.presetKey === 'function'
+                    ? s.poses.presetKey(action.params.preset || '')
+                    : action.params.pose;
+            const named = s.poses.describe(key);
+            return (named && named.body) || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function closerControl(s) {
         return `the “${closerLabel(s)}” control`;
     }
@@ -1457,6 +2097,7 @@
             poseHeld: Boolean(s.poses && typeof s.poses.held === 'function' && s.poses.held()),
             undressed: Boolean(s.dressedLook),
             ...poseContext(s),
+            routine: routineState(s),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -1646,6 +2287,21 @@
                 : null,
             offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
+            // UN35. Where they can finish that this look can show on her, at the closest step only:
+            // the ⋯ menu draws a chip for each, so no chip is offered that could only be refused.
+            // The view gates these by the pace it shows (a pace change repaints the menu without a
+            // new snapshot, so a list cut to the pace here went stale and drew no chips).
+            finishPlaces: FINISH_ORDER.filter((place) => finishState(s, place)),
+            // UN36. The shows open at this step (the ⋯ menu's chips), and the one she is giving.
+            // A snapshot reads; it never loads a module (loading the policy here put the outfit
+            // autonomy switch on the setup panel of a page that had not loaded it).
+            routines: (() => {
+                const R = s.win && s.win.NEXUS_PRIVATE_ROUTINES;
+                const Policy = s.win && s.win.NEXUS_PRIVATE_ACTION_POLICY;
+                if (!R || !Policy || typeof Policy.poseLevel !== 'function') return [];
+                return R.ORDER.map((id) => ({ id, level: R.level(id, (key) => Policy.poseLevel(key) || 1) }));
+            })(),
+            routine: s.routine ? { id: s.routine.id, state: routineState(s), step: s.routine.index } : null,
             // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.
             story: s.story
                 ? {
@@ -1824,6 +2480,57 @@
                 lines.push(
                     '- Getting dressed again: when they say they are done or ask you to get dressed, the app puts back the outfit you wore before; then the evening can end gently.'
                 );
+            // UN27/UN28. The closer positions, by what they are and by the step each opens at.
+            // Before this the model knew of kneeling and lying and nothing else, so a request for
+            // any other was met with a guess, and its own invitations named positions the app had
+            // no way to take. Listed only when this build can run them (Spicy lists the presets);
+            // open ones by name, the next ones with the step they open at, so her teasing points
+            // at something the person can actually reach by bringing the evening closer.
+            const closer = closerPositions(s);
+            if (closer.length) {
+                const at = levelOf(s) || 1;
+                const need = (p) => poseLevelOf(s, p.key);
+                const open = closer.filter((p) => need(p) <= at);
+                const later = closer.filter((p) => need(p) > at);
+                if (open.length)
+                    lines.push(
+                        `- Closer positions open at this step of the evening (${at} of ${UNDRESS_AT}): ${open.map((p) => p.name).join('; ')}. When they ask for one, the app moves your body into it and holds it until they ask you to stand or to go back to how you were. You never take one on your own: you may invite one in a few words, by its name, and it happens only if they ask. Once you are in it, stay in character — a sentence or two, unhurried, about being there for them like that and what you want next — and follow what RIGHT NOW below says your body is doing; never describe more than it shows.`
+                    );
+                if (later.length)
+                    lines.push(
+                        `- Not open yet: ${later.map((p) => `${p.name} (at ${need(p)} of ${UNDRESS_AT})`).join('; ')}. If they ask for one, say so warmly, once: not yet, it opens when they bring the evening closer with ${closerControl(s)}. You may let them know it is waiting there; never describe yourself taking one before then.`
+                    );
+            }
+        }
+        // UN36. The shows she knows, open at this step, by name. She may invite one; it runs only
+        // when they ask (their words or a chip).
+        {
+            const R = s.poses ? routinesOf(s) : null;
+            const open = R ? R.openAt(levelOf(s) || 1, poseLevelFn(s)) : [];
+            if (open.length)
+                lines.push(
+                    `- Shows you know, open now: ${open.map((id) => `${R.ROUTINES[id].label} (${R.ROUTINES[id].name})`).join('; ')}. When they ask for one by name, or just "show me", the app moves your body through it step by step, slowly, holding each position. You never start one on your own: you may invite one by name in a few words. During a show, say a short, sensual line at each step about what you are showing them and how it feels to be watched; they can say slower, faster or stop. When it ends, ask them if they want more.`
+                );
+        }
+        // UN34. Helping them finish. What she says leads them there; what is shown on her follows
+        // their words only. The places are the ones this look can show, so she never invites
+        // something the app cannot put on her body.
+        if (levelOf(s) >= UNDRESS_AT && s.skinStates && s.skinStates.length) {
+            const places = FINISH_ORDER.filter((place) => finishState(s, place));
+            if (places.length) {
+                const said = {
+                    back: 'on your lower back',
+                    inside: 'inside you',
+                    ass: 'in your ass',
+                    both: 'in both your holes',
+                    all: 'all over you',
+                    belly: 'on your belly',
+                    chest: 'on your breasts',
+                };
+                lines.push(
+                    `- Bringing them to climax: this is the closest part of the evening, and it is about their pleasure. Follow their rhythm and what they tell you they like; say what you feel and want in short, vivid, unhurried sentences; build it slowly and let them lead the pace. When they are close, ask where they want to finish — ${places.map((p) => said[p]).join(', ')} — and when they say they are coming and where, the app shows it on your body. Respond to it in the moment, then stay close and tender afterwards. Never describe it on your body before RIGHT NOW below says it is there.`
+                );
+            }
         }
         // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
         // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
@@ -2029,9 +2736,11 @@
             // skeleton). There was no line for that, so the last `else` below told her she could
             // not take a position she was in the middle of taking; and nothing may be called done
             // before the renderer has shown it.
+            // UN27. What the position is, for her words to follow: the key alone told her nothing.
+            const shape = bodyOf(s, body);
             if (body.status === 'pending')
                 now.push(
-                    `You are moving into that position right now (${named}); it is not confirmed on screen yet. Say you are getting into it, in a few words. Do not say it is done.`
+                    `You are moving into that position right now (${named}${shape ? `: ${shape}` : ''}); it is not confirmed on screen yet. Say you are getting into it, in a few words. Do not say it is done.`
                 );
             else if (body.why === 'ambiguous-pose')
                 now.push(
@@ -2052,10 +2761,14 @@
             else if (body.status === 'completed' && body.params.pose === 'back')
                 now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
             else if (body.status === 'completed')
-                now.push(`Your body is in that position now (${named}). Stay in it until they ask you to stand.`);
+                now.push(
+                    shape
+                        ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
+                        : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`
+                );
             else if (body.why === 'pace')
                 now.push(
-                    `They asked for a position the evening is not close enough for yet. Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`
+                    `They asked for a position the evening is not close enough for yet (it opens at ${poseLevelOf(s, body.params.pose) || UNDRESS_AT} of ${UNDRESS_AT}; the evening is at ${levelOf(s) || 1}). Say so plainly and warmly, once: it opens when they bring the evening closer with ${closerControl(s)}. You stay as you are.`
                 );
             else if (body.why === 'unsupported-pose')
                 now.push(
@@ -2085,6 +2798,44 @@
             lines.push(
                 'RIGHT NOW: they asked you to forget your past evenings, and this device would not let it be erased. Say so once.'
             );
+        {
+            const R = s.routine ? routinesOf(s) : null;
+            const r = s.routine;
+            const now_ = routineState(s);
+            if (R && r && now_ === 'running' && r.index >= 0) {
+                const steps = R.ROUTINES[r.id].steps;
+                const k = Math.min(r.index, steps.length - 1);
+                const next = steps[r.index + 1];
+                now.push(
+                    `You are giving them a show — ${R.ROUTINES[r.id].name}, step ${r.index + 1} of ${steps.length}: you are ${showBody(r, steps, k)}.${next ? ` Next you will be ${next.body}.` : ' This is the last step.'} Stay in it and speak to them from it.`
+                );
+            } else if (R && r && now_ === 'done') {
+                const steps = R.ROUTINES[r.id].steps;
+                now.push(
+                    `You have finished the show (${R.ROUTINES[r.id].name}); you are still ${showBody(r, steps, steps.length - 1)}. Ask them, warmly and in your own words, if they want more — again, another show, or something else.`
+                );
+            }
+            const asked = [...s.log].reverse().find((a) => a.name === 'avatar.routine' && a.turnId === s.turnId);
+            if (asked && asked.status === 'blocked' && asked.why === 'pace')
+                now.push(
+                    `They asked for a show that is not open at this step of the evening: say so warmly, once — it opens when they bring the evening closer with ${closerControl(s)}.`
+                );
+            else if (asked && asked.status === 'failed' && asked.why !== 'no-routine')
+                now.push(
+                    'They asked for a show and your body could not take it here: say so plainly, once, in your own warm voice.'
+                );
+        }
+        if (s.finish && s.finish.turnId === s.turnId)
+            now.push('They just came, and it shows on your body as the next line says. Answer it in the moment.');
+        const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
+        if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
+            now.push(
+                lastFinish.why === 'pace'
+                    ? `They said they are coming; the evening is not at its closest step, so nothing is shown on your body — answer them warmly in words.`
+                    : 'They said they are coming; this look cannot show it on your body, so answer them in words, warmly, without describing it on your skin.'
+            );
+        const skin = skinLine(s);
+        if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;
@@ -2099,6 +2850,8 @@
         end,
         active,
         request,
+        fitPoseToPace,
+        noticePose,
         onUserTurn,
         ownsBody,
         whenPoseSettled,
