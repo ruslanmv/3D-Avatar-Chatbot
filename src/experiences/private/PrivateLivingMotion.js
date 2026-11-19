@@ -124,24 +124,29 @@
     }
 
     /**
-     * One hand's program: which place, and how firmly it is there (0–1), at `t` seconds. Each hand
-     * stays 9 s at a place and takes 1.6 s to move to the next; the right hand runs half a cycle
-     * behind the left, so the two are rarely in the same place, and below the closest step the
-     * right one rests every other turn (she touches herself with one hand, then both).
+     * One hand's program at `t` seconds: the place it is on, the next one, and how far it has slid
+     * towards that next one (`mix`, 0–1). Each hand stays 9 s at a place and slides to the next over
+     * the last 1.6 s of them; the right hand runs half a cycle behind the left, so the two are
+     * rarely in the same place.
+     *
+     * LM4. A hand on her stays on her. The first version let go between places (weight down to 0
+     * and back up), and every time it let go the arm went back towards the preset's own arm — on
+     * `sittingOpen` that arm is raised with the forearm across her chin (measured with the layer
+     * off: elbow 190 mm above the shoulder) — so between her breast and her belly a forearm swept
+     * up across her face. Sliding from place to place keeps the elbow down the whole way; the only
+     * return to the preset's arm is when touching ends, and that is the pose as it was made.
      */
     function handAt(t, places, side, level) {
         const open = places.filter((p) => level >= PLACE_LEVEL[p]);
-        if (!open.length) return { place: null, weight: 0 };
+        if (!open.length) return { place: null, next: null, mix: 0, weight: 0 };
         const period = 9;
         const shift = side === 'right' ? period / 2 : 0;
         const k = Math.floor((t + shift) / period);
         const into = (t + shift) / period - k;
-        const rests = side === 'right' && level < 4 && k % 2 === 1;
-        const place = open[(k + (side === 'right' ? 1 : 0)) % open.length];
-        // 1.6 s of the 9 to move: out of the old place and into the new, weight dipping between.
+        const at = (n) => open[(n + (side === 'right' ? 1 : 0)) % open.length];
         const move = 1.6 / period;
-        const weight = rests ? 0 : into < move ? smooth(into / move) : into > 1 - move ? smooth((1 - into) / move) : 1;
-        return { place: rests ? null : place, weight };
+        const mix = into > 1 - move ? smooth((into - (1 - move)) / move) : 0;
+        return { place: at(k), next: at(k + 1), mix, weight: 1 };
     }
 
     /**
@@ -231,7 +236,7 @@
             if (style && style.touch && touchOn > 0.001) {
                 for (const side of ['left', 'right']) {
                     const h = handAt(t, style.touch, side, level);
-                    out.hands[side] = { place: h.place, weight: h.weight * touchOn };
+                    out.hands[side] = { place: h.place, next: h.next, mix: h.mix, weight: h.weight * touchOn };
                 }
             }
             // The stroke: a small slow circle on the skin, faster as she builds.
@@ -253,7 +258,8 @@
         const parts = [];
         for (const side of ['left', 'right']) {
             const h = frame.hands[side];
-            if (h && h.place && h.weight > 0.5) parts.push(`your ${side} hand ${PLACE_WORDS[h.place]}`);
+            const where = h && (h.mix > 0.5 && h.next ? h.next : h.place);
+            if (where && h.weight > 0.5) parts.push(`your ${side} hand ${PLACE_WORDS[where]}`);
         }
         return parts.length ? parts.join(', and ') : null;
     }
@@ -509,8 +515,19 @@
         });
         const aim = (side, f) => {
             const h = frame.hands[side];
-            const spot = placeOf(h.place, side, f, THREE);
+            let spot = placeOf(h.place, side, f, THREE);
             if (!spot) return null;
+            // LM4. Sliding to the next place: point, way out and finger direction all move
+            // together, so the palm stays on her skin and turned into it the whole way.
+            const next = h.next && h.mix > 0 ? placeOf(h.next, side, f, THREE) : null;
+            if (next) {
+                const m = h.mix;
+                spot = {
+                    point: spot.point.clone().lerp(next.point, m),
+                    out: spot.out.clone().lerp(next.out, m).normalize(),
+                    along: spot.along.clone().lerp(next.along, m).normalize(),
+                };
+            }
             const tangent = new THREE.Vector3().crossVectors(spot.out, spot.along).normalize();
             const sc = f.scale;
             // The wrist sits off her skin by the palm's thickness, back along the fingers by half a

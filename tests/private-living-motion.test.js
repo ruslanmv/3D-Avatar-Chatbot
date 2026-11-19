@@ -91,6 +91,17 @@ describe('LM2 her hands: where they go, and when', () => {
             for (const p of places(pose, 4, 60)) expect(Object.keys(Living.PLACE_LEVEL)).toContain(p);
     });
 
+    test('LM4: a hand on her stays on her — it slides from place to place, never lets go mid-loop', () => {
+        for (const level of [3, 4]) {
+            const frames = run({ pose: 'sit-open', level }, 60, (f) => f.hands);
+            const settled = frames.slice(60 * 12); // once eased in (it eases in gently over several seconds)
+            for (const h of settled) for (const side of ['left', 'right']) expect(h[side].weight).toBeGreaterThan(0.99);
+            // and it really moves on: both places are visited, through a slide (0 < mix < 1)
+            expect(new Set(settled.map((h) => h.left.place)).size).toBe(2);
+            expect(settled.some((h) => h.left.mix > 0.2 && h.left.mix < 0.8)).toBe(true);
+        }
+    });
+
     test('hands that hold her up or hold them are never taken', () => {
         for (const pose of ['all-fours', 'straddle', 'lie-side', null]) expect(places(pose, 4).size).toBe(0);
     });
