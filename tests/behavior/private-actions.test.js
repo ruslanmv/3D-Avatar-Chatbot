@@ -2828,3 +2828,48 @@ describe('VA3. danced shows: the striptease takes layers off at its cues, the ta
         expect(Actions.log().filter((a) => a.name === 'wardrobe.undress')).toHaveLength(0);
     });
 });
+
+describe('LM1. her body alive in a held position: the bridge drives the layer and tells the model', () => {
+    let real;
+    let layer;
+    beforeEach(() => {
+        real = { poses: window.NEXUS_PRIVATE_POSES, vps: window.vrPoseSystem };
+        layer = null;
+        window.vrPoseSystem = { setLayer: (l) => (layer = l), getLayer: () => layer };
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => 'sit-open',
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+    });
+    afterEach(() => {
+        window.NEXUS_PRIVATE_POSES = real.poses;
+        window.vrPoseSystem = real.vps;
+    });
+
+    test('her hands reach the prompt only from the third step, and the evening ending takes the layer off', async () => {
+        const w = await begin({ adult: true });
+        expect(layer).toBeTruthy();
+        const run = (seconds) => {
+            for (let i = 0; i < seconds * 60; i += 1) layer.apply(1 / 60, { bone: () => null, node: () => null }, null);
+        };
+        const said = () => Actions.promptLines().join('\n');
+        w.adult.level = 2;
+        run(30);
+        expect(said()).not.toMatch(/Your hands right now/);
+        w.adult.level = 4;
+        // over a minute her hands come to her: the line says where, from the frame that moves them
+        let seen = false;
+        for (let k = 0; k < 12 && !seen; k += 1) {
+            run(5);
+            seen = /Your hands right now: your (left|right) hand/.test(said());
+        }
+        expect(seen).toBe(true);
+        Actions.end();
+        expect(layer).toBeNull();
+    });
+});

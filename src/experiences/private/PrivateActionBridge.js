@@ -151,6 +151,9 @@
         };
         const s = state;
         startStory(s, o.deps && o.deps.story);
+        // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
+        // evening (position, step, finish) each frame; never moves any of it.
+        s.living = startLiving(s, o.deps && o.deps.living);
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -186,6 +189,14 @@
         const s = state;
         if (!s || (session && s.session !== session)) return false;
         if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
+        if (s.living) {
+            try {
+                s.living.detach(); // LM1. before the pose is released below
+            } catch (_) {
+                /* the pose system is gone with the page */
+            }
+            s.living = null;
+        }
         clearAfterglow(s);
         clearFinish(s);
         stopDoggy(s);
@@ -618,6 +629,42 @@
             // UN1. Read at the moment of the decision, for undressing only; never written.
             level: levelOf(s),
         };
+    }
+
+    /**
+     * LM1. The living layer for this evening (PrivateLivingMotion.attach), or `null` when this
+     * page has no pose system to draw it on. What it reads is the evening as the bridge holds it:
+     * her held position, ConsentFlow's step, when they last finished, the afterglow, care mode.
+     */
+    function startLiving(s, injected) {
+        if (injected) return injected;
+        const Living = pick(s.win, 'NEXUS_PRIVATE_LIVING', './PrivateLivingMotion.js');
+        if (!Living || typeof Living.attach !== 'function') return null;
+        try {
+            return Living.attach({
+                win: s.win,
+                read: () => {
+                    if (state !== s) return {};
+                    let speaking = false;
+                    try {
+                        speaking = Boolean(s.win.speechSynthesis && s.win.speechSynthesis.speaking);
+                    } catch (_) {
+                        speaking = false;
+                    }
+                    return {
+                        pose: s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null,
+                        level: levelOf(s),
+                        finishAt: s.finish ? s.finish.at : null,
+                        afterglow: s.afterglow ? s.afterglow.stage : null,
+                        care: Boolean(s.session && s.session._care),
+                        speaking,
+                    };
+                },
+            });
+        } catch (error) {
+            console.warn('[Private] LM1 living layer not started', error);
+            return null;
+        }
     }
 
     /** ConsentFlow's current level for this session (UN1), or 0 when there is none. */
@@ -2836,6 +2883,14 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
+        // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
+        let hands = null;
+        try {
+            hands = s.living && typeof s.living.describe === 'function' ? s.living.describe() : null;
+        } catch (_) {
+            hands = null;
+        }
+        if (hands) now.push(`Your hands right now: ${hands}. What you say about your hands matches that.`);
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

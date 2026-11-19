@@ -249,9 +249,13 @@ said for her) and `VA` for VRMA dances and VRM 1.0 facing
 by `tools/anim/glb2vrma.py`; a VRM 1.0 avatar faces +Z, so read
 `root.userData.vrmForwardNegZ`, never `isVRM`, for her forward), `CV` for
 clothing visibility (`src/wardrobe/ClothingVisibility.js`: hidden only where
-Forge's `/v1/visibility` allows it for the exact bytes on stage). Commit
-subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
-the comment line up.
+Forge's `/v1/visibility` allows it for the exact bytes on stage), `LM` for her
+body alive in a held position (`src/experiences/private/PrivateLivingMotion.js`:
+breathing, rocking, arching, face and her hands on her breast and belly, drawn
+over the held pose through `VRPoseSystem.setLayer`, never edited into it;
+measure with `tools/qa/living-motion-live.mjs`). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
