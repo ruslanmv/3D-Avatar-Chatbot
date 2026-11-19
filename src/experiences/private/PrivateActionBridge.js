@@ -171,7 +171,9 @@
         if (s.closet && typeof s.closet.onChange === 'function') {
             s.unwatch.push(
                 s.closet.onChange(() => {
-                    if (state === s) emit();
+                    if (state !== s) return;
+                    syncSkin(s); // UN32. a bare look with a skin pack switches state live
+                    emit();
                 })
             );
         }
@@ -183,6 +185,7 @@
     function end(session, options) {
         const s = state;
         if (!s || (session && s.session !== session)) return false;
+        if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -1118,6 +1121,7 @@
      * what she holds is still open, or when she holds nothing. Never raises or lowers the level.
      */
     function fitPoseToPace() {
+        fitSkinToPace();
         const s = state;
         if (!s || s.session._stopped || !s.poses || typeof s.poses.held !== 'function') return false;
         const held = s.poses.held();
@@ -1126,6 +1130,84 @@
         if (!need || levelOf(s) >= need) return false;
         request('avatar.pose', { pose: 'stand' }, { source: 'control' }).catch(() => null);
         return true;
+    }
+
+    /**
+     * UN32. Her skin follows the pace live when the look on stage is a bare look with a skin pack
+     * (Forge BD7): Romantic and below closed, Sensual flushed, Intimate open — each only if the
+     * pack holds it, else the next listed. Read on every pace repaint; never moves the pace.
+     */
+    const SKIN_FOR_LEVEL = Object.freeze({
+        1: ['closed'],
+        2: ['closed'],
+        3: ['flushed', 'aroused'],
+        4: ['open', 'aroused', 'flushed'],
+    });
+
+    function skinSwitcher(s) {
+        if (s.skin) return s.skin;
+        const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+        if (!Skin || typeof Skin.create !== 'function') return null;
+        const forge = (() => {
+            try {
+                return s.win.NEXUS_WARDROBE.service.controller.forge;
+            } catch (_) {
+                return null;
+            }
+        })();
+        s.skin = Skin.create({
+            fetch: s.win.fetch && s.win.fetch.bind(s.win),
+            headersFor: async (url) =>
+                forge && typeof forge.downloadHeadersNow === 'function' ? forge.downloadHeadersNow(url) : {},
+        });
+        return s.skin;
+    }
+
+    function syncSkin(s) {
+        try {
+            const look = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            if (look === s.skinLook) return;
+            s.skinLook = look;
+            s.skinStates = [];
+            const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+            if (!look || !Skin || !Skin.mayHavePack(look)) {
+                if (s.skin) s.skin.detach();
+                return;
+            }
+            const switcher = skinSwitcher(s);
+            const root =
+                s.win.NEXUS_VIEWER && s.win.NEXUS_VIEWER.avatarManager && s.win.NEXUS_VIEWER.avatarManager.currentRoot;
+            if (!switcher || !root) return;
+            switcher
+                .attach(root, look)
+                .then((states) => {
+                    if (state !== s || s.skinLook !== look) return;
+                    s.skinStates = states || [];
+                    fitSkinToPace();
+                })
+                .catch((error) => console.warn('[Private] skin pack not attached', error));
+        } catch (error) {
+            console.warn('[Private] skin states skipped', error);
+        }
+    }
+
+    function fitSkinToPace() {
+        const s = state;
+        if (!s || !s.skin || !s.skinStates || !s.skinStates.length) return false;
+        const names = s.skinStates.map((x) => x.name);
+        const want = (SKIN_FOR_LEVEL[Math.max(1, Math.min(4, levelOf(s) || 1))] || []).find((n) => names.includes(n));
+        if (!want || s.skin.current() === want) return false;
+        s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
+        return true;
+    }
+
+    /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    function skinLine(s) {
+        if (!s.skin || !s.skinStates) return null;
+        const now = s.skin.current();
+        if (!now || now === 'closed') return null;
+        const entry = s.skinStates.find((x) => x.name === now);
+        return entry && entry.body ? entry.body : null;
     }
 
     /** UN27. What her body is doing in the position this action asked for, or `null`. */
@@ -2171,6 +2253,8 @@
             lines.push(
                 'RIGHT NOW: they asked you to forget your past evenings, and this device would not let it be erased. Say so once.'
             );
+        const skin = skinLine(s);
+        if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

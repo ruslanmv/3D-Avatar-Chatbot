@@ -117,6 +117,6 @@ describe('try-on haul languages', () => {
         expect(localeAt).toBeGreaterThan(-1);
         expect(packsAt).toBe(localeAt + 1);
         expect(reasonsAt).toBe(packsAt + 1);
-        expect(scripts.length).toBe(32);
+        expect(scripts.length).toBe(33); // UN32: SkinStateSwitcher joined the block
     });
 });

@@ -2297,3 +2297,58 @@ describe('UN27. the closer positions, described to her as her body is', () => {
         expect(w.pose.calls.filter((c) => c.startsWith('apply:'))).toEqual([]);
     });
 });
+
+describe('UN32. her skin follows the pace live when the look has a skin pack', () => {
+    const LOOKS_UN32 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    function stubSkin() {
+        const calls = [];
+        let current = null;
+        window.NEXUS_SKIN_STATES = {
+            mayHavePack: () => true,
+            create: () => ({
+                attach: async (root, look) => {
+                    calls.push(`attach:${look.name}`);
+                    return [
+                        { name: 'closed', body: 'relaxed' },
+                        { name: 'flushed', body: 'a flush on your chest' },
+                        { name: 'open', body: 'you are aroused and open' },
+                    ];
+                },
+                apply: async (name) => {
+                    calls.push(`apply:${name}`);
+                    current = name;
+                    return true;
+                },
+                current: () => current,
+                detach: () => calls.push('detach') && true,
+            }),
+        };
+        return calls;
+    }
+    afterEach(() => {
+        delete window.NEXUS_SKIN_STATES;
+    });
+
+    test('a look that lands at Intimate shows open, a step down shows flushed, and she is told', async () => {
+        const calls = stubSkin();
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const w = await begin({ adult: true, looks: LOOKS_UN32 });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = 4;
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('spogliati');
+        await flush();
+        expect(calls).toContain('attach:Black Lingerie Set');
+        expect(calls).toContain('apply:open');
+        expect(Actions.promptLines().join('\n')).toMatch(/Your body right now: you are aroused and open/);
+        w.adult.level = 3;
+        Actions.fitPoseToPace();
+        await flush();
+        expect(calls[calls.length - 1]).toBe('apply:flushed');
+    });
+});
