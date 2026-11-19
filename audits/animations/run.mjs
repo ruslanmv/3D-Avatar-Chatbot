@@ -9,6 +9,11 @@
  *   node audits/animations/run.mjs --only Clapping,dance_1    # clips whose path contains these
  *   node audits/animations/run.mjs --frames 8                 # frames per sequence (default 6)
  *
+ * VA5. An outside clip on an outside avatar, then the same clip on hers — the side-by-side review:
+ *   node audits/animations/run.mjs --avatar-file /path/ref-rig.vrm --files audits/x/clip.vrma --tag ref
+ *   node audits/animations/run.mjs --avatars AvatarSample_A --files audits/x/clip.vrma --tag chatbot
+ *   python3 tools/qa/review_sheets.py pair <ref run> <chatbot run> --out pair.png
+ *
  * The list is exactly Pose Studio's: NEXUS_CLIP_LOADER.getAllAnimations(), the source of its
  * "VRMA Animations" list and its "BVH Library" categories. Each clip starts the way the Play
  * button starts it (playClip(id, loop), procedural idle underneath).
@@ -64,7 +69,15 @@ const INTENT = JSON.parse(fs.readFileSync(path.join(HERE, 'clip-intent.json'), '
 const intentOf = (id) => INTENT[String(id).replace(/^vendor\/animations\//, '')] || null;
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-const OUT = path.join(HERE, 'runs', stamp);
+// VA5. Review an outside clip on an outside avatar, beside the chatbot's: clips by path (served
+// from the repo root, e.g. a downloaded VRMA under audits/), an avatar loaded through the app's own
+// upload input, and a tag on the run folder so two runs are told apart. Without these flags the
+// review is exactly what it was. `tools/qa/review_sheets.py pair` stacks two runs' frames.
+const FILES = arg('--files', '').split(',').filter(Boolean);
+const AVATAR_FILE = arg('--avatar-file', '');
+const CLIP_CATEGORY = arg('--clip-category', 'dance');
+const TAG = arg('--tag', '');
+const OUT = path.join(HERE, 'runs', TAG ? `${stamp}-${TAG}` : stamp);
 const SHOTS = path.join(OUT, 'shots');
 
 /** MotionAuditScorer's posture for a category. A dance is choreography: it may drop low, fold
@@ -203,7 +216,31 @@ function installSampler() {
             // next, read as tipped over. Each clip is reviewed alone, so the others stop now.
             const mixer = L.getCurrentMixer();
             for (const other of (mixer && mixer._actions) || []) if (other !== a) other.stop();
-            return { ok: true, duration: a.getClip().duration };
+            // VA5. Live playback, unpaused, for 0.7 s: does its time advance and do her bones move?
+            // A clip that only moves when scrubbed (time stuck, or a mixer nobody updates) shows here.
+            const v = window.NEXUS_VIEWER.avatarManager._currentVRM;
+            const names = ['hips', 'spine', 'leftUpperArm', 'rightUpperArm', 'leftUpperLeg', 'rightUpperLeg', 'head'];
+            const snap = () =>
+                names.map((b) => {
+                    const n = v && v.humanoid ? v.humanoid.getRawBoneNode(b) : null;
+                    return n ? n.quaternion.toArray() : null;
+                });
+            const wasPaused = a.paused;
+            a.paused = false;
+            const t0 = a.time;
+            const q0 = snap();
+            await new Promise((r) => setTimeout(r, 700));
+            const t1 = a.time;
+            const q1 = snap();
+            a.paused = wasPaused;
+            let maxDeg = 0;
+            q0.forEach((q, i) => {
+                const p = q1[i];
+                if (!q || !p) return;
+                const d = Math.abs(q[0] * p[0] + q[1] * p[1] + q[2] * p[2] + q[3] * p[3]);
+                maxDeg = Math.max(maxDeg, 2 * Math.acos(Math.min(1, d)) * 57.29578);
+            });
+            return { ok: true, duration: a.getClip().duration, live: { t0, t1, maxBoneDeltaDeg: +maxDeg.toFixed(2) } };
         },
         async sampleAll(duration, n) {
             const out = [];
@@ -239,7 +276,21 @@ async function openAvatar(D, browser, base, avatar) {
     await page.waitForFunction(
         () => window.NEXUS_VIEWER?.avatarManager?._currentVRM && window.NEXUS_CLIP_LOADER?.getAllAnimations?.().length
     );
-    if (avatar !== 'AvatarSample_A') {
+    if (AVATAR_FILE) {
+        // VA5. The app's own import: the avatar file input (#avatar-upload → loadAvatar(blob)), so
+        // an outside VRM (a reference rig, a download) is loaded exactly as a person would load it.
+        await page.evaluate(() => (window.__va5Before = window.NEXUS_VIEWER.avatarManager._currentVRM));
+        await page.setInputFiles('#avatar-upload', AVATAR_FILE);
+        await page
+            .waitForFunction(
+                () =>
+                    window.NEXUS_VIEWER.avatarManager._currentVRM &&
+                    window.__va5Before !== window.NEXUS_VIEWER.avatarManager._currentVRM,
+                null,
+                { timeout: 120000 }
+            )
+            .catch(() => console.warn('the avatar file did not replace the avatar'));
+    } else if (avatar !== 'AvatarSample_A') {
         await page.evaluate((u) => window.NEXUS_VIEWER.loadAvatar(u), `/vendor/avatars/${avatar}.vrm`);
         await page.waitForFunction(
             (n) => (window.NEXUS_VIEWER.avatarManager.currentRoot?.name || '').endsWith(n),
@@ -346,6 +397,7 @@ async function reviewAvatar(D, browser, base, avatar, rows) {
     clips = clips.map((c) => ({ ...c, category: String(c.id).toLowerCase().includes('.vrma') ? 'vrma' : c.category }));
     if (CATEGORY) clips = clips.filter((c) => c.category === CATEGORY);
     if (ONLY.length) clips = clips.filter((c) => ONLY.some((o) => String(c.id).includes(o)));
+    if (FILES.length) clips = FILES.map((f) => ({ id: f, label: path.basename(f), category: CLIP_CATEGORY }));
     console.log(`\n${avatar}: ${clips.length} clips`);
     for (const clip of clips) {
         const t0 = Date.now();
@@ -358,6 +410,7 @@ async function reviewAvatar(D, browser, base, avatar, rows) {
             : [];
         const dt = n > 1 ? Math.min(start.duration, MAX_SECONDS) / (n - 1) : 0.1;
         const result = judge(clip, samples, stand, start, dt);
+        if (result.metrics) result.metrics.live = start.live || null;
         const frames = [];
         if (start.ok) {
             const end = Math.min(start.duration, MAX_SECONDS);
