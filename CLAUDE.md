@@ -260,12 +260,17 @@ one reaction at the finish; off draws nothing and removes nothing; measure with
 `tools/qa/living-motion-live.mjs`), `MP` for motion provenance
 (`src/gltf-viewer/MotionProvenance.js`: every motion Claude made, tagged by
 method, one switch per method; anything new that moves her body gets an entry in
-the same commit; the gallery is `tools/qa/motion-gallery.mjs`). `SW` for the
-safety words and the moments around them (`PrivateTurnDirector.js`: end and
-ease-off in all nine languages, hesitation eases off and checks in once; the
-bridge's proportionate finish and three replies of aftercare). Commit subjects
-match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
-comment line up.
+the same commit; the gallery is `tools/qa/motion-gallery.mjs`). `PP` for private
+rooms made for one of her shows
+(`src/experiences/private/PrivatePlaceScripts.js`: the striptease stage and the
+table dance lounge; her opening there, the room's brief, and an invitation once
+the pace opens the show — an offer only the person's yes, tap or words start;
+PP2: a striptease with nothing left to take off puts on a ready `show-strip-*`
+set first). `SW` for the safety words and the moments around them
+(`PrivateTurnDirector.js`: end and ease-off in all nine languages, hesitation
+eases off and checks in once; the bridge's proportionate finish and three
+replies of aftercare). Commit subjects match: `A4: viewport background manager`.
+So `git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

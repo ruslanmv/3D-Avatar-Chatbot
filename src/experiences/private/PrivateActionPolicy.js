@@ -358,6 +358,10 @@
             case 'avatar':
                 // A reaction is an expression; a dance is a thing she does to the room.
                 if (action.name === 'avatar.react') return { allow: true };
+                // PP1. Her show, unasked, is an invitation their yes takes (the bridge re-asks this
+                // file then, as `user-approved`), never a start.
+                if (action.name === 'avatar.routine' && !asked && action.params && action.params.move === 'start')
+                    return { allow: false, why: 'not-asked', suggest: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
             case 'world':
                 // UN4. Her invitation is a question for them, never a trip: it becomes an offer

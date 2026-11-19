@@ -1450,6 +1450,11 @@ const PrivateConversationView = (() => {
                           ? 'outfit.offer.wear'
                           : 'outfit.offer.create';
                 text = t(key, { name: offer.name || '' });
+                // PP1. Her show, in its own name in the card's language (the ⋯ menu's chip label).
+                if (offer.kind === 'show') {
+                    const label = t(`routine.${offer.routine}.label`);
+                    text = `💃 ${label && label !== `routine.${offer.routine}.label` ? label : offer.name || ''}`;
+                }
                 buttons.push(['approve', t('outfit.yes'), handlers.onApprove, false]);
                 buttons.push(['decline', t('outfit.no'), handlers.onDecline, true]);
             } else if (outfit && outfit.status === 'creating') {
