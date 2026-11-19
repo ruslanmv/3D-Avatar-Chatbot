@@ -859,6 +859,8 @@
                 return react(s, action);
             case 'body.finish':
                 return finishOn(s, action);
+            case 'body.fist':
+                return fistOn(s, action);
             case 'world.travel':
                 return travel(s, action);
             case 'scene.change': {
@@ -1771,6 +1773,42 @@
             if (found) return { place, state: found };
         }
         return null;
+    }
+
+    /**
+     * PS2. Their fist, as her body can show it: Forge's fisted states (assets/body_detail/
+     * states.json) by the position she holds, best first, and the first the look's pack holds is
+     * shown. Lying back it is the missionary states; on all fours the doggy ones; otherwise
+     * whichever exists. Stays until her skin changes again (a finish, the pace, the afterglow).
+     */
+    const FIST_STATES = Object.freeze({
+        doggy: { front: ['doggy-both-fisted'], anal: ['doggy-anal-fisted'], both: ['doggy-both-fisted'] },
+        missionary: {
+            front: ['missionary-fisted'],
+            anal: ['missionary-fisted-anal'],
+            both: ['missionary-fisted', 'missionary-fisted-anal'],
+        },
+    });
+    const FIST_ANY = ['missionary-fisted', 'doggy-anal-fisted', 'doggy-both-fisted', 'missionary-fisted-anal'];
+
+    function fistState(s, where) {
+        const names = (s.skinStates || []).map((x) => x.name);
+        const group = poseGroup(s);
+        const byPose = FIST_STATES[group] || null;
+        const want = where && where !== 'choose' ? where : group === 'doggy' ? 'anal' : 'front';
+        const ordered = [...((byPose && byPose[want]) || []), ...FIST_ANY];
+        return ordered.find((n) => names.includes(n)) || null;
+    }
+
+    function fistOn(s, action) {
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = fistState(s, action.params && action.params.where);
+        if (!chosen) return settle(action, 'failed', 'no-fist-state');
+        s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
+        action.result = { state: chosen };
+        return Promise.resolve(s.skin.apply(chosen))
+            .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
+            .catch(() => settle(action, 'failed', 'not-shown'));
     }
 
     function finishOn(s, action) {
@@ -3045,6 +3083,18 @@
                 // SW5. Afterwards is its own phase (Muise, Giang & Impett 2014: affection after sex
                 // predicts satisfaction): a few replies of closeness before anything new.
                 'Afterwards: stay close and unhurried. Short, tender, specific words about being together just now; slow and soft. Offer nothing new — no position, show, outfit or place — and do not ask for more; if they want more, they will say so. Never hurry them or make them feel they must leave or stay.'
+            );
+        // PS2. Their fist, this turn: what her body shows, or why it could not.
+        const lastFist = [...s.log].reverse().find((a) => a.name === 'body.fist' && a.turnId === s.turnId);
+        if (lastFist && lastFist.status === 'completed')
+            now.push(
+                'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+            );
+        else if (lastFist && lastFist.status !== 'pending')
+            now.push(
+                lastFist.why === 'pace'
+                    ? 'They asked for their fist; the evening is not at its closest step, so nothing happens yet — tease them about it in words.'
+                    : 'They asked for their fist; this look cannot show it on your body, so answer them in words, without describing it on your skin.'
             );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')

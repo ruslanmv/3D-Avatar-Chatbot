@@ -168,6 +168,8 @@
         // PP1. What each private room is for: her opening there and the show she invites them to.
         // After the routines (it asks which are open), before TogetherCapability, which runs it.
         'src/experiences/private/PrivatePlaceScripts.js',
+        // PS1. Who she is tonight (Gina, Isabelle, Yuki): before TogetherCapability, which runs it.
+        'src/experiences/private/PrivatePersonas.js',
         // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.
         'src/experiences/private/PrivateLivingMotion.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.

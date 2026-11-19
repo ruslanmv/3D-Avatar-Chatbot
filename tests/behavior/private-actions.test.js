@@ -297,10 +297,12 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the nineteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the twenty names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(19);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist;
+        // nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(20);
+        expect(Policy.ACTIONS['body.fist']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
@@ -3077,6 +3079,34 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'tease' });
             // A second tap on a deal chip is just words now: one deal per evening.
             expect(session._dealFor(Locale.t('place.deal.striptease'))).toBeNull();
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('PS1. Isabelle: the picker offers her, she opens in her words, her menu, her deal, her character', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        poses();
+        try {
+            const w = world({ adult: true });
+            const Locale = require('../../src/features/together/PrivateLocale.js');
+            w.activity.chooseMood({ id: 'sensual' });
+            // A Sensual evening reaches Isabelle and Yuki; Gina is Intense only.
+            expect(w.activity.personas().map((p) => p.id)).toEqual(['isabelle', 'yuki']);
+            w.activity.setAtmosphere({ persona: 'isabelle' });
+            expect(w.activity.personaChoice).toBe('isabelle');
+            await w.activity.start({ input: { id: 'sensual' } });
+            const session = w.activity._privateExperience;
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('persona.isabelle.opening').slice(0, 30));
+            expect(document.body.textContent).toContain(Locale.t('place.deal.ride'));
+            expect(Capability.privateSystemPromptSuffix()).toMatch(/WHO YOU ARE TONIGHT: You are Isabelle, 29/);
+            w.adult.level = 3;
+            expect(session._chooseReply(Locale.t('place.deal.ride'))).toBe(true);
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('persona.isabelle.deal-ok').slice(0, 20));
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'ride' });
+            expect(Capability.privateSystemPromptSuffix()).toMatch(/TONIGHT'S DEAL: they chose climbing onto them/);
         } finally {
             window.NEXUS_PRIVATE_POSES = real;
         }

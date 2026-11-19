@@ -1852,6 +1852,100 @@
       "category": "Private"
     },
     {
+      "id": "tokyo-club",
+      "title": "Tokyo night club",
+      "note": "A hostess club in Tokyo at night: a corner sofa, a low glass table, a little bar, a karaoke screen. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 1600,
+      "activities": [],
+      "sky": {
+        "top": "#0a0418",
+        "horizon": "#3a1060",
+        "bottom": "#06020c"
+      },
+      "fog": {
+        "color": "#1a0a2e",
+        "near": 6,
+        "far": 22
+      },
+      "light": {
+        "sky": "#7a50d0",
+        "ground": "#140a20",
+        "hemi": 0.45,
+        "key": "#ff70c0",
+        "keyIntensity": 0.9,
+        "fill": "#50a0ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffb0e0",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.3],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofaCorner.glb",
+          "width": 2.2,
+          "at": [0.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/tableCoffeeGlass.glb",
+          "width": 1.0,
+          "at": [-1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/kitchenBar.glb",
+          "width": 1.6,
+          "at": [-2.6, 0, -1.8],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/stoolBar.glb",
+          "height": 0.8,
+          "at": [-1.9, 0, -1.4]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/stoolBar.glb",
+          "height": 0.8,
+          "at": [-1.9, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/televisionModern.glb",
+          "width": 1.2,
+          "at": [2.5, 0.6, -1.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/speaker.glb",
+          "height": 1.0,
+          "at": [2.5, 0, -0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundFloor.glb",
+          "height": 1.6,
+          "at": [-2.4, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall2.glb",
+          "height": 0.6,
+          "at": [2.4, 0, -2.8]
+        }
+      ],
+      "ground": {
+        "color": "#1e0e2c",
+        "radius": 4.5
+      },
+      "preview": "previews/tokyo-club.webp",
+      "category": "Private"
+    },
+    {
       "id": "irish-pub",
       "title": "Irish pub",
       "note": "A warm bar with booths and pendant lamps.",

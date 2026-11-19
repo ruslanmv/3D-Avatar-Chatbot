@@ -50,6 +50,7 @@ describe('the new spaces', () => {
             'private-stream-studio',
             'roadside-motel',
             'strip-stage',
+            'tokyo-club',
             'window-room',
         ]);
         // A light stand-in is rated like the world it stands in for.

@@ -151,6 +151,9 @@
     function routinesModule() {
         return optional('../../experiences/private/PrivateRoutines.js', 'NEXUS_PRIVATE_ROUTINES');
     }
+    function personasModule() {
+        return optional('../../experiences/private/PrivatePersonas.js', 'NEXUS_PRIVATE_PERSONAS');
+    }
     function actionPolicy() {
         return optional('../../experiences/private/PrivateActionPolicy.js', 'NEXUS_PRIVATE_ACTION_POLICY');
     }
@@ -713,8 +716,9 @@
             ...(capability ? profile.capabilityLines(capability) : []),
             // AX5. Where they are, when nothing richer already says it.
             ...(profile ? profile.sceneLines(privateScene(ctx.activity)) : []),
-            // PP1. What this room is for, while it is the room on screen.
-            ...placeLines(ctx.activity),
+            // PS1. Who she is tonight, when a persona was chosen: her character and her voice in
+            // the evening's language. Otherwise the room's brief, while it is on screen (PP1).
+            ...(personaLines(ctx.activity).length ? personaLines(ctx.activity) : placeLines(ctx.activity)),
             '',
             ...attentionLines(),
             '',
@@ -884,6 +888,27 @@
             return { title: w.title, note: w.note };
         } catch (_) {
             return null;
+        }
+    }
+
+    /** PS1. The persona's character and voice, with what they chose at the door. */
+    function personaLines(activity) {
+        try {
+            const P = personasModule();
+            const id = activity && activity.personaChoice;
+            if (!P || !id) return [];
+            const session = activity._privateExperience;
+            const lang = session && typeof session._currentLanguage === 'function' ? session._currentLanguage() : 'en';
+            const lines = P.promptLines(id, lang);
+            const wish = session && session._placeWish;
+            const R = routinesModule();
+            if (wish && R && R.ROUTINES && R.ROUTINES[wish])
+                lines.push(
+                    `TONIGHT'S DEAL: they chose ${R.ROUTINES[wish].name} at the door. Lead them to it as the pace allows; anything else only if they ask.`
+                );
+            return lines;
+        } catch (_) {
+            return [];
         }
     }
 
@@ -2299,6 +2324,13 @@
 
         /** PP1. The script of the room Private chose for tonight, if it is one of hers. */
         _placeScript() {
+            // PS1. A persona is the evening's script wherever she is: her opening, her menu.
+            const persona = this.activity && this.activity.personaChoice;
+            const Personas = personasModule();
+            if (persona && Personas) {
+                const own = Personas.script(persona);
+                if (own) return own;
+            }
             const P = placeScripts();
             const choice = this.activity && this.activity.worldChoice;
             return P && choice ? P.forWorld(choice) : null;
@@ -2328,7 +2360,7 @@
             const script = this._placeScript();
             const locale = localeModel();
             if (!script || !locale || typeof locale.t !== 'function') return null;
-            const key = `place.${script.id}.opening`;
+            const key = script.openingKey || `place.${script.id}.opening`;
             const line = locale.t(key);
             if (!line || line === key) return null;
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
@@ -2389,8 +2421,10 @@
         _takeDeal(id) {
             this._placeWish = id;
             const locale = localeModel();
-            const ok = locale && typeof locale.t === 'function' ? locale.t('place.deal.ok') : '';
-            if (ok && ok !== 'place.deal.ok') this._speak(ok);
+            const script = this._placeScript();
+            const okKey = (script && script.dealOkKey) || 'place.deal.ok';
+            const ok = locale && typeof locale.t === 'function' ? locale.t(okKey) : '';
+            if (ok && ok !== okKey) this._speak(ok);
             this._emit('private:deal', { preset: this.preset.id, deal: id });
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             if (!this._invitePlace(level)) this._offerChoices([], { source: 'local' });

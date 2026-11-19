@@ -270,10 +270,15 @@ set first). `WR` for the Window Room (the same file and `PrivateRoutines.js`
 `window-evening`: her whole evening as an adult escort working her own window by
 her own choice — the deal at the door as chips answered locally and remembered,
 then her invitation as the pace opens it; price and time are story only; the
-finish stays the person's). `SW` for the safety words and the moments around
-them (`PrivateTurnDirector.js`: end and ease-off in all nine languages,
-hesitation eases off and checks in once; the bridge's proportionate finish and
-three replies of aftercare). Commit subjects match:
+finish stays the person's). `PS` for Private's personas
+(`src/experiences/private/PrivatePersonas.js`: Gina, Isabelle and Yuki, picked
+in setup as "Chi vuoi stasera?" — each a stated adult over 21 by her own choice,
+her voice per language, her room and her menu at the door; a test bans
+young-coded words in every persona text and line; PS2 `body.fist`, the person's
+words only at step 4, shows Forge's fisted states). `SW` for the safety words
+and the moments around them (`PrivateTurnDirector.js`: end and ease-off in all
+nine languages, hesitation eases off and checks in once; the bridge's
+proportionate finish and three replies of aftercare). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 

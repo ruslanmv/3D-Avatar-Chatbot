@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 73,
-        "places": 36,
+        "worlds": 74,
+        "places": 37,
         "standIns": 21,
         "withSpots": 42,
         "fails": 0,
         "warns": 25,
         "offered": {
-            "desktop": 52,
-            "mobile": 50,
-            "vr": 51
+            "desktop": 53,
+            "mobile": 51,
+            "vr": 52
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -1568,6 +1568,47 @@
                 "vr": {
                     "ok": true,
                     "shows": "window-room",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "tokyo-club",
+            "title": "Tokyo night club",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1600,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/tokyo-club.webp",
+                "exists": true,
+                "bytes": 11312
+            },
+            "props": 10,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "tokyo-club",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "tokyo-club",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "tokyo-club",
                     "why": "loads itself"
                 }
             },
