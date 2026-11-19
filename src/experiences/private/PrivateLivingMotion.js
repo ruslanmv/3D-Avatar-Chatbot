@@ -642,8 +642,10 @@
     // ---------------------------------------------------------------- the switch in Settings
 
     /**
-     * LM3. One switch, in Settings under Spicy Mode: "Living motion in Private". On by default,
-     * kept on this device. Off means the layer draws nothing — she holds each position as the
+     * LM3. One switch, in Settings under Spicy Mode: "Living motion in Private". OFF by default,
+     * kept on this device. LM6: the person reviewing it wants her positions still, as each pose was
+     * made — motion that runs on its own pulls the eye like a looping GIF — so the layer is
+     * opt-in: nothing moves until this is turned on. Off means the layer draws nothing — she holds each position as the
      * preset has it, her face goes back to neutral, and the model is told nothing about her hands
      * — while every part of it stays installed, so turning it back on needs no reload and nothing
      * is lost. Read each frame, so the change is live in the middle of an evening.
@@ -663,7 +665,7 @@
     }
 
     /**
-     * Is the living layer on? Absent or unreadable storage is on: it is the shipped default. MP1:
+     * Is the living layer on? Only when it was turned on (LM6): absent or unreadable storage is off. MP1:
      * it is also off while "Living motion layer" is off under Motion created by Claude.
      */
     function isOn() {
@@ -671,7 +673,7 @@
             const MP = global && global.NEXUS_MOTION_PROVENANCE;
             if (MP && !MP.allowed('layer:living')) return false;
             const st = store();
-            return !st || st.getItem(STORAGE_KEY) !== '0';
+            return Boolean(st) && st.getItem(STORAGE_KEY) === '1';
         } catch (_) {
             return true;
         }
@@ -736,7 +738,7 @@
         const note = d.createElement('p');
         note.style.cssText = 'font-size: 0.7rem; color: #888; margin: 6px 0 0';
         note.textContent =
-            'Breathing, rocking, arching and her hands while she holds a position. Off keeps her still in it.';
+            'Off (default): every position stays still, exactly as made. On: breathing, rocking, arching and her hands while she holds one.';
         group.append(label, note);
         section.append(group);
         box.addEventListener('change', () => setOn(box.checked));

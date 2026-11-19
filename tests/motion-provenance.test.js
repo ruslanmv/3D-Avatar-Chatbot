@@ -102,6 +102,7 @@ describe('MP1 a method off reaches everything made that way, and removes nothing
     });
 
     test('living layer off: it draws nothing, with its own switch still on', () => {
+        Living.setOn(true); // LM6: its own switch is off by default
         expect(Living.isOn()).toBe(true);
         MP.setMethodOn('procedural-layer', false);
         expect(Living.isOn()).toBe(false);

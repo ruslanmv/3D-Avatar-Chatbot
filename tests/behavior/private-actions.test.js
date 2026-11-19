@@ -2835,6 +2835,7 @@ describe('LM1. her body alive in a held position: the bridge drives the layer an
     beforeEach(() => {
         real = { poses: window.NEXUS_PRIVATE_POSES, vps: window.vrPoseSystem };
         layer = null;
+        localStorage.setItem('nexus_private_living_enabled', '1'); // LM6: off by default
         window.vrPoseSystem = { setLayer: (l) => (layer = l), getLayer: () => layer };
         window.NEXUS_PRIVATE_POSES = {
             create: () => ({

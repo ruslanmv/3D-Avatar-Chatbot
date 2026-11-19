@@ -282,6 +282,11 @@ describe('LM1 applied to her rig: directions from her own bones', () => {
 });
 
 describe('LM1 attach: the page runtime', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        Living.setOn(true); // LM6: off by default; these exercise it turned on
+    });
+    afterEach(() => localStorage.clear());
     test('only on a pose system with layers, and detaching takes the layer and her face off', () => {
         expect(Living.attach({ win: {} })).toBeNull();
         let layer = null;
@@ -318,13 +323,28 @@ describe('LM1 attach: the page runtime', () => {
 });
 
 describe('LM3 the switch in Settings: optional, never removed', () => {
+    test('LM6: in a fresh install the layer draws nothing over a held position', () => {
+        let layer = null;
+        Living.attach({
+            win: {},
+            system: { setLayer: (l) => (layer = l), getLayer: () => layer },
+            read: () => ({ pose: 'straddle', level: 4 }),
+        });
+        const { b } = body(false);
+        const before = Object.fromEntries(Object.entries(b).map(([k, n]) => [k, n.quaternion.clone()]));
+        for (let i = 0; i < 120; i += 1) expect(layer.apply(1 / 60, rigOf(b), THREE)).toBeNull();
+        for (const [k, q] of Object.entries(before)) expect(b[k].quaternion.equals(q)).toBe(true);
+    });
+
     beforeEach(() => {
         localStorage.clear();
         document.body.innerHTML = '';
     });
 
-    test('on by default; off and on again are kept on this device', () => {
-        expect(Living.isOn()).toBe(true);
+    test('LM6: OFF by default — a fresh install keeps every position still; on and off are kept', () => {
+        expect(Living.isOn()).toBe(false);
+        expect(Living.setOn(true)).toBe(true);
+        expect(localStorage.getItem(Living.STORAGE_KEY)).toBe('1');
         expect(Living.setOn(false)).toBe(false);
         expect(localStorage.getItem(Living.STORAGE_KEY)).toBe('0');
         expect(Living.isOn()).toBe(false);
@@ -347,6 +367,7 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         });
         const { b } = body(false);
         const rig = rigOf(b);
+        Living.setOn(true);
         for (let i = 0; i < 60 * 40; i += 1) layer.apply(1 / 60, rig, THREE);
         expect(live.frame()).toBeTruthy();
         Living.setOn(false);
@@ -367,8 +388,11 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         const box = Living.mountSetting(document);
         expect(box).toBeTruthy();
         expect(box.closest('.config-section').querySelector('#spicy-mode-toggle')).toBeTruthy();
-        expect(box.checked).toBe(true);
+        expect(box.checked).toBe(false); // LM6: off until the person turns it on
         expect(Living.mountSetting(document)).toBe(box);
+        box.checked = true;
+        box.dispatchEvent(new Event('change'));
+        expect(Living.isOn()).toBe(true);
         expect(document.querySelectorAll('#private-living-toggle')).toHaveLength(1);
         box.checked = false;
         box.dispatchEvent(new Event('change'));
@@ -380,6 +404,6 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
     test('a page without the Spicy section gets no row, and keeps the default', () => {
         document.body.innerHTML = '<div></div>';
         expect(Living.mountSetting(document)).toBeNull();
-        expect(Living.isOn()).toBe(true);
+        expect(Living.isOn()).toBe(false);
     });
 });

@@ -253,14 +253,14 @@ Forge's `/v1/visibility` allows it for the exact bytes on stage), `LM` for her
 body alive in a held position (`src/experiences/private/PrivateLivingMotion.js`:
 breathing, rocking, arching, face and her hands on her breast and belly, drawn
 over the held pose through `VRPoseSystem.setLayer`, never edited into it; one
-switch in Settings ▸ Private Mode, `nexus_private_living_enabled`, on by
-default, off draws nothing and removes nothing; measure with
-`tools/qa/living-motion-live.mjs`), `MP` for motion provenance
-(`src/gltf-viewer/MotionProvenance.js`: every motion Claude made, tagged by
-method, one switch per method; anything new that moves her body gets an entry in
-the same commit; the gallery is `tools/qa/motion-gallery.mjs`). Commit subjects
-match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
-comment line up.
+switch in Settings ▸ Private Mode, `nexus_private_living_enabled`, OFF by
+default (positions stay still unless it is turned on), off draws nothing and
+removes nothing; measure with `tools/qa/living-motion-live.mjs`), `MP` for
+motion provenance (`src/gltf-viewer/MotionProvenance.js`: every motion Claude
+made, tagged by method, one switch per method; anything new that moves her body
+gets an entry in the same commit; the gallery is `tools/qa/motion-gallery.mjs`).
+Commit subjects match: `A4: viewport background manager`. So
+`git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

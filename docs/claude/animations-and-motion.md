@@ -171,7 +171,7 @@ comes from her bones (hips→head, hip→hip), so it is right for VRM 0.x and 1.
 and in every position.
 
 It is optional: Settings ▸ Private Mode ▸ "Living motion in Private"
-(`nexus_private_living_enabled`, on by default). The row is added by the module
+(`nexus_private_living_enabled`, OFF by default since LM6: positions stay still unless it is turned on). The row is added by the module
 at load, not written into `index.html` (a row there moves the lines the parity
 harness pins). Off is read each frame: the layer draws nothing and her face goes
 back, while everything stays installed for turning it on again.
