@@ -659,6 +659,54 @@
         ['inside', /中に|中で|안에|里面/u],
     ];
 
+    /**
+     * PS2. Fisting, in the app's languages. Only words that mean it: "pugno" or "puño" alone is
+     * also a punch, so they count only with the act around them (il pugno dentro, fammi il pugno).
+     * Anal when they say so; both when they say both; otherwise the bridge picks by her position.
+     */
+    const FIST = new RegExp(
+        word(
+            'fist me|fisting|fist you|your fist|my fist|whole hand inside|fammi il pugno|ti faccio il pugno|il pugno dentro|col pugno dentro|pugno nella|pugno nel culo|mano intera dentro|meterte el puño|el puño dentro|mi puño|tu puño|con el puño|mon poing|ton poing|le poing en|faust rein|meine faust|deine faust|o punho dentro|meu punho|teu punho|enfiar o punho'
+        ),
+        'iu'
+    );
+    const FIST_CJK = /フィスト|拳を入れ|拳入れ|피스팅|주먹을 넣|拳交|拳头插/u;
+    const FIST_ANAL = new RegExp(word('anal|ass|culo|nel culo|in the ass|cul|arsch|cu|anus|ano'), 'iu');
+    const FIST_ANAL_CJK = /アナル|お尻|애널|엉덩이|屁眼|肛/u;
+    const FIST_BOTH = new RegExp(word('both|entrambi|tutti e due|ambos|los dos|les deux|beide|os dois'), 'iu');
+    const FIST_BOTH_CJK = /両方|둘 다|两个/u;
+
+    /*
+     * Codex (#200). Only a request runs it: "Do you like fisting?" and "I do not want fisting"
+     * named the act and showed it on her. Now the message must ask (a request cue), must not be a
+     * question, and must hold no negation anywhere — NEGATED only looks at the start.
+     */
+    const FIST_REQUEST = new RegExp(
+        word(
+            "fist me|fammi|voglio|vorrei|dammi|ti faccio|prendi|i want|give me|let me|take my|i'm going to|quiero|dame|déjame|dejame|toma|meterte|je veux|donne-moi|laisse-moi|prends|ich will|gib mir|lass mich|nimm|quero|dá-me|da-me|deixa-me|toma|enfiar"
+        ),
+        'iu'
+    );
+    const FIST_REQUEST_CJK = /して|したい|入れて|해 줘|해줘|넣어|넣을게|想要|给我|让我/u;
+    const FIST_NOT = new RegExp(
+        word("not|don't|don’t|do not|never|no|non|mai|niente|nunca|ni|pas|jamais|nicht|kein|keine|nie|não|nao|nem"),
+        'iu'
+    );
+    const FIST_NOT_CJK = /ない|しない|やめ|않|안 |싫|不|别|没/u;
+
+    function fistFrom(body) {
+        if (!FIST.test(body) && !FIST_CJK.test(body)) return null;
+        if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
+        if (!FIST_REQUEST.test(body) && !FIST_REQUEST_CJK.test(body)) return null;
+        const where =
+            FIST_BOTH.test(body) || FIST_BOTH_CJK.test(body)
+                ? 'both'
+                : FIST_ANAL.test(body) || FIST_ANAL_CJK.test(body)
+                  ? 'anal'
+                  : 'choose';
+        return action('body.fist', { where }, 'body');
+    }
+
     function finishFrom(body) {
         if (FINISH_VERB.test(body)) {
             for (const [where, words] of FINISH_PLACES) {
@@ -1070,6 +1118,9 @@
         // UN34. Coming, and where: before anything could read "on your back" as a position.
         const finished = !NEGATED.test(body) ? finishFrom(body) : null;
         if (finished) return finished;
+        // PS2. Their fist, asked for in words: after the finish (its words win), before shows.
+        const fisted = !NEGATED.test(body) ? fistFrom(body) : null;
+        if (fisted) return fisted;
         // UN36. A show, after positions (their words win) and finishing.
         const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
         if (show) return show;
@@ -1230,6 +1281,7 @@
         travelFrom,
         bodyFrom,
         finishFrom,
+        fistFrom,
         routineFrom,
         motionFrom,
         queryFrom,

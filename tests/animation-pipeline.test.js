@@ -344,7 +344,8 @@ describe('PoseNormalizer', () => {
         expect(s.bones).toBeDefined();
         expect(s.bones.leftUpperArm).toBeDefined();
         expect(s.maxCorrection).toBeDefined();
-        expect(s.preset).toBe('naturalIdle');
+        // ID1: the relaxed idle solved for her body is the default; the fixed presets stay selectable.
+        expect(s.preset).toBe('relaxedIdle');
     });
 
     test('updateSettings should merge patch and return updated settings', () => {

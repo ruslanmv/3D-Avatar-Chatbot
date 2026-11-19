@@ -297,10 +297,12 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the nineteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the twenty names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(19);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist;
+        // nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(20);
+        expect(Policy.ACTIONS['body.fist']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
@@ -2452,6 +2454,49 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             expect(Policy.validate('body.finish', { where: 'face' }).ok).toBe(false);
         });
 
+        test('PS2 (Codex #200). their fist shows only the act they asked for, never another', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'missionary-fisted', body: 'their fist is inside your pussy' },
+                ];
+                return skin;
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            // Asked for anal; the pack holds only the front state: nothing is shown.
+            await say('fammi il pugno nel culo');
+            await flush();
+            expect(calls).not.toContain('apply:missionary-fisted');
+            expect(Actions.snapshot().last).toMatchObject({
+                name: 'body.fist',
+                status: 'failed',
+                why: 'no-fist-state',
+            });
+            // Asked without a target: what this pack can show.
+            await say('fammi il pugno');
+            await flush();
+            expect(calls[calls.length - 1]).toBe('apply:missionary-fisted');
+            // PB1. She is told what her body can show, from this pack only, at the closest step.
+            const told = Actions.promptLines().join('\n');
+            // PB2: an index always, and the family their words touched ("pugno") in detail.
+            expect(told).toMatch(/Your body can show tonight — [^\n]*fisting 1/);
+            expect(told).toMatch(/What they are asking about[^\n]*fisting: missionary fisted/);
+            expect(told).not.toMatch(/arousal: flushed/); // not asked this turn: counted, not listed
+            expect(told).not.toMatch(/sado/);
+        });
+
         test('on her lower back is shown live, she is told, it holds, then the afterglow fades it', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
@@ -3077,6 +3122,34 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'tease' });
             // A second tap on a deal chip is just words now: one deal per evening.
             expect(session._dealFor(Locale.t('place.deal.striptease'))).toBeNull();
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('PS1. Isabelle: the picker offers her, she opens in her words, her menu, her deal, her character', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        poses();
+        try {
+            const w = world({ adult: true });
+            const Locale = require('../../src/features/together/PrivateLocale.js');
+            w.activity.chooseMood({ id: 'sensual' });
+            // A Sensual evening reaches Isabelle and Yuki; Gina is Intense only.
+            expect(w.activity.personas().map((p) => p.id)).toEqual(['isabelle', 'yuki']);
+            w.activity.setAtmosphere({ persona: 'isabelle' });
+            expect(w.activity.personaChoice).toBe('isabelle');
+            await w.activity.start({ input: { id: 'sensual' } });
+            const session = w.activity._privateExperience;
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('persona.isabelle.opening').slice(0, 30));
+            expect(document.body.textContent).toContain(Locale.t('place.deal.ride'));
+            expect(Capability.privateSystemPromptSuffix()).toMatch(/WHO YOU ARE TONIGHT: You are Isabelle, 29/);
+            w.adult.level = 3;
+            expect(session._chooseReply(Locale.t('place.deal.ride'))).toBe(true);
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('persona.isabelle.deal-ok').slice(0, 20));
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'ride' });
+            expect(Capability.privateSystemPromptSuffix()).toMatch(/TONIGHT'S DEAL: they chose climbing onto them/);
         } finally {
             window.NEXUS_PRIVATE_POSES = real;
         }

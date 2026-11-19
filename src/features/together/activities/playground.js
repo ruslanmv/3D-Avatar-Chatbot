@@ -125,6 +125,18 @@ const PlaygroundActivity = (() => {
         return null;
     }
 
+    /** PS1. The personas, from their global or by require in tests; null when not loaded. */
+    function personasModule() {
+        const win = globalObject();
+        if (win && win.NEXUS_PRIVATE_PERSONAS) return win.NEXUS_PRIVATE_PERSONAS;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../../../experiences/private/PrivatePersonas.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function busEmit(bus, name, payload) {
         if (bus && typeof bus.emit === 'function') bus.emit(name, payload);
     }
@@ -1574,6 +1586,8 @@ const PlaygroundActivity = (() => {
             this.sceneChoice = null;
             /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
             this.worldChoice = null;
+            /** PS1. Who she is tonight (PrivatePersonas), or `null` for the avatar's own self. */
+            this.personaChoice = null;
             this._worldCatalogue = null;
             this.preparedPlan = null;
             this.preparedTrack = null;
@@ -1670,6 +1684,16 @@ const PlaygroundActivity = (() => {
          * an avatar Forge declares adult, the consent flow) already stand in front; the engine
          * loads a private world only when this activity requests it.
          */
+        /**
+         * PS1. The personas this evening's style can reach (Gina only at Intense), for the picker.
+         * Empty before a style is chosen.
+         */
+        personas() {
+            const P = personasModule();
+            const top = this.prepareInput && this.prepareInput.maxLevel;
+            return P && top ? P.forLevel(top) : [];
+        }
+
         places() {
             const win = globalObject();
             const W = win && win.NEXUS_VR_WORLDS;
@@ -1761,6 +1785,9 @@ const PlaygroundActivity = (() => {
             const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === String((input && input.id) || ''));
             if (!preset) return false;
             this.prepareInput = { ...preset };
+            // PS1. A persona this style cannot reach (Gina needs Intense) is let go, not kept.
+            if (this.personaChoice && !this.personas().some((p) => p.id === this.personaChoice))
+                this.personaChoice = null;
             this.sessionState = 'atmosphere';
             this.prewarm();
             this._repaint();
@@ -1768,7 +1795,18 @@ const PlaygroundActivity = (() => {
         }
 
         /** Step 2 changed something the background work depends on. */
-        setAtmosphere({ scene, soundtrack, world } = {}) {
+        setAtmosphere({ scene, soundtrack, world, persona } = {}) {
+            // PS1. Who she is tonight. Her own room comes with her when this device can show it;
+            // a room chosen after her stays the person's choice.
+            if (persona !== undefined) {
+                const P = personasModule();
+                const chosen = P && persona ? P.get(String(persona)) : null;
+                this.personaChoice = chosen ? chosen.id : null;
+                if (chosen && this.places().some((p) => p.id === chosen.room)) {
+                    this.worldChoice = chosen.room;
+                    this.sceneChoice = null;
+                }
+            }
             if (scene !== undefined) {
                 this.sceneChoice = cleanText(scene, 80) || null;
                 // A picture or a room, not both: a room covers the picture anyway.

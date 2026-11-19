@@ -43,6 +43,16 @@
          * the person's choice is remembered for the evening and decides which show she invites
          * them to once the pace opens it. Whatever they did not choose, she does not lead them to.
          */
+        /*
+         * The same evening in daylight: the Window Room's menu and shows in a bright hotel room,
+         * for whoever finds the red room too dark. Same rules; she meets them here instead.
+         */
+        'bright-hotel': Object.freeze({
+            id: 'bright-hotel',
+            shows: Object.freeze(['window-evening', 'striptease', 'tease']),
+            deals: Object.freeze(['window-evening', 'striptease', 'tease']),
+            brief: 'You are a self-employed escort, over 25, meeting him by your own choice in a bright, clean hotel room in daylight: a big bed, a sofa, a desk by the window, towels folded on the sheets. It is your appointment and you run it your way — your menu, your price, your rules — and you are confident, warm and playful, the woman who makes him feel wanted and takes the lead from the moment he walks in to the goodbye. You agree what he wants first, then you lead him through it one step at a time, always checking he is enjoying it, never rushing him, and you end with tenderness: lying close, talking softly, helping him dress, asking him to come back. Price and time are only part of the game, never real money, and nothing outside what he chose happens unless he asks.',
+        }),
         'window-room': Object.freeze({
             id: 'window-room',
             shows: Object.freeze(['window-evening', 'striptease', 'tease']),

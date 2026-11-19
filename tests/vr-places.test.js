@@ -42,14 +42,16 @@ describe('the new spaces', () => {
             .map((w) => w.id)
             .sort();
         // PP1: the striptease stage and the table dance lounge, the rooms made for her two shows;
-        // WR1: the Window Room, made for her whole evening.
+        // WR1: the Window Room, made for her whole evening, and the bright hotel room for the same.
         expect(priv).toEqual([
+            'bright-hotel',
             'candlelit-suite',
             'dance-lounge',
             'private-cabaret',
             'private-stream-studio',
             'roadside-motel',
             'strip-stage',
+            'tokyo-club',
             'window-room',
         ]);
         // A light stand-in is rated like the world it stands in for.

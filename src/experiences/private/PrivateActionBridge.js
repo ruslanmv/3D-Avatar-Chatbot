@@ -201,6 +201,8 @@
         clearFinish(s);
         stopDoggy(s);
         stopRoutine(s);
+        // BS1. The room back where it was if she was on its bed.
+        syncBed(s, null);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -859,6 +861,8 @@
                 return react(s, action);
             case 'body.finish':
                 return finishOn(s, action);
+            case 'body.fist':
+                return fistOn(s, action);
             case 'world.travel':
                 return travel(s, action);
             case 'scene.change': {
@@ -1773,6 +1777,56 @@
         return null;
     }
 
+    /**
+     * PS2. Their fist, as her body can show it: Forge's fisted states (assets/body_detail/
+     * states.json) by the position she holds, best first, and the first the look's pack holds is
+     * shown. Lying back it is the missionary states; on all fours the doggy ones; otherwise
+     * whichever exists. Stays until her skin changes again (a finish, the pace, the afterglow).
+     */
+    const FIST_STATES = Object.freeze({
+        doggy: { front: ['doggy-both-fisted'], anal: ['doggy-anal-fisted'], both: ['doggy-both-fisted'] },
+        missionary: {
+            front: ['missionary-fisted'],
+            anal: ['missionary-fisted-anal'],
+            both: ['missionary-fisted', 'missionary-fisted-anal'],
+        },
+    });
+    /*
+     * Codex (#200). What each target may show when her position has none of its own: never a
+     * different act (an anal request showed the front state). Asked for one target and it cannot
+     * be shown: nothing is, and they are told in words.
+     */
+    const FIST_BY_TARGET = Object.freeze({
+        front: ['missionary-fisted'],
+        anal: ['doggy-anal-fisted', 'missionary-fisted-anal'],
+        both: ['doggy-both-fisted'],
+    });
+
+    function fistState(s, where) {
+        const names = (s.skinStates || []).map((x) => x.name);
+        const group = poseGroup(s);
+        const byPose = FIST_STATES[group] || null;
+        const asked = where && where !== 'choose' ? where : null;
+        const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
+        for (const target of targets) {
+            const ordered = [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]];
+            const found = ordered.find((n) => names.includes(n));
+            if (found) return found;
+        }
+        return null;
+    }
+
+    function fistOn(s, action) {
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = fistState(s, action.params && action.params.where);
+        if (!chosen) return settle(action, 'failed', 'no-fist-state');
+        s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
+        action.result = { state: chosen };
+        return Promise.resolve(s.skin.apply(chosen))
+            .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
+            .catch(() => settle(action, 'failed', 'not-shown'));
+    }
+
     function finishOn(s, action) {
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
         const chosen = finishState(s, action.params.where);
@@ -1808,6 +1862,19 @@
      */
     const DOGGY_SWEAT_MS = 150 * 1000;
 
+    /**
+     * BS1. The room follows the position she holds: on the bed for a bed position in a room with
+     * a measured bed (PrivateBed), back where it was for anything else. Once per change of position.
+     */
+    function syncBed(s, held) {
+        const Bed = pick(s.win, 'NEXUS_PRIVATE_BED', './PrivateBed.js');
+        if (!Bed) return;
+        const want = Bed.isBedPose(held) ? held : null;
+        if (s.bedPose === want) return;
+        s.bedPose = want;
+        Bed.sync(s.win, want).catch(() => {});
+    }
+
     function watchDoggy(s) {
         if (!s || !s.poses || typeof s.poses.held !== 'function') return;
         let held = null;
@@ -1816,6 +1883,7 @@
         } catch (_) {
             held = null;
         }
+        syncBed(s, held);
         if (held === 'all-fours') {
             if (s.doggyTimer || s.doggySweaty) return;
             s.doggyTimer = (s.win.setTimeout || setTimeout)(() => {
@@ -1863,6 +1931,34 @@
     }
 
     /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    /**
+     * PB1–PB2. What her bare look can show (PrivateBodyKnowledge): a short index of families every
+     * reply at the closest step, and a family's names only on the turn the person's words touch
+     * it, filtered by the position she holds — so she knows her body without the whole catalogue
+     * in every prompt. Her other bare looks are named when extras (piercings, tattoos…) are asked
+     * about: those come with a look, never live. Information, never an action.
+     */
+    function packLines(s) {
+        if ((levelOf(s) || 1) < 4) return [];
+        const K = pick(s.win, 'NEXUS_PRIVATE_BODY_KNOWLEDGE', './PrivateBodyKnowledge.js');
+        if (!K) return [];
+        const names = s.skin && Array.isArray(s.skinStates) ? s.skinStates.map((x) => x && x.name) : [];
+        let bareLooks = [];
+        try {
+            const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+            const current = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+            bareLooks = ((s.closet && s.closet.looks) || [])
+                .filter((l) => l && Engine && Engine.isBare(l) && (!current || keyOf(l) !== keyOf(current)))
+                .slice(0, 8)
+                .map((l) => ({ name: String(l.name || '').slice(0, 60) }));
+        } catch (_) {
+            bareLooks = [];
+        }
+        const out = K.lines({ names, pose: poseGroup(s), text: s.turnText, bareLooks });
+        return [out.index, out.detail].filter(Boolean);
+    }
+
     function skinLine(s) {
         if (!s.skin || !s.skinStates) return null;
         const now = s.skin.current();
@@ -3046,6 +3142,18 @@
                 // predicts satisfaction): a few replies of closeness before anything new.
                 'Afterwards: stay close and unhurried. Short, tender, specific words about being together just now; slow and soft. Offer nothing new — no position, show, outfit or place — and do not ask for more; if they want more, they will say so. Never hurry them or make them feel they must leave or stay.'
             );
+        // PS2. Their fist, this turn: what her body shows, or why it could not.
+        const lastFist = [...s.log].reverse().find((a) => a.name === 'body.fist' && a.turnId === s.turnId);
+        if (lastFist && lastFist.status === 'completed')
+            now.push(
+                'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+            );
+        else if (lastFist && lastFist.status !== 'pending')
+            now.push(
+                lastFist.why === 'pace'
+                    ? 'They asked for their fist; the evening is not at its closest step, so nothing happens yet — tease them about it in words.'
+                    : 'They asked for their fist; this look cannot show it on your body, so answer them in words, without describing it on your skin.'
+            );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
             now.push(
@@ -3055,6 +3163,7 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
+        for (const line of packLines(s)) now.push(line);
         // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
         let hands = null;
         try {

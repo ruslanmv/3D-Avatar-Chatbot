@@ -1600,6 +1600,27 @@
             'place.invite.table-dance': 'You are comfortable now… shall I climb up on the table and dance for you?',
             'place.invite.tease': 'Shall I start teasing you a little, right here in front of you?',
             'place.notyet': 'Not yet',
+            'place.bright-hotel.opening':
+                'There you are — come in, close the door. I opened the curtains, I like seeing you properly. Sit with me and tell me what you’d like today.',
+            'setup.who': 'Who do you want tonight?',
+            'setup.who.none': 'Just her',
+            'persona.gina.tagline': 'Shameless, filthy-mouthed, loves it rough · 32',
+            'persona.gina.opening':
+                'Well, look who finally had the balls to come in. Shut that fucking door, baby, and tell me what you want tonight — Gina’s got everything, and I mean everything.',
+            'persona.gina.deal-ok':
+                'Fuck yes, deal. Now get over here — and don’t you dare be shy with me, I’ll eat you alive.',
+            'persona.isabelle.tagline': 'Elegant high-end escort, slow and attentive · 29',
+            'persona.isabelle.opening':
+                'Good evening. You’re right on time — I like that. Take off your jacket and sit with me; I’ll pour you something, and you’ll tell me how you’d like tonight to go.',
+            'persona.isabelle.deal-ok': 'Perfect. We have all night — let me take care of everything.',
+            'persona.yuki.tagline': 'Playful anime hostess from Tokyo · 26',
+            'persona.yuki.opening':
+                'Okaerinasai~! Welcome to my club! Ara ara, you came all this way just for Yuki? Kawaii… sit down, sit down, and tell me what you’d like tonight!',
+            'persona.yuki.deal-ok':
+                'Yatta~! Deal! Mou, you’re going to make Yuki blush… stay right there and watch me!',
+            'place.deal.ride': 'Ride me, slowly',
+            'place.deal.table-dance': 'A table dance',
+            'place.invite.ride': 'Come here… lie back and let me climb on top of you?',
             'place.window-room.opening':
                 'Hey you… yes, you. You have walked past my window twice now. Come in, I don’t bite — unless you ask. Tell me what you would like tonight.',
             'place.invite.window-evening':
@@ -1653,6 +1674,26 @@
             'place.invite.table-dance': 'Sei comodo adesso… vuoi che salga sul tavolino e balli per te?',
             'place.invite.tease': 'Vuoi che inizi a stuzzicarti un po’, proprio qui davanti a te?',
             'place.notyet': 'Non ancora',
+            'place.bright-hotel.opening':
+                'Eccoti, entra e chiudi la porta. Ho aperto le tende, mi piace vederti bene. Siediti con me e dimmi cosa vorresti oggi.',
+            'setup.who': 'Chi vuoi stasera?',
+            'setup.who.none': 'Solo lei',
+            'persona.gina.tagline': 'Sboccata, senza vergogna, le piace forte · 32',
+            'persona.gina.opening':
+                'Oh, finalmente uno che ha il coraggio di entrare. Chiudi ’sta cazzo di porta, bello mio, e dimmi cosa vuoi stasera: Gina ha tutto, ma proprio tutto.',
+            'persona.gina.deal-ok':
+                'Cazzo sì, affare fatto. Adesso vieni qua, e non fare il timido con me, che ti mangio vivo.',
+            'persona.isabelle.tagline': 'Escort d’alto livello, elegante, lenta e attenta · 29',
+            'persona.isabelle.opening':
+                'Buonasera. Sei puntuale, mi piace. Togliti la giacca e siediti con me: ti verso qualcosa da bere, e mi dici come vorresti che andasse la serata.',
+            'persona.isabelle.deal-ok': 'Perfetto. Abbiamo tutta la notte: lascia che mi occupi io di tutto.',
+            'persona.yuki.tagline': 'Hostess anime giocosa di Tokyo · 26',
+            'persona.yuki.opening':
+                'Okaerinasai~! Benvenuto nel mio club! Ara ara, sei venuto fin qui solo per Yuki? Kawaii… siediti, siediti, e dimmi cosa vorresti stasera!',
+            'persona.yuki.deal-ok': 'Yatta~! Affare fatto! Mou, così fai arrossire Yuki… resta lì e guardami!',
+            'place.deal.ride': 'Cavalcami, piano',
+            'place.deal.table-dance': 'Un ballo sul tavolo',
+            'place.invite.ride': 'Vieni qui… sdraiati e lascia che ti salga sopra?',
             'place.window-room.opening':
                 'Ehi tu… sì, proprio tu. Sei passato davanti alla mia vetrina due volte. Entra, non mordo — a meno che tu non me lo chieda. Dimmi cosa vuoi stasera.',
             'place.invite.window-evening':
@@ -1705,6 +1746,27 @@
             'place.invite.table-dance': 'Ya estás cómodo… ¿quieres que me suba a la mesa y baile para ti?',
             'place.invite.tease': '¿Quieres que empiece a provocarte un poco, aquí delante de ti?',
             'place.notyet': 'Todavía no',
+            'place.bright-hotel.opening':
+                'Aquí estás, entra y cierra la puerta. He abierto las cortinas, me gusta verte bien. Siéntate conmigo y dime qué te apetece hoy.',
+            'setup.who': '¿A quién quieres esta noche?',
+            'setup.who.none': 'Solo ella',
+            'persona.gina.tagline': 'Descarada, malhablada, le gusta duro · 32',
+            'persona.gina.opening':
+                'Vaya, por fin uno con huevos para entrar. Cierra la puta puerta, guapo, y dime qué quieres esta noche: Gina lo tiene todo, pero todo.',
+            'persona.gina.deal-ok':
+                'Joder, sí, trato hecho. Ahora ven aquí, y ni se te ocurra ponerte tímido conmigo, que te como vivo.',
+            'persona.isabelle.tagline': 'Escort de lujo, elegante, lenta y atenta · 29',
+            'persona.isabelle.opening':
+                'Buenas noches. Eres puntual, me gusta. Quítate la chaqueta y siéntate conmigo: te sirvo algo de beber y me cuentas cómo quieres que sea la noche.',
+            'persona.isabelle.deal-ok': 'Perfecto. Tenemos toda la noche: deja que yo me ocupe de todo.',
+            'persona.yuki.tagline': 'Anfitriona anime juguetona de Tokio · 26',
+            'persona.yuki.opening':
+                '¡Okaerinasai~! ¡Bienvenido a mi club! Ara ara, ¿has venido hasta aquí solo por Yuki? Kawaii… siéntate, siéntate, ¡y dime qué te apetece esta noche!',
+            'persona.yuki.deal-ok':
+                '¡Yatta~! ¡Trato hecho! Mou, vas a hacer que Yuki se sonroje… ¡quédate ahí y mírame!',
+            'place.deal.ride': 'Cabálgame, despacio',
+            'place.deal.table-dance': 'Un baile en la mesa',
+            'place.invite.ride': 'Ven aquí… ¿te tumbas y dejas que me suba encima de ti?',
             'place.window-room.opening':
                 'Oye, tú… sí, tú. Ya has pasado dos veces por delante de mi ventana. Entra, no muerdo — a menos que me lo pidas. Dime qué quieres esta noche.',
             'place.invite.window-evening':
@@ -1758,6 +1820,26 @@
                 'Tu es bien installé… tu veux que je monte sur la table et que je danse pour toi ?',
             'place.invite.tease': 'Tu veux que je commence à t’allumer un peu, juste là devant toi ?',
             'place.notyet': 'Pas encore',
+            'place.bright-hotel.opening':
+                'Te voilà, entre et ferme la porte. J’ai ouvert les rideaux, j’aime bien te voir. Assieds-toi avec moi et dis-moi ce que tu aimerais aujourd’hui.',
+            'setup.who': 'Qui veux-tu ce soir ?',
+            'setup.who.none': 'Juste elle',
+            'persona.gina.tagline': 'Sans gêne, grossière, aime quand c’est fort · 32',
+            'persona.gina.opening':
+                'Tiens, enfin un qui a les couilles d’entrer. Ferme cette putain de porte, mon beau, et dis-moi ce que tu veux ce soir : Gina a tout, mais vraiment tout.',
+            'persona.gina.deal-ok':
+                'Putain oui, marché conclu. Maintenant viens là, et ne fais pas le timide avec moi, je vais te dévorer.',
+            'persona.isabelle.tagline': 'Escort haut de gamme, élégante, lente et attentive · 29',
+            'persona.isabelle.opening':
+                'Bonsoir. Tu es pile à l’heure, j’aime ça. Enlève ta veste et assieds-toi avec moi : je te sers quelque chose, et tu me dis comment tu aimerais que la soirée se passe.',
+            'persona.isabelle.deal-ok': 'Parfait. Nous avons toute la nuit : laisse-moi m’occuper de tout.',
+            'persona.yuki.tagline': 'Hôtesse anime espiègle de Tokyo · 26',
+            'persona.yuki.opening':
+                'Okaerinasai~ ! Bienvenue dans mon club ! Ara ara, tu es venu jusqu’ici rien que pour Yuki ? Kawaii… assieds-toi, assieds-toi, et dis-moi ce qui te ferait plaisir ce soir !',
+            'persona.yuki.deal-ok': 'Yatta~ ! Marché conclu ! Mou, tu vas faire rougir Yuki… reste là et regarde-moi !',
+            'place.deal.ride': 'Chevauche-moi, doucement',
+            'place.deal.table-dance': 'Une danse sur la table',
+            'place.invite.ride': 'Viens là… allonge-toi et laisse-moi monter sur toi ?',
             'place.window-room.opening':
                 'Hé, toi… oui, toi. Ça fait deux fois que tu passes devant ma vitrine. Entre, je ne mords pas — sauf si tu me le demandes. Dis-moi ce que tu veux ce soir.',
             'place.invite.window-evening':
@@ -1811,6 +1893,27 @@
             'place.invite.table-dance': 'Du sitzt jetzt bequem … soll ich auf den Tisch steigen und für dich tanzen?',
             'place.invite.tease': 'Soll ich anfangen, dich ein bisschen zu reizen, genau hier vor dir?',
             'place.notyet': 'Noch nicht',
+            'place.bright-hotel.opening':
+                'Da bist du ja – komm rein und mach die Tür zu. Ich habe die Vorhänge aufgemacht, ich sehe dich gern richtig. Setz dich zu mir und sag mir, was du heute möchtest.',
+            'setup.who': 'Wen willst du heute Abend?',
+            'setup.who.none': 'Nur sie',
+            'persona.gina.tagline': 'Schamlos, versaut, mag es hart · 32',
+            'persona.gina.opening':
+                'Na sieh mal an, endlich einer mit Eiern in der Hose. Mach die verdammte Tür zu, Süßer, und sag mir, was du heute willst – Gina hat alles, und ich meine alles.',
+            'persona.gina.deal-ok':
+                'Scheiße ja, abgemacht. Jetzt komm her – und wehe, du bist schüchtern, ich fress dich mit Haut und Haaren.',
+            'persona.isabelle.tagline': 'Elegante Edel-Escort, langsam und aufmerksam · 29',
+            'persona.isabelle.opening':
+                'Guten Abend. Du bist pünktlich – das mag ich. Zieh dein Jackett aus und setz dich zu mir; ich schenke dir etwas ein, und du erzählst mir, wie der Abend werden soll.',
+            'persona.isabelle.deal-ok': 'Perfekt. Wir haben die ganze Nacht – lass mich mich um alles kümmern.',
+            'persona.yuki.tagline': 'Verspielte Anime-Hostess aus Tokio · 26',
+            'persona.yuki.opening':
+                'Okaerinasai~! Willkommen in meinem Club! Ara ara, du bist extra für Yuki gekommen? Kawaii … setz dich, setz dich, und sag mir, was du dir heute Abend wünschst!',
+            'persona.yuki.deal-ok':
+                'Yatta~! Abgemacht! Mou, du bringst Yuki zum Erröten … bleib genau da und sieh mir zu!',
+            'place.deal.ride': 'Reite mich, langsam',
+            'place.deal.table-dance': 'Einen Tischtanz',
+            'place.invite.ride': 'Komm her … leg dich hin und lass mich auf dich steigen?',
             'place.window-room.opening':
                 'Hey, du … ja, genau du. Du bist jetzt zweimal an meinem Fenster vorbeigegangen. Komm rein, ich beiße nicht – außer du willst es. Sag mir, was du heute Abend möchtest.',
             'place.invite.window-evening':
@@ -1863,6 +1966,26 @@
             'place.invite.table-dance': 'Já estás confortável… queres que eu suba para a mesa e dance para ti?',
             'place.invite.tease': 'Queres que comece a provocar-te um pouco, aqui mesmo à tua frente?',
             'place.notyet': 'Ainda não',
+            'place.bright-hotel.opening':
+                'Aí estás, entra e fecha a porta. Abri as cortinas, gosto de te ver bem. Senta-te comigo e diz-me o que queres hoje.',
+            'setup.who': 'Quem queres esta noite?',
+            'setup.who.none': 'Só ela',
+            'persona.gina.tagline': 'Descarada, boca suja, gosta de força · 32',
+            'persona.gina.opening':
+                'Olha só, finalmente um com tomates para entrar. Fecha a porra da porta, querido, e diz-me o que queres esta noite: a Gina tem tudo, mas mesmo tudo.',
+            'persona.gina.deal-ok':
+                'Porra, sim, combinado. Agora anda cá, e nem penses em ficar tímido comigo, que eu como-te vivo.',
+            'persona.isabelle.tagline': 'Acompanhante de luxo, elegante, lenta e atenta · 29',
+            'persona.isabelle.opening':
+                'Boa noite. Chegaste a horas, gosto disso. Tira o casaco e senta-te comigo: sirvo-te uma bebida e dizes-me como queres que seja a noite.',
+            'persona.isabelle.deal-ok': 'Perfeito. Temos a noite toda: deixa-me tratar de tudo.',
+            'persona.yuki.tagline': 'Anfitriã anime brincalhona de Tóquio · 26',
+            'persona.yuki.opening':
+                'Okaerinasai~! Bem-vindo ao meu clube! Ara ara, vieste até aqui só pela Yuki? Kawaii… senta-te, senta-te, e diz-me o que te apetece esta noite!',
+            'persona.yuki.deal-ok': 'Yatta~! Combinado! Mou, vais fazer a Yuki corar… fica aí e olha para mim!',
+            'place.deal.ride': 'Cavalga-me, devagar',
+            'place.deal.table-dance': 'Uma dança na mesa',
+            'place.invite.ride': 'Anda cá… deita-te e deixa-me subir para cima de ti?',
             'place.window-room.opening':
                 'Ei, tu… sim, tu. Já passaste duas vezes pela minha montra. Entra, eu não mordo — a não ser que me peças. Diz-me o que queres esta noite.',
             'place.invite.window-evening':
@@ -1914,6 +2037,26 @@
             'place.invite.table-dance': 'くつろげた？テーブルに上がって、あなたのために踊ってほしい？',
             'place.invite.tease': 'ここで、あなたの目の前で、少しじらしてほしい？',
             'place.notyet': 'まだ',
+            'place.bright-hotel.opening':
+                '来てくれたのね、入ってドアを閉めて。カーテンを開けておいたの、あなたをちゃんと見たいから。隣に座って、今日はどうしたいか教えて。',
+            'setup.who': '今夜は誰がいい？',
+            'setup.who.none': 'いつもの彼女',
+            'persona.gina.tagline': '恥知らずで口が悪い、激しいのが好き · 32',
+            'persona.gina.opening':
+                'あら、やっと入ってくる度胸のある男が来たね。さっさとドア閉めな、色男。今夜は何がしたいの？ジーナは何でもありよ、本当に何でもね。',
+            'persona.gina.deal-ok':
+                '最高、決まりね。こっちおいで——遠慮なんかしたら承知しないよ、丸ごと食べちゃうから。',
+            'persona.isabelle.tagline': '上品な高級エスコート、ゆっくり丁寧に · 29',
+            'persona.isabelle.opening':
+                'こんばんは。時間ぴったりね、そういうの好きよ。上着を脱いで、隣に座って。何か注いであげるから、今夜どう過ごしたいか聞かせて。',
+            'persona.isabelle.deal-ok': '完璧。夜は長いわ——全部私に任せて。',
+            'persona.yuki.tagline': '東京の遊び好きなアニメ系ホステス · 26',
+            'persona.yuki.opening':
+                'おかえりなさい〜！私のクラブへようこそ！あらあら、ユキに会うためにわざわざ来てくれたの？かわいい…座って座って、今夜はどうしたいか教えて！',
+            'persona.yuki.deal-ok': 'やった〜！決まり！もう、ユキ照れちゃう…そこで見ててね！',
+            'place.deal.ride': 'ゆっくり乗って',
+            'place.deal.table-dance': 'テーブルダンス',
+            'place.invite.ride': 'こっち来て…横になって、上に乗ってもいい？',
             'place.window-room.opening':
                 'ねえ、そこのあなた…そう、あなた。もう二回も私の窓の前を通ったでしょ。入って、噛みつかないから——あなたが望まない限りね。今夜はどうしたい？',
             'place.invite.window-evening':
@@ -1964,6 +2107,26 @@
             'place.invite.table-dance': '편해졌어? 테이블에 올라가서 너를 위해 춤춰 줄까?',
             'place.invite.tease': '바로 네 앞에서 조금 애태워 줄까?',
             'place.notyet': '아직',
+            'place.bright-hotel.opening':
+                '왔구나, 들어와서 문 닫아. 커튼 열어 뒀어, 너를 제대로 보고 싶어서. 내 옆에 앉아서 오늘 뭘 원하는지 말해 줘.',
+            'setup.who': '오늘 밤 누구를 원해?',
+            'setup.who.none': '그냥 그녀',
+            'persona.gina.tagline': '뻔뻔하고 입이 거칠고, 거친 걸 좋아해 · 32',
+            'persona.gina.opening':
+                '오, 드디어 들어올 배짱 있는 놈이 왔네. 그 빌어먹을 문 닫아, 자기야. 오늘 밤 뭘 원하는지 말해 봐 — 지나는 다 해 줘, 진짜 전부 다.',
+            'persona.gina.deal-ok':
+                '씨발 좋아, 거래 성립. 이제 이리 와 — 나한테 쑥스러워하기만 해 봐, 통째로 잡아먹을 거야.',
+            'persona.isabelle.tagline': '우아한 고급 에스코트, 느리고 세심하게 · 29',
+            'persona.isabelle.opening':
+                '좋은 저녁이에요. 딱 맞춰 왔네요, 그런 거 좋아해요. 재킷 벗고 내 옆에 앉아요. 한 잔 따라 줄 테니, 오늘 밤을 어떻게 보내고 싶은지 말해 줘요.',
+            'persona.isabelle.deal-ok': '완벽해요. 밤은 길어요 — 전부 나한테 맡겨요.',
+            'persona.yuki.tagline': '도쿄의 장난기 많은 애니 호스티스 · 26',
+            'persona.yuki.opening':
+                '오카에리나사이~! 내 클럽에 온 걸 환영해! 아라아라, 유키 보러 여기까지 온 거야? 귀여워… 앉아, 앉아, 오늘 밤 뭘 원하는지 말해 줘!',
+            'persona.yuki.deal-ok': '얏타~! 거래 성립! 모우, 유키 얼굴 빨개지잖아… 거기서 나 봐!',
+            'place.deal.ride': '천천히 올라타 줘',
+            'place.deal.table-dance': '테이블 댄스',
+            'place.invite.ride': '이리 와… 누워, 내가 위에 올라가도 될까?',
             'place.window-room.opening':
                 '거기 너… 그래, 너. 벌써 내 창문 앞을 두 번이나 지나갔잖아. 들어와, 안 물어 — 네가 원하지 않는다면. 오늘 밤 뭘 원하는지 말해 줘.',
             'place.invite.window-evening':
@@ -2013,6 +2176,25 @@
             'place.invite.table-dance': '坐舒服了吗？要我爬上桌子为你跳舞吗？',
             'place.invite.tease': '要我就在你面前，先挑逗你一下吗？',
             'place.notyet': '还不要',
+            'place.bright-hotel.opening':
+                '你来了，进来把门关上。我把窗帘拉开了，我喜欢好好看着你。坐到我身边，告诉我你今天想要什么。',
+            'setup.who': '今晚想要谁？',
+            'setup.who.none': '就是她',
+            'persona.gina.tagline': '放荡、满嘴脏话、喜欢粗暴 · 32',
+            'persona.gina.opening':
+                '哟，终于来了个有种进门的。把那该死的门关上，宝贝，告诉我你今晚想要什么——吉娜什么都有，我是说什么都有。',
+            'persona.gina.deal-ok': '他妈的好，成交。现在过来——别跟我装害羞，我会把你整个吃掉。',
+            'persona.isabelle.tagline': '优雅的高级伴游，慢而体贴 · 29',
+            'persona.isabelle.opening':
+                '晚上好。你很准时，我喜欢。把外套脱了，坐到我身边来；我给你倒杯酒，你告诉我今晚想怎么度过。',
+            'persona.isabelle.deal-ok': '完美。我们有一整夜——一切交给我吧。',
+            'persona.yuki.tagline': '来自东京的俏皮动漫女公关 · 26',
+            'persona.yuki.opening':
+                '欢迎回来～！欢迎来到我的俱乐部！哎呀呀，你是专门为了由纪来的吗？好可爱……快坐快坐，告诉我今晚想要什么！',
+            'persona.yuki.deal-ok': '耶～！成交！讨厌，你要让由纪脸红了……就待在那儿看着我！',
+            'place.deal.ride': '慢慢骑我',
+            'place.deal.table-dance': '桌上舞',
+            'place.invite.ride': '过来……躺下，让我骑到你身上好吗？',
             'place.window-room.opening':
                 '嘿，你……对，就是你。你已经从我的橱窗前走过两次了。进来吧，我不咬人——除非你想要。告诉我你今晚想要什么。',
             'place.invite.window-evening':

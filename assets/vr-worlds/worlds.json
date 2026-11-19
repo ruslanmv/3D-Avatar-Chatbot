@@ -1007,6 +1007,13 @@
         "color": "#7a6250",
         "radius": 4.5
       },
+      "bed": {
+        "at": [0, -2.5],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "preview": "previews/hotel-suite.webp",
       "category": "Romantic"
     },
@@ -1439,6 +1446,13 @@
       "note": "A motel room under neon, light enough for phones. Private only.",
       "place": true,
       "rating": "private",
+      "bed": {
+        "at": [0, -2.4],
+        "top": 0.422,
+        "length": 1.9,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "tiers": ["mobile"],
       "triangles": 1500,
       "activities": [],
@@ -1592,6 +1606,13 @@
       "ground": {
         "color": "#4a2a24",
         "radius": 4.5
+      },
+      "bed": {
+        "at": [0, -2.5],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
       },
       "preview": "previews/candlelit-suite.webp",
       "category": "Private"
@@ -1848,7 +1869,230 @@
         "color": "#2a0a14",
         "radius": 4.5
       },
+      "bed": {
+        "at": [0, -2.6],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
       "preview": "previews/window-room.webp",
+      "category": "Private"
+    },
+    {
+      "id": "bright-hotel",
+      "title": "Hotel room (bright)",
+      "note": "A bright, clean hotel room in daylight: a big bed, a sofa, a desk by the window. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 3300,
+      "activities": [],
+      "sky": {
+        "top": "#cfe3f5",
+        "horizon": "#f6efe6",
+        "bottom": "#e8ddd0"
+      },
+      "fog": {
+        "color": "#f2ebe2",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffffff",
+        "ground": "#b8a898",
+        "hemi": 0.9,
+        "key": "#fff4e6",
+        "keyIntensity": 1.1,
+        "fill": "#dfe8ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.4,
+        "exposure": 1.05
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.4],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.5, 0, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.5, 0.5, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/wallWindow.glb",
+          "width": 2.2,
+          "at": [-2.7, 0, -1.2],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofa.glb",
+          "width": 1.8,
+          "at": [2.4, 0, -0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/tableCoffee.glb",
+          "width": 0.9,
+          "at": [1.5, 0, 0.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.2,
+          "at": [-2.4, 0, 0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.9,
+          "at": [-1.9, 0, 0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.4, 0, -2.9]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/folded-towel-stack.glb",
+          "height": 0.22,
+          "at": [0.6, 0.52, -3.2]
+        }
+      ],
+      "ground": {
+        "color": "#c9b8a6",
+        "radius": 4.5
+      },
+      "bed": {
+        "at": [0, -2.6],
+        "top": 0.444,
+        "length": 2,
+        "src": "kits/kenney-furniture-kit/bedDouble.glb",
+        "sha": "c49b33e7d797d2ba"
+      },
+      "preview": "previews/bright-hotel.webp",
+      "category": "Private"
+    },
+    {
+      "id": "tokyo-club",
+      "title": "Tokyo night club",
+      "note": "A hostess club in Tokyo at night: a corner sofa, a low glass table, a little bar, a karaoke screen. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 1600,
+      "activities": [],
+      "sky": {
+        "top": "#0a0418",
+        "horizon": "#3a1060",
+        "bottom": "#06020c"
+      },
+      "fog": {
+        "color": "#1a0a2e",
+        "near": 6,
+        "far": 22
+      },
+      "light": {
+        "sky": "#7a50d0",
+        "ground": "#140a20",
+        "hemi": 0.45,
+        "key": "#ff70c0",
+        "keyIntensity": 0.9,
+        "fill": "#50a0ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffb0e0",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.3],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofaCorner.glb",
+          "width": 2.2,
+          "at": [0.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/tableCoffeeGlass.glb",
+          "width": 1.0,
+          "at": [-1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/kitchenBar.glb",
+          "width": 1.6,
+          "at": [-2.6, 0, -1.8],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/stoolBar.glb",
+          "height": 0.8,
+          "at": [-1.9, 0, -1.4]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/stoolBar.glb",
+          "height": 0.8,
+          "at": [-1.9, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/televisionModern.glb",
+          "width": 1.2,
+          "at": [2.5, 0.6, -1.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/speaker.glb",
+          "height": 1.0,
+          "at": [2.5, 0, -0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundFloor.glb",
+          "height": 1.6,
+          "at": [-2.4, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall2.glb",
+          "height": 0.6,
+          "at": [2.4, 0, -2.8]
+        }
+      ],
+      "ground": {
+        "color": "#1e0e2c",
+        "radius": 4.5
+      },
+      "preview": "previews/tokyo-club.webp",
       "category": "Private"
     },
     {

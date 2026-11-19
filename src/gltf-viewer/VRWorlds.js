@@ -373,6 +373,9 @@
                         : null,
                 category: /^[A-Za-z][A-Za-z &-]{0,19}$/.test(String(raw.category || '')) ? String(raw.category) : null,
                 triangles: Math.max(0, num(raw.triangles, 0)),
+                // BS1. The room's bed, measured by tools/vr/measure-bed.mjs (never typed): its
+                // centre on the floor (x, z), its mattress height and length, in the place's metres.
+                bed: bedSpec(raw.bed),
                 fog:
                     raw.fog && typeof raw.fog === 'object'
                         ? {
@@ -444,6 +447,18 @@
             y: box.min.y * k,
             z: ((box.min.z + box.max.z) / 2) * k,
         };
+    }
+
+    /** BS1. A measured bed, or null for anything not plainly numbers in a room's range. Pure. */
+    function bedSpec(raw) {
+        if (!raw || !Array.isArray(raw.at) || raw.at.length !== 2) return null;
+        const x = Number(raw.at[0]);
+        const z = Number(raw.at[1]);
+        const top = Number(raw.top);
+        const length = Number(raw.length);
+        const fine = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi;
+        if (!fine(x, -10, 10) || !fine(z, -10, 10) || !fine(top, 0.1, 1.5) || !fine(length, 0.8, 3.5)) return null;
+        return { at: [x, z], top, length };
     }
 
     /** The uniform scale that makes a model `height` (or `width`) metres. Pure. */
@@ -1197,7 +1212,41 @@
             return { ok: true, world, spot: spot.id, generation: gen };
         }
 
+        /**
+         * BS1. Lay her on the room's bed: the whole room moves (never her, whose position the
+         * avatar, VR and the camera all read), so the mattress is under the point she lies on —
+         * `hips` is her hips on the floor (x, z) — and the floor sinks by the mattress height. The
+         * room's own placement is kept and written back verbatim by `nestle(null)`; a different
+         * world, or none, ends it. Faded like a spot move, so nobody watches the room slide.
+         */
+        let nestled = null;
+        async function nestle(hips, options) {
+            if (!group || !worldNow) return { ok: false, why: 'no-world' };
+            const bed = worldNow.bed;
+            if (hips && !bed) return { ok: false, why: 'no-bed' };
+            const world = activeId;
+            const gen = generation;
+            if (!hips && !nestled) return { ok: true, world, moved: false };
+            if (hips && !nestled) nestled = { world, at: group.position.clone() };
+            const base = nestled.at;
+            const target = hips
+                ? {
+                      x: base.x + (Number(hips.x) || 0) - bed.at[0],
+                      y: base.y - bed.top,
+                      z: base.z + (Number(hips.z) || 0) - bed.at[1],
+                  }
+                : { x: base.x, y: base.y, z: base.z };
+            if (!(options && options.instant)) await fadeTo(1);
+            if (gen !== generation || activeId !== world) return { ok: false, why: 'stale' };
+            group.position.set(target.x, target.y, target.z);
+            group.updateMatrixWorld(true);
+            if (!hips) nestled = null;
+            if (!(options && options.instant)) fadeTo(0);
+            return { ok: true, world, moved: true, onBed: Boolean(hips) };
+        }
+
         function hide() {
+            nestled = null;
             generation += 1;
             spotNow = null;
             spotGen += 1;
@@ -1236,6 +1285,17 @@
             tick,
             setMood,
             goToSpot,
+            nestle,
+            /** BS1. The bed of the world that is up (measured), or null. */
+            get bed() {
+                return worldNow && worldNow.bed
+                    ? { at: worldNow.bed.at.slice(), top: worldNow.bed.top, length: worldNow.bed.length }
+                    : null;
+            },
+            /** BS1. Whether the room is moved so she lies on its bed. */
+            get onBed() {
+                return Boolean(nestled);
+            },
             get activeId() {
                 return activeId;
             },

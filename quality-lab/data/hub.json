@@ -21,11 +21,11 @@
             "humanReviews": 0
         },
         "3d": {
-            "worlds": 73,
+            "worlds": 75,
             "offered": {
-                "desktop": 52,
-                "mobile": 50,
-                "vr": 51
+                "desktop": 54,
+                "mobile": 52,
+                "vr": 53
             },
             "fails": 0,
             "warns": 25,

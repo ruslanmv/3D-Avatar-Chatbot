@@ -235,6 +235,9 @@
         },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
+        // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
+        // Their words only, at step 4, like the finish.
+        'body.fist': { family: 'body', params: { where: oneOf(['front', 'anal', 'both', 'choose']) }, required: [] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
         'world.travel': {
@@ -328,6 +331,12 @@
 
         // UN34. Finishing is theirs, at the top of the pace, and never her tag's.
         if (action.name === 'body.finish') {
+            if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
+            if (action.source === 'model') return { allow: false, why: 'user-only' };
+        }
+
+        // PS2. Their fist: theirs to ask, at the top of the pace, never her tag's.
+        if (action.name === 'body.fist') {
             if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
             if (action.source === 'model') return { allow: false, why: 'user-only' };
         }

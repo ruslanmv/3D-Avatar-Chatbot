@@ -1183,6 +1183,32 @@ const TogetherPanel = (() => {
                 shell.appendChild(more);
             }
 
+            // PS1. Who she is tonight: her own self, or one of the personas this style can reach.
+            // A persona brings her own room and voice; the rest of the setup is unchanged.
+            const personas = typeof activity.personas === 'function' ? activity.personas() : [];
+            if (personas.length) {
+                shell.appendChild(label(this._privateWord('setup.who', 'Who do you want tonight?')));
+                const who = doc.createElement('div');
+                who.className = 'nexus-private-scene-cards';
+                const personaCard = (id, title, note) => {
+                    const card = doc.createElement('button');
+                    card.type = 'button';
+                    card.className = 'nexus-private-scene-card';
+                    card.dataset.persona = id || 'none';
+                    card.classList.toggle('is-selected', (activity.personaChoice || 'none') === (id || 'none'));
+                    card.innerHTML =
+                        '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
+                    card.querySelector('.nexus-private-scene-name').textContent = title;
+                    card.querySelector('.nexus-private-scene-note').textContent = note || '';
+                    card.addEventListener('click', () => activity.setAtmosphere({ persona: id }));
+                    return card;
+                };
+                who.appendChild(personaCard(null, this._privateWord('setup.who.none', 'Just her'), ''));
+                for (const p of personas)
+                    who.appendChild(personaCard(p.id, p.name, this._privateWord(`persona.${p.id}.tagline`, '')));
+                shell.appendChild(who);
+            }
+
             // VW3. Or a 3D room to be in together, instead of a picture behind her. Romantic and
             // private places, each resolved to what this device can load (a phone gets the light
             // ones); the activity asks the engine for it only once Private has started.

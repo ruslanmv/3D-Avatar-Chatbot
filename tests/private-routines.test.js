@@ -131,4 +131,23 @@ describe('UN36 the ⋯ menu: show chips follow the pace the card shows', () => {
         document.querySelector(`#${Private.ROW_ID} [data-private-routine="ride"]`).click();
         expect(sent).toEqual([['Ride me', 'ride']]);
     });
+
+    test('repainted many times, the menu holds one group each: shows, positions, finish (a phone, 2026-11-19)', () => {
+        const routines = Routines.ORDER.map((id) => ({ id, level: Routines.level(id, Policy.poseLevel) }));
+        const handlers = { onPosition: () => {} };
+        for (let i = 0; i < 6; i += 1) {
+            view.showActions({ routines, finishPlaces: ['back', 'inside'] }, handlers);
+            view.setPace({ level: i % 2 ? 4 : 3, steps: [], hasLadder: false });
+        }
+        view.setPace({ level: 4, steps: [], hasLadder: false });
+        const slot = document.querySelector(`#${Private.ROW_ID} .nexus-private-action-slot`);
+        const groups = [...slot.querySelectorAll('.nexus-private-positions')];
+        const with_ = (sel) => groups.filter((g) => g.querySelector(sel)).length;
+        expect(with_('[data-private-position]')).toBe(1);
+        expect(with_('[data-private-routine]')).toBe(1);
+        expect(slot.querySelectorAll('.nexus-private-finish').length).toBeLessThanOrEqual(1);
+        // Each position chip once.
+        const keys = [...slot.querySelectorAll('[data-private-position]')].map((b) => b.dataset.privatePosition);
+        expect(new Set(keys).size).toBe(keys.length);
+    });
 });
