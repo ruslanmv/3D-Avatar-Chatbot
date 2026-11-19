@@ -47,6 +47,9 @@
         const loadImage = o.loadImage || defaultLoadImage;
         const createCanvas = o.createCanvas || defaultCanvas;
         let attached = null;
+        // Codex (#192). Every attach and detach is a new generation, and every apply a new request:
+        // a manifest or an atlas that arrives after a newer one was asked for is dropped, never applied.
+        let generation = 0;
 
         async function getJson(url) {
             const response = await fetchImpl(url, { headers: await headersFor(url) });
@@ -86,6 +89,7 @@
              */
             async attach(root, look, manifestUrl) {
                 this.detach();
+                const mine = ++generation;
                 const url = manifestUrl || manifestUrlFor(look && (look.vrmUrl || look.vrm_url));
                 if (!url || (!manifestUrl && !mayHavePack(look))) return [];
                 let manifest = null;
@@ -95,6 +99,7 @@
                     console.warn('[SkinStates] no pack read', error);
                     return [];
                 }
+                if (mine !== generation) return []; // a newer attach, or a detach, came first
                 if (!manifest || manifest.schema !== SCHEMA) return [];
                 const materials = materialsOf(root, manifest.material);
                 if (!materials.length) return [];
@@ -106,7 +111,15 @@
                         if (!originals.has(texture)) originals.set(texture, { image: texture.image, map });
                     }
                 }
-                attached = { url, manifest, originals, canvases: new Map(), atlases: new Map(), state: null };
+                attached = {
+                    url,
+                    manifest,
+                    originals,
+                    canvases: new Map(),
+                    atlases: new Map(),
+                    state: null,
+                    request: 0,
+                };
                 return this.states();
             },
 
@@ -128,6 +141,8 @@
             async apply(state) {
                 const a = attached;
                 if (!a || !a.manifest.states[state]) return false;
+                const request = ++a.request;
+                const superseded = () => attached !== a || a.request !== request;
                 const files = a.manifest.states[state].files || {};
                 const base = a.url;
                 const tile = a.manifest.tile;
@@ -142,6 +157,7 @@
                         if (attached !== a) return false; // detached or re-attached while loading
                         a.atlases.set(atlasUrl, atlas);
                     }
+                    if (superseded()) return false; // a newer state was asked for while this loaded
                     let canvas = a.canvases.get(texture);
                     if (!canvas) {
                         canvas = createCanvas(original.image.width, original.image.height);
@@ -165,6 +181,7 @@
 
             /** Her textures back exactly as they were when attached. */
             detach() {
+                generation++;
                 if (!attached) return false;
                 for (const [texture, original] of attached.originals) {
                     texture.image = original.image;

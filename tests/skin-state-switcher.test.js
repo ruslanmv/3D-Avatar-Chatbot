@@ -122,4 +122,51 @@ describe('UN32 SkinStateSwitcher', () => {
         });
         expect(await other.attach(w.root, LOOK)).toEqual([]);
     });
+
+    test('a slow manifest for an older look never attaches over a newer one, nor after detach', async () => {
+        const base = { image: { width: 512, height: 512, id: 'b' } };
+        const root = { traverse: (fn) => fn({ material: { name: 'Body', map: base } }) };
+        const gates = [];
+        const fetch = () =>
+            new Promise((resolve) => gates.push(() => resolve({ ok: true, json: async () => MANIFEST })));
+        const switcher = Skin.create({ fetch, createCanvas: () => null });
+        const first = switcher.attach(root, LOOK);
+        const second = switcher.attach(root, { ...LOOK, vrmUrl: 'https://forge/v1/assets/looks/look_2/look.vrm' });
+        const tick = () => new Promise((r) => setTimeout(r, 0)); // headers are awaited before fetch
+        await tick();
+        gates[1]();
+        expect((await second).length).toBe(2);
+        gates[0](); // the older look's manifest lands last
+        expect(await first).toEqual([]);
+        const third = switcher.attach(root, LOOK);
+        switcher.detach();
+        await tick();
+        gates[2]();
+        expect(await third).toEqual([]);
+        expect(switcher.states()).toEqual([]);
+    });
+
+    test('a slow atlas for an older state never repaints over a newer one (P1)', async () => {
+        const base = { image: { width: 512, height: 512, id: 'b' }, needsUpdate: false };
+        const root = { traverse: (fn) => fn({ material: { name: 'Body', map: base } }) };
+        let releaseOpen;
+        const fetch = async (url) => {
+            if (url.endsWith('manifest.json')) return { ok: true, json: async () => ({ ...MANIFEST, maps: ['base'] }) };
+            if (url.includes('/open/')) await new Promise((r) => (releaseOpen = r));
+            return { ok: true, blob: async () => ({ url }) };
+        };
+        const ctx = { drawImage: () => {}, clearRect: () => {} };
+        const switcher = Skin.create({
+            fetch,
+            loadImage: async (b) => b,
+            createCanvas: () => ({ getContext: () => ctx }),
+        });
+        await switcher.attach(root, LOOK);
+        const open = switcher.apply('open');
+        await Promise.resolve();
+        expect(await switcher.apply('closed')).toBe(true);
+        releaseOpen();
+        expect(await open).toBe(false);
+        expect(switcher.current()).toBe('closed');
+    });
 });
