@@ -3065,8 +3065,11 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             // The menu is on screen as chips; nothing is offered before the deal.
             expect(document.body.textContent).toContain(Locale.t('place.deal.tease'));
             expect(Actions.snapshot().offer).toBeNull();
-            // The deal is answered in her words, remembered, and its show offered once the pace opens it.
+            // Codex (#199). Stepping the pace up before the deal invites to nothing.
             w.adult.level = 3;
+            expect(session._invitePlace(3)).toBe(false);
+            expect(Actions.snapshot().offer).toBeNull();
+            // The deal is answered in her words, remembered, and its show offered once the pace opens it.
             expect(session._chooseReply(Locale.t('place.deal.tease'))).toBe(true);
             await flush();
             expect(session._placeWish).toBe('tease');

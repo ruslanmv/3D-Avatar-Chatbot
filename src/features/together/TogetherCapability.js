@@ -2309,6 +2309,9 @@
             const P = placeScripts();
             const script = this._placeScript();
             if (!P || !script) return null;
+            // WR1 (Codex #199). A room with a menu at the door invites to nothing before the deal:
+            // stepping the pace up first used to offer the gentlest show and skip their choice.
+            if (Array.isArray(script.deals) && script.deals.length && !this._placeWish) return null;
             if (!this._placeOffered) this._placeOffered = new Set();
             const policy = actionPolicy();
             return P.showToOffer(script, {
