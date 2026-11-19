@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 74,
-        "places": 37,
+        "worlds": 75,
+        "places": 38,
         "standIns": 21,
         "withSpots": 42,
         "fails": 0,
         "warns": 25,
         "offered": {
-            "desktop": 53,
-            "mobile": 51,
-            "vr": 52
+            "desktop": 54,
+            "mobile": 52,
+            "vr": 53
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -1568,6 +1568,47 @@
                 "vr": {
                     "ok": true,
                     "shows": "window-room",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "bright-hotel",
+            "title": "Hotel room (bright)",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 3300,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/bright-hotel.webp",
+                "exists": true,
+                "bytes": 15020
+            },
+            "props": 14,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "bright-hotel",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "bright-hotel",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "bright-hotel",
                     "why": "loads itself"
                 }
             },

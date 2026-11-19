@@ -1600,6 +1600,8 @@
             'place.invite.table-dance': 'You are comfortable now… shall I climb up on the table and dance for you?',
             'place.invite.tease': 'Shall I start teasing you a little, right here in front of you?',
             'place.notyet': 'Not yet',
+            'place.bright-hotel.opening':
+                'There you are — come in, close the door. I opened the curtains, I like seeing you properly. Sit with me and tell me what you’d like today.',
             'setup.who': 'Who do you want tonight?',
             'setup.who.none': 'Just her',
             'persona.gina.tagline': 'Shameless, filthy-mouthed, loves it rough · 32',
@@ -1672,6 +1674,8 @@
             'place.invite.table-dance': 'Sei comodo adesso… vuoi che salga sul tavolino e balli per te?',
             'place.invite.tease': 'Vuoi che inizi a stuzzicarti un po’, proprio qui davanti a te?',
             'place.notyet': 'Non ancora',
+            'place.bright-hotel.opening':
+                'Eccoti, entra e chiudi la porta. Ho aperto le tende, mi piace vederti bene. Siediti con me e dimmi cosa vorresti oggi.',
             'setup.who': 'Chi vuoi stasera?',
             'setup.who.none': 'Solo lei',
             'persona.gina.tagline': 'Sboccata, senza vergogna, le piace forte · 32',
@@ -1742,6 +1746,8 @@
             'place.invite.table-dance': 'Ya estás cómodo… ¿quieres que me suba a la mesa y baile para ti?',
             'place.invite.tease': '¿Quieres que empiece a provocarte un poco, aquí delante de ti?',
             'place.notyet': 'Todavía no',
+            'place.bright-hotel.opening':
+                'Aquí estás, entra y cierra la puerta. He abierto las cortinas, me gusta verte bien. Siéntate conmigo y dime qué te apetece hoy.',
             'setup.who': '¿A quién quieres esta noche?',
             'setup.who.none': 'Solo ella',
             'persona.gina.tagline': 'Descarada, malhablada, le gusta duro · 32',
@@ -1814,6 +1820,8 @@
                 'Tu es bien installé… tu veux que je monte sur la table et que je danse pour toi ?',
             'place.invite.tease': 'Tu veux que je commence à t’allumer un peu, juste là devant toi ?',
             'place.notyet': 'Pas encore',
+            'place.bright-hotel.opening':
+                'Te voilà, entre et ferme la porte. J’ai ouvert les rideaux, j’aime bien te voir. Assieds-toi avec moi et dis-moi ce que tu aimerais aujourd’hui.',
             'setup.who': 'Qui veux-tu ce soir ?',
             'setup.who.none': 'Juste elle',
             'persona.gina.tagline': 'Sans gêne, grossière, aime quand c’est fort · 32',
@@ -1885,6 +1893,8 @@
             'place.invite.table-dance': 'Du sitzt jetzt bequem … soll ich auf den Tisch steigen und für dich tanzen?',
             'place.invite.tease': 'Soll ich anfangen, dich ein bisschen zu reizen, genau hier vor dir?',
             'place.notyet': 'Noch nicht',
+            'place.bright-hotel.opening':
+                'Da bist du ja – komm rein und mach die Tür zu. Ich habe die Vorhänge aufgemacht, ich sehe dich gern richtig. Setz dich zu mir und sag mir, was du heute möchtest.',
             'setup.who': 'Wen willst du heute Abend?',
             'setup.who.none': 'Nur sie',
             'persona.gina.tagline': 'Schamlos, versaut, mag es hart · 32',
@@ -1956,6 +1966,8 @@
             'place.invite.table-dance': 'Já estás confortável… queres que eu suba para a mesa e dance para ti?',
             'place.invite.tease': 'Queres que comece a provocar-te um pouco, aqui mesmo à tua frente?',
             'place.notyet': 'Ainda não',
+            'place.bright-hotel.opening':
+                'Aí estás, entra e fecha a porta. Abri as cortinas, gosto de te ver bem. Senta-te comigo e diz-me o que queres hoje.',
             'setup.who': 'Quem queres esta noite?',
             'setup.who.none': 'Só ela',
             'persona.gina.tagline': 'Descarada, boca suja, gosta de força · 32',
@@ -2025,6 +2037,8 @@
             'place.invite.table-dance': 'くつろげた？テーブルに上がって、あなたのために踊ってほしい？',
             'place.invite.tease': 'ここで、あなたの目の前で、少しじらしてほしい？',
             'place.notyet': 'まだ',
+            'place.bright-hotel.opening':
+                '来てくれたのね、入ってドアを閉めて。カーテンを開けておいたの、あなたをちゃんと見たいから。隣に座って、今日はどうしたいか教えて。',
             'setup.who': '今夜は誰がいい？',
             'setup.who.none': 'いつもの彼女',
             'persona.gina.tagline': '恥知らずで口が悪い、激しいのが好き · 32',
@@ -2093,6 +2107,8 @@
             'place.invite.table-dance': '편해졌어? 테이블에 올라가서 너를 위해 춤춰 줄까?',
             'place.invite.tease': '바로 네 앞에서 조금 애태워 줄까?',
             'place.notyet': '아직',
+            'place.bright-hotel.opening':
+                '왔구나, 들어와서 문 닫아. 커튼 열어 뒀어, 너를 제대로 보고 싶어서. 내 옆에 앉아서 오늘 뭘 원하는지 말해 줘.',
             'setup.who': '오늘 밤 누구를 원해?',
             'setup.who.none': '그냥 그녀',
             'persona.gina.tagline': '뻔뻔하고 입이 거칠고, 거친 걸 좋아해 · 32',
@@ -2160,6 +2176,8 @@
             'place.invite.table-dance': '坐舒服了吗？要我爬上桌子为你跳舞吗？',
             'place.invite.tease': '要我就在你面前，先挑逗你一下吗？',
             'place.notyet': '还不要',
+            'place.bright-hotel.opening':
+                '你来了，进来把门关上。我把窗帘拉开了，我喜欢好好看着你。坐到我身边，告诉我你今天想要什么。',
             'setup.who': '今晚想要谁？',
             'setup.who.none': '就是她',
             'persona.gina.tagline': '放荡、满嘴脏话、喜欢粗暴 · 32',

@@ -1852,6 +1852,121 @@
       "category": "Private"
     },
     {
+      "id": "bright-hotel",
+      "title": "Hotel room (bright)",
+      "note": "A bright, clean hotel room in daylight: a big bed, a sofa, a desk by the window. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 3300,
+      "activities": [],
+      "sky": {
+        "top": "#cfe3f5",
+        "horizon": "#f6efe6",
+        "bottom": "#e8ddd0"
+      },
+      "fog": {
+        "color": "#f2ebe2",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffffff",
+        "ground": "#b8a898",
+        "hemi": 0.9,
+        "key": "#fff4e6",
+        "keyIntensity": 1.1,
+        "fill": "#dfe8ff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.4,
+        "exposure": 1.05
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.4],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.5, 0, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.5, 0.5, -2.9]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/wallWindow.glb",
+          "width": 2.2,
+          "at": [-2.7, 0, -1.2],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofa.glb",
+          "width": 1.8,
+          "at": [2.4, 0, -0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/tableCoffee.glb",
+          "width": 0.9,
+          "at": [1.5, 0, 0.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.2,
+          "at": [-2.4, 0, 0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.9,
+          "at": [-1.9, 0, 0.6],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.4, 0, -2.9]
+        },
+        {
+          "src": "kits/3dassets-hotel-resort/folded-towel-stack.glb",
+          "height": 0.22,
+          "at": [0.6, 0.52, -3.2]
+        }
+      ],
+      "ground": {
+        "color": "#c9b8a6",
+        "radius": 4.5
+      },
+      "preview": "previews/bright-hotel.webp",
+      "category": "Private"
+    },
+    {
       "id": "tokyo-club",
       "title": "Tokyo night club",
       "note": "A hostess club in Tokyo at night: a corner sofa, a low glass table, a little bar, a karaoke screen. Private only.",

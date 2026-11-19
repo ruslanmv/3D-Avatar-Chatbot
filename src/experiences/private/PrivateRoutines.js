@@ -190,7 +190,7 @@
                 {
                     clip: CLIPS.roll,
                     hold: 8000,
-                    body: 'at your window in red lingerie, rolling your body slowly behind the glass for them',
+                    body: 'by the window in red lingerie, rolling your body slowly for them as they come in',
                 },
                 {
                     pose: 'lounge',
