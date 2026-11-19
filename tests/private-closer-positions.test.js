@@ -196,3 +196,46 @@ describe('UN27 the ⋯ menu: chips before any action', () => {
         delete window.NEXUS_SPICY;
     });
 });
+
+describe('OL3 her position remembered: open and close are relative to where she is', () => {
+    test.each([
+        ['open', null, 'sit-open'],
+        ['open', 'lie-back', 'knees-up'],
+        ['open', 'knees-up', 'knees-up'],
+        ['open', 'kneel', 'kneel-wide'],
+        ['open', 'all-fours', 'all-fours'],
+        ['open', 'lie-front', 'lie-front'],
+        ['close', 'knees-up', 'lie-back'],
+        ['close', 'kneel-wide', 'kneel'],
+        ['close', 'sit-open', 'lounge'],
+        ['close', 'kneel', 'kneel'],
+        ['close', null, null],
+    ])('%s from %s is %s', (verb, held, want) => expect(Poses.transition(verb, held)).toBe(want));
+
+    test('every target is a position she has, and "open" never lands on a seat from the floor', () => {
+        for (const row of Object.values(Poses.TRANSITIONS))
+            for (const to of Object.values(row)) expect(Poses.POSES[to]).toBeDefined();
+        for (const lying of ['lie-back', 'lie-side', 'knees-up'])
+            expect(Poses.transition('open', lying)).toBe('knees-up');
+    });
+
+    const held = { poseHeld: true };
+    test.each([
+        ['apri', held, { pose: 'sit-open', rel: 'open' }],
+        ['aprile di più', held, { pose: 'sit-open', rel: 'open' }],
+        ['open up', held, { pose: 'sit-open', rel: 'open' }],
+        ['apri le gambe', {}, { pose: 'sit-open', rel: 'open' }],
+        ['siediti a gambe aperte', {}, { pose: 'sit-open' }],
+        ['chiudi le gambe', held, { pose: 'lie-back', rel: 'close' }],
+        ['close your legs', held, { pose: 'lie-back', rel: 'close' }],
+    ])('"%s" → %o', (said, c, want) => {
+        const r = Intent.parse(said, c);
+        expect(r && r.name).toBe('avatar.pose');
+        expect(r.params).toEqual(want);
+    });
+
+    test.each(['apri la finestra', 'apri', 'chiudi la porta'])('"%s" is not her legs when nothing asks it', (said) => {
+        const r = Intent.parse(said, said === 'apri' ? {} : { poseHeld: true });
+        expect(r && r.name === 'avatar.pose' && r.params.rel).toBeFalsy();
+    });
+});

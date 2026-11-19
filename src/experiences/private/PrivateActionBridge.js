@@ -1272,31 +1272,40 @@
     }
 
     /**
-     * OL1. "Apri le gambe" opens her legs where she is (reported 2026-11-19): lying with her knees
-     * up, the words were read as the seated `sit-open` and she sprang up into a seat in mid-air.
-     * Opening the legs is a change to the position she holds, not a new one — so on her back it is
-     * `knees-up` (knees raised and apart, still on the floor), kneeling it is `kneel-wide`, and on
-     * all fours she stays. Only when she holds nothing, or the words say to sit ("siediti…"), is
-     * it the seated position. The policy then judges the position she will really take, so the
-     * pace still decides (knees-up opens at 4).
+     * OL1/OL3. Her position remembered: a relative request ("apri le gambe", "apri", "chiudi le
+     * gambe") is resolved from the position she holds through PrivatePoseController.transition —
+     * one table — so on her back "open" is `knees-up` and never the chair seat in mid-air
+     * (reported 2026-11-19), and "close" brings her knees together where she is. A model's own
+     * `sit-open` tag goes the same way unless the person asked her to sit. The policy then judges
+     * the position she will really take, so the pace still decides. `from` keeps where she was,
+     * for the reply.
      */
-    const LYING = new Set(['knees-up', 'lie-back', 'lie-side', 'lie-front']);
-    const KNEELING = new Set(['kneel', 'kneel-up', 'kneel-wide', 'straddle']);
     const SIT_WORDS = /sied|sedut|\bsit\b|sient|sentad|assi[es]|assoi|setz|senta|座|앉|坐/i;
     function openInPlace(s, params) {
-        if (!params || params.pose !== 'sit-open' || !s.poses || typeof s.poses.held !== 'function') return params;
-        if (SIT_WORDS.test(String(s.turnText || ''))) return params;
+        if (!params || !s.poses || typeof s.poses.held !== 'function') return params;
+        let rel = params.rel || null;
+        if (!rel && params.pose === 'sit-open' && !SIT_WORDS.test(String(s.turnText || ''))) rel = 'open';
+        if (!rel) return params;
+        let Poses = pick(s.win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+        if ((!Poses || typeof Poses.transition !== 'function') && typeof module !== 'undefined' && module.exports) {
+            try {
+                Poses = require('./PrivatePoseController.js');
+            } catch (_) {
+                Poses = null;
+            }
+        }
+        if (!Poses || typeof Poses.transition !== 'function') return params;
         let held = null;
         try {
             held = s.poses.held();
         } catch (_) {
             held = null;
         }
-        const where = held && typeof held === 'object' ? held.key || held.pose || held.name : held;
-        if (LYING.has(where)) return { ...params, pose: 'knees-up', from: 'sit-open' };
-        if (KNEELING.has(where)) return { ...params, pose: 'kneel-wide', from: 'sit-open' };
-        if (where === 'all-fours') return { ...params, pose: 'all-fours', from: 'sit-open' };
-        return params;
+        const from = typeof held === 'string' ? held : null;
+        const to = Poses.transition(rel, from);
+        // Nothing to change ("close" while standing): she stays as she is.
+        if (!to) return { ...params, pose: 'stand', rel, from: null };
+        return { ...params, pose: to, rel, from };
     }
 
     function pose(s, action) {
@@ -1320,6 +1329,9 @@
             const out = s.poses.back();
             return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
         }
+        // OL3. Asked to open or close where she already is: nothing to move, nothing re-blended.
+        if (action.params.rel && action.params.from && action.params.from === action.params.pose)
+            return settle(action, 'completed', null, { name: action.params.pose, same: true });
         // NL1. A position that was asked for and that this build does not have: nothing runs, and
         // the reply is told so. `ask` is set when the words fit more than one preset.
         if (action.params.pose === 'unknown')
@@ -3104,11 +3116,18 @@
                 now.push('You have turned to face them again, holding your position.');
             else if (body.status === 'completed' && body.params.pose === 'back')
                 now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
+            else if (body.status === 'completed' && body.params.rel && body.params.from === body.params.pose)
+                now.push(
+                    `They asked you to ${body.params.rel} your legs and you already are, as far as this position goes (${named}${shape ? `: ${shape}` : ''}). Say so with your body, in a few words; nothing moved.`
+                );
             else if (body.status === 'completed')
                 now.push(
-                    shape
-                        ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
-                        : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`
+                    (body.params.rel && body.params.from
+                        ? `You did it where you were: from ${String(body.params.from).replace(/-/g, ' ')}, only your legs changed. `
+                        : '') +
+                        (shape
+                            ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
+                            : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`)
                 );
             else if (body.why === 'pace')
                 now.push(

@@ -294,9 +294,11 @@ finish and three replies of aftercare). `OL` for her held position against
 everything else: "open your legs" changes the position she holds (on her back it
 is `knees-up`, kneeling `kneel-wide`; `sit-open` is now a floor seat), and a
 reply's mood never moves a body `vrPoseSystem.isHoldingBones()` says is held (no
-clip from `handleIntent` or `_intent`, no `setMode` override). Commit subjects
-match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
-comment line up.
+clip from `handleIntent` or `_intent`, no `setMode` override; OL3: "apri",
+"chiudi le gambe" go through `PrivatePoseController.transition` from the
+position she holds, one table). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

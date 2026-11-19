@@ -856,6 +856,22 @@
             /背中を反らして|허리를\s?젖혀|弯起背/u,
         ],
     ];
+    /**
+     * OL3. Her legs, relative to the position she holds: "apri", "aprile di più", "open up",
+     * "chiudi le gambe". These name no position, so they mean nothing without one — the bridge
+     * resolves them through PrivatePoseController.transition from where she is. The bare forms
+     * are the whole utterance only ("apri la finestra" is not her legs); the close forms name
+     * the legs or knees, or say "chiudile".
+     */
+    const OPEN_ALONE =
+        /^(?:apri(?:le|ti)?(?: di più| ancora| bene)?|allargale|più aperte|open(?: up| them| wider| more)?|wider|spread(?: them| wider)?|ábrelas|abrelas|abre(?:las)? más|ouvre(?:-les)?(?: plus)?|écarte(?:-les)?|öffne(?: sie| dich)?|spreiz sie|mais abertas|abre-as)[\s!.…]*$/iu;
+    const OPEN_CJK = /^(?:もっと)?開いて[!！。]*$|^(?:더\s?)?벌려[!！.]*$|^张开[!！。]*$/u;
+    const CLOSE_WORDS =
+        /\b(?:chiudi(?:le)?|stringi) (?:le )?(?:gambe|ginocchia)\b|^chiudile\b|\bclose (?:your|ur) (?:legs|knees)\b|^close them\b|\bcierra(?:las)? (?:las )?piernas\b|^ciérralas|\b(?:serre|ferme) (?:les )?jambes\b|\bschlie(?:ß|ss) (?:die )?beine\b|\bfech[ae] (?:as )?pernas\b/iu;
+    const CLOSE_CJK = /脚を閉じて|다리를\s?오므려|合上腿|并拢/u;
+    /** OL3. Words that ask her to sit: "siediti a gambe aperte" is the seat, not her legs where she is. */
+    const SIT_WORDS = /sied|sedut|\bsit\b|sient|sentad|assi[es]|assoi|setz|senta|座|앉|坐/iu;
+
     const STAND_WORDS = new RegExp(
         `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
         'iu'
@@ -929,9 +945,17 @@
             return action('wardrobe.redress', {}, 'wardrobe');
         for (const [key, words, cjk] of POSE_WORDS) {
             const re = new RegExp(`^(?:${word(words)})`, 'iu');
-            if (re.test(body) || re.test(inner) || cjk.test(body))
+            if (re.test(body) || re.test(inner) || cjk.test(body)) {
+                // OL3. "Apri le gambe" is relative to where she is; "siediti a gambe aperte" is the seat.
+                if (key === 'sit-open' && !SIT_WORDS.test(body))
+                    return action('avatar.pose', { pose: key, rel: 'open' }, 'avatar');
                 return action('avatar.pose', { pose: key }, 'avatar');
+            }
         }
+        if (c.poseHeld && (OPEN_ALONE.test(body) || OPEN_CJK.test(body)))
+            return action('avatar.pose', { pose: 'sit-open', rel: 'open' }, 'avatar');
+        if (c.poseHeld && (CLOSE_WORDS.test(body) || CLOSE_CJK.test(body)))
+            return action('avatar.pose', { pose: 'lie-back', rel: 'close' }, 'avatar');
         if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
         if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
         // While she holds a position, turning keeps it (her whole body turns in place).
