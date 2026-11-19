@@ -959,24 +959,29 @@ const POSE_PRESETS = {
     sittingOpen: {
         label: 'Sitting (Open)',
         adult: true,
-        // On the edge of a seat, leaning back a little, knees wide, hands resting inside her knees,
-        // head tilted towards the person. Grounded like `sitting`: feet on the floor.
+        // OL1. On the floor, legs open in a wide V, leaning back a little. It was a seat on the edge
+        // of a chair (thighs level, shins straight down, grounded by her feet) — and no room has a
+        // chair, so in a real Private evening she sat in mid-air in front of the bed (reported
+        // 2026-11-19, a phone screenshot). This is `sittingLegsUp` (UN22, measured grounded on her
+        // seat and legs) with the thighs opened: the same supports, so grounding lays her seat and
+        // legs on the floor on any avatar. Knees a little more bent than lounging, hands resting on
+        // the floor beside her hips.
+        support: { ground: ['hips', 'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg'] },
         bones: {
-            hips: eulerDegToQuat(8, 0, 0), // Leaning back on the seat
-            spine: eulerDegToQuat(4, 0, 0), // Chest open
-            chest: eulerDegToQuat(2, 0, 0),
-            neck: eulerDegToQuat(-6, 0, 0), // Face brought forward again, towards the person
-            head: eulerDegToQuat(-6, 0, 6), // A slight tilt
-            leftUpperLeg: eulerDegToQuat(80, 0, -38), // Thighs forward and wide apart
-            rightUpperLeg: eulerDegToQuat(80, 0, 38),
-            leftLowerLeg: eulerDegToQuat(-88, 0, 0), // Shins down, feet on the floor
-            rightLowerLeg: eulerDegToQuat(-88, 0, 0),
-            leftFoot: eulerDegToQuat(10, 0, 0),
-            rightFoot: eulerDegToQuat(10, 0, 0),
-            leftUpperArm: eulerDegToQuat(18, 0, 72), // Hands resting on the inside of her knees
-            rightUpperArm: eulerDegToQuat(18, 0, -72),
-            leftLowerArm: eulerDegToQuat(0, -30, 0),
-            rightLowerArm: eulerDegToQuat(0, 30, 0),
+            hips: eulerDegToQuat(-10, 0, 0), // Reclined a little, as lounging
+            leftUpperLeg: eulerDegToQuat(75, 0, -34), // Thighs forward and wide apart, on the floor
+            rightUpperLeg: eulerDegToQuat(75, 0, 34),
+            leftLowerLeg: eulerDegToQuat(-48, 0, 0), // Knees softly bent
+            rightLowerLeg: eulerDegToQuat(-48, 0, 0),
+            leftFoot: eulerDegToQuat(15, 0, -5),
+            rightFoot: eulerDegToQuat(15, 0, 5),
+            spine: eulerDegToQuat(-12, 0, 0), // Leaning back
+            chest: eulerDegToQuat(-5, 0, 0),
+            leftUpperArm: eulerDegToQuat(5, 0, 58), // Hands down beside her hips
+            rightUpperArm: eulerDegToQuat(5, 0, -58),
+            leftLowerArm: eulerDegToQuat(0, -25, 0),
+            rightLowerArm: eulerDegToQuat(0, 25, 0),
+            head: eulerDegToQuat(4, 0, 6), // Looking at them, a slight tilt
         },
     },
 

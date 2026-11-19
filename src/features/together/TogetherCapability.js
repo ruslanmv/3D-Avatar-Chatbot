@@ -3336,6 +3336,13 @@
          */
         _intent(name, intensity = 0.3) {
             if (!this.bus || typeof this.bus.emit !== 'function' || this._stopped) return false;
+            // OL2. Not while a position holds her: a body clip over it stood her up mid-reply.
+            try {
+                const vps = global.vrPoseSystem;
+                if (vps && typeof vps.isHoldingBones === 'function' && vps.isHoldingBones()) return false;
+            } catch (_) {
+                /* no pose system: nothing is held */
+            }
             try {
                 this.bus.emit('intent', { name, intensity, source: 'private' });
                 return true;
