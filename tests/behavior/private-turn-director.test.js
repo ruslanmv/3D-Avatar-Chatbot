@@ -162,3 +162,69 @@ describe('the response budget', () => {
         expect(Director.budgetFor({ intent: 'not-a-real-intent' })).toBe(Director.BUDGET.conversation);
     });
 });
+
+describe('SW2 the safety words in every language the app speaks', () => {
+    test.each([
+        ['basta', 'end'],
+        ['smettila', 'end'],
+        ['voglio smettere', 'end'],
+        ['para', 'end'],
+        ['quiero parar', 'end'],
+        ['hör auf', 'end'],
+        ['stopp', 'end'],
+        ['arrête', 'end'],
+        ['je veux arrêter', 'end'],
+        ['chega', 'end'],
+        ['quero parar', 'end'],
+        ['やめて', 'end'],
+        ['그만해', 'end'],
+        ['够了', 'end'],
+        ['ho finito', 'end'],
+        ['rallenta', 'pace-down'],
+        ['troppo veloce', 'pace-down'],
+        ['baja el ritmo', 'pace-down'],
+        ['ralentis', 'pace-down'],
+        ['zu schnell', 'pace-down'],
+        ['vai com calma', 'pace-down'],
+        ['太快了', 'pace-down'],
+        ['너무 빨라', 'pace-down'],
+    ])('%s → %s', (text, want) => expect(intent(text)).toBe(want));
+
+    test.each([
+        'para mí eres preciosa',
+        'chega de conversa',
+        'demasiado bonito',
+        'ho finito il lavoro oggi',
+        'he terminado el libro',
+        'aspetta che ti racconto',
+        'più piano', // a tempo word, exactly as English "slower" (the motion's, LM7)
+    ])('everyday words are not safety words: %s', (text) => {
+        expect(['end', 'pace-down']).not.toContain(intent(text));
+    });
+});
+
+describe('SW3 hesitation eases off, and says it was hesitation', () => {
+    test.each([
+        'maybe',
+        'wait',
+        "i'm not sure about this",
+        'aspetta',
+        'non sono pronta',
+        'quizás',
+        'vielleicht',
+        'peut-être',
+        'não sei',
+        '잠깐만',
+        '等一下',
+    ])('%s is unsure: it eases off, marked hesitant', (text) => {
+        const turn = Director.classify(text);
+        expect(turn.intent).toBe('pace-down');
+        expect(turn.hesitant).toBe(true);
+    });
+
+    test('a maybe inside a sentence is talk; a plain slow-down is not hesitation', () => {
+        expect(Director.classify('maybe we could go to the beach').hesitant).toBeFalsy();
+        expect(intent('maybe we could go to the beach')).not.toBe('pace-down');
+        expect(Director.classify('slow down').hesitant).toBeFalsy();
+    });
+});

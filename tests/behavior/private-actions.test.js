@@ -2465,6 +2465,22 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 const lines = Actions.promptLines().join('\n');
                 expect(lines).toMatch(/They just came/);
                 expect(lines).toMatch(/Your body right now: a pool of cum in the small of your back/);
+                // SW4. In proportion, never a performance.
+                expect(lines).toMatch(/in proportion/);
+                expect(lines).toMatch(/never a scripted crescendo/);
+                // SW5. The next few replies are aftercare; then ordinary again.
+                const turnOn = async (t) => {
+                    Surface.renderUser(t);
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    return Actions.promptLines().join('\n');
+                };
+                const after = await turnOn('that was amazing');
+                expect(after).toMatch(/Afterwards: stay close and unhurried/);
+                expect(after).toMatch(/Offer nothing new/);
+                expect(after).not.toMatch(/They just came/);
+                await turnOn('mmm');
+                await turnOn('stay with me');
+                expect(await turnOn('tell me about your day')).not.toMatch(/Afterwards: stay close/);
                 // Lowering the pace does not take it off her while it holds.
                 w.adult.level = 2;
                 Actions.fitPoseToPace();

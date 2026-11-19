@@ -260,7 +260,10 @@ one reaction at the finish; off draws nothing and removes nothing; measure with
 `tools/qa/living-motion-live.mjs`), `MP` for motion provenance
 (`src/gltf-viewer/MotionProvenance.js`: every motion Claude made, tagged by
 method, one switch per method; anything new that moves her body gets an entry in
-the same commit; the gallery is `tools/qa/motion-gallery.mjs`). Commit subjects
+the same commit; the gallery is `tools/qa/motion-gallery.mjs`). `SW` for the
+safety words and the moments around them (`PrivateTurnDirector.js`: end and
+ease-off in all nine languages, hesitation eases off and checks in once; the
+bridge's proportionate finish and three replies of aftercare). Commit subjects
 match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
 comment line up.
 

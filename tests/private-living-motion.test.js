@@ -468,3 +468,19 @@ describe('LM7 motion as a response: still unless asked, one reaction at the fini
         expect(Math.abs(h[h.length - 1])).toBeLessThan(0.01);
     });
 });
+
+describe('LM8 optional near-invisible breathing while still', () => {
+    beforeEach(() => localStorage.clear());
+    test('off by default; on, a breath far smaller than moving, and gone once she moves', () => {
+        expect(Living.breathingOn()).toBe(false);
+        const still = (breathe) =>
+            span(run({ pose: 'kneel', level: 4, moving: null, breathe }, 20, (f) => f.upperChest[0]).slice(300));
+        expect(still(false)).toBe(0);
+        const calm = still(true);
+        expect(calm).toBeGreaterThan(0.002);
+        const moving = span(run({ pose: 'kneel', level: 4, moving: 'normal' }, 20, (f) => f.upperChest[0]).slice(300));
+        expect(calm).toBeLessThan(moving / 4);
+        expect(Living.setBreathing(true)).toBe(true);
+        expect(Living.breathingOn()).toBe(true);
+    });
+});

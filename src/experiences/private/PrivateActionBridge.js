@@ -1669,6 +1669,8 @@
             return null;
         }
     }
+    /** SW5. How many replies after the finish keep the aftercare line. */
+    const AFTERCARE_TURNS = 3;
     /** How long where they finished stays on her before the afterglow fade (UN33) takes over. */
     const FINISH_HOLD_MS = 6 * 60 * 1000;
     /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
@@ -2921,7 +2923,17 @@
                 );
         }
         if (s.finish && s.finish.turnId === s.turnId)
-            now.push('They just came, and it shows on your body as the next line says. Answer it in the moment.');
+            now.push(
+                // SW4. In proportion, not a performance: no scripted crescendo timed to their climax
+                // (Brewer & Hendrie 2011 — performed reactions are the partner-pleasing kind).
+                'They just came, and it shows on your body as the next line says. Answer it sincerely and in proportion: warm, present, about the two of you — never a scripted crescendo or a performance for them.'
+            );
+        else if (s.finish && s.turnId - s.finish.turnId <= AFTERCARE_TURNS)
+            now.push(
+                // SW5. Afterwards is its own phase (Muise, Giang & Impett 2014: affection after sex
+                // predicts satisfaction): a few replies of closeness before anything new.
+                'Afterwards: stay close and unhurried. Short, tender, specific words about being together just now; slow and soft. Offer nothing new — no position, show, outfit or place — and do not ask for more; if they want more, they will say so. Never hurry them or make them feel they must leave or stay.'
+            );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
             now.push(

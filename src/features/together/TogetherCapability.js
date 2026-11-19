@@ -366,7 +366,17 @@
      * transcript: a companion who keeps referring to the fact that you asked her to slow down has
      * made the asking into the topic.
      */
-    function slowedLines() {
+    function slowedLines(session) {
+        // SW3. They sounded unsure, this turn: the one reply that checks in, gently, once. Read and
+        // cleared here, so the turn after it is ordinary slowed-down conversation again.
+        const hesitated = Boolean(session && session._hesitatedAt);
+        if (session) session._hesitatedAt = null;
+        if (hesitated)
+            return [
+                'THEY SOUNDED UNSURE. You have eased right off, to the gentlest pace.',
+                'In this reply only: check in once, warmly and briefly — whether they would like to stay like this, go on, or stop. Any answer is fine, and you say so. No pressure, no persuading, no listing what they would miss.',
+                'Do not propose, hint at, or ask about anything more intense. Only a clear, explicit request from them changes the pace.',
+            ];
         return [
             'THE USER ASKED TO SLOW DOWN.',
             'Stay at the gentlest pace. Do not propose, hint at, or ask about anything more intense — not once.',
@@ -700,7 +710,7 @@
                 ? profile.lengthLines(turn, session && session.style, level)
                 : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
-            ...(session && session._styleLocked ? slowedLines() : []),
+            ...(session && session._styleLocked ? slowedLines(session) : []),
             // PX6. What she can do in this room, and what is happening right now because they
             // asked. Facts from the bridge: she never says music is playing unless the player did.
             ...privateActionLines(),
@@ -1907,6 +1917,8 @@
                 return turn;
             }
             if (turn.intent === 'pace-down') {
+                // SW3. Hesitation eases off the same way; the next reply alone checks in, once.
+                if (turn.hesitant) this._hesitatedAt = this._turnCount || Date.now();
                 // Typed, so it is a *word* rather than a step on a dial — and a word asking to slow
                 // down is answered the way `cozy` is: all the way down, in one tick, from anywhere.
                 // The stepping control is for somebody steering; this is for somebody who wants it

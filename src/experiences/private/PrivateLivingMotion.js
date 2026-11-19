@@ -205,7 +205,12 @@
             // and long and deep in the afterglow.
             const rate = 0.22 + 0.24 * a + 0.3 * f - 0.06 * glow;
             breath += rate * TAU * d;
-            const depth = (0.014 + 0.03 * a + 0.02 * glow) * act + 0.035 * f;
+            // LM8. Optional (off by default): a breath so small it reads as "alive", not as motion,
+            // while she holds still — Treal et al. 2021 found a body with natural postural sway moves
+            // people more than a frozen one; Mori: keep it small, slow and irregular, never a loop
+            // the eye can lock onto. Slower than her waking breath, and only when still.
+            const calm = c.breathe && !c.care ? 1 - act : 0;
+            const depth = (0.014 + 0.03 * a + 0.02 * glow) * act + 0.035 * f + 0.005 * calm;
             // In faster than out: the rise takes 40% of the cycle.
             const ph = (breath / TAU) % 1;
             const b = ph < 0.4 ? smooth(ph / 0.4) : 1 - smooth((ph - 0.4) / 0.6);
@@ -699,6 +704,26 @@
         }
     }
 
+    /** LM8. Near-invisible breathing while she holds still: OFF unless turned on in Settings. */
+    const BREATHE_KEY = 'nexus_private_living_breathe';
+    function breathingOn() {
+        try {
+            const st = store();
+            return Boolean(st) && st.getItem(BREATHE_KEY) === '1';
+        } catch (_) {
+            return false;
+        }
+    }
+    function setBreathing(on) {
+        try {
+            const st = store();
+            if (st) st.setItem(BREATHE_KEY, on ? '1' : '0');
+        } catch (_) {
+            /* private browsing */
+        }
+        return breathingOn();
+    }
+
     /** Turn it on or off; tells listeners (the Settings row) when it changed. */
     function setOn(on) {
         const was = isOn();
@@ -759,7 +784,23 @@
         note.style.cssText = 'font-size: 0.7rem; color: #888; margin: 6px 0 0';
         note.textContent =
             'On: she stays still in a position until you ask her to move (“move for me”, “slower”, “stay still”), and reacts when you finish. Off: she never moves.';
-        group.append(label, note);
+        // LM8. The breathing option, under the main switch: off by default, to compare.
+        const bLabel = d.createElement('label');
+        bLabel.className = 'spicy-toggle-label';
+        const bText = d.createElement('span');
+        bText.textContent = 'Subtle breathing while still';
+        const bSw = d.createElement('div');
+        bSw.className = 'spicy-toggle-switch';
+        const bBox = d.createElement('input');
+        bBox.type = 'checkbox';
+        bBox.id = 'private-living-breathe-toggle';
+        bBox.checked = breathingOn();
+        bBox.addEventListener('change', () => setBreathing(bBox.checked));
+        const bSlider = d.createElement('span');
+        bSlider.className = 'spicy-toggle-slider';
+        bSw.append(bBox, bSlider);
+        bLabel.append(bText, bSw);
+        group.append(label, note, bLabel);
         section.append(group);
         box.addEventListener('change', () => setOn(box.checked));
         onChange((on) => {
@@ -824,6 +865,7 @@
                 else topSince = null;
                 last = stepper.step(dt, {
                     moving: ctx.moving || null,
+                    breathe: breathingOn(),
                     pose: ctx.pose || null,
                     level: ctx.level,
                     secondsAtTop: topSince == null ? 0 : (now - topSince) / 1000,
@@ -875,6 +917,9 @@
         apply,
         attach,
         STORAGE_KEY,
+        BREATHE_KEY,
+        breathingOn,
+        setBreathing,
         isOn,
         setOn,
         onChange,
