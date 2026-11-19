@@ -2781,7 +2781,33 @@ describe('VA3. danced shows: the striptease takes layers off at its cues, the ta
         expect(st.played.length).toBeGreaterThan(starts.length);
         expect(st.played.every(([, at]) => at - t0 < 40000)).toBe(true);
         expect(st.applied.map(([k, at]) => [k, at - t0])).toEqual([['kneel-wide', 40000]]);
+        // Codex (#194). Two looks, three cues: what could not come off is not announced.
+        const done = Actions.log().filter((a) => a.name === 'wardrobe.undress');
+        if (done.some((a) => a.status !== 'completed')) {
+            const lines = Actions.promptLines().join('\n');
+            expect(lines).not.toMatch(/naked for them/);
+            expect(lines).toMatch(/in what you still have on/);
+        }
         expect(st.stops()).toBeGreaterThanOrEqual(1); // the dance stops as she kneels
+    });
+
+    test('Codex (#194): a clip that finishes loading after the show stopped never plays over what came next', async () => {
+        const st = stubs();
+        let release;
+        window.NEXUS_CLIP_LOADER.playClip = (path) => {
+            st.played.push([path, Date.now()]);
+            return new Promise((r) => (release = r));
+        };
+        const w = await begin({ adult: true, looks: LOOKS_VA3 });
+        w.adult.level = 4;
+        await turn('Give me a table dance');
+        await turn('Straddle me');
+        const before = st.stops();
+        release(true); // the load finishes after the show ended
+        for (let k = 0; k < 20; k += 1) await Promise.resolve();
+        // The late load is stopped at once (beyond whatever the position's own stop did), never left dancing.
+        expect(st.stops()).toBeGreaterThan(before);
+        expect(st.applied[st.applied.length - 1][0]).toBe('straddle');
     });
 
     test('striptease is not open below the closest step; the table dance is, and ends astride them', async () => {

@@ -880,6 +880,19 @@
         return s.turnId - s.routine.doneTurn <= ROUTINE_DONE_TURNS ? 'done' : null;
     }
 
+    /**
+     * Codex (#194). A step's line as it really is: an undress step whose layer did not come off
+     * says she dances on still dressed, and the closing step drops "naked" when any layer stayed.
+     */
+    function showBody(r, steps, k) {
+        const step = steps[k];
+        const kept = r.kept && r.kept.size > 0;
+        if (step.undress && r.kept && r.kept.has(k))
+            return 'still dancing for them, the layer you meant to take off still on you (it could not come off here)';
+        if (kept && step.kept) return step.kept;
+        return step.body;
+    }
+
     /** VA3. The clip a show started stops with it (or when it moves on to a held position). */
     function stopShowClip(s, r) {
         if (!r || !r.clip) return;
@@ -985,8 +998,21 @@
                 else {
                     if (s.poses && typeof s.poses.held === 'function' && s.poses.held()) s.poses.release();
                     r.clip = step.clip;
+                    const at = r.index;
+                    // Codex (#194). A clip loads before it plays, and the loader has no cancel: a
+                    // show stopped (or moved on) while it loaded would start dancing over whatever
+                    // came next. The load only plays if this show is still on this step.
+                    const owns = () => s.routine === r && r.index === at && r.clip === step.clip;
                     Promise.resolve(L.playClip(step.clip, { loop: true }))
                         .then((played) => {
+                            if (played && !owns()) {
+                                try {
+                                    L.stopClip();
+                                } catch (_) {
+                                    /* already stopped */
+                                }
+                                return;
+                            }
                             if (!played && s.routine === r) {
                                 console.warn('[Private] a show clip did not play', step.clip);
                                 stopRoutine(s);
@@ -997,7 +1023,6 @@
                     if (step.undress) {
                         r.cues = r.cues || [];
                         r.cues.push({ step: r.index, at: Date.now() });
-                        const at = r.index;
                         // A layer off is another look: a new avatar file, and the clip loader is
                         // registered afresh for her (AvatarManager → registerAvatar), so the dance
                         // bound to the body that left stops. Still on this step when it settles, she
@@ -1005,8 +1030,13 @@
                         // step stood still from the cue to the end of the step.
                         request('wardrobe.undress', { step: 'next' }, { source: 'control', turnId: r.turnId })
                             .catch(() => null)
-                            .then(() => {
-                                if (s.routine !== r || r.index !== at || r.clip !== step.clip) return;
+                            .then((done) => {
+                                // Codex (#194). What came off is the wardrobe's answer, not the
+                                // show's script: a layer that did not (no lower look, no bare look,
+                                // a load that failed) is recorded, and her lines say she is still
+                                // dressed rather than announcing what did not happen.
+                                if (!done || done.status !== 'completed') (r.kept = r.kept || new Set()).add(at);
+                                if (!owns()) return;
                                 try {
                                     Promise.resolve(L.playClip(step.clip, { loop: true })).catch(() => {});
                                 } catch (_) {
@@ -2774,15 +2804,15 @@
             const now_ = routineState(s);
             if (R && r && now_ === 'running' && r.index >= 0) {
                 const steps = R.ROUTINES[r.id].steps;
-                const step = steps[Math.min(r.index, steps.length - 1)];
+                const k = Math.min(r.index, steps.length - 1);
                 const next = steps[r.index + 1];
                 now.push(
-                    `You are giving them a show — ${R.ROUTINES[r.id].name}, step ${r.index + 1} of ${steps.length}: you are ${step.body}.${next ? ` Next you will be ${next.body}.` : ' This is the last step.'} Stay in it and speak to them from it.`
+                    `You are giving them a show — ${R.ROUTINES[r.id].name}, step ${r.index + 1} of ${steps.length}: you are ${showBody(r, steps, k)}.${next ? ` Next you will be ${next.body}.` : ' This is the last step.'} Stay in it and speak to them from it.`
                 );
             } else if (R && r && now_ === 'done') {
                 const steps = R.ROUTINES[r.id].steps;
                 now.push(
-                    `You have finished the show (${R.ROUTINES[r.id].name}); you are still ${steps[steps.length - 1].body}. Ask them, warmly and in your own words, if they want more — again, another show, or something else.`
+                    `You have finished the show (${R.ROUTINES[r.id].name}); you are still ${showBody(r, steps, steps.length - 1)}. Ask them, warmly and in your own words, if they want more — again, another show, or something else.`
                 );
             }
             const asked = [...s.log].reverse().find((a) => a.name === 'avatar.routine' && a.turnId === s.turnId);

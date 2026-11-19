@@ -170,6 +170,8 @@
                     pose: 'kneel-wide',
                     hold: 12000,
                     body: 'sinking down to kneel in front of them, knees wide apart, naked for them',
+                    // Codex (#194): said instead when a layer stayed on (PrivateActionBridge.showBody).
+                    kept: 'sinking down to kneel in front of them, knees wide apart, in what you still have on',
                 },
             ]),
         }),
