@@ -186,6 +186,7 @@
         const s = state;
         if (!s || (session && s.session !== session)) return false;
         if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
+        clearAfterglow(s);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -1169,6 +1170,8 @@
             if (look === s.skinLook) return;
             s.skinLook = look;
             s.skinStates = [];
+            clearAfterglow(s); // another look starts from the pace, not from the last one's afterglow
+            s.skinLevel = null;
             const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
             if (!look || !Skin || !Skin.mayHavePack(look)) {
                 if (s.skin) s.skin.detach();
@@ -1191,11 +1194,54 @@
         }
     }
 
+    /**
+     * UN33. Afterglow fades. Coming down from Intimate, her body does not snap back to closed: when
+     * the pack holds it she shows `afterglow` (flushed, nipples still hard, wet, a little open) for
+     * a few minutes, then cools to `flushed`, then settles to what the pace shows. Going back up to
+     * Intimate ends the fade at once. The timers live on the session and die with it (or with the
+     * look); they only ever re-read the pace, never move it.
+     */
+    const AFTERGLOW_MS = 4 * 60 * 1000;
+    const COOLING_MS = 3 * 60 * 1000;
+
+    function clearAfterglow(s) {
+        if (s && s.afterglow) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.afterglow.timer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        if (s) s.afterglow = null;
+    }
+
+    function startAfterglow(s, names) {
+        clearAfterglow(s);
+        const later = (fn, ms) => (s.win.setTimeout || setTimeout)(fn, ms);
+        const step = () => {
+            if (state !== s || !s.afterglow) return;
+            if (s.afterglow.stage === 'afterglow' && names.includes('flushed')) {
+                s.afterglow.stage = 'flushed';
+                s.afterglow.timer = later(step, COOLING_MS);
+            } else {
+                s.afterglow = null;
+            }
+            fitSkinToPace();
+        };
+        s.afterglow = { stage: 'afterglow', timer: later(step, AFTERGLOW_MS) };
+    }
+
     function fitSkinToPace() {
         const s = state;
         if (!s || !s.skin || !s.skinStates || !s.skinStates.length) return false;
         const names = s.skinStates.map((x) => x.name);
-        const want = (SKIN_FOR_LEVEL[Math.max(1, Math.min(4, levelOf(s) || 1))] || []).find((n) => names.includes(n));
+        const level = Math.max(1, Math.min(4, levelOf(s) || 1));
+        const was = s.skinLevel;
+        s.skinLevel = level;
+        if (level >= 4) clearAfterglow(s);
+        else if (was >= 4 && names.includes('afterglow')) startAfterglow(s, names);
+        const fading = s.afterglow && names.includes(s.afterglow.stage) ? s.afterglow.stage : null;
+        const want = fading || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
         if (!want || s.skin.current() === want) return false;
         s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
         return true;

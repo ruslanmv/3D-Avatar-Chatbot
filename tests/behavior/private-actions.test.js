@@ -2351,4 +2351,52 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
         await flush();
         expect(calls[calls.length - 1]).toBe('apply:flushed');
     });
+
+    test('UN33. coming down from Intimate she glows, cools to flushed, then settles; Intimate again ends it', async () => {
+        const calls = stubSkin();
+        const create = window.NEXUS_SKIN_STATES.create;
+        window.NEXUS_SKIN_STATES.create = () => {
+            const skin = create();
+            const attach = skin.attach;
+            skin.attach = async (root, look) => [
+                ...(await attach(root, look)),
+                { name: 'afterglow', body: 'you are glowing after coming' },
+            ];
+            return skin;
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const w = await begin({ adult: true, looks: LOOKS_UN32 });
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+        w.adult.level = 4;
+        await say('Mettiti il vestito da cocktail nero');
+        await flush();
+        await say('spogliati');
+        await flush();
+        expect(calls).toContain('apply:open');
+        jest.useFakeTimers();
+        try {
+            w.adult.level = 2;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            expect(Actions.promptLines().join('\n')).toMatch(/glowing after coming/);
+            jest.advanceTimersByTime(4 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:flushed');
+            jest.advanceTimersByTime(3 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:closed');
+            // Back up to Intimate and down again, then up before it cools: the fade is over.
+            w.adult.level = 4;
+            Actions.fitPoseToPace();
+            w.adult.level = 3;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:afterglow');
+            w.adult.level = 4;
+            Actions.fitPoseToPace();
+            expect(calls[calls.length - 1]).toBe('apply:open');
+            jest.advanceTimersByTime(10 * 60 * 1000);
+            expect(calls[calls.length - 1]).toBe('apply:open');
+        } finally {
+            jest.useRealTimers();
+        }
+    });
 });
