@@ -302,7 +302,9 @@
                     heldRoot = vps.avatarRoot || null;
                     enterPoseMode();
                     if (typeof vps.claimBones === 'function') vps.claimBones();
-                    vps.applyPreset(entry.preset, 0.6);
+                    // UN36. A routine moves slowly (its own blend); everything else as before.
+                    const blend = options && Number(options.duration) > 0 ? Number(options.duration) : 0.6;
+                    vps.applyPreset(entry.preset, blend);
                     // Confirmed by the pose system itself, never assumed: the preset it reports
                     // is the one it is now blending her into.
                     const now = typeof vps.getCurrentPreset === 'function' ? vps.getCurrentPreset() : entry.preset;

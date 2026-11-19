@@ -297,10 +297,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the seventeen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the eighteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(17);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(18);
+        expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
         expect(Policy.ACTIONS['wardrobe.redress']).toBeTruthy();
@@ -2474,5 +2475,228 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 jest.useRealTimers();
             }
         });
+
+        test('UN35. on all fours a while she sweats; finishing on her back again is a second load', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'doggy-sweaty-open', body: 'sweat runs down your spine' },
+                    { name: 'lower-back-cum', body: 'a pool of cum in the small of your back' },
+                    { name: 'lower-back-cum-second', body: 'a second load across your back' },
+                ];
+                return skin;
+            };
+            // Her position, as the pose controller reports it: read by the bridge, set here.
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                expect(Actions.snapshot().finishPlaces).toEqual(['back']);
+                jest.useFakeTimers();
+                try {
+                    held = 'all-fours';
+                    Actions.noticePose();
+                    jest.advanceTimersByTime(60 * 1000);
+                    expect(calls).not.toContain('apply:doggy-sweaty-open'); // not yet
+                    jest.advanceTimersByTime(2 * 60 * 1000);
+                    expect(calls[calls.length - 1]).toBe('apply:doggy-sweaty-open');
+                    expect(Actions.promptLines().join('\n')).toMatch(/sweat runs down your spine/);
+                    Surface.renderUser("I'm cumming on your back");
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum');
+                    jest.advanceTimersByTime(60 * 1000); // a while later, not the same moment twice
+                    Surface.renderUser("I'm cumming on your back again");
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum-second');
+                    // Standing up stops the sweat clock; the finish still holds until it fades.
+                    held = null;
+                    Actions.noticePose();
+                    expect(calls[calls.length - 1]).toBe('apply:lower-back-cum-second');
+                    // Codex (#193). Dressed again (her position let go): the sweat does not come back.
+                    held = 'all-fours';
+                    Actions.noticePose();
+                    jest.advanceTimersByTime(3 * 60 * 1000);
+                    held = null;
+                    await Actions.request('wardrobe.redress', {}, { source: 'control' });
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    jest.advanceTimersByTime(7 * 60 * 1000); // the finish fades
+                    expect(calls.slice(-3)).not.toContain('apply:doggy-sweaty-open');
+                } finally {
+                    jest.useRealTimers();
+                }
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
+    });
+});
+
+describe('UN36. shows: she moves through a series of positions on her own', () => {
+    test('step by step on a clock, slower on request, finished, again, and a position stops it', async () => {
+        const applied = [];
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key, options) => {
+                    applied.push([key, options && options.duration]);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const prompt = () => Actions.promptLines().join('\n');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 4;
+            expect(prompt()).toMatch(/Shows you know, open now: .*Open for you/);
+            expect(Actions.snapshot().routines).toContainEqual({ id: 'open-for-you', level: 4 });
+            jest.useFakeTimers();
+            try {
+                await turn('Open up for me');
+                expect(applied).toEqual([['kneel-wide', 1.6]]);
+                expect(prompt()).toMatch(/You are giving them a show — opening yourself for them, step 1 of 3/);
+                jest.advanceTimersByTime(8000);
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                await turn('slower');
+                jest.advanceTimersByTime(12000); // at speed 0.7 this step lasts 12 / 0.7 s
+                expect(applied[applied.length - 1][0]).toBe('sit-open');
+                jest.advanceTimersByTime(6000);
+                expect(applied[applied.length - 1][0]).toBe('knees-up');
+                expect(applied[applied.length - 1][1]).toBeGreaterThan(1.6); // slower blends too
+                jest.advanceTimersByTime(30000);
+                expect(prompt()).toMatch(/You have finished the show .*if they want more/);
+                await turn('ancora');
+                expect(applied[applied.length - 1][0]).toBe('kneel-wide');
+                // A position they ask for ends the show where it is.
+                await turn('Straddle me');
+                const count = applied.length;
+                jest.advanceTimersByTime(60000);
+                expect(applied.length).toBe(count);
+                expect(prompt()).not.toMatch(/You are giving them a show/);
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('a show not open at this step is refused, and she is told why', async () => {
+        const w = await begin({ adult: true });
+        w.adult.level = 2;
+        await say('Show me everything');
+        await flush();
+        expect(Actions.promptLines().join('\n')).toMatch(/a show that is not open at this step/);
+    });
+});
+
+describe('UN37. missionary and cowgirl: her skin and the finish follow the position she holds', () => {
+    const LOOKS_UN32 = [
+        { lookId: 'd', name: 'Black Cocktail Dress', prompt: 'black satin cocktail dress', vrmUrl: 'dress.vrm' },
+        { lookId: 'g', name: 'Black Lingerie Set', prompt: 'black Lingerie Set', vrmUrl: 'garter.vrm', private: true },
+    ];
+    test('held on her back she is open for it, "I am coming" lands on her belly; astride, inside drips', async () => {
+        const calls = [];
+        let current = null;
+        window.NEXUS_SKIN_STATES = {
+            mayHavePack: () => true,
+            create: () => ({
+                attach: async () => [
+                    { name: 'closed', body: 'relaxed' },
+                    { name: 'open', body: 'aroused and open' },
+                    { name: 'missionary-open', body: 'on your back, open and wet' },
+                    { name: 'missionary-belly', body: 'cum pooled in your navel' },
+                    { name: 'cowgirl-riding', body: 'riding them, flushed' },
+                    { name: 'cowgirl-creampie', body: 'cum running down your thighs' },
+                ],
+                apply: async (name) => {
+                    calls.push(name);
+                    current = name;
+                    return true;
+                },
+                current: () => current,
+                detach: () => true,
+            }),
+        };
+        let held = null;
+        const real = window.NEXUS_PRIVATE_POSES;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+        const turn = async (text) => {
+            Surface.renderUser(text);
+            for (let i = 0; i < 40; i += 1) await Promise.resolve();
+        };
+        try {
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            held = 'knees-up';
+            Actions.noticePose();
+            expect(calls[calls.length - 1]).toBe('missionary-open');
+            jest.useFakeTimers();
+            try {
+                await turn("I'm cumming");
+                expect(calls[calls.length - 1]).toBe('missionary-belly');
+                expect(Actions.promptLines().join('\n')).toMatch(/cum pooled in your navel/);
+                jest.advanceTimersByTime(7 * 60 * 1000); // that finish fades
+                held = 'straddle';
+                Actions.noticePose();
+                expect(calls[calls.length - 1]).toBe('cowgirl-riding');
+                jest.advanceTimersByTime(60 * 1000);
+                await turn("I'm cumming inside you");
+                expect(calls[calls.length - 1]).toBe('cowgirl-creampie');
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+            delete window.NEXUS_SKIN_STATES;
+        }
     });
 });

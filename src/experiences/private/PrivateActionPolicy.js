@@ -61,8 +61,11 @@
     ];
     const COLOUR = ['red', 'black', 'white', 'blue', 'pink', 'yellow', 'green'];
     const EMOTION = ['happy', 'relaxed', 'surprised', 'shy', 'playful', 'tender'];
+    /** UN36. The routines (PrivateRoutines.ORDER) and `choose`: the boldest the evening allows. */
+    const ROUTINE_IDS = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything', 'choose']);
+
     /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
-    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'choose']);
+    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'belly', 'chest', 'choose']);
     const FINISH_LEVEL = 4;
 
     /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
@@ -200,6 +203,16 @@
             required: ['pose'],
         },
         'avatar.react': { family: 'avatar', params: { emotion: oneOf(EMOTION) }, required: ['emotion'] },
+        // UN36. A show she moves through (PrivateRoutines): start one by name or the boldest open
+        // (`choose`), stop it, change its speed, or play the last one again.
+        'avatar.routine': {
+            family: 'avatar',
+            params: {
+                routine: oneOf(ROUTINE_IDS),
+                move: oneOf(['start', 'stop', 'slower', 'faster', 'again']),
+            },
+            required: ['move'],
+        },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // UN4. A different room for the evening: one of the places this device can show, and
@@ -345,6 +358,7 @@
         UNDRESS_LEVEL,
         FINISH_PLACES,
         FINISH_LEVEL,
+        ROUTINE_IDS,
         POSE_KEYS,
         ADULT_POSES,
         POSE_LEVEL,
