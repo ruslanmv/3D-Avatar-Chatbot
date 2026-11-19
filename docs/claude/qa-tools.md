@@ -48,6 +48,16 @@ placement (BS1) on purpose.
 | `node tools/vr/render-place-previews.mjs <ids>` | The 640×480 picture of a new place (required for every place) |
 | `node tools/qa/world-audit.mjs` | Every world valid, measured, within budget; regenerates the lab data — run after any worlds.json change |
 
+## A real conversation, end to end (E2E)
+
+| Tool | What it answers |
+| --- | --- |
+| `OLLABRIDGE_TOKEN=… FORGE_GRANT=… node tools/qa/private-e2e.mjs [--lang it] [--room bright-hotel] [--persona gina] [--turns file.json]` | A real Private evening: the real app, a real model (OllaBridge Cloud), the real wardrobe (Forge with a read grant), real words. Per turn: her reply, the action the bridge took, what she was told of her body, a frame; checks for leaked tags, silence, expected actions. `index.html` per run |
+
+Secrets come from the environment only (`OLLABRIDGE_TOKEN`, or `OLLABRIDGE_PAIR_CODE`
+to pair first; `FORGE_GRANT`) and are never written to the report, the console or
+a file. A reply through the cloud model takes about a minute; nine turns take ten.
+
 ## Motion, poses and looks (VA, LM, MP)
 
 See `docs/claude/visual-review.md` for the full table: clip playback against a
