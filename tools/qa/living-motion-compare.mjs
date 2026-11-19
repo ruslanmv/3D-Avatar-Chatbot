@@ -109,6 +109,7 @@ async function main() {
                             for (let i = 0; i < steps; i += 1) {
                                 const now = (i + 1) / 60;
                                 frame = st.step(1 / 60, {
+                                    moving: sc.still ? null : 'normal', // LM7: asked to move
                                     pose: sc.pose,
                                     level: sc.level,
                                     secondsAtTop: now,

@@ -134,6 +134,8 @@ async function main() {
                     for (let i = 0; i < Math.round((start + t) * 60); i += 1) {
                         const now = (i + 1) / 60;
                         frame = st.step(1 / 60, {
+                            // LM7: she moves only when asked — the gallery shows her asked.
+                            moving: 'normal',
                             pose,
                             level: 4,
                             secondsAtTop: now,

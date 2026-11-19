@@ -7,12 +7,16 @@
 const THREE = require('../vendor/three-0.147.0/build/three.min.js');
 const Living = require('../src/experiences/private/PrivateLivingMotion.js');
 
-/** Run a stepper for `seconds` at 60 fps and collect what `pick` reads off each frame. */
+/**
+ * Run a stepper for `seconds` at 60 fps and collect what `pick` reads off each frame. LM7: she moves
+ * only when asked, so these motion tests ask (`moving: 'normal'`) unless the context says otherwise.
+ */
 function run(ctx, seconds, pick) {
     const st = Living.create();
     const out = [];
+    const asked = (c) => ('moving' in c ? c : Object.assign({ moving: 'normal' }, c));
     for (let i = 0; i < seconds * 60; i += 1) {
-        const f = st.step(1 / 60, typeof ctx === 'function' ? ctx(i / 60) : ctx);
+        const f = st.step(1 / 60, asked(typeof ctx === 'function' ? ctx(i / 60) : ctx));
         out.push(pick(f, i / 60));
     }
     return out;
@@ -28,10 +32,11 @@ describe('LM1 the stepper: what her body does, from the evening', () => {
         expect(span(run({ pose: null, level: 2 }, 10, (f) => f.upperChest[0]))).toBeGreaterThan(0.01);
     });
 
-    test('riding and from behind, her pelvis rocks from the third step, harder at the closest', () => {
+    test('asked to move, riding and from behind rock — gently early in the evening, harder at the closest', () => {
         const rock = (pose, level) => span(run({ pose, level }, 30, (f) => f.pelvis).slice(900));
-        expect(rock('straddle', 2)).toBeLessThan(0.01);
-        expect(rock('straddle', 3)).toBeGreaterThan(0.03);
+        // LM7: the person asked, so she moves at any step; the step sets how much.
+        expect(rock('straddle', 2)).toBeGreaterThan(0.03);
+        expect(rock('straddle', 3)).toBeGreaterThan(rock('straddle', 2));
         expect(rock('straddle', 4)).toBeGreaterThan(rock('straddle', 3));
         expect(rock('all-fours', 4)).toBeGreaterThan(0.08);
         // a position without rocking only breathes
@@ -56,12 +61,12 @@ describe('LM1 the stepper: what her body does, from the evening', () => {
         for (let l = 1; l < 4; l += 1) expect(Living.arousal(l + 1, 0)).toBeGreaterThan(Living.arousal(l, 0));
     });
 
-    test('care mode: she breathes, nothing more', () => {
-        const frames = run({ pose: 'sit-open', level: 4, care: true, sinceFinish: 4 }, 30, (f) => f);
+    test('care mode: she holds still, even if asked to move, even at the finish', () => {
+        const frames = run({ pose: 'sit-open', level: 4, care: true, sinceFinish: 4, moving: 'fast' }, 30, (f) => f);
         expect(span(frames.map((f) => f.pelvis))).toBeLessThan(0.005);
         expect(frames.every((f) => !f.hands.left.place && !f.hands.right.place)).toBe(true);
         expect(frames.every((f) => f.face.oh === 0 && f.face.relaxed === 0)).toBe(true);
-        expect(span(frames.slice(600).map((f) => f.upperChest[0]))).toBeGreaterThan(0.005);
+        expect(span(frames.slice(600).map((f) => f.upperChest[0]))).toBeLessThan(0.005);
     });
 });
 
@@ -284,7 +289,7 @@ describe('LM1 applied to her rig: directions from her own bones', () => {
 describe('LM1 attach: the page runtime', () => {
     beforeEach(() => {
         localStorage.clear();
-        Living.setOn(true); // LM6: off by default; these exercise it turned on
+        Living.setOn(true);
     });
     afterEach(() => localStorage.clear());
     test('only on a pose system with layers, and detaching takes the layer and her face off', () => {
@@ -297,7 +302,11 @@ describe('LM1 attach: the page runtime', () => {
                 avatarManager: { _currentVRM: { expressionManager: { setValue: (n, v) => set.push([n, v]) } } },
             },
         };
-        const live = Living.attach({ win, system: vps, read: () => ({ pose: 'sit-open', level: 4 }) });
+        const live = Living.attach({
+            win,
+            system: vps,
+            read: () => ({ pose: 'sit-open', level: 4, moving: 'normal' }),
+        });
         expect(layer).toBeTruthy();
         const { b } = body(false);
         layer.apply(1 / 60, rigOf(b), THREE);
@@ -323,7 +332,8 @@ describe('LM1 attach: the page runtime', () => {
 });
 
 describe('LM3 the switch in Settings: optional, never removed', () => {
-    test('LM6: in a fresh install the layer draws nothing over a held position', () => {
+    test('LM7: on, but not asked to move — she holds the position exactly as made', () => {
+        localStorage.clear();
         let layer = null;
         Living.attach({
             win: {},
@@ -332,8 +342,8 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         });
         const { b } = body(false);
         const before = Object.fromEntries(Object.entries(b).map(([k, n]) => [k, n.quaternion.clone()]));
-        for (let i = 0; i < 120; i += 1) expect(layer.apply(1 / 60, rigOf(b), THREE)).toBeNull();
-        for (const [k, q] of Object.entries(before)) expect(b[k].quaternion.equals(q)).toBe(true);
+        for (let i = 0; i < 600; i += 1) layer.apply(1 / 60, rigOf(b), THREE);
+        for (const [k, q] of Object.entries(before)) expect(b[k].quaternion.angleTo(q)).toBeLessThan(1e-6);
     });
 
     beforeEach(() => {
@@ -341,10 +351,8 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         document.body.innerHTML = '';
     });
 
-    test('LM6: OFF by default — a fresh install keeps every position still; on and off are kept', () => {
-        expect(Living.isOn()).toBe(false);
-        expect(Living.setOn(true)).toBe(true);
-        expect(localStorage.getItem(Living.STORAGE_KEY)).toBe('1');
+    test('on by default (still unless asked); off and on again are kept on this device', () => {
+        expect(Living.isOn()).toBe(true);
         expect(Living.setOn(false)).toBe(false);
         expect(localStorage.getItem(Living.STORAGE_KEY)).toBe('0');
         expect(Living.isOn()).toBe(false);
@@ -363,7 +371,7 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         const live = Living.attach({
             win,
             system: { setLayer: (l) => (layer = l), getLayer: () => layer },
-            read: () => ({ pose: 'sit-open', level: 4 }),
+            read: () => ({ pose: 'sit-open', level: 4, moving: 'normal' }),
         });
         const { b } = body(false);
         const rig = rigOf(b);
@@ -388,11 +396,8 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
         const box = Living.mountSetting(document);
         expect(box).toBeTruthy();
         expect(box.closest('.config-section').querySelector('#spicy-mode-toggle')).toBeTruthy();
-        expect(box.checked).toBe(false); // LM6: off until the person turns it on
+        expect(box.checked).toBe(true);
         expect(Living.mountSetting(document)).toBe(box);
-        box.checked = true;
-        box.dispatchEvent(new Event('change'));
-        expect(Living.isOn()).toBe(true);
         expect(document.querySelectorAll('#private-living-toggle')).toHaveLength(1);
         box.checked = false;
         box.dispatchEvent(new Event('change'));
@@ -404,6 +409,62 @@ describe('LM3 the switch in Settings: optional, never removed', () => {
     test('a page without the Spicy section gets no row, and keeps the default', () => {
         document.body.innerHTML = '<div></div>';
         expect(Living.mountSetting(document)).toBeNull();
-        expect(Living.isOn()).toBe(false);
+        expect(Living.isOn()).toBe(true);
+    });
+});
+
+describe('LM7 motion as a response: still unless asked, one reaction at the finish', () => {
+    const still = { pose: 'straddle', level: 4, moving: null };
+    test('not asked: every channel is zero — no breathing loop, no sway, no hands, no face', () => {
+        const frames = run(still, 20, (f) => f);
+        for (const f of frames) {
+            expect(Math.abs(f.pelvis)).toBe(0);
+            for (const k of ['spine', 'chest', 'upperChest', 'neck', 'head'])
+                for (const x of f[k]) expect(Math.abs(x)).toBe(0);
+            expect(f.face.relaxed).toBe(0);
+            expect(f.hands.left.weight + f.hands.right.weight).toBe(0);
+        }
+    });
+
+    test('asked: she starts within a second or two, eased, never a jump', () => {
+        const p = run(
+            (t) => ({ pose: 'straddle', level: 4, moving: t >= 1 ? 'normal' : null }),
+            6,
+            (f) => f.pelvis
+        );
+        expect(p.slice(0, 60).every((x) => x === 0)).toBe(true);
+        expect(span(p.slice(180))).toBeGreaterThan(0.05);
+        for (let i = 1; i < p.length; i += 1) expect(Math.abs(p[i] - p[i - 1])).toBeLessThan(0.02);
+    });
+
+    test('"stop": she settles back to still within a few seconds, smoothly', () => {
+        const p = run(
+            (t) => ({ pose: 'straddle', level: 4, moving: t < 6 ? 'normal' : null }),
+            14,
+            (f) => f.pelvis
+        );
+        expect(span(p.slice(6 * 60 - 60, 6 * 60))).toBeGreaterThan(0.03);
+        expect(span(p.slice(12 * 60))).toBeLessThan(0.002);
+    });
+
+    test('tempo: slow is slower than normal, fast is faster', () => {
+        const crossings = (tempo) => {
+            const p = run({ pose: 'straddle', level: 4, moving: tempo }, 20, (f) => f.pelvis).slice(300);
+            let n = 0;
+            for (let i = 1; i < p.length; i += 1) if (p[i - 1] < 0 && p[i] >= 0) n += 1;
+            return n;
+        };
+        expect(crossings('slow')).toBeLessThan(crossings('normal'));
+        expect(crossings('fast')).toBeGreaterThan(crossings('normal'));
+    });
+
+    test('the finish is a reaction even when still: head back, then back to still', () => {
+        const h = run(
+            (t) => Object.assign({}, still, { sinceFinish: t }),
+            25,
+            (f) => f.head[0]
+        );
+        expect(Math.max(...h.slice(3 * 60, 7 * 60))).toBeGreaterThan(0.2);
+        expect(Math.abs(h[h.length - 1])).toBeLessThan(0.01);
     });
 });

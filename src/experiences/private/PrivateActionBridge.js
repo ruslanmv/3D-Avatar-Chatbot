@@ -651,7 +651,9 @@
                     } catch (_) {
                         speaking = false;
                     }
+                    const m = movingNow(s);
                     return {
+                        moving: m ? m.tempo : null,
                         pose: s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null,
                         level: levelOf(s),
                         finishAt: s.finish ? s.finish.at : null,
@@ -830,6 +832,8 @@
             }
             case 'avatar.routine':
                 return routine(s, action);
+            case 'avatar.move':
+                return move(s, action);
             case 'avatar.pose': {
                 // UN36. A position they ask for ends any show she is giving: their words lead.
                 stopRoutine(s);
@@ -961,6 +965,46 @@
             /* already fired */
         }
         s.routine = null;
+    }
+
+    /**
+     * LM7. Motion as a response. She holds a position still; she moves in it only because the
+     * person asked ("move for me", "slower", "faster", "stay still"), at the tempo they asked for, and
+     * stops when they say so, when the position changes, or once they have finished (the finish
+     * has its own reaction, then she is still again). Nothing here moves her: it records what was
+     * asked, and the living layer (PrivateLivingMotion) reads it each frame.
+     */
+    const TEMPOS = ['slow', 'normal', 'fast'];
+    function movingNow(s) {
+        const m = s && s.moving;
+        if (!m) return null;
+        const held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        // A different position (or none) starts still; so does the moment after the finish.
+        if (!held || held !== m.pose || (s.finish && s.finish.at >= m.at)) {
+            s.moving = null;
+            return null;
+        }
+        return m;
+    }
+    function move(s, action) {
+        const p = action.params || {};
+        if (p.move === 'still') {
+            const was = Boolean(movingNow(s));
+            s.moving = null;
+            emit();
+            return settle(action, 'completed', null, { move: 'still', was });
+        }
+        const held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        if (!held) return settle(action, 'failed', 'not-posed');
+        if (s.routine && !s.routine.done) return settle(action, 'failed', 'show-running');
+        const now = movingNow(s);
+        let tempo = now ? now.tempo : p.tempo || 'normal';
+        if (p.move === 'start' && p.tempo) tempo = p.tempo;
+        if (p.move === 'slower') tempo = TEMPOS[Math.max(0, TEMPOS.indexOf(tempo) - 1)];
+        if (p.move === 'faster') tempo = TEMPOS[Math.min(TEMPOS.length - 1, TEMPOS.indexOf(tempo) + 1)];
+        s.moving = { pose: held, tempo, at: Date.now() };
+        emit();
+        return settle(action, 'completed', null, { move: p.move, tempo });
     }
 
     function routine(s, action) {
@@ -2148,6 +2192,7 @@
             undressed: Boolean(s.dressedLook),
             ...poseContext(s),
             routine: routineState(s),
+            moving: Boolean(movingNow(s)),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -2894,6 +2939,20 @@
             hands = null;
         }
         if (hands) now.push(`Your hands right now: ${hands}. What you say about your hands matches that.`);
+        // LM7. Moving or still, as the person asked: her words follow her body.
+        const TEMPO_WORDS = { slow: 'slowly', normal: 'at an easy rhythm', fast: 'faster, with more urgency' };
+        const askedMove = [...s.log].reverse().find((a) => a.name === 'avatar.move' && a.turnId === s.turnId);
+        const moveNow = movingNow(s);
+        if (moveNow)
+            now.push(
+                `You are moving in that position for them, ${TEMPO_WORDS[moveNow.tempo]}, because they asked. Keep your words in time with it; you stop the moment they ask.`
+            );
+        else if (askedMove && askedMove.status === 'completed')
+            now.push('You have stopped moving and hold still, as they asked.');
+        else if (askedMove && askedMove.why === 'not-posed')
+            now.push('They asked you to move, but you are not holding a position yet: say so warmly, and invite one.');
+        else if (s.poses && typeof s.poses.held === 'function' && s.poses.held())
+            now.push('You hold that position still; you move in it only if they ask you to.');
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

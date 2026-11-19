@@ -297,10 +297,10 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the eighteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the nineteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(18);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(19);
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
@@ -2835,7 +2835,6 @@ describe('LM1. her body alive in a held position: the bridge drives the layer an
     beforeEach(() => {
         real = { poses: window.NEXUS_PRIVATE_POSES, vps: window.vrPoseSystem };
         layer = null;
-        localStorage.setItem('nexus_private_living_enabled', '1'); // LM6: off by default
         window.vrPoseSystem = { setLayer: (l) => (layer = l), getLayer: () => layer };
         window.NEXUS_PRIVATE_POSES = {
             create: () => ({
@@ -2852,24 +2851,34 @@ describe('LM1. her body alive in a held position: the bridge drives the layer an
         window.vrPoseSystem = real.vps;
     });
 
-    test('her hands reach the prompt only from the third step, and the evening ending takes the layer off', async () => {
+    test('LM7: still until they ask; "move for me" moves her (hands from the third step), "stay still" stills her', async () => {
         const w = await begin({ adult: true });
         expect(layer).toBeTruthy();
         const run = (seconds) => {
             for (let i = 0; i < seconds * 60; i += 1) layer.apply(1 / 60, { bone: () => null, node: () => null }, null);
         };
         const said = () => Actions.promptLines().join('\n');
-        w.adult.level = 2;
-        run(30);
-        expect(said()).not.toMatch(/Your hands right now/);
         w.adult.level = 4;
-        // over a minute her hands come to her: the line says where, from the frame that moves them
+        run(30);
+        // Not asked: still, and the model is told so — no hands, no motion.
+        expect(said()).not.toMatch(/Your hands right now/);
+        expect(said()).toMatch(/You hold that position still; you move in it only if they ask/);
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
         let seen = false;
         for (let k = 0; k < 12 && !seen; k += 1) {
             run(5);
             seen = /Your hands right now: your (left|right) hand/.test(said());
         }
         expect(seen).toBe(true);
+        await say('slower');
+        expect(said()).toMatch(/moving in that position for them, slowly/);
+        // "stop" alone is consent's (it eases or ends the evening, before any action is read);
+        // holding still and going on is "stay still".
+        await say('stay still');
+        expect(said()).toMatch(/You have stopped moving and hold still/);
+        run(10);
+        expect(said()).not.toMatch(/Your hands right now/);
         Actions.end();
         expect(layer).toBeNull();
     });

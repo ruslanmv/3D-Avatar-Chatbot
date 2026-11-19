@@ -42,6 +42,15 @@
  * keeps her still apart from breathing. Hands that hold her up (all fours) or hold them
  * (straddling, hands on their shoulders) are never taken for touching.
  *
+ * ## LM7. Motion as a response
+ *
+ * Reviewed on a real avatar, motion that runs on its own read as a looping GIF: it pulls the eye
+ * and means nothing. So she holds every position still, exactly as the preset was made, and moves
+ * only because the person asked — "move for me", "slower", "faster", "stay still" (`avatar.move`, their
+ * words only; the bridge records the tempo, and a new position or the finish ends it). The one
+ * thing that moves her unasked is the finish: a reaction to what they just did, once, that ebbs
+ * back to stillness.
+ *
  * Exposes: window.NEXUS_PRIVATE_LIVING
  */
 (function (global) {
@@ -153,7 +162,8 @@
      * A stepper: one per evening. `step(dt, ctx)` advances her breath and rhythm by `dt` seconds
      * and returns this frame's layer; it integrates phases, so speeding up never jumps.
      *
-     * ctx: `{ pose, level, secondsAtTop, sinceFinish, afterglow, care, speaking }`.
+     * ctx: `{ pose, level, secondsAtTop, sinceFinish, afterglow, care, speaking, moving }`, where
+     * `moving` is the tempo the person asked for (`slow` | `normal` | `fast`) or null: still (LM7).
      *
      * Returns `{ pelvis, spine, chest, upperChest, neck, head, face, hands, arousal, climax }`:
      * bone turns are `[arch, twist, lean]` in radians about her own right, up and forward axes
@@ -165,6 +175,7 @@
         let rock = 0;
         let rockOn = 0; // eased 0–1, so a position's rocking fades in over two seconds
         let touchOn = 0;
+        let act = 0; // LM7. eased 0–1: she is moving because they asked (1) or holding still (0)
         let lastPose = null;
         let since = 0; // seconds in this position
 
@@ -181,21 +192,29 @@
             const a = c.care ? Math.min(0.08, arousal(level, 0)) : arousal(level, c.secondsAtTop);
             const f = c.care ? 0 : climax(c.sinceFinish);
             const glow = c.afterglow && !f ? 1 : 0;
+            // LM7. Motion as a response: everything below runs only while the person has asked her
+            // to move (`c.moving`, a tempo) — eased in and out over about a second, so she starts
+            // and settles like a person, never snaps. Still otherwise: no breathing loop, no sway,
+            // no hands drifting on their own. The finish (`f`) is the one exception: a reaction to
+            // what they just did, once, which then ebbs back to stillness.
+            const tempo = c.care ? null : c.moving || null;
+            act += ((tempo ? 1 : 0) - act) * Math.min(1, d * 0.9);
+            const pace = { slow: 0.65, normal: 1, fast: 1.45 }[tempo] || 1;
 
             // Breathing: 13 breaths a minute at rest, up to 40 at the peak; deeper as she builds,
             // and long and deep in the afterglow.
             const rate = 0.22 + 0.24 * a + 0.3 * f - 0.06 * glow;
             breath += rate * TAU * d;
-            const depth = 0.014 + 0.03 * a + 0.035 * f + 0.02 * glow;
+            const depth = (0.014 + 0.03 * a + 0.02 * glow) * act + 0.035 * f;
             // In faster than out: the rise takes 40% of the cycle.
             const ph = (breath / TAU) % 1;
             const b = ph < 0.4 ? smooth(ph / 0.4) : 1 - smooth((ph - 0.4) / 0.6);
             const lift = (b - 0.5) * 2 * depth;
 
-            // Rocking: only from the third step, in positions that have it, slower at first.
-            const want = style && style.rock && !c.care ? band(a, 0.3, 0.6) : 0;
-            rockOn += (want - rockOn) * Math.min(1, d * 0.5);
-            const rockRate = 0.3 + 0.4 * a;
+            // Rocking: when asked, in positions that have it, at the tempo they asked for.
+            const want = style && style.rock && tempo ? 1 : 0;
+            rockOn += (want - rockOn) * Math.min(1, d * 0.9);
+            const rockRate = (0.3 + 0.4 * a) * pace;
             rock += rockRate * TAU * d;
             // At the peak the rhythm breaks: it tightens, shudders, then lets go.
             const amp = (ROCK[style && style.rock] || 0) * rockOn * (0.5 + 0.5 * a) * (1 - 0.65 * f);
@@ -205,10 +224,10 @@
 
             // The arch builds with her and peaks at the finish; her head tips back with it.
             const archGain = style ? style.arch : 0.3;
-            const arch = archGain * (0.03 + 0.09 * a + 0.12 * f);
-            const headBack = (0.06 * a + 0.38 * f) * (style ? 1 : 0.5);
-            // A slow sway, so she is never still on her other axes either.
-            const sway = 0.012 + 0.02 * a;
+            const arch = archGain * ((0.03 + 0.09 * a) * act + 0.12 * f);
+            const headBack = (0.06 * a * act + 0.38 * f) * (style ? 1 : 0.5);
+            // A slow sway while she moves, so the rest of her moves with the rhythm.
+            const sway = (0.012 + 0.02 * a) * act;
 
             const out = {
                 arousal: a,
@@ -222,8 +241,8 @@
                 face: {
                     // Her face: soft and relaxed as she builds; lips parting near the top and at
                     // the finish. Only `relaxed` and `oh`: emotions and lip sync own the others.
-                    relaxed: c.care ? 0 : Math.min(0.85, 0.1 + 0.55 * a + 0.3 * f + 0.25 * glow),
-                    oh: c.care || c.speaking ? 0 : Math.min(0.7, 0.25 * band(a, 0.6, 1) + 0.55 * f),
+                    relaxed: c.care ? 0 : Math.min(0.85, (0.1 + 0.55 * a + 0.25 * glow) * act + 0.3 * f),
+                    oh: c.care || c.speaking ? 0 : Math.min(0.7, 0.25 * band(a, 0.6, 1) * act + 0.55 * f),
                 },
                 hands: { left: { place: null, weight: 0 }, right: { place: null, weight: 0 } },
                 stroke: [0, 0],
@@ -231,7 +250,7 @@
 
             // Her hands: from the third step, after she has been in the position a few seconds,
             // never in care mode, never with hands that hold her up or hold them.
-            const touchWant = style && style.touch && !c.care && level >= 3 && since > 2.5 ? 1 : 0;
+            const touchWant = style && style.touch && tempo && level >= 3 && since > 2.5 ? 1 : 0;
             touchOn += (touchWant - touchOn) * Math.min(1, d * 0.7);
             if (style && style.touch && touchOn > 0.001) {
                 for (const side of ['left', 'right']) {
@@ -245,7 +264,7 @@
             return out;
         }
 
-        return { step, reset: () => (t = breath = rock = rockOn = touchOn = since = 0) };
+        return { step, reset: () => (t = breath = rock = rockOn = touchOn = since = act = 0) };
     }
 
     /**
@@ -642,10 +661,11 @@
     // ---------------------------------------------------------------- the switch in Settings
 
     /**
-     * LM3. One switch, in Settings under Spicy Mode: "Living motion in Private". OFF by default,
-     * kept on this device. LM6: the person reviewing it wants her positions still, as each pose was
-     * made — motion that runs on its own pulls the eye like a looping GIF — so the layer is
-     * opt-in: nothing moves until this is turned on. Off means the layer draws nothing — she holds each position as the
+     * LM3. One switch, in Settings under Spicy Mode: "Living motion in Private". On by default,
+     * kept on this device. LM6/LM7: the person reviewing it wants her positions still, as each pose
+     * was made — motion that runs on its own pulls the eye like a looping GIF. So on means motion
+     * as a response: still in every position until they ask her to move, and one reaction when
+     * they finish. Off: she never moves at all. Off means the layer draws nothing — she holds each position as the
      * preset has it, her face goes back to neutral, and the model is told nothing about her hands
      * — while every part of it stays installed, so turning it back on needs no reload and nothing
      * is lost. Read each frame, so the change is live in the middle of an evening.
@@ -665,7 +685,7 @@
     }
 
     /**
-     * Is the living layer on? Only when it was turned on (LM6): absent or unreadable storage is off. MP1:
+     * Is the living layer on? On unless turned off (LM7: still unless asked, so on is calm). MP1:
      * it is also off while "Living motion layer" is off under Motion created by Claude.
      */
     function isOn() {
@@ -673,7 +693,7 @@
             const MP = global && global.NEXUS_MOTION_PROVENANCE;
             if (MP && !MP.allowed('layer:living')) return false;
             const st = store();
-            return Boolean(st) && st.getItem(STORAGE_KEY) === '1';
+            return !st || st.getItem(STORAGE_KEY) !== '0';
         } catch (_) {
             return true;
         }
@@ -738,7 +758,7 @@
         const note = d.createElement('p');
         note.style.cssText = 'font-size: 0.7rem; color: #888; margin: 6px 0 0';
         note.textContent =
-            'Off (default): every position stays still, exactly as made. On: breathing, rocking, arching and her hands while she holds one.';
+            'On: she stays still in a position until you ask her to move (“move for me”, “slower”, “stay still”), and reacts when you finish. Off: she never moves.';
         group.append(label, note);
         section.append(group);
         box.addEventListener('change', () => setOn(box.checked));
@@ -803,6 +823,7 @@
                 if ((Number(ctx.level) || 0) >= 4) topSince = topSince == null ? now : topSince;
                 else topSince = null;
                 last = stepper.step(dt, {
+                    moving: ctx.moving || null,
                     pose: ctx.pose || null,
                     level: ctx.level,
                     secondsAtTop: topSince == null ? 0 : (now - topSince) / 1000,

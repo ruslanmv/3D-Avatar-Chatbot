@@ -222,6 +222,16 @@
             },
             required: ['move'],
         },
+        // LM7. Moving in the position she holds: start (at a tempo), slower, faster, still. The
+        // person's words only — the model never sets her moving.
+        'avatar.move': {
+            family: 'avatar',
+            params: {
+                move: oneOf(['start', 'slower', 'faster', 'still']),
+                tempo: oneOf(['slow', 'normal', 'fast']),
+            },
+            required: ['move'],
+        },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // UN4. A different room for the evening: one of the places this device can show, and
@@ -320,6 +330,9 @@
             if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
             if (action.source === 'model') return { allow: false, why: 'user-only' };
         }
+
+        // LM7. Her body moves because they asked, never because the model wrote it.
+        if (action.name === 'avatar.move' && action.source === 'model') return { allow: false, why: 'user-only' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };
