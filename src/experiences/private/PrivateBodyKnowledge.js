@@ -62,6 +62,38 @@
         extras: /piercing|tatuag|tattoo|tatu|tatou|kiss|bac[ie]|rossetto|lipstick|segni|succhiott|marks|hickey|spank|sculacc|abbronz|tan line|glitter|scritt|writing|escrit|écrit|schrift|ピアス|タトゥー|피어싱|타투|穿孔|纹身/,
     });
 
+    /**
+     * BD21. Kinds of extra, by Forge's names (``tattoo-mons-rose``, ``piercings-labia``…), and the
+     * words that ask for each — so asked for a piercing she names the looks that have piercings,
+     * not every bare look in her closet.
+     */
+    const EXTRA_KINDS = Object.freeze([
+        { re: /^piercings-/, ask: /piercing|ピアス|피어싱|穿孔/ },
+        { re: /^tattoo-/, ask: /tatuag|tattoo|tatu|tatou|タトゥー|타투|纹身/ },
+        { re: /^tan-/, ask: /abbronz|tan line|bronceado|bronzage|bräun|bronze/ },
+        {
+            re: /^(kisses-|love-bites|spanked)/,
+            ask: /kiss|bac[ie]|rossetto|lipstick|segni|succhiott|marks|hickey|spank|sculacc/,
+        },
+        { re: /^writing-/, ask: /scritt|writing|escrit|écrit|schrift/ },
+        { re: /^(glitter|body-paint|hearts)/, ask: /glitter|brillant|paillett|gold|oro/ },
+    ]);
+
+    function lookLabel(look) {
+        const extras = Array.isArray(look && look.extras) ? look.extras : [];
+        const name = String((look && look.name) || '').trim();
+        return extras.length ? `${name} (${extras.map(human).join(', ')})` : name;
+    }
+
+    /** Her other bare looks worth naming for these words: those with the asked kind of extra first. */
+    function looksFor(bareLooks, text) {
+        const t = String(text || '').toLowerCase();
+        const kinds = EXTRA_KINDS.filter((k) => k.ask.test(t));
+        const has = (l) => (l.extras || []).some((e) => kinds.some((k) => k.re.test(e)));
+        const matching = kinds.length ? bareLooks.filter(has) : [];
+        return matching.length ? matching : bareLooks;
+    }
+
     /** The position groups a state name belongs to (missionary-*, doggy-*, cowgirl-*), or null. */
     function poseOf(name) {
         const m = /^(doggy|missionary|cowgirl)-/.exec(name);
@@ -101,14 +133,18 @@
     /**
      * Her body's lines for this turn: `{ index, detail }`. `names`: the states her look's pack holds;
      * `pose`: the position group she holds (doggy | missionary | cowgirl | null); `text`: the
-     * person's words this turn; `bareLooks`: other bare looks in her wardrobe, as { name }.
+     * person's words this turn; `bareLooks`: other bare looks in her wardrobe, as { name, extras }
+     * (BD21: Forge's ``look.body.extras``); `wearing`: the extras painted on the look she has on.
      */
-    function lines({ names, pose, text, bareLooks } = {}) {
+    function lines({ names, pose, text, bareLooks, wearing } = {}) {
         const fam = families(names);
         const ids = Object.keys(fam);
-        if (!ids.length && !(bareLooks || []).length) return { index: null, detail: null };
+        const on = (Array.isArray(wearing) ? wearing : []).filter(Boolean);
+        if (!ids.length && !(bareLooks || []).length && !on.length) return { index: null, detail: null };
         const counts = ids.map((id) => `${LABEL[id] || id} ${fam[id].length}`);
         if ((bareLooks || []).length) counts.push(`other bare looks ${bareLooks.length}`);
+        // What is painted on her now is part of her body tonight: she can mention it, never remove it.
+        if (on.length) counts.push(`on your skin now: ${on.map(human).join(', ')}`);
         const index = clip(
             `Your body can show tonight — ${counts.join(' · ')}. Each shows only when it really happens (the pace, their fist, where they finish); name one only when it fits.`,
             BUDGET.index
@@ -127,8 +163,11 @@
         }
         if ((all || want.includes('extras')) && (bareLooks || []).length) {
             parts.push(
-                `piercings, tattoos and marks are part of a bare look, never added live — her other bare looks: ${bareLooks
-                    .map((l) => l.name)
+                `piercings, tattoos and marks are part of a bare look, never added live — her other bare looks: ${looksFor(
+                    bareLooks,
+                    text
+                )
+                    .map(lookLabel)
                     .filter(Boolean)
                     .join('; ')} (offer to change into one if it is what they want)`
             );
@@ -145,7 +184,7 @@
         return { index, detail };
     }
 
-    const api = { BUDGET, FAMILIES, ASKS, families, asked, lines, poseOf };
+    const api = { BUDGET, FAMILIES, ASKS, EXTRA_KINDS, families, asked, lines, poseOf, looksFor };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_BODY_KNOWLEDGE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
