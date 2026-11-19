@@ -2488,6 +2488,11 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             await say('fammi il pugno');
             await flush();
             expect(calls[calls.length - 1]).toBe('apply:missionary-fisted');
+            // PB1. She is told what her body can show, from this pack only, at the closest step.
+            const told = Actions.promptLines().join('\n');
+            expect(told).toMatch(/What your body can show tonight[^\n]*fisting: missionary fisted/);
+            expect(told).toMatch(/arousal: flushed, open/);
+            expect(told).not.toMatch(/sado/);
         });
 
         test('on her lower back is shown live, she is told, it holds, then the afterglow fades it', async () => {

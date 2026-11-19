@@ -38,6 +38,28 @@ const TALK_STEP_MS = Number(arg('--talk-step', '60'));
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/poses/runs', `${stamp}-idle`)));
 
+/**
+ * EA2. Underwear for every test: the first set downloaded for this avatar under
+ * audits/poses/runs/looks/<avatar>/ (gitignored), else the avatar's own file. `--own` keeps her
+ * own clothes.
+ */
+function underwearFor(file) {
+    if (process.argv.includes('--own')) return file;
+    const slug = path
+        .basename(file, '.vrm')
+        .toLowerCase()
+        .replace(/_/g, '-')
+        .replace(/^avatarsample/, 'avatar-sample');
+    const dir = path.join(ROOT, 'audits/poses/runs/looks', slug);
+    const sets = fs.existsSync(dir)
+        ? fs
+              .readdirSync(dir)
+              .filter((f) => /\.vrm$/.test(f))
+              .sort()
+        : [];
+    return sets.length ? path.relative(ROOT, path.join(dir, sets[0])) : file;
+}
+
 /** Measuring and framing, installed into the page before it loads (addInitScript). */
 const HELPERS = `
 window.measure = function () {
@@ -126,7 +148,7 @@ async function main() {
                     while (v.avatarManager.currentRoot?.uuid === was && performance.now() - t0 < 30000)
                         await new Promise((r) => setTimeout(r, 200));
                 },
-                '/' + file.replace(/^\/+/, '')
+                '/' + underwearFor(file).replace(/^\/+/, '')
             );
             if (PRESET) await page.evaluate((p) => window.NEXUS_NATURAL_POSE?.setPreset(p), PRESET);
             await page.waitForTimeout(WAIT);

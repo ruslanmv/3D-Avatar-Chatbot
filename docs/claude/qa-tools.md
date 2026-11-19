@@ -32,6 +32,14 @@ lifts the right hand from ~0.79 m to ~1.3 m on AvatarSample_A).
 
 ## A whole Private evening (EA, BS, PP, WR, PS)
 
+**Every test is in underwear, on the floor (EA2, the owner's call 2026-11-19).**
+Jeans and dresses tent and clip in positions and hid what was judged. Download
+Forge's underwear sets for the avatar once (read-only; a token only in that one
+command's environment) into `audits/poses/runs/looks/<avatar>/` (gitignored):
+both tools dress her in the first set, and each undress cue changes to the next.
+Positions stay on the floor; pass `--bed` to the evening tool to test the bed
+placement (BS1) on purpose.
+
 | Tool | What it answers |
 | --- | --- |
 | `node tools/qa/evening-stages.mjs --show window-evening --room bright-hotel --lang it` | One show played in its room, a frame per step: did each step move her (degrees), did each undress cue change her clothes, is she on the bed for bed positions, is the room right; `index.html` contact sheet. `--persona gina|isabelle|yuki`, `--looks a.vrm,b.vrm` for a real undress |

@@ -68,13 +68,48 @@ function shippedLooks(vrm) {
     return found.sort((a, b) => Number(/dress/.test(b)) - Number(/dress/.test(a)));
 }
 
+/**
+ * EA2. Underwear for every test (the owner's call, 2026-11-19): jeans and dresses tent and clip in
+ * positions and hid what was being judged. Forge's underwear looks for this avatar, downloaded once
+ * into audits/poses/runs/looks/<avatar>/ (gitignored, never committed), dress her from the start,
+ * and each undress cue changes to the next set. Shipped looks only if no underwear is there.
+ */
+function underwearLooks(vrm) {
+    const dir = path.join(ROOT, 'audits/poses/runs/looks', slugOf(vrm));
+    if (!fs.existsSync(dir)) return [];
+    return fs
+        .readdirSync(dir)
+        .filter((f) => /\.vrm$/.test(f))
+        .sort()
+        .map((f) => path.relative(ROOT, path.join(dir, f)));
+}
+
+function slugOf(vrm) {
+    return path
+        .basename(vrm, '.vrm')
+        .toLowerCase()
+        .replace(/_/g, '-')
+        .replace(/^avatarsample/, 'avatar-sample');
+}
+
 const givenLooks = arg('--looks', '').split(',').filter(Boolean);
-const LOOKS = givenLooks.length ? givenLooks : shippedLooks(VRM);
+const underwear = underwearLooks(VRM);
+/** What she wears from the start: `--outfit`, else the first underwear set, else her own clothes. */
+const OUTFIT = arg('--outfit', underwear[0] || '');
+const LOOKS = givenLooks.length
+    ? givenLooks
+    : underwear.length
+      ? [...underwear.slice(1), underwear[0]]
+      : shippedLooks(VRM);
 const LOOKS_KIND = givenLooks.length
     ? 'given'
-    : LOOKS.length
-      ? 'shipped stand-ins (proves the swap, not the undress)'
-      : 'none';
+    : underwear.length
+      ? 'underwear sets'
+      : LOOKS.length
+        ? 'shipped stand-ins (proves the swap, not the undress)'
+        : 'none';
+/** EA2. Positions on the floor unless asked: the test judges the pose, not the bed. */
+const ON_BED = process.argv.includes('--bed');
 
 async function main() {
     fs.mkdirSync(out, { recursive: true });
@@ -136,7 +171,8 @@ async function main() {
         if (plan.error) throw new Error(plan.error);
 
         // Her avatar first, then the room (a world request reframes her).
-        await loadVrm(page, VRM);
+        // In underwear when there is a set (EA2), else her own clothes.
+        await loadVrm(page, OUTFIT || VRM);
         if (plan.room) {
             await page.evaluate((id) => {
                 window.dispatchEvent(new CustomEvent('nexus-world-request', { detail: { id, owner: 'intimate' } }));
@@ -177,7 +213,7 @@ async function main() {
                 } else did.look = { file: null, swapped: false, why: 'no look left to change into' };
             }
             const res = await page.evaluate(
-                async ({ step, preset, settle }) => {
+                async ({ step, preset, settle, onBed }) => {
                     const vps = window.vrPoseSystem;
                     const v = window.NEXUS_VIEWER;
                     const root = v.avatarManager.currentRoot;
@@ -207,14 +243,16 @@ async function main() {
                         const t0 = performance.now();
                         while (vps.isSettling() && performance.now() - t0 < 8000) await wait(100);
                         // BS1. A bed position on the room's bed, as Private does (PrivateBed).
-                        const bed = await window.NEXUS_PRIVATE_BED?.sync(window, step.pose, { instant: true });
+                        const bed = onBed
+                            ? await window.NEXUS_PRIVATE_BED?.sync(window, step.pose, { instant: true })
+                            : null;
                         await wait(settle);
                         return { ok: true, onBed: Boolean(bed && bed.onBed) };
                     } catch (e) {
                         return { ok: false, why: String(e && e.message ? e.message : e).slice(0, 160) };
                     }
                 },
-                { step, preset: plan.presets[step.pose] || null, settle: SETTLE_MS }
+                { step, preset: plan.presets[step.pose] || null, settle: SETTLE_MS, onBed: ON_BED }
             );
             did.ok = res.ok;
             if (res.onBed) did.onBed = true;
@@ -235,6 +273,8 @@ async function main() {
             persona: plan.persona,
             lang: LANG,
             avatar: VRM,
+            outfit: OUTFIT || null,
+            bed: ON_BED,
             looks: { kind: LOOKS_KIND, files: LOOKS },
             stages,
             verdict: verdictOf(stages),

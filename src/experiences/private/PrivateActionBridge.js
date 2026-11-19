@@ -1931,6 +1931,37 @@
     }
 
     /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    /**
+     * PB1. What her bare look can show, so she knows her own body (reported: in Private she did not
+     * know which states existed). Only at the closest step and only for the states this look's skin
+     * pack really holds, grouped the way a person would ask. Information, never an action: a state
+     * changes only through the pace, a finish or their fist (the bridge), never her words.
+     */
+    const PACK_GROUPS = Object.freeze([
+        ['arousal', /^(aroused|flushed|goosebumps|sweaty|afterglow|open|wide-open|anus-open|both-open)$/],
+        ['pumped or oiled', /^(pumped|pumped-open|oiled|oiled-aroused)$/],
+        ['fisting', /fisted|stretched/],
+        ['rough (sado)', /^sado-/],
+        ['finishes', /cum|creampie|finish/],
+        ['in a position', /^(doggy|missionary|cowgirl)-/],
+    ]);
+
+    function packLine(s) {
+        if (!s.skin || !Array.isArray(s.skinStates) || !s.skinStates.length) return null;
+        if ((levelOf(s) || 1) < 4) return null;
+        const groups = new Map();
+        for (const st of s.skinStates) {
+            const name = String((st && st.name) || '');
+            if (!name || name === 'closed') continue;
+            const g = (PACK_GROUPS.find(([, re]) => re.test(name)) || ['other'])[0];
+            if (!groups.has(g)) groups.set(g, []);
+            groups.get(g).push(name.replace(/-/g, ' '));
+        }
+        if (!groups.size) return null;
+        const parts = [...groups].map(([g, names]) => `${g}: ${names.join(', ')}`);
+        return `What your body can show tonight, each only when it really happens (the pace, their fist, where they finish): ${parts.join('; ')}. Speak of it when it fits; never claim one that is not shown.`;
+    }
+
     function skinLine(s) {
         if (!s.skin || !s.skinStates) return null;
         const now = s.skin.current();
@@ -3135,6 +3166,8 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
+        const can = packLine(s);
+        if (can) now.push(can);
         // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
         let hands = null;
         try {
