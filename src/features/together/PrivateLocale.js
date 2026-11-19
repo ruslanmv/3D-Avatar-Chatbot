@@ -1573,6 +1573,15 @@
             'setup.atmosphere': 'Set the atmosphere',
             'setup.where': 'Where should we be?',
             'setup.keep': 'Keep this place',
+            'place.strip-stage.opening':
+                'Welcome to my little stage. Sit back in your chair and let me be the show tonight — when you want me to dance for you, just say so.',
+            'place.dance-lounge.opening':
+                'This is our lounge. Make yourself comfortable on the sofa — this is where I dance for you, so close that only the table is between us.',
+            'place.invite.striptease':
+                'The lights are on me now. Shall I dance for you — and take it all off, one piece at a time?',
+            'place.invite.table-dance': 'You are comfortable now… shall I climb up on the table and dance for you?',
+            'place.invite.tease': 'Shall I start teasing you a little, right here in front of you?',
+            'place.notyet': 'Not yet',
             'setup.more': 'More',
             'setup.room': 'Or choose a 3D room',
             'setup.music': 'Music',
@@ -1608,6 +1617,15 @@
             'setup.atmosphere': 'Scegli l’atmosfera',
             'setup.where': 'Dove vuoi stare?',
             'setup.keep': 'Resta qui',
+            'place.strip-stage.opening':
+                'Benvenuto sul mio piccolo palco. Mettiti comodo sulla poltrona e lascia che stasera lo spettacolo sia io: quando vuoi che balli per te, dimmelo.',
+            'place.dance-lounge.opening':
+                'Questo è il nostro salottino. Mettiti comodo sul divano: qui ballo per te, così vicina che ci separa solo il tavolino.',
+            'place.invite.striptease':
+                'Le luci sono su di me adesso. Vuoi che balli per te… e che mi tolga tutto, un pezzo alla volta?',
+            'place.invite.table-dance': 'Sei comodo adesso… vuoi che salga sul tavolino e balli per te?',
+            'place.invite.tease': 'Vuoi che inizi a stuzzicarti un po’, proprio qui davanti a te?',
+            'place.notyet': 'Non ancora',
             'setup.more': 'Altri luoghi',
             'setup.room': 'Oppure scegli una stanza 3D',
             'setup.music': 'Musica',
@@ -1642,6 +1660,15 @@
             'setup.atmosphere': 'Prepara el ambiente',
             'setup.where': '¿Dónde quieres estar?',
             'setup.keep': 'Quedarnos aquí',
+            'place.strip-stage.opening':
+                'Bienvenido a mi pequeño escenario. Ponte cómodo en el sillón y deja que esta noche el espectáculo sea yo: cuando quieras que baile para ti, dímelo.',
+            'place.dance-lounge.opening':
+                'Este es nuestro saloncito. Ponte cómodo en el sofá: aquí bailo para ti, tan cerca que solo nos separa la mesita.',
+            'place.invite.striptease':
+                'Ahora las luces están sobre mí. ¿Quieres que baile para ti… y que me lo quite todo, prenda a prenda?',
+            'place.invite.table-dance': 'Ya estás cómodo… ¿quieres que me suba a la mesa y baile para ti?',
+            'place.invite.tease': '¿Quieres que empiece a provocarte un poco, aquí delante de ti?',
+            'place.notyet': 'Todavía no',
             'setup.more': 'Más lugares',
             'setup.room': 'O elige una sala 3D',
             'setup.music': 'Música',
@@ -1676,6 +1703,16 @@
             'setup.atmosphere': 'Choisis l’ambiance',
             'setup.where': 'Où veux-tu être ?',
             'setup.keep': 'Rester ici',
+            'place.strip-stage.opening':
+                'Bienvenue sur ma petite scène. Installe-toi dans le fauteuil et laisse-moi être le spectacle ce soir : quand tu veux que je danse pour toi, dis-le-moi.',
+            'place.dance-lounge.opening':
+                'Voici notre salon. Installe-toi sur le canapé : c’est ici que je danse pour toi, si près que seule la table nous sépare.',
+            'place.invite.striptease':
+                'Les lumières sont sur moi maintenant. Tu veux que je danse pour toi… et que j’enlève tout, une pièce à la fois ?',
+            'place.invite.table-dance':
+                'Tu es bien installé… tu veux que je monte sur la table et que je danse pour toi ?',
+            'place.invite.tease': 'Tu veux que je commence à t’allumer un peu, juste là devant toi ?',
+            'place.notyet': 'Pas encore',
             'setup.more': 'Plus de lieux',
             'setup.room': 'Ou choisis une salle 3D',
             'setup.music': 'Musique',
@@ -1711,6 +1748,15 @@
             'setup.atmosphere': 'Atmosphäre wählen',
             'setup.where': 'Wo möchten wir sein?',
             'setup.keep': 'Hier bleiben',
+            'place.strip-stage.opening':
+                'Willkommen auf meiner kleinen Bühne. Mach es dir im Sessel bequem und lass mich heute Abend die Show sein – wenn ich für dich tanzen soll, sag es einfach.',
+            'place.dance-lounge.opening':
+                'Das ist unsere Lounge. Mach es dir auf dem Sofa bequem – hier tanze ich für dich, so nah, dass uns nur der Tisch trennt.',
+            'place.invite.striptease':
+                'Jetzt sind die Lichter auf mir. Soll ich für dich tanzen … und alles ausziehen, Stück für Stück?',
+            'place.invite.table-dance': 'Du sitzt jetzt bequem … soll ich auf den Tisch steigen und für dich tanzen?',
+            'place.invite.tease': 'Soll ich anfangen, dich ein bisschen zu reizen, genau hier vor dir?',
+            'place.notyet': 'Noch nicht',
             'setup.more': 'Weitere Orte',
             'setup.room': 'Oder einen 3D-Raum wählen',
             'setup.music': 'Musik',
@@ -1745,6 +1791,15 @@
             'setup.atmosphere': 'Escolha o ambiente',
             'setup.where': 'Onde vamos ficar?',
             'setup.keep': 'Ficar aqui',
+            'place.strip-stage.opening':
+                'Bem-vindo ao meu pequeno palco. Fica à vontade na poltrona e deixa que esta noite o espetáculo seja eu: quando quiseres que eu dance para ti, diz-me.',
+            'place.dance-lounge.opening':
+                'Este é o nosso lounge. Fica à vontade no sofá: é aqui que eu danço para ti, tão perto que só a mesa nos separa.',
+            'place.invite.striptease':
+                'Agora as luzes estão em mim. Queres que eu dance para ti… e tire tudo, peça a peça?',
+            'place.invite.table-dance': 'Já estás confortável… queres que eu suba para a mesa e dance para ti?',
+            'place.invite.tease': 'Queres que comece a provocar-te um pouco, aqui mesmo à tua frente?',
+            'place.notyet': 'Ainda não',
             'setup.more': 'Mais lugares',
             'setup.room': 'Ou escolha uma sala 3D',
             'setup.music': 'Música',
@@ -1779,6 +1834,14 @@
             'setup.atmosphere': '雰囲気を選ぶ',
             'setup.where': 'どこで過ごす？',
             'setup.keep': 'ここにいる',
+            'place.strip-stage.opening':
+                '私の小さなステージへようこそ。椅子にゆったり座って、今夜は私がショーになるね。踊ってほしくなったら、そう言って。',
+            'place.dance-lounge.opening':
+                'ここは私たちのラウンジ。ソファでくつろいで。ここで私があなたのために踊るの、テーブル一つ分の近さで。',
+            'place.invite.striptease': '今、照明は私に当たってる。あなたのために踊って…一枚ずつ全部脱いでほしい？',
+            'place.invite.table-dance': 'くつろげた？テーブルに上がって、あなたのために踊ってほしい？',
+            'place.invite.tease': 'ここで、あなたの目の前で、少しじらしてほしい？',
+            'place.notyet': 'まだ',
             'setup.more': 'ほかの場所',
             'setup.room': 'または3Dルームを選ぶ',
             'setup.music': '音楽',
@@ -1813,6 +1876,14 @@
             'setup.atmosphere': '분위기 설정',
             'setup.where': '어디에서 함께할까?',
             'setup.keep': '여기 머물기',
+            'place.strip-stage.opening':
+                '내 작은 무대에 온 걸 환영해. 의자에 편하게 앉아, 오늘 밤 쇼는 내가 할게. 춤춰 주길 원하면 말만 해.',
+            'place.dance-lounge.opening':
+                '여기는 우리 라운지야. 소파에 편하게 앉아. 여기서 너를 위해 춤출게, 테이블 하나 사이로 가까이.',
+            'place.invite.striptease': '이제 조명이 나를 비추고 있어. 너를 위해 춤추면서… 하나씩 전부 벗어 줄까?',
+            'place.invite.table-dance': '편해졌어? 테이블에 올라가서 너를 위해 춤춰 줄까?',
+            'place.invite.tease': '바로 네 앞에서 조금 애태워 줄까?',
+            'place.notyet': '아직',
             'setup.more': '다른 장소',
             'setup.room': '또는 3D 공간 선택',
             'setup.music': '음악',
@@ -1847,6 +1918,13 @@
             'setup.atmosphere': '设置氛围',
             'setup.where': '我们去哪里？',
             'setup.keep': '留在这里',
+            'place.strip-stage.opening':
+                '欢迎来到我的小舞台。在椅子上坐舒服，今晚就让我来表演吧：想让我为你跳舞的时候，告诉我。',
+            'place.dance-lounge.opening': '这是我们的休息室。在沙发上坐舒服：我就在这里为你跳舞，近得只隔着一张桌子。',
+            'place.invite.striptease': '现在灯光都在我身上了。要我为你跳舞……然后一件一件全部脱掉吗？',
+            'place.invite.table-dance': '坐舒服了吗？要我爬上桌子为你跳舞吗？',
+            'place.invite.tease': '要我就在你面前，先挑逗你一下吗？',
+            'place.notyet': '还不要',
             'setup.more': '更多地点',
             'setup.room': '或选择一个3D房间',
             'setup.music': '音乐',

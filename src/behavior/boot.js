@@ -165,6 +165,9 @@
         'src/experiences/private/PrivatePoseController.js',
         // UN36. The shows she knows: series of her positions, run by the bridge.
         'src/experiences/private/PrivateRoutines.js',
+        // PP1. What each private room is for: her opening there and the show she invites them to.
+        // After the routines (it asks which are open), before TogetherCapability, which runs it.
+        'src/experiences/private/PrivatePlaceScripts.js',
         // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.
         'src/experiences/private/PrivateLivingMotion.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.

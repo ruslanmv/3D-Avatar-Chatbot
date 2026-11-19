@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 70,
-        "places": 33,
+        "worlds": 72,
+        "places": 35,
         "standIns": 21,
         "withSpots": 42,
         "fails": 0,
         "warns": 25,
         "offered": {
-            "desktop": 49,
-            "mobile": 47,
-            "vr": 48
+            "desktop": 51,
+            "mobile": 49,
+            "vr": 50
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -1424,6 +1424,102 @@
                 "vr": {
                     "ok": true,
                     "shows": "candlelit-suite",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "strip-stage",
+            "title": "Striptease stage",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1200,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/strip-stage.webp",
+                "exists": true,
+                "bytes": 11524
+            },
+            "props": 8,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "strip-stage",
+                "actions": [
+                    "striptease",
+                    "tease",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "strip-stage",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "strip-stage",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "strip-stage",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "dance-lounge",
+            "title": "Table dance lounge",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1000,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/dance-lounge.webp",
+                "exists": true,
+                "bytes": 12296
+            },
+            "props": 8,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "dance-lounge",
+                "actions": [
+                    "table-dance",
+                    "tease",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "dance-lounge",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "dance-lounge",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "dance-lounge",
                     "why": "loads itself"
                 }
             },

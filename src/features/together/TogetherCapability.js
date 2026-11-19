@@ -144,6 +144,17 @@
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
     }
     /** PX6. The one door an action takes into a Private session. See `PrivateActionBridge`. */
+    /** PP1. What each private room is for; her shows; the policy's steps for a position. */
+    function placeScripts() {
+        return optional('../../experiences/private/PrivatePlaceScripts.js', 'NEXUS_PRIVATE_PLACE_SCRIPTS');
+    }
+    function routinesModule() {
+        return optional('../../experiences/private/PrivateRoutines.js', 'NEXUS_PRIVATE_ROUTINES');
+    }
+    function actionPolicy() {
+        return optional('../../experiences/private/PrivateActionPolicy.js', 'NEXUS_PRIVATE_ACTION_POLICY');
+    }
+
     function actionBridge() {
         return optional('../../experiences/private/PrivateActionBridge.js', 'NEXUS_PRIVATE_ACTIONS');
     }
@@ -702,6 +713,8 @@
             ...(capability ? profile.capabilityLines(capability) : []),
             // AX5. Where they are, when nothing richer already says it.
             ...(profile ? profile.sceneLines(privateScene(ctx.activity)) : []),
+            // PP1. What this room is for, while it is the room on screen.
+            ...placeLines(ctx.activity),
             '',
             ...attentionLines(),
             '',
@@ -871,6 +884,26 @@
             return { title: w.title, note: w.note };
         } catch (_) {
             return null;
+        }
+    }
+
+    /**
+     * PP1. The room's script while it is on screen: the same agreement as `privateScene` (the
+     * activity chose it and the renderer shows it, or its light stand-in), and its brief for her.
+     */
+    function placeLines(activity) {
+        try {
+            const P = placeScripts();
+            const choice = activity && activity.worldChoice;
+            const vr = global && global.NEXUS_VIEWER && global.NEXUS_VIEWER.vrWorlds;
+            const active = vr && vr.activeId;
+            const worlds = activity && activity._worldCatalogue && activity._worldCatalogue.worlds;
+            if (!P || !choice || !active || !Array.isArray(worlds)) return [];
+            const w = worlds.find((x) => x && x.id === active);
+            if (!w || (w.id !== choice && w.lightFor !== choice)) return [];
+            return P.promptLines(P.forWorld(w.id, w.lightFor));
+        } catch (_) {
+            return [];
         }
     }
 
@@ -1710,12 +1743,17 @@
             const locale = localeModel();
             const placeLine =
                 place && locale && typeof locale.t === 'function' ? locale.t('opening.place', { place }) : '';
-            this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
+            // PP1. In a room made for one of her shows, she opens in its own words — she knows
+            // where she is and what it is for — and, if the pace already opens the show, invites
+            // them to it in the same breath. Elsewhere, the evening's opening as before.
+            const room = this._placeOpening();
+            if (room) this._speak(room.invite ? `${room.line} ${room.invite}` : room.line);
+            else this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
             // the second exchange before offering a choice would have got the feel wrong.
-            this._offerChoices([], { source: 'local' });
+            if (!(room && room.invite && this._showChoices(room.show))) this._offerChoices([], { source: 'local' });
             // Earliest-at rather than fires-at, and each of these waits for a quiet moment.
             //
             // What is *not* here any more (P12): the consent check-in at 120 s, the closing line at
@@ -2106,7 +2144,10 @@
             // The music comes back up to where it started, since the person asked for more rather
             // than less. `softenSoundtrack` took it down; this is the same dial the other way.
             if (this.view && typeof this.view.restoreSoundtrack === 'function') this.view.restoreSoundtrack();
-            this._speakStepLine('levelLines', asked.level, 'Okay. A little closer, still at your pace.');
+            // PP1. In her show's room, the step that opens the show is her cue: she invites them to
+            // it instead of only acknowledging the step. Their yes, the chip or their words start it.
+            const invited = this._invitePlace(asked.level);
+            if (!invited) this._speakStepLine('levelLines', asked.level, 'Okay. A little closer, still at your pace.');
             this._emit('private:intensity', {
                 preset: this.preset.id,
                 level: asked.level,
@@ -2247,6 +2288,74 @@
         _stashChoices(list) {
             this._pendingChoices = Array.isArray(list) ? list.filter(Boolean) : [];
             return this._pendingChoices.length;
+        }
+
+        /** PP1. The script of the room Private chose for tonight, if it is one of hers. */
+        _placeScript() {
+            const P = placeScripts();
+            const choice = this.activity && this.activity.worldChoice;
+            return P && choice ? P.forWorld(choice) : null;
+        }
+
+        /** PP1. The show this room invites to at `level`, once per show per evening. */
+        _placeShow(level) {
+            const P = placeScripts();
+            const script = this._placeScript();
+            if (!P || !script) return null;
+            if (!this._placeOffered) this._placeOffered = new Set();
+            const policy = actionPolicy();
+            return P.showToOffer(script, {
+                level,
+                routines: routinesModule(),
+                poseLevel: policy && policy.poseLevel,
+                offered: this._placeOffered,
+            });
+        }
+
+        /** PP1. Her first line in the room, and the invitation when the show is already open. */
+        _placeOpening() {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (!script || !locale || typeof locale.t !== 'function') return null;
+            const key = `place.${script.id}.opening`;
+            const line = locale.t(key);
+            if (!line || line === key) return null;
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            const show = this._placeShow(level);
+            const invite = show ? this._offerPlaceShow(show) : '';
+            return { line, invite, show: invite ? show : null };
+        }
+
+        /** PP1. Offer the show through the bridge; the invitation line, or '' when not offered. */
+        _offerPlaceShow(show) {
+            const locale = localeModel();
+            const actions = actionBridge();
+            if (!actions || typeof actions.offerShow !== 'function' || !actions.offerShow(show)) return '';
+            this._placeOffered.add(show);
+            const key = `place.invite.${show}`;
+            const line = locale && typeof locale.t === 'function' ? locale.t(key) : '';
+            return line && line !== key ? line : '';
+        }
+
+        /** PP1. After a step forward: invite them to the show it opened, said and offered. */
+        _invitePlace(level) {
+            const show = this._placeShow(level);
+            if (!show) return false;
+            const line = this._offerPlaceShow(show);
+            if (!line) return false;
+            this._sayBrief(line);
+            this._showChoices(show);
+            return true;
+        }
+
+        /** PP1. The show's own line (it runs as their words) and "not yet", as the next taps. */
+        _showChoices(show) {
+            const locale = localeModel();
+            if (!locale || typeof locale.t !== 'function') return false;
+            const say = locale.t(`routine.${show}.say`);
+            const later = locale.t('place.notyet');
+            if (!say || say === `routine.${show}.say`) return false;
+            return this._offerChoices([say, later && later !== 'place.notyet' ? later : null], { source: 'local' });
         }
 
         _offerChoices(list, { source = 'local' } = {}) {

@@ -1861,6 +1861,28 @@ describe('UN7. "Undress please" / "I wanna see you naked" at level 4 — the ava
         expect(Actions.snapshot().outfitState).not.toBe('bare');
     });
 
+    test('PP2. a striptease with nothing left to take off: she puts on a ready striptease set first', async () => {
+        const STRIP = {
+            lookId: 's',
+            name: 'Red Striptease Set',
+            outfitId: 'show-strip-red',
+            vrmUrl: 'strip.vrm',
+            private: true,
+        };
+        const w = await at(4, { looks: [DRESS, BARE, STRIP] });
+        await say('I wanna see you naked');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Bare']);
+        await say('Do a striptease for me');
+        await flush();
+        expect(worn(w).slice(-1)).toEqual(['Red Striptease Set']);
+        expect(Actions.snapshot().last).toMatchObject({
+            name: 'avatar.routine',
+            status: 'completed',
+            result: { routine: 'striptease', outfit: 'Red Striptease Set' },
+        });
+    });
+
     test('with her bare look in the wardrobe, "naked" is exactly that, and she may say so', async () => {
         const w = await at(4, { looks: [DRESS, ...LINGERIE, BARE] });
         await say('Mettiti il vestito da cocktail nero');
@@ -2924,4 +2946,104 @@ describe('Codex (#196): a negated movement request is a no', () => {
         ['no pares', moving, 'start'],
         ['move for me', posed, 'start'],
     ])('%s (%o) → %s', (text, c, want) => expect(move(text, c)).toBe(want));
+});
+
+describe('PP1. a room made for her show: she invites them, their yes starts it', () => {
+    const poses = () => {
+        const applied = [];
+        let held = null;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key) => {
+                    applied.push(key);
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        return applied;
+    };
+    const turn = async (text) => {
+        Surface.renderUser(text);
+        for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    };
+
+    test('an invitation is an offer: only an open show, and their yes runs it', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        const applied = poses();
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 3;
+            // Not open at this step (a striptease undresses her: step 4), so not offered.
+            expect(Actions.offerShow('striptease')).toBe(false);
+            expect(Actions.snapshot().offer).toBeNull();
+            expect(Actions.offerShow('tease')).toBe(true);
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'tease' });
+            expect(applied).toEqual([]); // offered, nothing started
+            jest.useFakeTimers();
+            try {
+                await turn('yes');
+                expect(Actions.snapshot().last).toMatchObject({
+                    name: 'avatar.routine',
+                    source: 'user-approved',
+                    status: 'completed',
+                });
+                expect(Actions.promptLines().join('\n')).toMatch(/You are giving them a show — a slow tease, step 1/);
+                expect(Actions.snapshot().offer).toBeNull();
+            } finally {
+                jest.useRealTimers();
+            }
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('her own show tag never starts it: it becomes the same invitation', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        const applied = poses();
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 3;
+            const out = await Actions.request(
+                'avatar.routine',
+                { routine: 'tease', move: 'start' },
+                { source: 'model' }
+            );
+            expect(out.status).toBe('blocked');
+            expect(applied).toEqual([]);
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'tease' });
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
+
+    test('in the lounge she opens in its words and, once the pace opens the show, invites them', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        poses();
+        try {
+            const w = world({ adult: true });
+            w.activity.worldChoice = 'dance-lounge';
+            await w.activity.start({ input: { id: 'sensual' } });
+            const session = w.activity._privateExperience;
+            const Locale = require('../../src/features/together/PrivateLocale.js');
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('place.dance-lounge.opening').slice(0, 30));
+            // Step 1: no show is open yet, so nothing is offered on arrival.
+            expect(Actions.snapshot().offer).toBeNull();
+            w.adult.level = 3;
+            expect(session._invitePlace(3)).toBe(true);
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'table-dance' });
+            // Once per show per evening: the same step again does not invite twice.
+            expect(session._invitePlace(3)).toBe(false);
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
 });

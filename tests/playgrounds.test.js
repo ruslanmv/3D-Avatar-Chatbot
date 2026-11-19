@@ -22,8 +22,17 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const { worlds, problems } = Worlds.validateCatalogue(JSON.parse(read('assets/vr-worlds/worlds.json')));
 const byId = (id) => worlds.find((w) => w.id === id);
 
-const VENUES = ['irish-pub', 'neon-discoteca', 'private-cabaret', 'private-stream-studio', 'creative-academy'];
-const PRIVATE = ['private-cabaret', 'private-stream-studio'];
+// PP1: strip-stage and dance-lounge, the private rooms made for her two shows.
+const VENUES = [
+    'irish-pub',
+    'neon-discoteca',
+    'private-cabaret',
+    'private-stream-studio',
+    'creative-academy',
+    'strip-stage',
+    'dance-lounge',
+];
+const PRIVATE = ['private-cabaret', 'private-stream-studio', 'strip-stage', 'dance-lounge'];
 
 describe('the venues are in the world catalogue', () => {
     test('valid, by name, rated as asked, every file present', () => {

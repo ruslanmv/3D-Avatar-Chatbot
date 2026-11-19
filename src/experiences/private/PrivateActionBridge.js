@@ -1066,9 +1066,69 @@
         stopRoutine(s);
         const r = { id, index: -1, speed, timer: null, done: false, doneTurn: null, turnId: action.turnId };
         s.routine = r;
+        // PP2. A show that takes clothes off needs clothes to take off. With nothing left (she is
+        // bare, or her wardrobe has no layer under what she wears), she first puts on one of her
+        // ready striptease sets — a look already made for her, so it loads at once and nothing is
+        // generated — and the show begins once it is on. Without one, the show runs as before.
+        const outfit = needsShowOutfit(s, R.ROUTINES[id]) ? showOutfit(s) : null;
+        if (outfit) {
+            r.dressing = true;
+            emit();
+            const alive = () => state === s && s.routine === r && !r.done;
+            keepingPose(s, () => s.closet.wearLook(outfit, alive))
+                .catch(() => ({ ok: false }))
+                .then(() => {
+                    if (!alive()) return;
+                    r.dressing = false;
+                    nextStep(s, r);
+                });
+            return settle(action, 'completed', null, {
+                routine: id,
+                name: R.ROUTINES[id].name,
+                outfit: outfit.name || '',
+            });
+        }
         nextStep(s, r);
         if (s.routine !== r) return settle(action, 'failed', 'not-rendered', { routine: id });
         return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
+    }
+
+    /** PP2. Does this show undress her, and is there nothing left on her to take off? */
+    function needsShowOutfit(s, routine) {
+        if (!routine || !routine.steps.some((x) => x.undress)) return false;
+        if (!s.closet || !s.closet.privateOpen || typeof s.closet.wearLook !== 'function') return false;
+        try {
+            return !nextLayer(s, { step: 'next' }).look;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * PP2. One of her ready striptease sets: a look made from Forge's striptease outfits
+     * (`show-strip-*`, the Striptease Show collection), not bare, not the one she has on. The
+     * first in her wardrobe's own order, so the same evening picks the same set.
+     */
+    function showOutfit(s) {
+        const looks = (s.closet && s.closet.looks) || [];
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+        let current = null;
+        try {
+            current = typeof s.closet.current === 'function' ? s.closet.current() : null;
+        } catch (_) {
+            current = null;
+        }
+        const here = current ? keyOf(current) : null;
+        return (
+            looks.find(
+                (l) =>
+                    l &&
+                    /^show-strip-/.test(String(l.outfitId || '')) &&
+                    !(Engine && typeof Engine.isBare === 'function' && Engine.isBare(l)) &&
+                    keyOf(l) !== here
+            ) || null
+        );
     }
 
     function nextStep(s, r) {
@@ -1925,6 +1985,13 @@
 
     /** SUGGEST: her idea becomes a question for the person, with the look already resolved. */
     async function offerFrom(s, action) {
+        if (action.name === 'avatar.routine') {
+            // PP1. Her own show tag is an invitation, never a start: offered only when the show is
+            // open at the pace now and switched on; their yes runs it as their request.
+            const id = action.params && action.params.routine;
+            if (id && id !== 'choose') offerShowNow(s, id);
+            return;
+        }
         if (action.family === 'world') {
             // UN4. Her invitation: the place she named, if it is one of tonight's places.
             if (!s.canTravel || s.travel) return;
@@ -1987,6 +2054,27 @@
         }
     }
 
+    /**
+     * PP1. Invite them to one of her shows: an offer their yes, the card's button or their own
+     * words take. Only a show that exists, is switched on (MP1) and is open at the pace now; never
+     * over an outfit offer still waiting for its answer, and never in care.
+     */
+    function offerShowNow(s, id) {
+        const R = routinesOf(s);
+        if (!R || !R.ROUTINES || !R.ROUTINES[id] || s.session._care) return false;
+        if (typeof R.available === 'function' && !R.available(id)) return false;
+        if (R.level(id, poseLevelFn(s)) > (levelOf(s) || 1)) return false;
+        if (s.offer && s.offer.kind !== 'show') return false;
+        if (routineState(s) === 'running') return false;
+        s.offer = { kind: 'show', routine: id, name: R.ROUTINES[id].label, turnId: s.turnId };
+        emit();
+        return true;
+    }
+
+    function offerShow(id) {
+        return state ? offerShowNow(state, String(id || '')) : false;
+    }
+
     /** The person said yes to what was offered (their words, or the chip). */
     async function approveOffer(source) {
         const s = state;
@@ -1994,6 +2082,14 @@
         touched(s);
         const offer = s.offer;
         s.offer = null;
+        if (offer.kind === 'show') {
+            // PP1. Their yes is the show: asked of the policy and the pace again, as their approval.
+            return request(
+                'avatar.routine',
+                { routine: offer.routine, move: 'start' },
+                { source: source === 'control' ? 'control' : 'user-approved', turnId: s.turnId }
+            );
+        }
         if (offer.kind === 'travel') {
             // UN4. Their yes is the trip: asked again of the policy, as `user-approved`.
             return request(
@@ -2189,7 +2285,7 @@
                 ? Intent.affirmsGoing(s.turnText)
                 : typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
         if (s.offer && yes && !s.session._care) {
-            s.asked[travelling ? 'world' : 'wardrobe'] = s.turnId;
+            s.asked[travelling ? 'world' : s.offer.kind === 'show' ? 'avatar' : 'wardrobe'] = s.turnId;
             return approveOffer('user');
         }
         // UN4. A trip not taken: the next turn that is not a yes closes the invitation.
@@ -2396,7 +2492,9 @@
                       name: (s.wardrobe.result && s.wardrobe.result.name) || '',
                   }
                 : null,
-            offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
+            offer: s.offer
+                ? { kind: s.offer.kind, name: s.offer.name, ...(s.offer.routine ? { routine: s.offer.routine } : {}) }
+                : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
             // UN35. Where they can finish that this look can show on her, at the closest step only:
             // the ⋯ menu draws a chip for each, so no chip is offered that could only be refused.
@@ -3002,6 +3100,7 @@
         consumeTravel,
         approveOffer,
         declineOffer,
+        offerShow,
         snapshot,
         outfitTruth,
         poseTruth,

@@ -129,6 +129,50 @@
                 { id: 'light', kind: 'mood', label: '💡 Light' },
             ]),
         }),
+        // Private rooms made for her two shows (PrivateRoutines). Each chip says the show's own
+        // line as the person's words, so it runs exactly as asked in words: through the bridge,
+        // re-checked against the pace (a striptease opens at step 4, a table dance at 3). The
+        // room's brief and her opening are PrivatePlaceScripts'; this is only the chip row.
+        Object.freeze({
+            id: 'strip-stage',
+            world: 'strip-stage',
+            anchors: Object.freeze([
+                { id: 'stage', label: 'stage', at: [0, 0.05, -0.2], space: 'place' },
+                { id: 'lamp', label: 'brass lamp', at: [0, 1.2, -0.9], space: 'place' },
+                { id: 'stool', label: 'bar stool', at: [1.3, 0.8, -0.7], space: 'place' },
+            ]),
+            title: 'Striptease stage',
+            category: 'Private',
+            rating: 'private',
+            description: 'A small round stage under warm spotlights, just for you.',
+            image: PREVIEWS + 'strip-stage.webp',
+            moods: Object.freeze(['cabaret-gold', 'neon-blue-purple', 'romantic-evening']),
+            actions: Object.freeze([
+                { id: 'striptease', kind: 'say', label: '💃 Striptease', text: 'Do a striptease for me' },
+                { id: 'tease', kind: 'say', label: '😏 Tease me', text: 'Tease me' },
+                { id: 'light', kind: 'mood', label: '💡 Light' },
+            ]),
+        }),
+        Object.freeze({
+            id: 'dance-lounge',
+            world: 'dance-lounge',
+            anchors: Object.freeze([
+                { id: 'table', label: 'glass table', at: [-1.4, 0.4, -0.5], space: 'place' },
+                { id: 'sofa', label: 'sofa', at: [0, 0.45, -2.0], space: 'place' },
+                { id: 'chair', label: 'lounge chair', at: [1.6, 0.45, -0.6], space: 'place' },
+            ]),
+            title: 'Table dance lounge',
+            category: 'Private',
+            rating: 'private',
+            description: 'A dim velvet lounge with a low glass table she dances on.',
+            image: PREVIEWS + 'dance-lounge.webp',
+            moods: Object.freeze(['neon-blue-purple', 'romantic-evening', 'cozy-warm']),
+            actions: Object.freeze([
+                { id: 'table-dance', kind: 'say', label: '🍸 Table dance', text: 'Give me a table dance' },
+                { id: 'tease', kind: 'say', label: '😏 Tease me', text: 'Tease me' },
+                { id: 'light', kind: 'mood', label: '💡 Light' },
+            ]),
+        }),
         Object.freeze({
             id: 'private-stream-studio',
             world: 'private-stream-studio',
