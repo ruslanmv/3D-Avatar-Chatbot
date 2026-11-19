@@ -2893,9 +2893,35 @@ describe('LM1. her body alive in a held position: the bridge drives the layer an
         // holding still and going on is "stay still".
         await say('stay still');
         expect(said()).toMatch(/You have stopped moving and hold still/);
+        // Codex (#196). Easing off stills her too, whatever the position.
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
+        await say('wait');
+        expect(said()).not.toMatch(/You are moving in that position for them/);
         run(10);
         expect(said()).not.toMatch(/Your hands right now/);
         Actions.end();
         expect(layer).toBeNull();
     });
+});
+
+describe('Codex (#196): a negated movement request is a no', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    const posed = { poseHeld: true };
+    const moving = { poseHeld: true, moving: true };
+    const move = (t, c) => {
+        const p = Intent.parse(t, c);
+        return p && p.name === 'avatar.move' ? p.params.move : null;
+    };
+    test.each([
+        ["don't rock your hips", posed, null],
+        ["don't grind on me", posed, null],
+        ["don't rock your hips", moving, 'still'],
+        ["I don't want you to keep moving", moving, 'still'],
+        ['non muoverti', moving, 'still'],
+        ["don't stop", moving, 'start'],
+        ['non fermarti', moving, 'start'],
+        ['no pares', moving, 'start'],
+        ['move for me', posed, 'start'],
+    ])('%s (%o) → %s', (text, c, want) => expect(move(text, c)).toBe(want));
 });

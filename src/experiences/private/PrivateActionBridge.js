@@ -647,7 +647,13 @@
                     if (state !== s) return {};
                     let speaking = false;
                     try {
-                        speaking = Boolean(s.win.speechSynthesis && s.win.speechSynthesis.speaking);
+                        // Codex (#196). Any of her voices: the app's TTS provider (Piper, SonicAgent, cloud)
+                        // as SpeechAdapter reads it, then the browser's own speech.
+                        const tts = s.win.NEXUS_TTS_PROVIDER;
+                        speaking = Boolean(
+                            (tts && typeof tts.isSpeaking === 'function' && tts.isSpeaking()) ||
+                                (s.win.speechSynthesis && s.win.speechSynthesis.speaking)
+                        );
                     } catch (_) {
                         speaking = false;
                     }
@@ -2140,7 +2146,15 @@
         s.turnText = String(text == null ? '' : text);
         touched(s);
         const intent = turn && turn.intent;
-        if (intent === 'end' || intent === 'pace-down') return null;
+        if (intent === 'end' || intent === 'pace-down') {
+            // Codex (#196). Easing off (or hesitating) stills her too: a position allowed at the
+            // lower step stays held, and the movement they had asked for must not go on under it.
+            if (s.moving) {
+                s.moving = null;
+                emit();
+            }
+            return null;
+        }
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
         if (!Intent) return null;
 

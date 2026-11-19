@@ -595,6 +595,17 @@
     );
     const MOVE_FAST = new RegExp(word('fast|faster|quick|veloce|rápido|rapido|vite|schnell|depressa'), 'iu');
 
+    /**
+     * Codex (#196). "Don't rock your hips", "I don't want you to keep moving", "non muoverti così":
+     * a movement word under a negation is a no. It runs before the general negation gate (so
+     * "don't stop" can be a yes), so it checks for itself: negated and not one of the affirmative
+     * "don't stop" phrases means stop if she is moving, and nothing otherwise — never a start.
+     */
+    const MOVE_NEGATED =
+        /(?:^|[\s,.!])(?:don[’']?t|do not|never|stop|i don[’']?t want|non|no|nunca|jamais|ne|n[’']|nicht|kein|não|nao|nie)(?=[\s,.!])/iu;
+    const MOVE_YES_DESPITE_NO =
+        /don[’']?t stop|do not stop|non fermarti|non smettere|no pares|ne t[’']arrête pas|hör nicht auf|hor nicht auf|não pares|nao pares|não pare|止めないで|멈추지 마|别停/iu;
+
     function motionFrom(body, context) {
         const c = context || {};
         if (!c.poseHeld || c.routine === 'running') return null;
@@ -602,6 +613,14 @@
         if ((STILL_VERBS.test(body) || STILL_CJK.test(body)) && !MOVE_SHORT.test(body))
             return action('avatar.move', { move: 'still' }, 'avatar');
         if (c.moving && short && STILL_SHORT.test(body)) return action('avatar.move', { move: 'still' }, 'avatar');
+        if (` ${body} `.match(MOVE_NEGATED) && !MOVE_YES_DESPITE_NO.test(body)) {
+            const aboutMoving =
+                MOVE_VERBS.test(body) ||
+                MOVE_SHORT.test(body.replace(MOVE_NEGATED, ' ').trim()) ||
+                /\b(?:move|moving|rock|grind)\b/iu.test(body);
+            if (!aboutMoving) return null;
+            return c.moving ? action('avatar.move', { move: 'still' }, 'avatar') : null;
+        }
         if (c.moving) {
             if (ROUTINE_SLOWER.test(body) || ROUTINE_SLOWER_CJK.test(body))
                 return action('avatar.move', { move: 'slower' }, 'avatar');

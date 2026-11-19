@@ -484,3 +484,46 @@ describe('LM8 optional near-invisible breathing while still', () => {
         expect(Living.breathingOn()).toBe(true);
     });
 });
+
+describe("Codex (#196): her mouth is lip sync's while she speaks", () => {
+    beforeEach(() => localStorage.clear());
+    test('speaking: the layer never writes `oh`; idle: zeros are not written every frame', () => {
+        let layer = null;
+        const set = [];
+        let speaking = true;
+        const win = {
+            NEXUS_VIEWER: {
+                avatarManager: { _currentVRM: { expressionManager: { setValue: (n, v) => set.push([n, v]) } } },
+            },
+        };
+        Living.attach({
+            win,
+            system: { setLayer: (l) => (layer = l), getLayer: () => layer },
+            read: () => ({ pose: 'straddle', level: 4, moving: 'normal', finishAt: Date.now() - 4000, speaking }),
+        });
+        const { b } = body(false);
+        for (let i = 0; i < 120; i += 1) layer.apply(1 / 60, rigOf(b), THREE);
+        expect(set.some(([n]) => n === 'oh')).toBe(false);
+        speaking = false;
+        for (let i = 0; i < 10; i += 1) layer.apply(1 / 60, rigOf(b), THREE);
+        expect(set.some(([n, v]) => n === 'oh' && v > 0)).toBe(true);
+    });
+
+    test('still and not asked: nothing is written to her face at all', () => {
+        let layer = null;
+        const set = [];
+        const win = {
+            NEXUS_VIEWER: {
+                avatarManager: { _currentVRM: { expressionManager: { setValue: (n, v) => set.push([n, v]) } } },
+            },
+        };
+        Living.attach({
+            win,
+            system: { setLayer: (l) => (layer = l), getLayer: () => layer },
+            read: () => ({ pose: 'kneel', level: 4 }),
+        });
+        const { b } = body(false);
+        for (let i = 0; i < 120; i += 1) layer.apply(1 / 60, rigOf(b), THREE);
+        expect(set).toEqual([]);
+    });
+});

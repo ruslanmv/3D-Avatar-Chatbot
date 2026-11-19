@@ -247,7 +247,9 @@
                     // Her face: soft and relaxed as she builds; lips parting near the top and at
                     // the finish. Only `relaxed` and `oh`: emotions and lip sync own the others.
                     relaxed: c.care ? 0 : Math.min(0.85, (0.1 + 0.55 * a + 0.25 * glow) * act + 0.3 * f),
-                    oh: c.care || c.speaking ? 0 : Math.min(0.7, 0.25 * band(a, 0.6, 1) * act + 0.55 * f),
+                    // Codex (#196). While she speaks, the mouth is lip sync's: no value at all (not 0,
+                    // which would erase its vowel every frame), so the runtime writes nothing.
+                    oh: c.speaking ? undefined : c.care ? 0 : Math.min(0.7, 0.25 * band(a, 0.6, 1) * act + 0.55 * f),
                 },
                 hands: { left: { place: null, weight: 0 }, right: { place: null, weight: 0 } },
                 stroke: [0, 0],
@@ -834,12 +836,21 @@
                 return null;
             }
         };
+        // Codex (#196). Write only what the layer uses: a value above zero, or the one zero that
+        // takes back what it set. Zero every frame stomped whatever else owns that expression
+        // (lip sync's `oh`, an emotion's relaxed); `undefined` (her mouth while she speaks) is
+        // never written at all.
+        const written = new Map();
         const setFace = (face) => {
             const em = vrm() && vrm().expressionManager;
             if (!em || typeof em.setValue !== 'function') return;
             for (const [name, value] of Object.entries(face || {})) {
+                if (value === undefined) continue;
+                const was = written.get(name) || 0;
+                if (!(value > 0) && !(was > 0)) continue;
                 try {
-                    em.setValue(name, value);
+                    em.setValue(name, value > 0 ? value : 0);
+                    written.set(name, value > 0 ? value : 0);
                     faceSet.add(name);
                 } catch (_) {
                     /* this avatar has no such expression */
@@ -882,6 +893,7 @@
                 if (!faceSet.size) return;
                 setFace(Object.fromEntries([...faceSet].map((n) => [n, 0])));
                 faceSet.clear();
+                written.clear();
                 last = null;
             },
         };
