@@ -78,7 +78,17 @@ describe('PS2 fisting: their words only, at the top of the pace', () => {
     });
 
     test('a punch is not fisting, and a negation is not a yes', () => {
-        for (const said of ['ti do un pugno', 'un puño en la mesa', 'don’t fist me']) {
+        for (const said of [
+            'ti do un pugno',
+            'un puño en la mesa',
+            'don’t fist me',
+            // Codex (#200): talking about it, asking about it or declining it never runs it.
+            'Do you like fisting?',
+            'I do not want fisting',
+            'I love fisting',
+            'non voglio il pugno dentro',
+            'no quiero meterte el puño',
+        ]) {
             const a = parse(said);
             expect(a && a.name).not.toBe('body.fist');
         }

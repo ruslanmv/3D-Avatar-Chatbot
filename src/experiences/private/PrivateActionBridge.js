@@ -1789,15 +1789,29 @@
             both: ['missionary-fisted', 'missionary-fisted-anal'],
         },
     });
-    const FIST_ANY = ['missionary-fisted', 'doggy-anal-fisted', 'doggy-both-fisted', 'missionary-fisted-anal'];
+    /*
+     * Codex (#200). What each target may show when her position has none of its own: never a
+     * different act (an anal request showed the front state). Asked for one target and it cannot
+     * be shown: nothing is, and they are told in words.
+     */
+    const FIST_BY_TARGET = Object.freeze({
+        front: ['missionary-fisted'],
+        anal: ['doggy-anal-fisted', 'missionary-fisted-anal'],
+        both: ['doggy-both-fisted'],
+    });
 
     function fistState(s, where) {
         const names = (s.skinStates || []).map((x) => x.name);
         const group = poseGroup(s);
         const byPose = FIST_STATES[group] || null;
-        const want = where && where !== 'choose' ? where : group === 'doggy' ? 'anal' : 'front';
-        const ordered = [...((byPose && byPose[want]) || []), ...FIST_ANY];
-        return ordered.find((n) => names.includes(n)) || null;
+        const asked = where && where !== 'choose' ? where : null;
+        const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
+        for (const target of targets) {
+            const ordered = [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]];
+            const found = ordered.find((n) => names.includes(n));
+            if (found) return found;
+        }
+        return null;
     }
 
     function fistOn(s, action) {

@@ -676,8 +676,28 @@
     const FIST_BOTH = new RegExp(word('both|entrambi|tutti e due|ambos|los dos|les deux|beide|os dois'), 'iu');
     const FIST_BOTH_CJK = /両方|둘 다|两个/u;
 
+    /*
+     * Codex (#200). Only a request runs it: "Do you like fisting?" and "I do not want fisting"
+     * named the act and showed it on her. Now the message must ask (a request cue), must not be a
+     * question, and must hold no negation anywhere — NEGATED only looks at the start.
+     */
+    const FIST_REQUEST = new RegExp(
+        word(
+            "fist me|fammi|voglio|vorrei|dammi|ti faccio|prendi|i want|give me|let me|take my|i'm going to|quiero|dame|déjame|dejame|toma|meterte|je veux|donne-moi|laisse-moi|prends|ich will|gib mir|lass mich|nimm|quero|dá-me|da-me|deixa-me|toma|enfiar"
+        ),
+        'iu'
+    );
+    const FIST_REQUEST_CJK = /して|したい|入れて|해 줘|해줘|넣어|넣을게|想要|给我|让我/u;
+    const FIST_NOT = new RegExp(
+        word("not|don't|don’t|do not|never|no|non|mai|niente|nunca|ni|pas|jamais|nicht|kein|keine|nie|não|nao|nem"),
+        'iu'
+    );
+    const FIST_NOT_CJK = /ない|しない|やめ|않|안 |싫|不|别|没/u;
+
     function fistFrom(body) {
         if (!FIST.test(body) && !FIST_CJK.test(body)) return null;
+        if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
+        if (!FIST_REQUEST.test(body) && !FIST_REQUEST_CJK.test(body)) return null;
         const where =
             FIST_BOTH.test(body) || FIST_BOTH_CJK.test(body)
                 ? 'both'

@@ -2454,6 +2454,42 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             expect(Policy.validate('body.finish', { where: 'face' }).ok).toBe(false);
         });
 
+        test('PS2 (Codex #200). their fist shows only the act they asked for, never another', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'missionary-fisted', body: 'their fist is inside your pussy' },
+                ];
+                return skin;
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            const w = await begin({ adult: true, looks: LOOKS_UN32 });
+            window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+            w.adult.level = 4;
+            await say('Mettiti il vestito da cocktail nero');
+            await flush();
+            await say('spogliati');
+            await flush();
+            // Asked for anal; the pack holds only the front state: nothing is shown.
+            await say('fammi il pugno nel culo');
+            await flush();
+            expect(calls).not.toContain('apply:missionary-fisted');
+            expect(Actions.snapshot().last).toMatchObject({
+                name: 'body.fist',
+                status: 'failed',
+                why: 'no-fist-state',
+            });
+            // Asked without a target: what this pack can show.
+            await say('fammi il pugno');
+            await flush();
+            expect(calls[calls.length - 1]).toBe('apply:missionary-fisted');
+        });
+
         test('on her lower back is shown live, she is told, it holds, then the afterglow fades it', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
