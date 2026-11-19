@@ -252,8 +252,10 @@ clothing visibility (`src/wardrobe/ClothingVisibility.js`: hidden only where
 Forge's `/v1/visibility` allows it for the exact bytes on stage), `LM` for her
 body alive in a held position (`src/experiences/private/PrivateLivingMotion.js`:
 breathing, rocking, arching, face and her hands on her breast and belly, drawn
-over the held pose through `VRPoseSystem.setLayer`, never edited into it;
-measure with `tools/qa/living-motion-live.mjs`). Commit subjects match:
+over the held pose through `VRPoseSystem.setLayer`, never edited into it; one
+switch in Settings ▸ Private Mode, `nexus_private_living_enabled`, on by
+default, off draws nothing and removes nothing; measure with
+`tools/qa/living-motion-live.mjs`). Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 

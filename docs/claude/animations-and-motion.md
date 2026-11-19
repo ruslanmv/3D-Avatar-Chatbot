@@ -170,6 +170,12 @@ next frame only where the value is still the one the layer wrote. Every axis
 comes from her bones (hips→head, hip→hip), so it is right for VRM 0.x and 1.0
 and in every position.
 
+It is optional: Settings ▸ Private Mode ▸ "Living motion in Private"
+(`nexus_private_living_enabled`, on by default). The row is added by the module
+at load, not written into `index.html` (a row there moves the lines the parity
+harness pins). Off is read each frame: the layer draws nothing and her face goes
+back, while everything stays installed for turning it on again.
+
 ```bash
 node tools/qa/living-motion-live.mjs --vrm <file.vrm> --only straddle,sit-open
 ```

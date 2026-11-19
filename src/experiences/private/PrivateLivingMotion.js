@@ -622,6 +622,108 @@
         return done;
     }
 
+    // ---------------------------------------------------------------- the switch in Settings
+
+    /**
+     * LM3. One switch, in Settings under Spicy Mode: "Living motion in Private". On by default,
+     * kept on this device. Off means the layer draws nothing — she holds each position as the
+     * preset has it, her face goes back to neutral, and the model is told nothing about her hands
+     * — while every part of it stays installed, so turning it back on needs no reload and nothing
+     * is lost. Read each frame, so the change is live in the middle of an evening.
+     *
+     * A setting, not conversation: CLEAR leaves it (ConversationReset is the owner of forgetting,
+     * and settings are not what it forgets).
+     */
+    const STORAGE_KEY = 'nexus_private_living_enabled';
+    const listeners = new Set();
+
+    function store() {
+        try {
+            return global && global.localStorage ? global.localStorage : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Is the living layer on? Absent or unreadable storage is on: it is the shipped default. */
+    function isOn() {
+        try {
+            const st = store();
+            return !st || st.getItem(STORAGE_KEY) !== '0';
+        } catch (_) {
+            return true;
+        }
+    }
+
+    /** Turn it on or off; tells listeners (the Settings row) when it changed. */
+    function setOn(on) {
+        const was = isOn();
+        try {
+            const st = store();
+            if (st) st.setItem(STORAGE_KEY, on ? '1' : '0');
+        } catch (_) {
+            /* private browsing: it stays as it was for this page */
+        }
+        const now = isOn();
+        if (now !== was)
+            for (const fn of [...listeners]) {
+                try {
+                    fn(now);
+                } catch (_) {
+                    /* one listener must not stop the others */
+                }
+            }
+        return now;
+    }
+
+    function onChange(fn) {
+        if (typeof fn !== 'function') return () => {};
+        listeners.add(fn);
+        return () => listeners.delete(fn);
+    }
+
+    /**
+     * Put the switch into Settings: a row in the Spicy Mode section, beside the toggle it belongs
+     * with. Added from here rather than written into `index.html`, because a row there moves every
+     * line below it and the parity harness pins those lines (CLAUDE.md, the wardrobe tags). Once
+     * per document; a page without the Spicy section gets no row and keeps the default.
+     */
+    const ROW_ID = 'private-living-toggle';
+    function mountSetting(doc) {
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        if (!d || d.getElementById(ROW_ID)) return d ? d.getElementById(ROW_ID) : null;
+        const spicy = d.getElementById('spicy-mode-toggle');
+        const section = spicy && spicy.closest ? spicy.closest('.config-section') : null;
+        if (!section) return null;
+        const group = d.createElement('div');
+        group.className = 'input-group';
+        const label = d.createElement('label');
+        label.className = 'spicy-toggle-label';
+        const text = d.createElement('span');
+        text.textContent = 'Living motion in Private';
+        const sw = d.createElement('div');
+        sw.className = 'spicy-toggle-switch';
+        const box = d.createElement('input');
+        box.type = 'checkbox';
+        box.id = ROW_ID;
+        box.checked = isOn();
+        const slider = d.createElement('span');
+        slider.className = 'spicy-toggle-slider';
+        sw.append(box, slider);
+        label.append(text, sw);
+        const note = d.createElement('p');
+        note.style.cssText = 'font-size: 0.7rem; color: #888; margin: 6px 0 0';
+        note.textContent =
+            'Breathing, rocking, arching and her hands while she holds a position. Off keeps her still in it.';
+        group.append(label, note);
+        section.append(group);
+        box.addEventListener('change', () => setOn(box.checked));
+        onChange((on) => {
+            box.checked = on;
+        });
+        return box;
+    }
+
     // ---------------------------------------------------------------- the runtime in the page
 
     /**
@@ -662,6 +764,11 @@
         const layer = {
             keys: BONES,
             apply(dt, rig, THREE) {
+                // LM3. Switched off in Settings: draw nothing, put her face back, say nothing.
+                if (!isOn()) {
+                    layer.idle();
+                    return null;
+                }
                 let ctx = {};
                 try {
                     ctx = (typeof o.read === 'function' && o.read()) || {};
@@ -702,7 +809,7 @@
                 layer.idle();
             },
             frame: () => last,
-            describe: () => describe(last),
+            describe: () => (isOn() ? describe(last) : null),
         };
     }
 
@@ -722,7 +829,18 @@
         solveArm,
         apply,
         attach,
+        STORAGE_KEY,
+        isOn,
+        setOn,
+        onChange,
+        mountSetting,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_LIVING = api;
+    // LM3. The Settings row, once the page's markup is there (tests call mountSetting themselves).
+    if (typeof document !== 'undefined' && typeof module === 'undefined') {
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', () => mountSetting(document), { once: true });
+        else mountSetting(document);
+    }
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

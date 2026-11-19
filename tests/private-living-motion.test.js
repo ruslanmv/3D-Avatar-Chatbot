@@ -305,3 +305,70 @@ describe('LM1 attach: the page runtime', () => {
         live.detach();
     });
 });
+
+describe('LM3 the switch in Settings: optional, never removed', () => {
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.innerHTML = '';
+    });
+
+    test('on by default; off and on again are kept on this device', () => {
+        expect(Living.isOn()).toBe(true);
+        expect(Living.setOn(false)).toBe(false);
+        expect(localStorage.getItem(Living.STORAGE_KEY)).toBe('0');
+        expect(Living.isOn()).toBe(false);
+        expect(Living.setOn(true)).toBe(true);
+        expect(Living.isOn()).toBe(true);
+    });
+
+    test('off: the layer draws nothing, her face goes back, the model hears nothing; on again: it is all there', () => {
+        let layer = null;
+        const set = [];
+        const win = {
+            NEXUS_VIEWER: {
+                avatarManager: { _currentVRM: { expressionManager: { setValue: (n, v) => set.push([n, v]) } } },
+            },
+        };
+        const live = Living.attach({
+            win,
+            system: { setLayer: (l) => (layer = l), getLayer: () => layer },
+            read: () => ({ pose: 'sit-open', level: 4 }),
+        });
+        const { b } = body(false);
+        const rig = rigOf(b);
+        for (let i = 0; i < 60 * 40; i += 1) layer.apply(1 / 60, rig, THREE);
+        expect(live.frame()).toBeTruthy();
+        Living.setOn(false);
+        const before = Object.fromEntries(Object.entries(b).map(([k, n]) => [k, n.quaternion.clone()]));
+        expect(layer.apply(1 / 60, rig, THREE)).toBeNull();
+        for (const [k, q] of Object.entries(before)) expect(b[k].quaternion.equals(q)).toBe(true);
+        expect(set.filter(([n]) => n === 'relaxed').pop()[1]).toBe(0);
+        expect(live.describe()).toBeNull();
+        expect(layer).toBeTruthy(); // still installed: nothing destroyed
+        Living.setOn(true);
+        expect(layer.apply(1 / 60, rig, THREE)).toBeTruthy();
+        live.detach();
+    });
+
+    test('the row sits in the Spicy Mode section, once, and drives the switch both ways', () => {
+        document.body.innerHTML =
+            '<div class="config-section"><h3>SPICY MODE</h3><div class="input-group"><input type="checkbox" id="spicy-mode-toggle"></div></div>';
+        const box = Living.mountSetting(document);
+        expect(box).toBeTruthy();
+        expect(box.closest('.config-section').querySelector('#spicy-mode-toggle')).toBeTruthy();
+        expect(box.checked).toBe(true);
+        expect(Living.mountSetting(document)).toBe(box);
+        expect(document.querySelectorAll('#private-living-toggle')).toHaveLength(1);
+        box.checked = false;
+        box.dispatchEvent(new Event('change'));
+        expect(Living.isOn()).toBe(false);
+        Living.setOn(true);
+        expect(box.checked).toBe(true);
+    });
+
+    test('a page without the Spicy section gets no row, and keeps the default', () => {
+        document.body.innerHTML = '<div></div>';
+        expect(Living.mountSetting(document)).toBeNull();
+        expect(Living.isOn()).toBe(true);
+    });
+});
