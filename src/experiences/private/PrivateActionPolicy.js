@@ -209,6 +209,8 @@
                 preset: (v) => (PRESET_NAME.test(String(v || '')) ? String(v) : undefined),
                 said: (v) => text(v, 80),
                 ask: (v) => text(v, 160),
+                // OL3. "open" | "close": relative to the position she holds (PrivatePoseController.transition).
+                rel: oneOf(['open', 'close']),
             },
             required: ['pose'],
         },

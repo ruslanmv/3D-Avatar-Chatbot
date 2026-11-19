@@ -3036,6 +3036,18 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             // Asked to sit, it is the seat (on the floor now, OL1).
             await turn('siediti a gambe aperte');
             expect(applied.slice(-1)).toEqual(['sit-open']);
+            // OL3. Remembered: "chiudi le gambe" from the open seat is lounging; from her back with
+            // knees up it is lying back; a bare "apri" opens them again where she is.
+            await turn('chiudi le gambe');
+            expect(applied.slice(-1)).toEqual(['lounge']);
+            await turn('Sdraiati sulla schiena con le ginocchia alzate');
+            await turn('chiudi le gambe');
+            expect(applied.slice(-1)).toEqual(['lie-back']);
+            await turn('apri');
+            expect(applied.slice(-1)).toEqual(['knees-up']);
+            expect(Actions.promptLines().join('\n')).toMatch(
+                /from lie back, only your legs changed|asked you to open your legs and you already are/
+            );
         } finally {
             window.NEXUS_PRIVATE_POSES = real;
         }
