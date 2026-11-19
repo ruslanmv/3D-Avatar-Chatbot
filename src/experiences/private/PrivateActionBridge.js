@@ -1944,6 +1944,7 @@
         if (!K) return [];
         const names = s.skin && Array.isArray(s.skinStates) ? s.skinStates.map((x) => x && x.name) : [];
         let bareLooks = [];
+        let wearing = [];
         try {
             const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
             const current = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
@@ -1951,12 +1952,21 @@
             bareLooks = ((s.closet && s.closet.looks) || [])
                 .filter((l) => l && Engine && Engine.isBare(l) && (!current || keyOf(l) !== keyOf(current)))
                 .slice(0, 8)
-                .map((l) => ({ name: String(l.name || '').slice(0, 60) }));
+                // BD21. Forge says what each bare look's body has (look.body: preset, states,
+                // extras), so she can name the look with the piercing they asked for.
+                .map((l) => ({ name: String(l.name || '').slice(0, 60), extras: extrasOf(l) }));
+            wearing = extrasOf(current);
         } catch (_) {
             bareLooks = [];
         }
-        const out = K.lines({ names, pose: poseGroup(s), text: s.turnText, bareLooks });
+        const out = K.lines({ names, pose: poseGroup(s), text: s.turnText, bareLooks, wearing });
         return [out.index, out.detail].filter(Boolean);
+    }
+
+    /** BD21. A look's painted extras from Forge's `body` field (strings only, at most four). */
+    function extrasOf(look) {
+        const extras = look && look.body && Array.isArray(look.body.extras) ? look.body.extras : [];
+        return extras.filter((e) => typeof e === 'string' && /^[a-z0-9-]{1,40}$/.test(e)).slice(0, 4);
     }
 
     function skinLine(s) {

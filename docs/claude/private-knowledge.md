@@ -20,8 +20,9 @@ with no alternative offered). Both were seen in a real evening, 2026-11-19.
    ≤ 900 (`PrivateBodyKnowledge.BUDGET`). The test runs against Forge's full state list, so adding
    states can never quietly grow the prompt.
 5. **Say what is impossible, with the alternative.** Things that come with a look (piercings,
-   tattoos, marks) are never added live: when asked, she is told which looks carry them so she can
-   offer to change into one.
+   tattoos, marks) are never added live: when asked, she is told which looks carry them — those
+   with the kind asked for first, named with their extras (BD21, from Forge's `look.body`) — so
+   she can offer to change into one. What is painted on the look she wears is in the index.
 6. **Information, never an action.** Knowing a state never applies it: the pace, the person's
    words or taps, and the bridge's actions do.
 
@@ -32,7 +33,10 @@ with no alternative offered). Both were seen in a real evening, 2026-11-19.
 | The body's knowledge (families, words, budgets) | `src/experiences/private/PrivateBodyKnowledge.js` |
 | Where it reaches the prompt | `PrivateActionBridge` `packLines` (closest step only) |
 | Tests | `tests/private-body-knowledge.test.js`, the PS2 bridge test |
-| The full list of states (Forge) | `3d-wardrobe-forge/assets/body_detail/{presets,states,extras}.json` |
+| The full list of states (Forge) | `3d-wardrobe-forge/assets/body_detail/{presets,states,extras}.json` (a copy of the names: `tests/fixtures/forge-body-states.json`) |
+| What each bare look has (BD21) | Forge's `look.body` = `{detail, state, states, extras, skinPack}` on her wardrobe listing (admin or grant only); `extrasOf` in the bridge |
+| Names and body lines of everything (BD21) | Forge `GET /v1/body-surface/catalog` (admin or grant) |
+| Making the looks (BD21) | Forge `tools/prebuild_private.py`: every state in packs of ≤10, plus looks with extras, per character |
 
 ## Adding to it
 

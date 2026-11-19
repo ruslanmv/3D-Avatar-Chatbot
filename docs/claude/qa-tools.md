@@ -68,6 +68,9 @@ heels (`tools/qa/body-detail-render.mjs`), and the motion gallery
 
 ## Forge (the wardrobe service, its own repository)
 
+`tools/prebuild_private.py` (BD21: every private bare look for every character —
+all states in skin packs, plus looks with extras; admin token from a file;
+idempotent; gate refusals reported, never worked around),
 `tools/body_surface/detail_flat.py`, `detail_preview.py`, `build_outfits.py` —
 see Forge's CLAUDE.md ▸ Looking at results. Read-only checks of the HF dataset
 use a token only in one command's environment, never in a file.

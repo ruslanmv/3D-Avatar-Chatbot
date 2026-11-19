@@ -3,9 +3,14 @@
  * family in detail only when the person's words touch it, filtered by her position, under budget.
  */
 const K = require('../src/experiences/private/PrivateBodyKnowledge.js');
-const states = require('../../3d-wardrobe-forge/assets/body_detail/states.json').states;
-
-const FULL = Object.keys(states); // every state Forge has: the worst case for the budget
+// Every state Forge has: the worst case for the budget. Forge's own file when it is checked out
+// beside this repository (so a new state is measured at once), else the copy taken with this test.
+let FULL;
+try {
+    FULL = Object.keys(require('../../3d-wardrobe-forge/assets/body_detail/states.json').states);
+} catch (_) {
+    FULL = require('./fixtures/forge-body-states.json').states;
+}
 
 describe('PB2 her body, known in proportion', () => {
     test('a full pack: the index stays under its budget and names families, not states', () => {
@@ -47,5 +52,25 @@ describe('PB2 her body, known in proportion', () => {
     test('ordinary words do not pull a family in (ricordo, sincera)', () => {
         expect(K.asked('mi ricordo di te, sei sincera')).toEqual([]);
         expect(K.lines({ names: [], text: 'ciao' })).toEqual({ index: null, detail: null });
+    });
+
+    test('BD21: asked for a piercing, she names the look that has one, with what it has', () => {
+        const bareLooks = [
+            { name: 'Bare · tanned', extras: ['tan-triangle-thong'] },
+            { name: 'Bare · pierced', extras: ['piercings-nipples', 'piercings-intimate'] },
+        ];
+        const { detail } = K.lines({ names: FULL, text: 'Voglio un piercing nella tua vagina', bareLooks });
+        expect(detail).toMatch(/Bare · pierced \(piercings nipples, piercings intimate\)/);
+        expect(detail).not.toMatch(/tanned/);
+        expect(detail.length).toBeLessThanOrEqual(K.BUDGET.detail);
+        // Asked for something no look has, every bare look is offered rather than none.
+        expect(K.looksFor(bareLooks, 'un tatuaggio')).toHaveLength(2);
+    });
+
+    test('BD21: what is painted on her look now is in the index, within budget', () => {
+        const { index } = K.lines({ names: FULL, text: 'ciao', wearing: ['tattoo-mons-rose'] });
+        expect(index).toMatch(/on your skin now: tattoo mons rose/);
+        expect(index.length).toBeLessThanOrEqual(K.BUDGET.index);
+        expect(K.lines({ names: [], wearing: ['glitter'] }).index).toMatch(/glitter/);
     });
 });

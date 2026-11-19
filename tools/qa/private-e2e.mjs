@@ -9,7 +9,7 @@
  * Secrets come from the environment only and are never written to the report, the console or a
  * file: OLLABRIDGE_TOKEN (a paired device token — or OLLABRIDGE_PAIR_CODE to pair first),
  * FORGE_GRANT (a Forge read grant). Optional: OLLABRIDGE_URL (default https://app.ollabridge.com),
- * OLLABRIDGE_MODEL (default homepilot-auto), FORGE_URL (default the app's own Forge).
+ * OLLABRIDGE_MODEL (default grok-best), FORGE_URL (default the app's own Forge).
  *
  * What the unit tests cannot show and this does: what a real model says and does with the prompt
  * Private builds, through the real bridge. For each turn it sends the person's words through the
@@ -41,7 +41,7 @@ const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-e2e/runs', stamp)));
 
 const OB_URL = (process.env.OLLABRIDGE_URL || 'https://app.ollabridge.com').replace(/\/$/, '');
-const OB_MODEL = process.env.OLLABRIDGE_MODEL || 'homepilot-auto';
+const OB_MODEL = process.env.OLLABRIDGE_MODEL || 'grok-best';
 const FORGE_URL = process.env.FORGE_URL || '';
 
 /**
