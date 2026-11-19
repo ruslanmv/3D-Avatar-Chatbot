@@ -173,6 +173,27 @@
                 { id: 'light', kind: 'mood', label: '💡 Light' },
             ]),
         }),
+        // WR1. The Window Room: her whole evening, start to end (PrivateRoutines 'window-evening').
+        Object.freeze({
+            id: 'window-room',
+            world: 'window-room',
+            anchors: Object.freeze([
+                { id: 'bed', label: 'bed', at: [0, 0.5, -2.6], space: 'place' },
+                { id: 'window', label: 'window', at: [-2.6, 1.3, -1.2], space: 'place' },
+                { id: 'mirror', label: 'mirror', at: [2.45, 1.25, -1.0], space: 'place' },
+            ]),
+            title: 'Window room',
+            category: 'Private',
+            rating: 'private',
+            description: 'A small room behind a red-lit window: the whole evening with her.',
+            image: PREVIEWS + 'window-room.webp',
+            moods: Object.freeze(['romantic-evening', 'neon-blue-purple', 'cozy-warm']),
+            actions: Object.freeze([
+                { id: 'evening', kind: 'say', label: '🌹 The full evening', text: 'Give me the full evening' },
+                { id: 'striptease', kind: 'say', label: '💃 Striptease', text: 'Do a striptease for me' },
+                { id: 'light', kind: 'mood', label: '💡 Light' },
+            ]),
+        }),
         Object.freeze({
             id: 'private-stream-studio',
             world: 'private-stream-studio',

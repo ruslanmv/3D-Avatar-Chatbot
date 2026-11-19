@@ -31,8 +31,9 @@ const VENUES = [
     'creative-academy',
     'strip-stage',
     'dance-lounge',
+    'window-room',
 ];
-const PRIVATE = ['private-cabaret', 'private-stream-studio', 'strip-stage', 'dance-lounge'];
+const PRIVATE = ['private-cabaret', 'private-stream-studio', 'strip-stage', 'dance-lounge', 'window-room'];
 
 describe('the venues are in the world catalogue', () => {
     test('valid, by name, rated as asked, every file present', () => {

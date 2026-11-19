@@ -69,6 +69,7 @@
         'open-for-you',
         'from-behind',
         'everything',
+        'window-evening',
         'striptease',
         'choose',
     ]);

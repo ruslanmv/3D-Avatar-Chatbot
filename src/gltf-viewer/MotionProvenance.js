@@ -127,6 +127,11 @@
         show('from-behind', 'UN36', 'Kneels wide, then on all fours, turned away'),
         show('everything', 'UN36', 'Sits open, on her back with knees up, on all fours turned away'),
         show('striptease', 'VA3', 'Dances the two CC0 clips, a layer off at each cue, ends kneeling'),
+        show(
+            'window-evening',
+            'WR1',
+            'The Window Room evening: dances at the window, sits on the bed, undresses, three positions, asks where to finish'
+        ),
         show('table-dance', 'VA3', 'Dances, turns, ends astride their lap'),
         Object.freeze({
             id: 'layer:living',

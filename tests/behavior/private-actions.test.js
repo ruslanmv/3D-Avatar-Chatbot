@@ -3050,4 +3050,32 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
             window.NEXUS_PRIVATE_POSES = real;
         }
     });
+
+    test('WR1. the Window Room: her opening, the menu at the door, a deal, then her invitation', async () => {
+        const real = window.NEXUS_PRIVATE_POSES;
+        poses();
+        try {
+            const w = world({ adult: true });
+            w.activity.worldChoice = 'window-room';
+            await w.activity.start({ input: { id: 'sensual' } });
+            const session = w.activity._privateExperience;
+            const Locale = require('../../src/features/together/PrivateLocale.js');
+            await flush();
+            expect(document.body.textContent).toContain(Locale.t('place.window-room.opening').slice(0, 30));
+            // The menu is on screen as chips; nothing is offered before the deal.
+            expect(document.body.textContent).toContain(Locale.t('place.deal.tease'));
+            expect(Actions.snapshot().offer).toBeNull();
+            // The deal is answered in her words, remembered, and its show offered once the pace opens it.
+            w.adult.level = 3;
+            expect(session._chooseReply(Locale.t('place.deal.tease'))).toBe(true);
+            await flush();
+            expect(session._placeWish).toBe('tease');
+            expect(document.body.textContent).toContain(Locale.t('place.deal.ok').slice(0, 20));
+            expect(Actions.snapshot().offer).toMatchObject({ kind: 'show', routine: 'tease' });
+            // A second tap on a deal chip is just words now: one deal per evening.
+            expect(session._dealFor(Locale.t('place.deal.striptease'))).toBeNull();
+        } finally {
+            window.NEXUS_PRIVATE_POSES = real;
+        }
+    });
 });

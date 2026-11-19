@@ -33,9 +33,52 @@ describe('PP1 room scripts', () => {
     });
 
     test('her opening, each invitation and "not yet" exist in every language', () => {
-        const keys = ['place.strip-stage.opening', 'place.dance-lounge.opening', 'place.notyet'];
+        const keys = ['place.notyet', 'place.deal.ok'];
+        for (const script of Object.values(Scripts.PLACES)) {
+            keys.push(`place.${script.id}.opening`);
+            for (const deal of script.deals || []) keys.push(`place.deal.${deal}`);
+        }
         for (const show of new Set(Object.values(Scripts.PLACES).flatMap((p) => p.shows)))
             keys.push(`place.invite.${show}`);
         for (const lang of Locale.languages()) for (const key of keys) expect(Locale.t(key, null, lang)).not.toBe(key);
+    });
+
+    test('WR1: the deal at the door decides what she invites them to, and the prompt says it', () => {
+        const room = Scripts.PLACES['window-room'];
+        const evening = Routines.level('window-evening', Policy.poseLevel);
+        expect(evening).toBe(4);
+        // Their choice first; only gentler ones after it, never a bolder one they did not choose.
+        expect(
+            Scripts.showToOffer(room, {
+                level: 4,
+                routines: Routines,
+                poseLevel: Policy.poseLevel,
+                wish: 'window-evening',
+            })
+        ).toBe('window-evening');
+        expect(
+            Scripts.showToOffer(room, { level: 4, routines: Routines, poseLevel: Policy.poseLevel, wish: 'tease' })
+        ).toBe('tease');
+        expect(
+            Scripts.showToOffer(room, {
+                level: 4,
+                routines: Routines,
+                poseLevel: Policy.poseLevel,
+                wish: 'tease',
+                offered: ['tease'],
+            })
+        ).toBeNull();
+        for (const deal of room.deals) expect(room.shows).toContain(deal);
+        const lines = Scripts.promptLines(room, Routines.ROUTINES['window-evening'].name).join('\n');
+        expect(lines).toMatch(/^THIS ROOM: .*over 25.*by your own choice/);
+        expect(lines).toMatch(/never real money/);
+        expect(lines).toMatch(/TONIGHT'S DEAL: they chose the whole evening/);
+    });
+
+    test('WR1: the evening asks where to finish, and never finishes on its own', () => {
+        const steps = Routines.ROUTINES['window-evening'].steps;
+        expect(steps.filter((x) => x.undress).length).toBeGreaterThanOrEqual(1);
+        expect(steps[steps.length - 1].body).toMatch(/asking them where they want to finish/);
+        expect(steps.some((x) => x.finish)).toBe(false);
     });
 });

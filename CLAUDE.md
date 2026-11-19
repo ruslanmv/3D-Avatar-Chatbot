@@ -266,11 +266,16 @@ rooms made for one of her shows
 table dance lounge; her opening there, the room's brief, and an invitation once
 the pace opens the show — an offer only the person's yes, tap or words start;
 PP2: a striptease with nothing left to take off puts on a ready `show-strip-*`
-set first). `SW` for the safety words and the moments around them
-(`PrivateTurnDirector.js`: end and ease-off in all nine languages, hesitation
-eases off and checks in once; the bridge's proportionate finish and three
-replies of aftercare). Commit subjects match: `A4: viewport background manager`.
-So `git log --grep 'A4'` and the comment line up.
+set first). `WR` for the Window Room (the same file and `PrivateRoutines.js`
+`window-evening`: her whole evening as an adult escort working her own window by
+her own choice — the deal at the door as chips answered locally and remembered,
+then her invitation as the pace opens it; price and time are story only; the
+finish stays the person's). `SW` for the safety words and the moments around
+them (`PrivateTurnDirector.js`: end and ease-off in all nine languages,
+hesitation eases off and checks in once; the bridge's proportionate finish and
+three replies of aftercare). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

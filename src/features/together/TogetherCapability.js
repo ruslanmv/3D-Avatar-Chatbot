@@ -901,7 +901,12 @@
             if (!P || !choice || !active || !Array.isArray(worlds)) return [];
             const w = worlds.find((x) => x && x.id === active);
             if (!w || (w.id !== choice && w.lightFor !== choice)) return [];
-            return P.promptLines(P.forWorld(w.id, w.lightFor));
+            // WR1. What they chose at the door, by the show's own name.
+            const session = activity._privateExperience;
+            const wish = session && session._placeWish;
+            const R = routinesModule();
+            const deal = wish && R && R.ROUTINES && R.ROUTINES[wish] ? R.ROUTINES[wish].name : '';
+            return P.promptLines(P.forWorld(w.id, w.lightFor), deal);
         } catch (_) {
             return [];
         }
@@ -1753,7 +1758,9 @@
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
             // the second exchange before offering a choice would have got the feel wrong.
-            if (!(room && room.invite && this._showChoices(room.show))) this._offerChoices([], { source: 'local' });
+            if (room && room.deals) this._dealChoices();
+            else if (!(room && room.invite && this._showChoices(room.show)))
+                this._offerChoices([], { source: 'local' });
             // Earliest-at rather than fires-at, and each of these waits for a quiet moment.
             //
             // What is *not* here any more (P12): the consent check-in at 120 s, the closing line at
@@ -2309,6 +2316,7 @@
                 routines: routinesModule(),
                 poseLevel: policy && policy.poseLevel,
                 offered: this._placeOffered,
+                wish: this._placeWish || null,
             });
         }
 
@@ -2321,6 +2329,9 @@
             const line = locale.t(key);
             if (!line || line === key) return null;
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            // WR1. A room with a menu at the door asks first: no invitation before the deal.
+            if (Array.isArray(script.deals) && script.deals.length)
+                return { line, invite: '', show: null, deals: true };
             const show = this._placeShow(level);
             const invite = show ? this._offerPlaceShow(show) : '';
             return { line, invite, show: invite ? show : null };
@@ -2345,6 +2356,41 @@
             if (!line) return false;
             this._sayBrief(line);
             this._showChoices(show);
+            return true;
+        }
+
+        /** WR1. The room's menu at the door, as chips: one per deal, in the card's language. */
+        _dealChoices() {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (!script || !Array.isArray(script.deals) || !locale || typeof locale.t !== 'function') return false;
+            const lines = script.deals
+                .map((id) => locale.t(`place.deal.${id}`))
+                .filter((x, i) => x && x !== `place.deal.${script.deals[i]}`);
+            return lines.length ? this._offerChoices(lines, { source: 'local' }) : false;
+        }
+
+        /** WR1. Which deal a chip line is, or null. Only in a room with a menu, before a deal. */
+        _dealFor(line) {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (this._placeWish || !script || !Array.isArray(script.deals) || !locale) return null;
+            return script.deals.find((id) => cleanText(locale.t(`place.deal.${id}`), 200) === line) || null;
+        }
+
+        /**
+         * WR1. They chose at the door. Remembered for the evening (the prompt says it, and the
+         * invitation follows it); she answers at once in her own words; and if the pace already
+         * opens what they chose, she invites them to it now. Nothing starts without their yes.
+         */
+        _takeDeal(id) {
+            this._placeWish = id;
+            const locale = localeModel();
+            const ok = locale && typeof locale.t === 'function' ? locale.t('place.deal.ok') : '';
+            if (ok && ok !== 'place.deal.ok') this._speak(ok);
+            this._emit('private:deal', { preset: this.preset.id, deal: id });
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            if (!this._invitePlace(level)) this._offerChoices([], { source: 'local' });
             return true;
         }
 
@@ -2411,6 +2457,9 @@
             if (!line) return false;
             // PP1 (Codex #198). "Not yet" under her invitation withdraws it: otherwise the offer
             // stayed up, and a "yes" to something else in the next two turns started the show.
+            // WR1. A deal at the door is answered here, in her words, and remembered for the evening.
+            const deal = this._dealFor(line);
+            if (deal) return this._takeDeal(deal);
             if (this._isNotYet(line)) {
                 const actions = actionBridge();
                 const offer = actions && typeof actions.snapshot === 'function' ? actions.snapshot().offer : null;
