@@ -433,6 +433,40 @@
         return { name, params: params || {}, family };
     }
 
+    /**
+     * UN34. Finishing: the person says they are coming, and where. It is their climax, so their words
+     * are the only way in: the policy refuses her tag, and the pace must be at its top. What
+     * happens is on her skin (the look's skin pack): where they came is shown on her, live, and the
+     * conversation is told the same, so what she says matches what is seen.
+     *
+     * A climax word is needed, never "come" alone ("come here" is not one). The place is optional:
+     * without it the bridge chooses from what the look can show and the position she holds.
+     */
+    const FINISH_VERB = new RegExp(
+        word(
+            "i[’']?m cumming|i am cumming|cumming|cum|i[’']?m coming|i am coming|gonna come|going to come|about to come|let me finish|i[’']?m finishing|vengo|sto venendo|sto per venire|venirti|ti vengo|me corro|me vengo|correrme|voy a acabar|acabo|je jouis|je vais jouir|jouir|ich komme|ich spritze|abspritzen|vou gozar|estou gozando|gozar|gozo"
+        ),
+        'iu'
+    );
+    const FINISH_PLACES = [
+        ['all', 'all over|everywhere|ovunque|dappertutto|addosso|por todas partes|partout|überall|toda (?:você|voce)'],
+        ['both', 'both holes|in both|entrambi i buchi|in entrambi|ambos agujeros|les deux trous|beide löcher|nos dois'],
+        ['ass', 'ass|asshole|butt|culo|culetto|nel sedere|cul|arsch|bunda|cu'],
+        ['back', 'back|lower back|schiena|sulla schiena|espalda|dos|rücken|costas'],
+        [
+            'inside',
+            'inside|in you|in your pussy|in her|dentro|dentro di te|en ti|adentro|en toi|dedans|in dir|rein|dentro de (?:você|voce)',
+        ],
+    ];
+
+    function finishFrom(body) {
+        if (!FINISH_VERB.test(body)) return null;
+        for (const [where, words] of FINISH_PLACES) {
+            if (new RegExp(word(words), 'iu').test(body)) return action('body.finish', { where }, 'body');
+        }
+        return action('body.finish', { where: 'choose' }, 'body');
+    }
+
     /** "yes" to something she offered, in the app's languages — a short message and nothing else. */
     const YES =
         /^(?:yes|yeah|yep|yup|ok|okay|sure|please do|do it|go ahead|go on|sì|si|certo|va bene|dai|fallo|volentieri|oui|d[’']accord|vas-y|ja|klar|gern|mach das|sim|claro|pode|vale|hazlo|venga|はい|うん|お願い|いいよ|네|응|좋아|好|好的|可以|行)(?:[\s,]+(?:please|per favore|por favor|bitte|grazie|thanks))?[\s.!]*$/iu;
@@ -824,6 +858,9 @@
         // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
         const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
         if (posed) return posed;
+        // UN34. Coming, and where: before anything could read "on your back" as a position.
+        const finished = !NEGATED.test(body) ? finishFrom(body) : null;
+        if (finished) return finished;
         // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
         if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
             return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');
@@ -977,6 +1014,7 @@
         storyCue,
         travelFrom,
         bodyFrom,
+        finishFrom,
         queryFrom,
         stylesIn,
         coloursIn,

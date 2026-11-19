@@ -171,7 +171,9 @@
         if (s.closet && typeof s.closet.onChange === 'function') {
             s.unwatch.push(
                 s.closet.onChange(() => {
-                    if (state === s) emit();
+                    if (state !== s) return;
+                    syncSkin(s); // UN32. a bare look with a skin pack switches state live
+                    emit();
                 })
             );
         }
@@ -183,6 +185,9 @@
     function end(session, options) {
         const s = state;
         if (!s || (session && s.session !== session)) return false;
+        if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
+        clearAfterglow(s);
+        clearFinish(s);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -781,6 +786,8 @@
                 return dance(s, action);
             case 'avatar.react':
                 return react(s, action);
+            case 'body.finish':
+                return finishOn(s, action);
             case 'world.travel':
                 return travel(s, action);
             case 'scene.change': {
@@ -1118,6 +1125,7 @@
      * what she holds is still open, or when she holds nothing. Never raises or lowers the level.
      */
     function fitPoseToPace() {
+        fitSkinToPace();
         const s = state;
         if (!s || s.session._stopped || !s.poses || typeof s.poses.held !== 'function') return false;
         const held = s.poses.held();
@@ -1126,6 +1134,197 @@
         if (!need || levelOf(s) >= need) return false;
         request('avatar.pose', { pose: 'stand' }, { source: 'control' }).catch(() => null);
         return true;
+    }
+
+    /**
+     * UN32. Her skin follows the pace live when the look on stage is a bare look with a skin pack
+     * (Forge BD7): Romantic and below closed, Sensual flushed, Intimate open — each only if the
+     * pack holds it, else the next listed. Read on every pace repaint; never moves the pace.
+     */
+    const SKIN_FOR_LEVEL = Object.freeze({
+        1: ['closed'],
+        2: ['closed'],
+        3: ['flushed', 'aroused'],
+        4: ['open', 'aroused', 'flushed'],
+    });
+
+    function skinSwitcher(s) {
+        if (s.skin) return s.skin;
+        const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+        if (!Skin || typeof Skin.create !== 'function') return null;
+        const forge = (() => {
+            try {
+                return s.win.NEXUS_WARDROBE.service.controller.forge;
+            } catch (_) {
+                return null;
+            }
+        })();
+        s.skin = Skin.create({
+            fetch: s.win.fetch && s.win.fetch.bind(s.win),
+            headersFor: async (url) =>
+                forge && typeof forge.downloadHeadersNow === 'function' ? forge.downloadHeadersNow(url) : {},
+        });
+        return s.skin;
+    }
+
+    function syncSkin(s) {
+        try {
+            const look = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            if (look === s.skinLook) return;
+            s.skinLook = look;
+            s.skinStates = [];
+            clearAfterglow(s); // another look starts from the pace, not from the last one's afterglow
+            clearFinish(s);
+            s.skinLevel = null;
+            const Skin = pick(s.win, 'NEXUS_SKIN_STATES', '../../wardrobe/SkinStateSwitcher.js');
+            if (!look || !Skin || !Skin.mayHavePack(look)) {
+                if (s.skin) s.skin.detach();
+                return;
+            }
+            const switcher = skinSwitcher(s);
+            const root =
+                s.win.NEXUS_VIEWER && s.win.NEXUS_VIEWER.avatarManager && s.win.NEXUS_VIEWER.avatarManager.currentRoot;
+            if (!switcher || !root) return;
+            switcher
+                .attach(root, look)
+                .then((states) => {
+                    if (state !== s || s.skinLook !== look) return;
+                    s.skinStates = states || [];
+                    fitSkinToPace();
+                })
+                .catch((error) => console.warn('[Private] skin pack not attached', error));
+        } catch (error) {
+            console.warn('[Private] skin states skipped', error);
+        }
+    }
+
+    /**
+     * UN33. Afterglow fades. Coming down from Intimate, her body does not snap back to closed: when
+     * the pack holds it she shows `afterglow` (flushed, nipples still hard, wet, a little open) for
+     * a few minutes, then cools to `flushed`, then settles to what the pace shows. Going back up to
+     * Intimate ends the fade at once. The timers live on the session and die with it (or with the
+     * look); they only ever re-read the pace, never move it.
+     */
+    const AFTERGLOW_MS = 4 * 60 * 1000;
+    const COOLING_MS = 3 * 60 * 1000;
+
+    function clearAfterglow(s) {
+        if (s && s.afterglow) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.afterglow.timer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        if (s) s.afterglow = null;
+    }
+
+    function startAfterglow(s, names) {
+        clearAfterglow(s);
+        const later = (fn, ms) => (s.win.setTimeout || setTimeout)(fn, ms);
+        const step = () => {
+            if (state !== s || !s.afterglow) return;
+            if (s.afterglow.stage === 'afterglow' && names.includes('flushed')) {
+                s.afterglow.stage = 'flushed';
+                s.afterglow.timer = later(step, COOLING_MS);
+            } else {
+                s.afterglow = null;
+            }
+            fitSkinToPace();
+        };
+        s.afterglow = { stage: 'afterglow', timer: later(step, AFTERGLOW_MS) };
+    }
+
+    function fitSkinToPace() {
+        const s = state;
+        if (!s || !s.skin || !s.skinStates || !s.skinStates.length) return false;
+        const names = s.skinStates.map((x) => x.name);
+        const level = Math.max(1, Math.min(4, levelOf(s) || 1));
+        const was = s.skinLevel;
+        s.skinLevel = level;
+        if (level >= 4) clearAfterglow(s);
+        else if (was >= 4 && names.includes('afterglow') && !s.finish) startAfterglow(s, names);
+        const fading = s.afterglow && names.includes(s.afterglow.stage) ? s.afterglow.stage : null;
+        // UN34. Where they finished stays on her through pace changes until its hold ends.
+        const finished = s.finish && names.includes(s.finish.state) ? s.finish.state : null;
+        const want = finished || fading || (SKIN_FOR_LEVEL[level] || []).find((n) => names.includes(n));
+        if (!want || s.skin.current() === want) return false;
+        s.skin.apply(want).catch((error) => console.warn('[Private] skin state not applied', error));
+        return true;
+    }
+
+    /**
+     * UN34. Where they finished, as her body can show it: the skin-pack states for each place, best
+     * first. Doggy states lead (the position this is most asked in), then the general ones; the
+     * first the look's pack holds is shown. Names are Forge's (assets/body_detail/states.json).
+     */
+    const FINISH_STATES = Object.freeze({
+        back: ['lower-back-cum-heavy', 'lower-back-cum', 'lower-back-cum-open', 'cum-on-back', 'doggy-cum-covered'],
+        inside: ['doggy-creampie', 'lower-back-cum-creampie', 'creampie', 'doggy-double-creampie', 'cum'],
+        ass: ['anal-creampie', 'doggy-anal-fisted-cum', 'lower-back-cum-gaping', 'doggy-double-creampie'],
+        both: ['doggy-double-creampie', 'doggy-anal-fisted-cum', 'doggy-open-cum', 'doggy-finish'],
+        all: ['doggy-finish', 'doggy-cum-covered', 'sado-full', 'doggy-gaping-cum', 'sado-used-cum'],
+    });
+    /** How long where they finished stays on her before the afterglow fade (UN33) takes over. */
+    const FINISH_HOLD_MS = 6 * 60 * 1000;
+    /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
+    const FINISH_ORDER = ['back', 'inside', 'both', 'ass', 'all'];
+
+    function finishState(s, where) {
+        const names = (s.skinStates || []).map((x) => x.name);
+        const places = where === 'choose' ? FINISH_ORDER : [where];
+        for (const place of places) {
+            const found = (FINISH_STATES[place] || []).find((n) => names.includes(n));
+            if (found) return { place, state: found };
+        }
+        return null;
+    }
+
+    function finishOn(s, action) {
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = finishState(s, action.params.where);
+        if (!chosen) return settle(action, 'failed', 'no-finish-state');
+        clearAfterglow(s);
+        clearFinish(s);
+        const later = (fn, ms) => (s.win.setTimeout || setTimeout)(fn, ms);
+        s.finish = {
+            state: chosen.state,
+            place: chosen.place,
+            turnId: action.turnId,
+            timer: later(() => {
+                if (state !== s || !s.finish) return;
+                s.finish = null;
+                // Then the UN33 fade: afterglow, flushed, the pace — if the pack has them.
+                const names = s.skinStates.map((x) => x.name);
+                if (names.includes('afterglow')) startAfterglow(s, names);
+                fitSkinToPace();
+                emit();
+            }, FINISH_HOLD_MS),
+        };
+        action.result = { place: chosen.place, state: chosen.state };
+        return Promise.resolve(s.skin.apply(chosen.state))
+            .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
+            .catch(() => settle(action, 'failed', 'not-shown'));
+    }
+
+    function clearFinish(s) {
+        if (s && s.finish) {
+            try {
+                (s.win.clearTimeout || clearTimeout)(s.finish.timer);
+            } catch (_) {
+                /* already fired */
+            }
+        }
+        if (s) s.finish = null;
+    }
+
+    /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    function skinLine(s) {
+        if (!s.skin || !s.skinStates) return null;
+        const now = s.skin.current();
+        if (!now || now === 'closed') return null;
+        const entry = s.skinStates.find((x) => x.name === now);
+        return entry && entry.body ? entry.body : null;
     }
 
     /** UN27. What her body is doing in the position this action asked for, or `null`. */
@@ -1905,6 +2104,24 @@
                     );
             }
         }
+        // UN34. Helping them finish. What she says leads them there; what is shown on her follows
+        // their words only. The places are the ones this look can show, so she never invites
+        // something the app cannot put on her body.
+        if (levelOf(s) >= UNDRESS_AT && s.skinStates && s.skinStates.length) {
+            const places = FINISH_ORDER.filter((place) => finishState(s, place));
+            if (places.length) {
+                const said = {
+                    back: 'on your lower back',
+                    inside: 'inside you',
+                    ass: 'in your ass',
+                    both: 'in both your holes',
+                    all: 'all over you',
+                };
+                lines.push(
+                    `- Bringing them to climax: this is the closest part of the evening, and it is about their pleasure. Follow their rhythm and what they tell you they like; say what you feel and want in short, vivid, unhurried sentences; build it slowly and let them lead the pace. When they are close, ask where they want to finish — ${places.map((p) => said[p]).join(', ')} — and when they say they are coming and where, the app shows it on your body. Respond to it in the moment, then stay close and tender afterwards. Never describe it on your body before RIGHT NOW below says it is there.`
+                );
+            }
+        }
         // UN2. Her body is hers to move: every gesture in the motion list above (sit, lie down,
         // turn round, spin, model pose, show your outfit, blow a kiss…) is available here too,
         // asked for in any language. The motion contract carries the names; this says they apply.
@@ -2171,6 +2388,17 @@
             lines.push(
                 'RIGHT NOW: they asked you to forget your past evenings, and this device would not let it be erased. Say so once.'
             );
+        if (s.finish && s.finish.turnId === s.turnId)
+            now.push('They just came, and it shows on your body as the next line says. Answer it in the moment.');
+        const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
+        if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
+            now.push(
+                lastFinish.why === 'pace'
+                    ? `They said they are coming; the evening is not at its closest step, so nothing is shown on your body — answer them warmly in words.`
+                    : 'They said they are coming; this look cannot show it on your body, so answer them in words, warmly, without describing it on your skin.'
+            );
+        const skin = skinLine(s);
+        if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

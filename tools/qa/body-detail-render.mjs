@@ -29,13 +29,18 @@ const arg = (name, fallback) => {
     return i >= 0 ? process.argv[i + 1] : fallback;
 };
 const FILES = arg('--vrm', '').split(',').filter(Boolean);
-const MARKS = JSON.parse(arg('--marks', '{"nipple":[0.0946,1.1685,0.1855],"crotch":[0,0.7578,0.0045]}'));
+const MARKS = JSON.parse(
+    arg('--marks', '{"nipple":[0.0946,1.1685,0.1855],"crotch":[0,0.7578,0.0045],"belly":[0,0.98,0.12]}')
+);
 // view: [pose, landmark, the spot's normal in her rest frame (z = her front), camera distance m]
 const ALL = {
     chest: ['standing', 'nipple', [0.15, 0.05, 1], 0.16],
     seated: ['sittingOpen', 'crotch', [0, -0.25, 1], 0.2],
     kneesup: ['lyingKneesUp', 'crotch', [0, -0.85, 0.5], 0.3],
     allfours: ['handsKnees', 'crotch', [0, -0.45, -0.9], 0.24],
+    // UN31. Whole-torso effects (flush, sweat, tan lines): front and back, belly-centred.
+    torso: ['standing', 'belly', [0, 0.05, 1], 0.75],
+    back: ['standing', 'belly', [0, 0.05, -1], 0.8],
 };
 const VIEWS = arg('--views', Object.keys(ALL).join(',')).split(',');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);

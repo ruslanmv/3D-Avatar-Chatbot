@@ -93,7 +93,7 @@ creating looks (WF1)** — see the Forge bullet below.
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The thirty-two `<script>` tags live at the end of `index.html`'s `<body>`, and
+- **The thirty-three `<script>` tags live at the end of `index.html`'s `<body>`, and
   moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
