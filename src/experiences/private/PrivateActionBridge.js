@@ -2148,7 +2148,9 @@
             last: s.log.length ? s.log[s.log.length - 1] : null,
             // UN35. Where they can finish that this look can show on her, at the closest step only:
             // the ⋯ menu draws a chip for each, so no chip is offered that could only be refused.
-            finishPlaces: levelOf(s) >= UNDRESS_AT ? FINISH_ORDER.filter((place) => finishState(s, place)) : [],
+            // The view gates these by the pace it shows (a pace change repaints the menu without a
+            // new snapshot, so a list cut to the pace here went stale and drew no chips).
+            finishPlaces: FINISH_ORDER.filter((place) => finishState(s, place)),
             // UN36. The shows open at this step (the ⋯ menu's chips), and the one she is giving.
             // A snapshot reads; it never loads a module (loading the policy here put the outfit
             // autonomy switch on the setup panel of a page that had not loaded it).
@@ -2156,7 +2158,7 @@
                 const R = s.win && s.win.NEXUS_PRIVATE_ROUTINES;
                 const Policy = s.win && s.win.NEXUS_PRIVATE_ACTION_POLICY;
                 if (!R || !Policy || typeof Policy.poseLevel !== 'function') return [];
-                return R.openAt(levelOf(s) || 1, (key) => Policy.poseLevel(key) || 1);
+                return R.ORDER.map((id) => ({ id, level: R.level(id, (key) => Policy.poseLevel(key) || 1) }));
             })(),
             routine: s.routine ? { id: s.routine.id, state: routineState(s), step: s.routine.index } : null,
             // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.

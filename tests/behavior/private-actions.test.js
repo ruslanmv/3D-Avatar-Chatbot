@@ -2582,7 +2582,7 @@ describe('UN36. shows: she moves through a series of positions on her own', () =
             const w = await begin({ adult: true });
             w.adult.level = 4;
             expect(prompt()).toMatch(/Shows you know, open now: .*Open for you/);
-            expect(Actions.snapshot().routines).toContain('open-for-you');
+            expect(Actions.snapshot().routines).toContainEqual({ id: 'open-for-you', level: 4 });
             jest.useFakeTimers();
             try {
                 await turn('Open up for me');

@@ -1173,7 +1173,10 @@ const PrivateConversationView = (() => {
             const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
             if (!slot) return null;
             let group = slot.querySelector('.nexus-private-routines');
-            const ids = (this._routines || []).filter((id) => ROUTINE_KEYS.includes(id));
+            // Every show with the step it opens at, cut here to the pace this card shows.
+            const ids = (this._routines || [])
+                .filter((r) => r && ROUTINE_KEYS.includes(r.id) && r.level <= (this._paceLevel || 1))
+                .map((r) => r.id);
             let spicy = false;
             try {
                 spicy = Boolean(this.win && this.win.NEXUS_SPICY && this.win.NEXUS_SPICY.isEnabled());

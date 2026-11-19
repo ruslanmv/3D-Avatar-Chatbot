@@ -83,3 +83,41 @@ describe('UN36 shows: words', () => {
         expect(Policy.decide(a('user'), facts).allow).toBe(true);
     });
 });
+
+describe('UN36 the ⋯ menu: show chips follow the pace the card shows', () => {
+    const Private = require('../src/features/together/ui/PrivateConversationView.js');
+    require('../src/features/together/PrivateLocale.js');
+    let view;
+    const chips = () =>
+        Array.from(document.querySelectorAll(`#${Private.ROW_ID} [data-private-routine]`)).map(
+            (b) => b.dataset.privateRoutine
+        );
+    beforeEach(() => {
+        document.body.innerHTML = '<div class="chat-input-shell"></div><div id="chat-history"></div>';
+        window.NEXUS_SPICY = { isEnabled: () => true };
+        window.NEXUS_PRIVATE_ACTION_POLICY = Policy;
+        view = new Private.View({ doc: document, win: window });
+        view.mount({ scene: 'Private cabaret' });
+    });
+    afterEach(() => {
+        if (view) view.destroy();
+        delete window.NEXUS_SPICY;
+        document.body.innerHTML = '';
+    });
+
+    test('no new snapshot is needed: the pace alone opens and closes them, and a tap is their line', () => {
+        const sent = [];
+        const routines = Routines.ORDER.map((id) => ({ id, level: Routines.level(id, Policy.poseLevel) }));
+        view.showActions({ routines }, { onPosition: (line, key) => sent.push([line, key]) });
+        const at = (level) => {
+            view.setPace({ level, steps: [], hasLadder: false });
+            return chips();
+        };
+        expect(at(1)).toEqual([]);
+        expect(at(2)).toEqual(['tease']);
+        expect(at(4)).toEqual(Routines.ORDER);
+        expect(at(3)).toEqual(['tease', 'ride']);
+        document.querySelector(`#${Private.ROW_ID} [data-private-routine="ride"]`).click();
+        expect(sent).toEqual([['Ride me', 'ride']]);
+    });
+});
