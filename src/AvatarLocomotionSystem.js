@@ -348,7 +348,9 @@
         // she would approach the user walking backwards. Plain GLB roots rest
         // at 0 and face +Z, hence the switch. The quaternion slerp below
         // already takes the shortest path, so no angle wrapping is needed here.
-        var vrmForward = !!(avatarRoot.userData && avatarRoot.userData.isVRM);
+        // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+        var ud = avatarRoot.userData || {};
+        var vrmForward = 'vrmForwardNegZ' in ud ? !!ud.vrmForwardNegZ : !!ud.isVRM;
         var targetYaw = Math.atan2(_tmpDir.x, _tmpDir.z) + (vrmForward ? Math.PI : 0);
         var targetQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetYaw);
 

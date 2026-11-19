@@ -262,8 +262,12 @@
             // core
             if (!map.head && n.includes('head')) map.head = o;
             else if (!map.neck && (n.includes('neck') || n.includes('cervical'))) map.neck = o;
-            else if (!map.hips && (n.includes('hip') || n.includes('pelvis') || n === 'hips' || n.includes('root')))
-                map.hips = o;
+            // MO17. Not 'root' here: VRoid's armature bone "Root" is the hips' parent, sitting on the
+            // floor, and the traversal reaches it first. Mapped as the hips, every sway and weight
+            // shift rolled her whole body about her feet — a 4° lean on AvatarSample_A that left
+            // one arm against her side and the other held out after "stand up". A bone named
+            // root is only the fallback, below, when nothing is named like hips.
+            else if (!map.hips && (n.includes('hip') || n.includes('pelvis') || n === 'hips')) map.hips = o;
             else if (!map.spine && (n.includes('spine') || n.includes('abdomen') || n.includes('body'))) map.spine = o;
             else if (!map.chest && (n.includes('chest') || n.includes('thorax') || n.includes('upperchest')))
                 map.chest = o;
@@ -329,6 +333,20 @@
 
         // fallback preference
         if (!map.chest && map.spine) map.chest = map.spine;
+        // MO17. The hips: the VRM's own raw hips bone when there is one, else a bone named root.
+        if (!map.hips) {
+            const h =
+                root.userData?.vrm?.humanoid ||
+                root.userData?.vrmHumanoid ||
+                window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+            const raw = h && typeof h.getRawBoneNode === 'function' ? h.getRawBoneNode('hips') : null;
+            if (raw) map.hips = raw;
+        }
+        if (!map.hips) {
+            root.traverse((o) => {
+                if (!map.hips && o && o.isBone && (o.name || '').toLowerCase().includes('root')) map.hips = o;
+            });
+        }
 
         // Try to find lowerArm from upperArm children if not found by name
         if (map.leftUpperArm && !map.leftLowerArm) {
@@ -629,6 +647,7 @@
     // ---------------------------
     function registerAvatar(root, hasClips) {
         ensureInput();
+        releaseSpeechGestures();
 
         avatarRoot = root || null;
         hasBakedAnimations = !!hasClips;
@@ -739,7 +758,60 @@
         console.log('[ProceduralAnimator] Talk style set:', talkStyle);
     }
 
+    // ---------------------------
+    // SG3. Co-speech gestures (src/features/gestures/SpeechGestures.js), as an additive layer of
+    // their own that runs after everything above. It finds her arm bones through the VRM
+    // humanoid itself, because the name match in findBones looks for "left"/"right" and never
+    // finds VRoid's J_Bip_L_* / J_Bip_R_*: changing findBones instead (SG2) would have made this
+    // animator start resetting VRoid arms every frame — a new idle stance, and a gesture clip's
+    // arms erased whenever she talks while it plays. The layer undoes its own last offset before
+    // the next, so it never accumulates, and steps aside (handing the arms back exactly) outside
+    // talk mode, in Pose Studio, in pose mode (the VR puppet) and while a clip owns the bones.
+    // ---------------------------
+    var _sgLayer = null;
+    var _sgWarned = false;
+    function sgResolve(name) {
+        if (bones && bones[name]) return bones[name];
+        var hum =
+            avatarRoot?.userData?.vrm?.humanoid ||
+            avatarRoot?.userData?.vrmHumanoid ||
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+        return hum && typeof hum.getRawBoneNode === 'function' ? hum.getRawBoneNode(name) : null;
+    }
+    function applySpeechGestures(allowed) {
+        var SG = window.NEXUS_SPEECH_GESTURES;
+        if (!SG || typeof SG.createLayer !== 'function') return;
+        try {
+            if (!_sgLayer) _sgLayer = SG.createLayer(THREE);
+            if (!allowed) {
+                _sgLayer.release();
+                return;
+            }
+            _sgLayer.apply(SG.sample(), sgResolve);
+        } catch (error) {
+            if (!_sgWarned) console.warn('[ProceduralAnimator] speech gestures skipped', error);
+            _sgWarned = true;
+        }
+    }
+    function releaseSpeechGestures() {
+        if (_sgLayer) _sgLayer.release();
+    }
+
     function update(timeSec, dtSec) {
+        updateCore(timeSec, dtSec);
+        // A clip owns her arms while one plays (a wave, a clap, a dance the model asked for) or while
+        // a pose-restore blend holds the bones: gestures added on top would distort it.
+        var clipPlaying = false;
+        try {
+            clipPlaying = window.NEXUS_CLIP_LOADER?.getCurrentPlaybackState?.()?.isPlaying === true;
+        } catch (_) {
+            clipPlaying = false;
+        }
+        var clipOwnsBones = (hasBakedAnimations && !allowWithMixer) || clipPlaying;
+        applySpeechGestures(!!(avatarRoot && bones) && mode === 'talk' && !poseMode && !editMode && !clipOwnsBones);
+    }
+
+    function updateCore(timeSec, dtSec) {
         if (!avatarRoot || !bones) return;
 
         // Pose Studio mouse-editing active — do not fight the editor
@@ -967,6 +1039,7 @@
 
     function unregisterAvatar(root) {
         if (avatarRoot === root || !root) {
+            releaseSpeechGestures();
             avatarRoot = null;
             bones = null;
             rest.clear();
@@ -1058,5 +1131,9 @@
         // exactly as they were (src/gltf-viewer/PuppetSkeleton.js).
         isPoseMode: () => poseMode,
         isEditMode: () => editMode,
+        // UI2. The mode she is in right now, read-only. The UI tour (audits/ui/run.mjs) checks that
+        // a Behavior chip in Pose Studio really put her in its mode; a highlighted chip proves only
+        // that the click landed.
+        getMode: () => mode,
     };
 })();

@@ -24,6 +24,8 @@
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 import { PoseClothCorrector } from './PoseClothCorrector.js';
 import './PuppetSkeleton.js'; // VP1. side effect: window.NEXUS_PUPPET_SKELETON
+import './PoseTransition.js'; // UN23. side effect: window.NEXUS_POSE_TRANSITION
+import './MotionProvenance.js'; // MP1. side effect: window.NEXUS_MOTION_PROVENANCE
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -946,6 +948,148 @@ const POSE_PRESETS = {
             head: eulerDegToQuat(0, 15, 5), // Head turned slightly
         },
     },
+
+    // UN24. Three seated and kneeling poses with the knees apart, asked for by the person ("sit down
+    // and open legs"). Signs follow what UN6 measured on the normalized rig, not the older comments
+    // above: a POSITIVE X on the hips leans her back (lyingBack is +90), a negative one forward;
+    // positive X on a thigh lifts it forward; abduction is Z (left negative, right positive), done
+    // before the flexion so the thighs open sideways and then come forward. None of them carries a
+    // `hipsPosition`: MO5/UN6 grounding measures each avatar and lowers her onto what `support`
+    // names. Adult, so Spicy mode lists them and the NL tables never get a phrase for them.
+    sittingOpen: {
+        label: 'Sitting (Open)',
+        adult: true,
+        // On the edge of a seat, leaning back a little, knees wide, hands resting inside her knees,
+        // head tilted towards the person. Grounded like `sitting`: feet on the floor.
+        bones: {
+            hips: eulerDegToQuat(8, 0, 0), // Leaning back on the seat
+            spine: eulerDegToQuat(4, 0, 0), // Chest open
+            chest: eulerDegToQuat(2, 0, 0),
+            neck: eulerDegToQuat(-6, 0, 0), // Face brought forward again, towards the person
+            head: eulerDegToQuat(-6, 0, 6), // A slight tilt
+            leftUpperLeg: eulerDegToQuat(80, 0, -38), // Thighs forward and wide apart
+            rightUpperLeg: eulerDegToQuat(80, 0, 38),
+            leftLowerLeg: eulerDegToQuat(-88, 0, 0), // Shins down, feet on the floor
+            rightLowerLeg: eulerDegToQuat(-88, 0, 0),
+            leftFoot: eulerDegToQuat(10, 0, 0),
+            rightFoot: eulerDegToQuat(10, 0, 0),
+            leftUpperArm: eulerDegToQuat(18, 0, 72), // Hands resting on the inside of her knees
+            rightUpperArm: eulerDegToQuat(18, 0, -72),
+            leftLowerArm: eulerDegToQuat(0, -30, 0),
+            rightLowerArm: eulerDegToQuat(0, 30, 0),
+        },
+    },
+
+    // UN27. NOT IN THE CYCLE. Measured in a real Private session and in Pose Studio on
+    // AvatarSample_A: her seat and palms hang 25–30 cm above the floor (lastSupport palmAfterMm
+    // ~304): the shins drop steeply from the raised knees, so the feet ground her and the seat
+    // floats, and the arm IK cannot reach because JOINT_LIMITS clamp the upper arm at Z 30°.
+    // Kept for a fix; develop/NEEDS_FIX.md has the row and how to bring it back.
+    floorOpen: {
+        label: 'Floor (Open, Leaning Back)',
+        adult: true,
+        // Sitting on the floor, leaning back on both hands behind her, knees up and apart, feet
+        // planted. The hands are `reach` supports: turned palm-down and brought to the floor by the
+        // arm IK once she has settled, so they rest on it on any avatar instead of hovering.
+        support: { ground: ['hips', 'leftFoot', 'rightFoot'], reach: ['leftHand', 'rightHand'] },
+        bones: {
+            hips: eulerDegToQuat(30, 0, 0), // Reclined
+            spine: eulerDegToQuat(-8, 0, 0), // The trunk brought back up a little: chest towards the person
+            chest: eulerDegToQuat(-4, 0, 0),
+            neck: eulerDegToQuat(-8, 0, 0),
+            head: eulerDegToQuat(-6, 0, -5),
+            leftUpperLeg: eulerDegToQuat(95, 0, -40), // Knees up and wide
+            rightUpperLeg: eulerDegToQuat(95, 0, 40),
+            leftLowerLeg: eulerDegToQuat(-115, 0, 0), // Shins near vertical: feet under the knees
+            rightLowerLeg: eulerDegToQuat(-115, 0, 0),
+            leftFoot: eulerDegToQuat(5, 0, 0),
+            rightFoot: eulerDegToQuat(5, 0, 0),
+            leftUpperArm: eulerDegToQuat(-45, 0, 65), // Arms back, down to the floor behind her
+            rightUpperArm: eulerDegToQuat(-45, 0, -65),
+            leftLowerArm: eulerDegToQuat(0, -5, 0),
+            rightLowerArm: eulerDegToQuat(0, 5, 0),
+        },
+    },
+
+    kneelingWide: {
+        label: 'Kneeling (Wide)',
+        adult: true,
+        // Sitting back towards her heels with the knees apart, back arched, hands on her thighs.
+        // The shins lie on the floor as in UN6's kneeling: thigh 60° + knee −150° leaves the shin
+        // horizontal behind the knee, and −70° at the ankle lays the insteps down.
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'] },
+        bones: {
+            hips: eulerDegToQuat(0, 0, 0),
+            spine: eulerDegToQuat(6, 0, 0), // Arched
+            chest: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-4, 0, 0),
+            head: eulerDegToQuat(-4, 0, -6),
+            leftUpperLeg: eulerDegToQuat(60, 0, -30), // Knees apart
+            rightUpperLeg: eulerDegToQuat(60, 0, 30),
+            leftLowerLeg: eulerDegToQuat(-150, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-150, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
+            leftUpperArm: eulerDegToQuat(10, 0, 74), // Hands on her thighs
+            rightUpperArm: eulerDegToQuat(10, 0, -74),
+            leftLowerArm: eulerDegToQuat(0, -25, 0),
+            rightLowerArm: eulerDegToQuat(0, 25, 0),
+        },
+    },
+    // UN26. Two more, asked for by name: on her back with the knees up, and straddling. Same signs
+    // as UN24. Supine, a positive thigh X lifts the knee towards the ceiling (her front faces up).
+    lyingKneesUp: {
+        label: 'Lying (Knees Up)',
+        adult: true,
+        // On her back, knees raised and apart, feet flat on the floor, arms relaxed above her head,
+        // chin dropped a little so she looks along her body at the person. Thigh 55° up and the
+        // knee folded 110° bring the foot back to the floor (equal thigh and shin lengths).
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head', 'leftFoot', 'rightFoot'] },
+        bones: {
+            hips: eulerDegToQuat(90, 0, 0), // Supine
+            spine: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-12, 0, 0), // Looking down her body
+            head: eulerDegToQuat(-6, 12, 0),
+            leftUpperLeg: eulerDegToQuat(55, 0, -35), // Knees up and apart
+            rightUpperLeg: eulerDegToQuat(55, 0, 35),
+            leftLowerLeg: eulerDegToQuat(-110, 0, 0), // Feet back down on the floor
+            rightLowerLeg: eulerDegToQuat(-110, 0, 0),
+            leftFoot: eulerDegToQuat(0, 0, 0),
+            rightFoot: eulerDegToQuat(0, 0, 0),
+            // Arms out along the floor towards her head, elbows folded in the same plane (Z, not
+            // the Y bend other presets use: on her back Y folds the forearm up at the ceiling).
+            leftUpperArm: eulerDegToQuat(0, 0, -40),
+            rightUpperArm: eulerDegToQuat(0, 0, 40),
+            leftLowerArm: eulerDegToQuat(0, 0, -70),
+            rightLowerArm: eulerDegToQuat(0, 0, 70),
+        },
+    },
+
+    straddle: {
+        label: 'Straddling',
+        adult: true,
+        // Kneeling up astride — knees wide on either side of the person's lap, shins on the floor
+        // behind her, back arched, hands forward at shoulder height as if resting on theirs.
+        // Thigh 15° + knee −105° leaves the shins horizontal (as UN6's kneeling).
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'] },
+        bones: {
+            hips: eulerDegToQuat(0, 0, 0),
+            spine: eulerDegToQuat(8, 0, 0), // Arched
+            chest: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-6, 0, 0),
+            head: eulerDegToQuat(-8, 0, 6), // Looking down at the person, a slight tilt
+            leftUpperLeg: eulerDegToQuat(15, 0, -38), // Knees wide
+            rightUpperLeg: eulerDegToQuat(15, 0, 38),
+            leftLowerLeg: eulerDegToQuat(-105, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-105, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
+            leftUpperArm: eulerDegToQuat(45, 0, 45), // Hands forward, on their shoulders
+            rightUpperArm: eulerDegToQuat(45, 0, -45),
+            leftLowerArm: eulerDegToQuat(0, -30, 0),
+            rightLowerArm: eulerDegToQuat(0, 30, 0),
+        },
+    },
     // =====================================================================
     // TOP 5 VR SIMULATION POSES (Steam Adult — Spicy Mode only)
     // =====================================================================
@@ -1349,6 +1493,12 @@ const PRESET_ORDER = [
     'embraceStanding',
     'kneelSubmissive',
     'lyingSprawl',
+    // UN24. Seated / kneeling, knees apart
+    'sittingOpen',
+    // UN27. floorOpen is out until it rests on the floor (develop/NEEDS_FIX.md, Pose presets).
+    'kneelingWide',
+    'lyingKneesUp', // UN26
+    'straddle',
     // Adult — Ground poses
     'allFoursArched',
     'handsKnees',
@@ -2083,6 +2233,7 @@ export class VRPoseSystem {
         this._currentPreset = 'standing';
         this._blendTime = 0;
         this._blendDuration = 0.5; // seconds to blend between poses
+        this._blendStagger = false; // UN23. true while a preset change staggers (PoseTransition)
         this._blendFrom = new Map(); // bone key → start quat
         this._blendTo = new Map(); // bone key → target quat
         this._isBlending = false;
@@ -2133,6 +2284,85 @@ export class VRPoseSystem {
               })
             : null;
         this._claimedPreset = null;
+        // LM1. A procedural layer over the held pose (PrivateLivingMotion): written each frame just
+        // before the copy onto her skeleton, taken off again at the start of the next.
+        this._layer = null;
+        this._layerSaved = null;
+    }
+
+    /**
+     * LM1. Set (or clear, with `null`) the layer drawn over a held pose: `{ keys, apply(dt, rig,
+     * THREE), idle() }`. It runs only while the bones are claimed and no hand is dragging her, and
+     * never edits the pose: every value it touches is saved before and restored at the start of
+     * the next frame — only where it still holds what the layer wrote, so a preset applied between
+     * two frames is never overwritten with the one before it.
+     */
+    setLayer(layer) {
+        this._layerUndo();
+        if (this._layer && this._layer !== layer && typeof this._layer.idle === 'function') {
+            try {
+                this._layer.idle();
+            } catch (_) {
+                /* fail soft: a layer that cannot tidy up must not stop the loop */
+            }
+        }
+        this._layer = layer || null;
+    }
+
+    getLayer() {
+        return this._layer;
+    }
+
+    /** LM1. Take last frame's layer off: back to the held values, where nothing else wrote since. */
+    _layerUndo() {
+        const saved = this._layerSaved;
+        this._layerSaved = null;
+        if (!saved) return;
+        for (const [bone, rec] of saved.bones) {
+            if (bone.quaternion.equals(rec.wrote)) bone.quaternion.copy(rec.base);
+        }
+        if (saved.hips && saved.hips.bone.position.equals(saved.hips.wrote))
+            saved.hips.bone.position.copy(saved.hips.base);
+    }
+
+    /** LM1. Put this frame's layer on, saving what it may change. */
+    _layerApply(dt) {
+        const layer = this._layer;
+        if (!layer || typeof layer.apply !== 'function') return;
+        const bones = new Map();
+        for (const key of layer.keys || []) {
+            const bone = this._bones.get(key);
+            if (bone) bones.set(bone, { base: bone.quaternion.clone(), wrote: null });
+        }
+        const hipsBone = this._bones.get('hips');
+        const hips = hipsBone ? { bone: hipsBone, base: hipsBone.position.clone(), wrote: null } : null;
+        const rig = {
+            bone: (k) => this._bones.get(k) || null,
+            node: (k) => this._bones.get(k) || this._normNode(k) || null,
+            solveArm: (side, target) => {
+                const chainName = side === 'left' ? 'leftArm' : 'rightArm';
+                const keys = IK_CHAINS[chainName].filter((k) => this._bones.has(k));
+                solveCCDIK(
+                    keys.map((k) => this._bones.get(k)),
+                    target,
+                    { iterations: 10, tolerance: 0.004, chainName, boneKeys: keys }
+                );
+            },
+        };
+        try {
+            this.avatarRoot.updateMatrixWorld(true);
+            layer.apply(dt, rig, THREE);
+        } catch (error) {
+            // Fail soft: this runs inside the render loop. Put her back as held and stop the layer.
+            for (const [bone, rec] of bones) bone.quaternion.copy(rec.base);
+            if (hips) hips.bone.position.copy(hips.base);
+            console.warn('[VRPoseSystem] LM1 layer skipped', error);
+            this._layer = null;
+            return;
+        }
+        for (const [bone, rec] of bones) rec.wrote = bone.quaternion.clone();
+        if (hips) hips.wrote = hips.bone.position.clone();
+        this._layerSaved = { bones, hips };
     }
 
     /** SW1. She is about to move: the cloth goes back to plain skinning until she settles. */
@@ -2227,6 +2457,16 @@ export class VRPoseSystem {
     releaseBones({ blendSeconds = 0.4 } = {}) {
         if (!this._own || !this._own.isClaimed()) return false;
         if (this._activeIKTarget) this.endIK();
+        // LM1. The claim's snapshot is what she goes back to: nothing of the layer is restored over
+        // it next frame, and her face lets go with her body.
+        this._layerSaved = null;
+        if (this._layer && typeof this._layer.idle === 'function') {
+            try {
+                this._layer.idle();
+            } catch (_) {
+                /* fail soft */
+            }
+        }
         this._isBlending = false;
         this._supportPending = false;
         this._hipsPositionFrom = null;
@@ -2638,6 +2878,7 @@ export class VRPoseSystem {
         }
         this._blendTime = 0;
         this._blendDuration = 0.35;
+        this._blendStagger = false; // UN23. only the hips travel here: one curve
         this._isBlending = true;
         return true;
     }
@@ -2652,12 +2893,16 @@ export class VRPoseSystem {
      */
     static getPresetNames() {
         const spicy = typeof window !== 'undefined' && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
+        // MP1. A preset Claude made by hand is listed only while that method is switched on
+        // (Settings ▸ Private Mode ▸ Motion created by Claude). Everything else is unaffected.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        const made = (name) => !MP || MP.presetAllowed(name);
         if (spicy) {
-            return [...PRESET_ORDER];
+            return PRESET_ORDER.filter(made);
         }
         // Filter out adult poses when spicy mode is off
         return PRESET_ORDER.filter((name) => {
-            return !POSE_PRESETS[name] || !POSE_PRESETS[name].adult;
+            return (!POSE_PRESETS[name] || !POSE_PRESETS[name].adult) && made(name);
         });
     }
 
@@ -2812,9 +3057,28 @@ export class VRPoseSystem {
 
         this._blendTime = 0;
         this._blendDuration = duration;
+        // UN23. A big change of posture takes longer than a small one, and the trunk leads while
+        // hands and feet arrive last (src/gltf-viewer/PoseTransition.js has why). Fail soft: the
+        // caller's duration and the single curve below are what is left without it.
+        this._blendStagger = false;
+        const PT = typeof window !== 'undefined' ? window.NEXUS_POSE_TRANSITION : null;
+        // MP1. Claude's staggered blend, only while that method is on: off is the single curve.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        if (PT && (!MP || MP.allowed('transition:stagger'))) {
+            try {
+                const travel =
+                    this._hipsPositionFrom && this._hipsPositionTo
+                        ? this._hipsPositionFrom.distanceTo(this._hipsPositionTo)
+                        : 0;
+                this._blendDuration = PT.durationFor(duration, PT.maxAngle(this._blendFrom, this._blendTo), travel);
+                this._blendStagger = true;
+            } catch (e) {
+                console.warn('[VRPoseSystem] pose transition plan skipped', e);
+            }
+        }
         this._isBlending = true;
 
-        console.log(`[VRPoseSystem] Applying preset: ${preset.label} (${duration}s blend)`);
+        console.log(`[VRPoseSystem] Applying preset: ${preset.label} (${this._blendDuration.toFixed(2)}s blend)`);
     }
 
     // =========================================================================
@@ -3030,6 +3294,9 @@ export class VRPoseSystem {
             return;
         }
 
+        // LM1. Last frame's layer off before anything reads or blends the held pose.
+        this._layerUndo();
+
         // SW1. A settled pose: correct the cloth once the skinning bones have caught up.
         if (this._clothPending > 0 && !this._isBlending && !this._activeIKTarget) {
             this._clothPending -= 1;
@@ -3059,6 +3326,9 @@ export class VRPoseSystem {
         // animator ran, so a behaviour mode cannot take her body from the person's hand. Once she
         // is let go, ease her from the held pose into whatever the animator now produces.
         if (this._own) {
+            // LM1. Her breathing and her hands, over the held pose, only while it is held and no
+            // hand of theirs is moving her.
+            if (this._layer && this._own.isClaimed() && !this._activeIKTarget) this._layerApply(dt);
             if (this._own.isClaimed()) this._own.sync();
             else this._own.update(dt);
         }
@@ -3075,12 +3345,14 @@ export class VRPoseSystem {
 
         // Smooth step for natural easing
         const smooth = t * t * (3 - 2 * t);
+        // UN23. A preset change staggers: each bone on its own smootherstep window.
+        const PT = this._blendStagger && typeof window !== 'undefined' ? window.NEXUS_POSE_TRANSITION : null;
 
         for (const [key, bone] of this._bones) {
             const from = this._blendFrom.get(key);
             const to = this._blendTo.get(key);
             if (from && to) {
-                bone.quaternion.copy(from).slerp(to, smooth);
+                bone.quaternion.copy(from).slerp(to, PT ? PT.weight(t, PT.delayFor(key)) : smooth);
             }
         }
 
@@ -3088,7 +3360,11 @@ export class VRPoseSystem {
         if (this._hipsPositionFrom && this._hipsPositionTo) {
             const hipsBone = this._bones.get('hips');
             if (hipsBone) {
-                hipsBone.position.lerpVectors(this._hipsPositionFrom, this._hipsPositionTo, smooth);
+                hipsBone.position.lerpVectors(
+                    this._hipsPositionFrom,
+                    this._hipsPositionTo,
+                    PT ? PT.weight(t, 0) : smooth
+                );
             }
         }
 

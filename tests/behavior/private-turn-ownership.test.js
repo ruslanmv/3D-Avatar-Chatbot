@@ -237,6 +237,28 @@ describe('a typed safe word is answered locally, before the model is asked anyth
         s.activity.stop('user');
     });
 
+    test('SW2/SW3: an Italian "basta" ends it; a hesitant "aspetta" eases off and checks in once', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
+        expect(s.adult.level).toBe(2);
+
+        Surface.renderUser('aspetta');
+        expect(s.adult.level).toBe(1);
+        const first = Capability.privateSystemPromptSuffix();
+        expect(first).toContain('THEY SOUNDED UNSURE');
+        expect(first).toMatch(/check in once/);
+        // Once: the next reply is ordinary slowed-down conversation again.
+        const second = Capability.privateSystemPromptSuffix();
+        expect(second).not.toContain('THEY SOUNDED UNSURE');
+        expect(second).toContain('THE USER ASKED TO SLOW DOWN');
+
+        Surface.renderUser('basta');
+        expect(s.panel.stopActivity).toHaveBeenCalled();
+        s.activity.stop('user');
+    });
+
     test('typing it and tapping it are the same control, so it acknowledges once', async () => {
         // One implementation behind both, or somebody who taps the button and then writes the
         // words gets two acknowledgements for one request.
