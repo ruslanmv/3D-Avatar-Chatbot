@@ -557,6 +557,84 @@
     }
 
     /**
+     * LM7. Motion as a response: while she holds a position she is still, and moves only when the
+     * person asks — "move for me", "rock your hips", "keep going", "slower", "faster", "stop", in the
+     * app's nine languages. Read only while a position is held, after positions and shows (so "ride
+     * me" stays the show and "straddle me" the position).
+     *
+     * Two tiers, because several of these are everyday words: verbs that only mean moving her body
+     * count anywhere in the message; the ambiguous ones ("keep going", "continua", "sigue",
+     * "para" — which is also Spanish for "for") count only as the whole of a short message, and
+     * only while she is moving for the stilling ones, so they never take a word from the music.
+     * A bare "stop" never reaches this file in Private: consent reads it first (the turn's
+     * `end`/`pace-down` intent) and eases or ends the evening — which stills her too. Holding
+     * still and going on is "stay still", "don't move", "ferma"…
+     */
+    const MOVE_VERBS = new RegExp(
+        word(
+            'move (?:slowly |slow |faster |fast |gently |harder )?for me|move (?:slowly|slow|faster|gently)|keep moving|move your hips|muoviti (?:piano|lentamente|più veloce|più forte)|muévete (?:despacio|más rápido|mas rapido)|bouge (?:doucement|lentement|plus vite)|beweg dich (?:langsam|schneller)|mexe-te (?:devagar|mais rápido)|rock your hips|rock for me|grind on me|grind for me|muoviti per me|muovi i fianchi|continua a muoverti|muévete para mí|muevete para mi|mueve las caderas|sigue moviéndote|sigue moviendote|bouge pour moi|bouge tes hanches|continue de bouger|beweg dich für mich|beweg deine hüften|beweg dich weiter|mexe-te para mim|mexe as ancas|mexa os quadris|continua a mexer'
+        ),
+        'iu'
+    );
+    const MOVE_SHORT =
+        /^(?:(?:please|per favore|por favor|s[’']il te plaît|bitte)\s+)?(?:move|moving|rock|grind|keep going|go on|don[’']?t stop|do not stop|muoviti|continua|non fermarti|non smettere|muévete|muevete|sigue|no pares|bouge|continue|ne t[’']arrête pas|beweg dich|mach weiter|hör nicht auf|mexe-te|mexa-se|continua|não pares|nao pares|não pare)(?:\s+(?:please|per favore|por favor|bitte))?[\s.!…]*$/iu;
+    const MOVE_CJK =
+        /動いて|腰を振って|止めないで|続けて|움직여|계속해|멈추지 마|허리를 움직여|动起来|动一动|继续|别停|扭动/u;
+    const STILL_VERBS = new RegExp(
+        word(
+            "stop moving|stay still|hold still|keep still|don[’']?t move|do not move|stai ferma|resta ferma|smetti di muoverti|non muoverti|quédate quieta|quedate quieta|deja de moverte|no te muevas|ne bouge plus|arrête de bouger|reste immobile|bleib still|hör auf dich zu bewegen|beweg dich nicht|fica quieta|para de te mexer|não te mexas"
+        ),
+        'iu'
+    );
+    const STILL_SHORT =
+        /^(?:stop|freeze|enough|fermati|basta|ferma|para|párate|parate|arrête|arrete|stopp|halt|pára)[\s.!…]*$/iu;
+    const STILL_CJK = /止まって|じっとして|動かないで|멈춰|가만히 있어|움직이지 마|别动|停下|不要动/u;
+    const MOVE_SLOW = new RegExp(
+        word('slowly|slow|piano|lentamente|despacio|lento|doucement|lentement|langsam|devagar'),
+        'iu'
+    );
+    const MOVE_FAST = new RegExp(word('fast|faster|quick|veloce|rápido|rapido|vite|schnell|depressa'), 'iu');
+
+    /**
+     * Codex (#196). "Don't rock your hips", "I don't want you to keep moving", "non muoverti così":
+     * a movement word under a negation is a no. It runs before the general negation gate (so
+     * "don't stop" can be a yes), so it checks for itself: negated and not one of the affirmative
+     * "don't stop" phrases means stop if she is moving, and nothing otherwise — never a start.
+     */
+    const MOVE_NEGATED =
+        /(?:^|[\s,.!])(?:don[’']?t|do not|never|stop|i don[’']?t want|non|no|nunca|jamais|ne|n[’']|nicht|kein|não|nao|nie)(?=[\s,.!])/iu;
+    const MOVE_YES_DESPITE_NO =
+        /don[’']?t stop|do not stop|non fermarti|non smettere|no pares|ne t[’']arrête pas|hör nicht auf|hor nicht auf|não pares|nao pares|não pare|止めないで|멈추지 마|别停/iu;
+
+    function motionFrom(body, context) {
+        const c = context || {};
+        if (!c.poseHeld || c.routine === 'running') return null;
+        const short = body.length <= 40;
+        if ((STILL_VERBS.test(body) || STILL_CJK.test(body)) && !MOVE_SHORT.test(body))
+            return action('avatar.move', { move: 'still' }, 'avatar');
+        if (c.moving && short && STILL_SHORT.test(body)) return action('avatar.move', { move: 'still' }, 'avatar');
+        if (` ${body} `.match(MOVE_NEGATED) && !MOVE_YES_DESPITE_NO.test(body)) {
+            const aboutMoving =
+                MOVE_VERBS.test(body) ||
+                MOVE_SHORT.test(body.replace(MOVE_NEGATED, ' ').trim()) ||
+                /\b(?:move|moving|rock|grind)\b/iu.test(body);
+            if (!aboutMoving) return null;
+            return c.moving ? action('avatar.move', { move: 'still' }, 'avatar') : null;
+        }
+        if (c.moving) {
+            if (ROUTINE_SLOWER.test(body) || ROUTINE_SLOWER_CJK.test(body))
+                return action('avatar.move', { move: 'slower' }, 'avatar');
+            if (ROUTINE_FASTER.test(body) || ROUTINE_FASTER_CJK.test(body))
+                return action('avatar.move', { move: 'faster' }, 'avatar');
+        }
+        if (MOVE_VERBS.test(body) || (short && (MOVE_SHORT.test(body) || MOVE_CJK.test(body)))) {
+            const tempo = MOVE_SLOW.test(body) ? 'slow' : MOVE_FAST.test(body) ? 'fast' : undefined;
+            return action('avatar.move', tempo ? { move: 'start', tempo } : { move: 'start' }, 'avatar');
+        }
+        return null;
+    }
+
+    /**
      * UN35. Japanese, Korean and Chinese, which the ⋯ menu's finish chips speak too: no word
      * boundaries in those scripts, so plain substrings. The back comes before inside because
      * 背中に (on your back) contains 中に (inside).
@@ -990,6 +1068,9 @@
         // UN36. A show, after positions (their words win) and finishing.
         const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
         if (show) return show;
+        // LM7. Moving in the position she holds — before the negation gate: "don't stop" is a yes.
+        const moving = motionFrom(body, c);
+        if (moving) return moving;
         // UN7. Seeing her naked is the "everything off" step, asked for as a wish or a question.
         if (NAKED.test(body) && !NEGATED.test(body) && !ASKS_STATE.test(body))
             return action('wardrobe.undress', { step: 'all', naked: true, words: body.slice(0, 120) }, 'wardrobe');
@@ -1145,6 +1226,7 @@
         bodyFrom,
         finishFrom,
         routineFrom,
+        motionFrom,
         queryFrom,
         stylesIn,
         coloursIn,

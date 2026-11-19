@@ -91,6 +91,51 @@
         /\bback off\b/,
     ];
 
+    /**
+     * SW2. The same two safety words in the app's other eight languages. Private parses positions,
+     * finishing and moving in nine languages, and until this only English could end or ease it — an
+     * Italian "basta", a Spanish "para", a German "hör auf" went to the model as conversation.
+     *
+     * The same care as the English above. Phrases that only mean stopping or easing count anywhere
+     * in the message (unicode-aware word edges: `\b` is wrong about accents). Single words that are
+     * also everyday words — "para" is Spanish for "for", "basta" ends many sentences, "chega" is
+     * "arrives" — count only as the whole of a message. Plain tempo words ("più piano", "más
+     * despacio", "langsamer") are not here, exactly as English "slower" is not: those are the
+     * motion's own tempo (LM7); "slow down", "take it slow", "too much", "ease off" are.
+     */
+    const edge = (alts) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${alts})(?![\\p{L}\\p{N}])`, 'u');
+    const END_I18N = [
+        edge(
+            'smettila|voglio smettere|finiamo qui|basta così|buonanotte|quiero parar|para ya|basta ya|terminemos|buenas noches|je veux arrêter|on arrête|bonne nuit|hör auf|ich will aufhören|lass uns aufhören|gute nacht|quero parar|para com isso|vamos parar|boa noite'
+        ),
+        /^(?:basta|fermati|ferma|stop|para|párate|parate|detente|arrête|arrete|stopp|halt|chega|pára|pare)[\s.!…]*$/u,
+        // "I'm done", only as the whole message: "ho finito il lavoro oggi" is talk about work.
+        /^(?:ho finito|he terminado|ya terminé|j[’']ai fini|c[’']est fini|ich bin fertig|já terminei|acabei)(?: (?:per (?:oggi|stasera)|por hoy|pour ce soir|für heute|por hoje))?[\s.!…]*$/u,
+        /やめて|もうやめる|終わりにして|おやすみ|그만해|그만하자|끝내자|잘 자|别做了|不要了|结束吧|够了|晚安/u,
+        /^(?:そこまで|그만|停)[\s.!…。]*$/u,
+    ];
+    const PACE_DOWN_I18N = [
+        edge(
+            'rallenta|calmati|vai piano|andiamo piano|piano piano|troppo (?:veloce|intenso|forte)|meno intenso|baja el ritmo|ve más despacio|tómatelo con calma|tomatelo con calma|demasiado (?:rápido|rapido|intenso)|menos intenso|ralentis|vas-y doucement|trop (?:vite|intense|fort)|moins intense|calme-toi|mach langsam|zu (?:schnell|viel|intensiv)|weniger intensiv|beruhig dich|vai com calma|muito (?:rápido|intenso)|menos intenso|acalma-te'
+        ),
+        /激しすぎ|速すぎ|落ち着いて|ゆっくりにして|너무 빨라|너무 세|살살 해|진정해|太快了|太激烈|轻一点|慢下来/u,
+    ];
+    /**
+     * SW3. Hesitation: unsure is not a yes. "Maybe", "I'm not sure", "wait", "I'm not ready" ease
+     * her off exactly as a slow-down does, and the runtime is told it was hesitation so she checks
+     * in once, gently — the one case where asking whether they want to go on is right (FRIES:
+     * consent is enthusiastic; a "maybe" or "I don't know" is not it). The bare words count only as
+     * a whole short message ("maybe we could go to the beach" is talk); the phrases anywhere.
+     */
+    const HESITANT = [
+        /\b(?:i'?m not sure (?:about|if) (?:this|that|i want)|not sure i want|i'?m not ready|i don'?t know if i want|wait a (?:second|moment|minute)|hold on a (?:second|moment))\b/,
+        edge(
+            'non sono sicur[oa] (?:di volere|di questo)|non sono pront[oa]|aspetta un attimo|no estoy segur[oa] (?:de querer|de esto)|no estoy list[oa]|espera un momento|je ne suis pas sûre? (?:de vouloir|de ça)|je ne suis pas prête?|attends une seconde|ich bin (?:mir )?nicht sicher,? ob ich|ich bin nicht bereit|warte (?:mal )?kurz|não tenho a certeza|não estou pront[oa]|espera um momento'
+        ),
+        /^(?:maybe|not sure|i'?m not sure|i don'?t know|wait|hmm,? wait|hold on|forse|non so|non lo so|aspetta|quizás|quizas|tal vez|no sé|no se|espera|peut-être|peut-etre|je ne sais pas|attends|vielleicht|ich weiß nicht|ich weiss nicht|warte|talvez|não sei|nao sei|espera)[\s.!?…]*$/u,
+        /^(?:たぶん|わからない|待って|ちょっと待って|아마|모르겠어|잠깐|잠깐만|也许|不知道|等一下|等等)[\s.!?…。]*$/u,
+    ];
+
     const PACE_UP = [
         /\b(?:a little |a bit )?(?:more|closer)\b.*\b(?:intense|flirty|sensual|close)\b/,
         /\bturn (?:it|the .*) up\b/,
@@ -166,9 +211,11 @@
         const text = normalise(raw);
         if (!text) return shape('conversation', text);
 
-        // Safety words first, and unconditionally. See the header.
-        if (any(END, text)) return shape('end', text);
-        if (any(PACE_DOWN, text)) return shape('pace-down', text);
+        // Safety words first, and unconditionally. See the header. SW2: in every language.
+        if (any(END, text) || any(END_I18N, text)) return shape('end', text);
+        if (any(PACE_DOWN, text) || any(PACE_DOWN_I18N, text)) return shape('pace-down', text);
+        // SW3. Unsure eases off the same way, and says it was hesitation (a gentle check-in follows).
+        if (any(HESITANT, text)) return Object.assign(shape('pace-down', text), { hesitant: true });
 
         if (any(QUIET, text)) return shape('quiet', text);
         if (any(MUSIC, text)) return shape('music-request', text);

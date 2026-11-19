@@ -297,10 +297,10 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the eighteen names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the nineteen names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine; nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(18);
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move; nothing else joined.
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(19);
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.pose']).toBeTruthy();
@@ -2465,6 +2465,22 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 const lines = Actions.promptLines().join('\n');
                 expect(lines).toMatch(/They just came/);
                 expect(lines).toMatch(/Your body right now: a pool of cum in the small of your back/);
+                // SW4. In proportion, never a performance.
+                expect(lines).toMatch(/in proportion/);
+                expect(lines).toMatch(/never a scripted crescendo/);
+                // SW5. The next few replies are aftercare; then ordinary again.
+                const turnOn = async (t) => {
+                    Surface.renderUser(t);
+                    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+                    return Actions.promptLines().join('\n');
+                };
+                const after = await turnOn('that was amazing');
+                expect(after).toMatch(/Afterwards: stay close and unhurried/);
+                expect(after).toMatch(/Offer nothing new/);
+                expect(after).not.toMatch(/They just came/);
+                await turnOn('mmm');
+                await turnOn('stay with me');
+                expect(await turnOn('tell me about your day')).not.toMatch(/Afterwards: stay close/);
                 // Lowering the pace does not take it off her while it holds.
                 w.adult.level = 2;
                 Actions.fitPoseToPace();
@@ -2827,4 +2843,85 @@ describe('VA3. danced shows: the striptease takes layers off at its cues, the ta
         expect(st.applied[st.applied.length - 1][0]).toBe('straddle');
         expect(Actions.log().filter((a) => a.name === 'wardrobe.undress')).toHaveLength(0);
     });
+});
+
+describe('LM1. her body alive in a held position: the bridge drives the layer and tells the model', () => {
+    let real;
+    let layer;
+    beforeEach(() => {
+        real = { poses: window.NEXUS_PRIVATE_POSES, vps: window.vrPoseSystem };
+        layer = null;
+        window.vrPoseSystem = { setLayer: (l) => (layer = l), getLayer: () => layer };
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => 'sit-open',
+                apply: () => ({ ok: true }),
+                release: () => {},
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+    });
+    afterEach(() => {
+        window.NEXUS_PRIVATE_POSES = real.poses;
+        window.vrPoseSystem = real.vps;
+    });
+
+    test('LM7: still until they ask; "move for me" moves her (hands from the third step), "stay still" stills her', async () => {
+        const w = await begin({ adult: true });
+        expect(layer).toBeTruthy();
+        const run = (seconds) => {
+            for (let i = 0; i < seconds * 60; i += 1) layer.apply(1 / 60, { bone: () => null, node: () => null }, null);
+        };
+        const said = () => Actions.promptLines().join('\n');
+        w.adult.level = 4;
+        run(30);
+        // Not asked: still, and the model is told so — no hands, no motion.
+        expect(said()).not.toMatch(/Your hands right now/);
+        expect(said()).toMatch(/You hold that position still; you move in it only if they ask/);
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
+        let seen = false;
+        for (let k = 0; k < 12 && !seen; k += 1) {
+            run(5);
+            seen = /Your hands right now: your (left|right) hand/.test(said());
+        }
+        expect(seen).toBe(true);
+        await say('slower');
+        expect(said()).toMatch(/moving in that position for them, slowly/);
+        // "stop" alone is consent's (it eases or ends the evening, before any action is read);
+        // holding still and going on is "stay still".
+        await say('stay still');
+        expect(said()).toMatch(/You have stopped moving and hold still/);
+        // Codex (#196). Easing off stills her too, whatever the position.
+        await say('move for me');
+        expect(said()).toMatch(/You are moving in that position for them/);
+        await say('wait');
+        expect(said()).not.toMatch(/You are moving in that position for them/);
+        run(10);
+        expect(said()).not.toMatch(/Your hands right now/);
+        Actions.end();
+        expect(layer).toBeNull();
+    });
+});
+
+describe('Codex (#196): a negated movement request is a no', () => {
+    const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+    const posed = { poseHeld: true };
+    const moving = { poseHeld: true, moving: true };
+    const move = (t, c) => {
+        const p = Intent.parse(t, c);
+        return p && p.name === 'avatar.move' ? p.params.move : null;
+    };
+    test.each([
+        ["don't rock your hips", posed, null],
+        ["don't grind on me", posed, null],
+        ["don't rock your hips", moving, 'still'],
+        ["I don't want you to keep moving", moving, 'still'],
+        ['non muoverti', moving, 'still'],
+        ["don't stop", moving, 'start'],
+        ['non fermarti', moving, 'start'],
+        ['no pares', moving, 'start'],
+        ['move for me', posed, 'start'],
+    ])('%s (%o) → %s', (text, c, want) => expect(move(text, c)).toBe(want));
 });

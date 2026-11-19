@@ -151,6 +151,9 @@
         };
         const s = state;
         startStory(s, o.deps && o.deps.story);
+        // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
+        // evening (position, step, finish) each frame; never moves any of it.
+        s.living = startLiving(s, o.deps && o.deps.living);
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -186,6 +189,14 @@
         const s = state;
         if (!s || (session && s.session !== session)) return false;
         if (s.skin) s.skin.detach(); // UN32. her skin as it was loaded
+        if (s.living) {
+            try {
+                s.living.detach(); // LM1. before the pose is released below
+            } catch (_) {
+                /* the pose system is gone with the page */
+            }
+            s.living = null;
+        }
         clearAfterglow(s);
         clearFinish(s);
         stopDoggy(s);
@@ -620,6 +631,50 @@
         };
     }
 
+    /**
+     * LM1. The living layer for this evening (PrivateLivingMotion.attach), or `null` when this
+     * page has no pose system to draw it on. What it reads is the evening as the bridge holds it:
+     * her held position, ConsentFlow's step, when they last finished, the afterglow, care mode.
+     */
+    function startLiving(s, injected) {
+        if (injected) return injected;
+        const Living = pick(s.win, 'NEXUS_PRIVATE_LIVING', './PrivateLivingMotion.js');
+        if (!Living || typeof Living.attach !== 'function') return null;
+        try {
+            return Living.attach({
+                win: s.win,
+                read: () => {
+                    if (state !== s) return {};
+                    let speaking = false;
+                    try {
+                        // Codex (#196). Any of her voices: the app's TTS provider (Piper, SonicAgent, cloud)
+                        // as SpeechAdapter reads it, then the browser's own speech.
+                        const tts = s.win.NEXUS_TTS_PROVIDER;
+                        speaking = Boolean(
+                            (tts && typeof tts.isSpeaking === 'function' && tts.isSpeaking()) ||
+                                (s.win.speechSynthesis && s.win.speechSynthesis.speaking)
+                        );
+                    } catch (_) {
+                        speaking = false;
+                    }
+                    const m = movingNow(s);
+                    return {
+                        moving: m ? m.tempo : null,
+                        pose: s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null,
+                        level: levelOf(s),
+                        finishAt: s.finish ? s.finish.at : null,
+                        afterglow: s.afterglow ? s.afterglow.stage : null,
+                        care: Boolean(s.session && s.session._care),
+                        speaking,
+                    };
+                },
+            });
+        } catch (error) {
+            console.warn('[Private] LM1 living layer not started', error);
+            return null;
+        }
+    }
+
     /** ConsentFlow's current level for this session (UN1), or 0 when there is none. */
     /** UN1. Kept equal to `PrivateActionPolicy.UNDRESS_LEVEL`; a test holds them together. */
     const UNDRESS_AT = 4;
@@ -783,6 +838,8 @@
             }
             case 'avatar.routine':
                 return routine(s, action);
+            case 'avatar.move':
+                return move(s, action);
             case 'avatar.pose': {
                 // UN36. A position they ask for ends any show she is giving: their words lead.
                 stopRoutine(s);
@@ -916,6 +973,46 @@
         s.routine = null;
     }
 
+    /**
+     * LM7. Motion as a response. She holds a position still; she moves in it only because the
+     * person asked ("move for me", "slower", "faster", "stay still"), at the tempo they asked for, and
+     * stops when they say so, when the position changes, or once they have finished (the finish
+     * has its own reaction, then she is still again). Nothing here moves her: it records what was
+     * asked, and the living layer (PrivateLivingMotion) reads it each frame.
+     */
+    const TEMPOS = ['slow', 'normal', 'fast'];
+    function movingNow(s) {
+        const m = s && s.moving;
+        if (!m) return null;
+        const held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        // A different position (or none) starts still; so does the moment after the finish.
+        if (!held || held !== m.pose || (s.finish && s.finish.at >= m.at)) {
+            s.moving = null;
+            return null;
+        }
+        return m;
+    }
+    function move(s, action) {
+        const p = action.params || {};
+        if (p.move === 'still') {
+            const was = Boolean(movingNow(s));
+            s.moving = null;
+            emit();
+            return settle(action, 'completed', null, { move: 'still', was });
+        }
+        const held = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+        if (!held) return settle(action, 'failed', 'not-posed');
+        if (s.routine && !s.routine.done) return settle(action, 'failed', 'show-running');
+        const now = movingNow(s);
+        let tempo = now ? now.tempo : p.tempo || 'normal';
+        if (p.move === 'start' && p.tempo) tempo = p.tempo;
+        if (p.move === 'slower') tempo = TEMPOS[Math.max(0, TEMPOS.indexOf(tempo) - 1)];
+        if (p.move === 'faster') tempo = TEMPOS[Math.min(TEMPOS.length - 1, TEMPOS.indexOf(tempo) + 1)];
+        s.moving = { pose: held, tempo, at: Date.now() };
+        emit();
+        return settle(action, 'completed', null, { move: p.move, tempo });
+    }
+
     function routine(s, action) {
         const R = routinesOf(s);
         if (!R || !s.poses) return settle(action, 'failed', 'no-routines');
@@ -958,6 +1055,9 @@
                   ? R.boldest(at, levels)
                   : p.routine;
         if (!id || !R.ROUTINES[id]) return settle(action, 'failed', p.move === 'again' ? 'no-routine' : 'none-open');
+        // MP1. Switched off in Settings (Motion created by Claude): not a matter of the pace.
+        if (typeof R.available === 'function' && !R.available(id))
+            return settle(action, 'failed', 'show-off', { routine: id });
         if (R.level(id, levels) > at) return settle(action, 'blocked', 'pace', { routine: id });
         // The same show asked for again in the same moment (one line heard twice) is the one running.
         if (live && live.id === id && live.index === 0 && Date.now() - live.stepAt < 1500)
@@ -1575,6 +1675,8 @@
             return null;
         }
     }
+    /** SW5. How many replies after the finish keep the aftercare line. */
+    const AFTERCARE_TURNS = 3;
     /** How long where they finished stays on her before the afterglow fade (UN33) takes over. */
     const FINISH_HOLD_MS = 6 * 60 * 1000;
     /** UN34. Without a place: what this look can show, the lower back first (asked for most). */
@@ -2044,7 +2146,15 @@
         s.turnText = String(text == null ? '' : text);
         touched(s);
         const intent = turn && turn.intent;
-        if (intent === 'end' || intent === 'pace-down') return null;
+        if (intent === 'end' || intent === 'pace-down') {
+            // Codex (#196). Easing off (or hesitating) stills her too: a position allowed at the
+            // lower step stays held, and the movement they had asked for must not go on under it.
+            if (s.moving) {
+                s.moving = null;
+                emit();
+            }
+            return null;
+        }
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
         if (!Intent) return null;
 
@@ -2098,6 +2208,7 @@
             undressed: Boolean(s.dressedLook),
             ...poseContext(s),
             routine: routineState(s),
+            moving: Boolean(movingNow(s)),
         });
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
@@ -2826,7 +2937,17 @@
                 );
         }
         if (s.finish && s.finish.turnId === s.turnId)
-            now.push('They just came, and it shows on your body as the next line says. Answer it in the moment.');
+            now.push(
+                // SW4. In proportion, not a performance: no scripted crescendo timed to their climax
+                // (Brewer & Hendrie 2011 — performed reactions are the partner-pleasing kind).
+                'They just came, and it shows on your body as the next line says. Answer it sincerely and in proportion: warm, present, about the two of you — never a scripted crescendo or a performance for them.'
+            );
+        else if (s.finish && s.turnId - s.finish.turnId <= AFTERCARE_TURNS)
+            now.push(
+                // SW5. Afterwards is its own phase (Muise, Giang & Impett 2014: affection after sex
+                // predicts satisfaction): a few replies of closeness before anything new.
+                'Afterwards: stay close and unhurried. Short, tender, specific words about being together just now; slow and soft. Offer nothing new — no position, show, outfit or place — and do not ask for more; if they want more, they will say so. Never hurry them or make them feel they must leave or stay.'
+            );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
             now.push(
@@ -2836,6 +2957,28 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
+        // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
+        let hands = null;
+        try {
+            hands = s.living && typeof s.living.describe === 'function' ? s.living.describe() : null;
+        } catch (_) {
+            hands = null;
+        }
+        if (hands) now.push(`Your hands right now: ${hands}. What you say about your hands matches that.`);
+        // LM7. Moving or still, as the person asked: her words follow her body.
+        const TEMPO_WORDS = { slow: 'slowly', normal: 'at an easy rhythm', fast: 'faster, with more urgency' };
+        const askedMove = [...s.log].reverse().find((a) => a.name === 'avatar.move' && a.turnId === s.turnId);
+        const moveNow = movingNow(s);
+        if (moveNow)
+            now.push(
+                `You are moving in that position for them, ${TEMPO_WORDS[moveNow.tempo]}, because they asked. Keep your words in time with it; you stop the moment they ask.`
+            );
+        else if (askedMove && askedMove.status === 'completed')
+            now.push('You have stopped moving and hold still, as they asked.');
+        else if (askedMove && askedMove.why === 'not-posed')
+            now.push('They asked you to move, but you are not holding a position yet: say so warmly, and invite one.');
+        else if (s.poses && typeof s.poses.held === 'function' && s.poses.held())
+            now.push('You hold that position still; you move in it only if they ask you to.');
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

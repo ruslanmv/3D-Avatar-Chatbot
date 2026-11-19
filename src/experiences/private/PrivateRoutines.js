@@ -209,10 +209,43 @@
 
     const ROUTINES = Object.freeze({ ...ROUTINES_BASE, ...ROUTINES_EXTRA });
 
+    /**
+     * MP1. Can this show run with what is switched on? Every show here was composed by Claude, and
+     * each step uses a preset or a clip Claude made or one that was there before: the show is
+     * offered only while composed shows are on and every Claude-made piece it uses is on
+     * (src/gltf-viewer/MotionProvenance.js). No registry (tests, an older page): yes.
+     */
+    function provenance() {
+        if (global && global.NEXUS_MOTION_PROVENANCE) return global.NEXUS_MOTION_PROVENANCE;
+        try {
+            return require('../../gltf-viewer/MotionProvenance.js');
+        } catch (_) {
+            return null;
+        }
+    }
+    function presetOf(pose) {
+        const P = global && global.NEXUS_PRIVATE_POSES;
+        const entry = P && P.POSES ? P.POSES[pose] : null;
+        return entry ? entry.preset : null;
+    }
+    function available(id) {
+        const routine = ROUTINES[id];
+        if (!routine) return false;
+        const MP = provenance();
+        if (!MP) return true;
+        if (!MP.showAllowed(id)) return false;
+        for (const step of routine.steps) {
+            if (step.clip && !MP.clipAllowed(step.clip)) return false;
+            const preset = step.pose ? presetOf(step.pose) : null;
+            if (preset && !MP.presetAllowed(preset)) return false;
+        }
+        return true;
+    }
+
     /** The step of the pace a routine needs: the highest any of its positions opens at, or its own. */
     function level(id, poseLevel) {
         const routine = ROUTINES[id];
-        if (!routine) return Infinity;
+        if (!routine || !available(id)) return Infinity;
         let need = Number(routine.level) || 1;
         for (const step of routine.steps) {
             if (!step.pose) continue; // a clip step needs no position
@@ -240,7 +273,7 @@
         return SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, at + (direction > 0 ? 1 : -1)))];
     }
 
-    const api = { ROUTINES, ORDER, CLIPS, BLEND_S, SPEEDS, level, openAt, boldest, stepSpeed };
+    const api = { ROUTINES, ORDER, CLIPS, BLEND_S, SPEEDS, level, openAt, boldest, stepSpeed, available };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ROUTINES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

@@ -87,9 +87,9 @@
      */
     function getFilteredPresets() {
         var spicy = window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
-        if (spicy) return NAV_PRESETS;
+        if (spicy) return NAV_PRESETS.filter(madeAllowed); // MP1. see madeAllowed below
         return NAV_PRESETS.filter(function (p) {
-            return !p.adult;
+            return !p.adult && madeAllowed(p);
         });
     }
 
@@ -2017,6 +2017,16 @@
         this.rootEl.classList.add('hidden');
         this._exitPoseMode();
     };
+
+    /**
+     * MP1. A preset Claude made by hand (src/gltf-viewer/MotionProvenance.js) is offered only while
+     * that method is switched on in Settings; every other preset always is. Declared down here, below
+     * the lines the parity harness pins, so adding it moved none of them.
+     */
+    function madeAllowed(p) {
+        var MP = window.NEXUS_MOTION_PROVENANCE;
+        return !MP || MP.presetAllowed(p.name);
+    }
 
     /**
      * NL1. The navigator's catalogue, for whoever needs to name a pose without opening the

@@ -25,6 +25,7 @@ import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 import { PoseClothCorrector } from './PoseClothCorrector.js';
 import './PuppetSkeleton.js'; // VP1. side effect: window.NEXUS_PUPPET_SKELETON
 import './PoseTransition.js'; // UN23. side effect: window.NEXUS_POSE_TRANSITION
+import './MotionProvenance.js'; // MP1. side effect: window.NEXUS_MOTION_PROVENANCE
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -2283,6 +2284,85 @@ export class VRPoseSystem {
               })
             : null;
         this._claimedPreset = null;
+        // LM1. A procedural layer over the held pose (PrivateLivingMotion): written each frame just
+        // before the copy onto her skeleton, taken off again at the start of the next.
+        this._layer = null;
+        this._layerSaved = null;
+    }
+
+    /**
+     * LM1. Set (or clear, with `null`) the layer drawn over a held pose: `{ keys, apply(dt, rig,
+     * THREE), idle() }`. It runs only while the bones are claimed and no hand is dragging her, and
+     * never edits the pose: every value it touches is saved before and restored at the start of
+     * the next frame — only where it still holds what the layer wrote, so a preset applied between
+     * two frames is never overwritten with the one before it.
+     */
+    setLayer(layer) {
+        this._layerUndo();
+        if (this._layer && this._layer !== layer && typeof this._layer.idle === 'function') {
+            try {
+                this._layer.idle();
+            } catch (_) {
+                /* fail soft: a layer that cannot tidy up must not stop the loop */
+            }
+        }
+        this._layer = layer || null;
+    }
+
+    getLayer() {
+        return this._layer;
+    }
+
+    /** LM1. Take last frame's layer off: back to the held values, where nothing else wrote since. */
+    _layerUndo() {
+        const saved = this._layerSaved;
+        this._layerSaved = null;
+        if (!saved) return;
+        for (const [bone, rec] of saved.bones) {
+            if (bone.quaternion.equals(rec.wrote)) bone.quaternion.copy(rec.base);
+        }
+        if (saved.hips && saved.hips.bone.position.equals(saved.hips.wrote))
+            saved.hips.bone.position.copy(saved.hips.base);
+    }
+
+    /** LM1. Put this frame's layer on, saving what it may change. */
+    _layerApply(dt) {
+        const layer = this._layer;
+        if (!layer || typeof layer.apply !== 'function') return;
+        const bones = new Map();
+        for (const key of layer.keys || []) {
+            const bone = this._bones.get(key);
+            if (bone) bones.set(bone, { base: bone.quaternion.clone(), wrote: null });
+        }
+        const hipsBone = this._bones.get('hips');
+        const hips = hipsBone ? { bone: hipsBone, base: hipsBone.position.clone(), wrote: null } : null;
+        const rig = {
+            bone: (k) => this._bones.get(k) || null,
+            node: (k) => this._bones.get(k) || this._normNode(k) || null,
+            solveArm: (side, target) => {
+                const chainName = side === 'left' ? 'leftArm' : 'rightArm';
+                const keys = IK_CHAINS[chainName].filter((k) => this._bones.has(k));
+                solveCCDIK(
+                    keys.map((k) => this._bones.get(k)),
+                    target,
+                    { iterations: 10, tolerance: 0.004, chainName, boneKeys: keys }
+                );
+            },
+        };
+        try {
+            this.avatarRoot.updateMatrixWorld(true);
+            layer.apply(dt, rig, THREE);
+        } catch (error) {
+            // Fail soft: this runs inside the render loop. Put her back as held and stop the layer.
+            for (const [bone, rec] of bones) bone.quaternion.copy(rec.base);
+            if (hips) hips.bone.position.copy(hips.base);
+            console.warn('[VRPoseSystem] LM1 layer skipped', error);
+            this._layer = null;
+            return;
+        }
+        for (const [bone, rec] of bones) rec.wrote = bone.quaternion.clone();
+        if (hips) hips.wrote = hips.bone.position.clone();
+        this._layerSaved = { bones, hips };
     }
 
     /** SW1. She is about to move: the cloth goes back to plain skinning until she settles. */
@@ -2377,6 +2457,16 @@ export class VRPoseSystem {
     releaseBones({ blendSeconds = 0.4 } = {}) {
         if (!this._own || !this._own.isClaimed()) return false;
         if (this._activeIKTarget) this.endIK();
+        // LM1. The claim's snapshot is what she goes back to: nothing of the layer is restored over
+        // it next frame, and her face lets go with her body.
+        this._layerSaved = null;
+        if (this._layer && typeof this._layer.idle === 'function') {
+            try {
+                this._layer.idle();
+            } catch (_) {
+                /* fail soft */
+            }
+        }
         this._isBlending = false;
         this._supportPending = false;
         this._hipsPositionFrom = null;
@@ -2803,12 +2893,16 @@ export class VRPoseSystem {
      */
     static getPresetNames() {
         const spicy = typeof window !== 'undefined' && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
+        // MP1. A preset Claude made by hand is listed only while that method is switched on
+        // (Settings ▸ Private Mode ▸ Motion created by Claude). Everything else is unaffected.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        const made = (name) => !MP || MP.presetAllowed(name);
         if (spicy) {
-            return [...PRESET_ORDER];
+            return PRESET_ORDER.filter(made);
         }
         // Filter out adult poses when spicy mode is off
         return PRESET_ORDER.filter((name) => {
-            return !POSE_PRESETS[name] || !POSE_PRESETS[name].adult;
+            return (!POSE_PRESETS[name] || !POSE_PRESETS[name].adult) && made(name);
         });
     }
 
@@ -2968,7 +3062,9 @@ export class VRPoseSystem {
         // caller's duration and the single curve below are what is left without it.
         this._blendStagger = false;
         const PT = typeof window !== 'undefined' ? window.NEXUS_POSE_TRANSITION : null;
-        if (PT) {
+        // MP1. Claude's staggered blend, only while that method is on: off is the single curve.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        if (PT && (!MP || MP.allowed('transition:stagger'))) {
             try {
                 const travel =
                     this._hipsPositionFrom && this._hipsPositionTo
@@ -3198,6 +3294,9 @@ export class VRPoseSystem {
             return;
         }
 
+        // LM1. Last frame's layer off before anything reads or blends the held pose.
+        this._layerUndo();
+
         // SW1. A settled pose: correct the cloth once the skinning bones have caught up.
         if (this._clothPending > 0 && !this._isBlending && !this._activeIKTarget) {
             this._clothPending -= 1;
@@ -3227,6 +3326,9 @@ export class VRPoseSystem {
         // animator ran, so a behaviour mode cannot take her body from the person's hand. Once she
         // is let go, ease her from the held pose into whatever the animator now produces.
         if (this._own) {
+            // LM1. Her breathing and her hands, over the held pose, only while it is held and no
+            // hand of theirs is moving her.
+            if (this._layer && this._own.isClaimed() && !this._activeIKTarget) this._layerApply(dt);
             if (this._own.isClaimed()) this._own.sync();
             else this._own.update(dt);
         }

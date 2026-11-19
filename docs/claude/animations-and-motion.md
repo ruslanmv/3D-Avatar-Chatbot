@@ -157,3 +157,33 @@ Output goes to `audits/poses/runs/` and `audits/private-positions/runs/`
 ES modules (`"type": "module"`), so read their global, not `module.exports`; and
 proxy-rig joint heights are offset from the rendered body — judge contact by
 `lastSupport` palms and by the side view.
+
+## Her body alive in a held position (LM1–LM2)
+
+A Private position is a Pose Studio preset held still. `PrivateLivingMotion`
+draws a layer over it each frame (breathing, pelvis rocking about the hip
+joints, arching, head back at the finish, `relaxed`/`oh` on her face, and her
+hands on her breast and belly from the third step) through
+`VRPoseSystem.setLayer`. The pose system saves what the layer touches, applies
+it just before the copy onto her skeleton, and restores it at the start of the
+next frame only where the value is still the one the layer wrote. Every axis
+comes from her bones (hips→head, hip→hip), so it is right for VRM 0.x and 1.0
+and in every position.
+
+It is optional: Settings ▸ Private Mode ▸ "Living motion in Private"
+(`nexus_private_living_enabled`, on by default). LM7: motion as a response — she holds
+every position still and moves only when the person asks (`avatar.move`: "move for me",
+"slower", "faster", "stay still", nine languages; a bare "stop" is consent's, their words only, never the model's), plus one
+reaction when they finish. The layer is zero on every bone otherwise. The row is added by the module
+at load, not written into `index.html` (a row there moves the lines the parity
+harness pins). Off is read each frame: the layer draws nothing and her face goes
+back, while everything stays installed for turning it on again.
+
+```bash
+node tools/qa/living-motion-live.mjs --vrm <file.vrm> --only straddle,sit-open
+```
+
+It reports how far each bone moved, each hand's miss by place, the lean and the
+layer's cost per frame, with frames and the hands' targets marked. Thighs and
+between her legs are out of reach of the arm (0.54–0.68 m against 0.46 m) and
+are not offered until a lean that looks right is found.
