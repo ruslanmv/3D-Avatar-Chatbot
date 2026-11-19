@@ -110,7 +110,15 @@ const PrivateConversationView = (() => {
     /** UN35. The finish chips, in the bridge's order of places (PrivateActionBridge FINISH_ORDER). */
     const FINISH_KEYS = Object.freeze(['back', 'inside', 'both', 'ass', 'all', 'belly', 'chest']);
     /** UN36. The show chips, gentlest first (PrivateRoutines.ORDER). */
-    const ROUTINE_KEYS = Object.freeze(['tease', 'ride', 'open-for-you', 'from-behind', 'everything']);
+    const ROUTINE_KEYS = Object.freeze([
+        'tease',
+        'ride',
+        'table-dance',
+        'open-for-you',
+        'from-behind',
+        'everything',
+        'striptease',
+    ]);
 
     /**
      * One string, and the key back if there is no locale module at all.

@@ -18,10 +18,18 @@ const show = (said, context) => {
 };
 
 describe('UN36 shows: the data', () => {
-    test('every step is one of her positions (or a turn), and every show is in the policy', () => {
+    test('every step is one of her positions, a turn, or a CC0 clip that ships; every show is in the policy', () => {
+        const fs = require('fs');
+        const path = require('path');
         for (const id of Routines.ORDER) {
             for (const step of Routines.ROUTINES[id].steps) {
-                expect(step.pose === 'turn' || Boolean(Poses.POSES[step.pose])).toBe(true);
+                if (step.clip) {
+                    expect(step.clip.startsWith('addons/vrma-cc0/')).toBe(true);
+                    expect(fs.existsSync(path.join(__dirname, '..', step.clip))).toBe(true);
+                } else {
+                    expect(step.pose === 'turn' || Boolean(Poses.POSES[step.pose])).toBe(true);
+                    expect(step.undress).toBeUndefined(); // a layer comes off only while she dances
+                }
                 expect(step.hold).toBeGreaterThan(2000);
                 expect(step.body.length).toBeGreaterThan(10);
             }
@@ -33,10 +41,13 @@ describe('UN36 shows: the data', () => {
         const at = (n) => Routines.openAt(n, Policy.poseLevel);
         expect(at(1)).toEqual([]);
         expect(at(2)).toEqual(['tease']);
-        expect(at(3)).toEqual(['tease', 'ride']);
+        expect(at(3)).toEqual(['tease', 'ride', 'table-dance']);
         expect(at(4)).toEqual(Routines.ORDER);
-        expect(Routines.boldest(3, Policy.poseLevel)).toBe('ride');
-        expect(Routines.boldest(4, Policy.poseLevel)).toBe('everything');
+        expect(Routines.boldest(3, Policy.poseLevel)).toBe('table-dance');
+        expect(Routines.boldest(4, Policy.poseLevel)).toBe('striptease');
+        // VA3. A striptease takes layers off: it opens only where undressing does.
+        expect(Routines.level('striptease', Policy.poseLevel)).toBe(Policy.UNDRESS_LEVEL);
+        expect(Routines.ROUTINES.striptease.steps.filter((x) => x.undress)).toHaveLength(3);
     });
 
     test('speeds step and stop at the ends', () => {
@@ -116,7 +127,7 @@ describe('UN36 the ⋯ menu: show chips follow the pace the card shows', () => {
         expect(at(1)).toEqual([]);
         expect(at(2)).toEqual(['tease']);
         expect(at(4)).toEqual(Routines.ORDER);
-        expect(at(3)).toEqual(['tease', 'ride']);
+        expect(at(3)).toEqual(['tease', 'ride', 'table-dance']);
         document.querySelector(`#${Private.ROW_ID} [data-private-routine="ride"]`).click();
         expect(sent).toEqual([['Ride me', 'ride']]);
     });

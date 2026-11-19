@@ -697,8 +697,10 @@ export class ViewerEngine {
                 root.position.set(0, 0, 0);
                 // VRM avatars need rotation.y = Math.PI (VRM spec: forward = -Z).
                 // Without this, re-entering VR after puppet mode shows the avatar's back.
-                const isVRM = root.userData?.isVRM;
-                root.rotation.set(0, isVRM ? Math.PI : 0, 0);
+                // VA1. VRM 1.0 faces +Z: AvatarManager stores which way she faces.
+                const ud = root.userData || {};
+                const negZ = 'vrmForwardNegZ' in ud ? ud.vrmForwardNegZ : !!ud.isVRM;
+                root.rotation.set(0, negZ ? Math.PI : 0, 0);
             }
 
             // Reset, then re-frame if an avatar exists

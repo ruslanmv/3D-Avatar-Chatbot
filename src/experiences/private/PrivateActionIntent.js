@@ -483,6 +483,15 @@
             'from-behind',
             'offer yourself (?:to me )?from behind|present yourself(?: to me)?|offriti (?:a me )?da dietro|ofrécete por detrás|ofrecete por detras|offre-toi par derrière|biete dich von hinten an|oferece-te por trás|後ろから誘って|뒤에서 나를 유혹해줘|从后面诱惑我',
         ],
+        // VA3. The danced shows.
+        [
+            'striptease',
+            'striptease|strip tease|do a striptease for me|spogliarello|fammi uno spogliarello|haz(?:me)? un striptease|fais-moi un strip-?tease|strip-?tease|mach (?:mir )?einen striptease|faz(?:-me)? um striptease(?: para mim)?|ストリップして|스트립쇼 해줘|跳脱衣舞',
+        ],
+        [
+            'table-dance',
+            'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
+        ],
         [
             'everything',
             'show me everything|fammi vedere tutto|enséñamelo todo|ensenamelo todo|montre-moi tout|zeig mir alles|mostra-me tudo|全部見せて|다 보여줘|全部给我看',
