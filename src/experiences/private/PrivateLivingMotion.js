@@ -391,7 +391,7 @@
                 .clone()
                 .addScaledVector(frame.forward, 0.1 * s)
                 .addScaledVector(frame.right, sign * 0.085 * s)
-                .addScaledVector(frame.up, -0.07 * s);
+                .addScaledVector(frame.up, -0.12 * s);
             const out = frame.forward
                 .clone()
                 .multiplyScalar(0.9)
