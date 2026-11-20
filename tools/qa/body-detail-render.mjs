@@ -30,7 +30,10 @@ const arg = (name, fallback) => {
 };
 const FILES = arg('--vrm', '').split(',').filter(Boolean);
 const MARKS = JSON.parse(
-    arg('--marks', '{"nipple":[0.0946,1.1685,0.1855],"crotch":[0,0.7578,0.0045],"belly":[0,0.98,0.12]}')
+    arg(
+        '--marks',
+        '{"nipple":[0.0946,1.1685,0.1855],"crotch":[0,0.7578,0.0045],"belly":[0,0.98,0.12],"anus":[0,0.772,-0.03]}'
+    )
 );
 // view: [pose, landmark, the spot's normal in her rest frame (z = her front), camera distance m]
 const ALL = {
@@ -38,6 +41,9 @@ const ALL = {
     seated: ['sittingOpen', 'crotch', [0, -0.25, 1], 0.2],
     kneesup: ['lyingKneesUp', 'crotch', [0, -0.85, 0.5], 0.3],
     allfours: ['handsKnees', 'crotch', [0, -0.45, -0.9], 0.24],
+    // BD22. Her anus close up from behind on all fours: a gape, wrecked past a fist, and filled
+    // read here. The landmark sits one perineum (≈3.2 cm) behind the crotch in her rest pose.
+    anus: ['handsKnees', 'anus', [0, 0.1, -1], 0.17],
     // UN31. Whole-torso effects (flush, sweat, tan lines): front and back, belly-centred.
     torso: ['standing', 'belly', [0, 0.05, 1], 0.75],
     back: ['standing', 'belly', [0, 0.05, -1], 0.8],
