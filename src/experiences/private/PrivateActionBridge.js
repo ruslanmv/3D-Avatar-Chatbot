@@ -201,6 +201,8 @@
         clearFinish(s);
         stopDoggy(s);
         stopRoutine(s);
+        // BS1. The room back where it was if she was on its bed.
+        syncBed(s, null);
         state = null;
         for (const off of s.unwatch) {
             try {
@@ -744,6 +746,7 @@
             if (earlier && ['pending', 'completed'].includes(earlier.status)) return earlier;
         }
 
+        if (action.name === 'avatar.pose') action.params = openInPlace(s, action.params);
         record(s, action);
         const verdict = Policy.decide(action, facts(s, action));
         if (!verdict.allow) {
@@ -859,6 +862,8 @@
                 return react(s, action);
             case 'body.finish':
                 return finishOn(s, action);
+            case 'body.fist':
+                return fistOn(s, action);
             case 'world.travel':
                 return travel(s, action);
             case 'scene.change': {
@@ -1066,9 +1071,69 @@
         stopRoutine(s);
         const r = { id, index: -1, speed, timer: null, done: false, doneTurn: null, turnId: action.turnId };
         s.routine = r;
+        // PP2. A show that takes clothes off needs clothes to take off. With nothing left (she is
+        // bare, or her wardrobe has no layer under what she wears), she first puts on one of her
+        // ready striptease sets — a look already made for her, so it loads at once and nothing is
+        // generated — and the show begins once it is on. Without one, the show runs as before.
+        const outfit = needsShowOutfit(s, R.ROUTINES[id]) ? showOutfit(s) : null;
+        if (outfit) {
+            r.dressing = true;
+            emit();
+            const alive = () => state === s && s.routine === r && !r.done;
+            keepingPose(s, () => s.closet.wearLook(outfit, alive))
+                .catch(() => ({ ok: false }))
+                .then(() => {
+                    if (!alive()) return;
+                    r.dressing = false;
+                    nextStep(s, r);
+                });
+            return settle(action, 'completed', null, {
+                routine: id,
+                name: R.ROUTINES[id].name,
+                outfit: outfit.name || '',
+            });
+        }
         nextStep(s, r);
         if (s.routine !== r) return settle(action, 'failed', 'not-rendered', { routine: id });
         return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
+    }
+
+    /** PP2. Does this show undress her, and is there nothing left on her to take off? */
+    function needsShowOutfit(s, routine) {
+        if (!routine || !routine.steps.some((x) => x.undress)) return false;
+        if (!s.closet || !s.closet.privateOpen || typeof s.closet.wearLook !== 'function') return false;
+        try {
+            return !nextLayer(s, { step: 'next' }).look;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * PP2. One of her ready striptease sets: a look made from Forge's striptease outfits
+     * (`show-strip-*`, the Striptease Show collection), not bare, not the one she has on. The
+     * first in her wardrobe's own order, so the same evening picks the same set.
+     */
+    function showOutfit(s) {
+        const looks = (s.closet && s.closet.looks) || [];
+        const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+        const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+        let current = null;
+        try {
+            current = typeof s.closet.current === 'function' ? s.closet.current() : null;
+        } catch (_) {
+            current = null;
+        }
+        const here = current ? keyOf(current) : null;
+        return (
+            looks.find(
+                (l) =>
+                    l &&
+                    /^show-strip-/.test(String(l.outfitId || '')) &&
+                    !(Engine && typeof Engine.isBare === 'function' && Engine.isBare(l)) &&
+                    keyOf(l) !== here
+            ) || null
+        );
     }
 
     function nextStep(s, r) {
@@ -1206,6 +1271,43 @@
         );
     }
 
+    /**
+     * OL1/OL3. Her position remembered: a relative request ("apri le gambe", "apri", "chiudi le
+     * gambe") is resolved from the position she holds through PrivatePoseController.transition —
+     * one table — so on her back "open" is `knees-up` and never the chair seat in mid-air
+     * (reported 2026-11-19), and "close" brings her knees together where she is. A model's own
+     * `sit-open` tag goes the same way unless the person asked her to sit. The policy then judges
+     * the position she will really take, so the pace still decides. `from` keeps where she was,
+     * for the reply.
+     */
+    const SIT_WORDS = /sied|sedut|\bsit\b|sient|sentad|assi[es]|assoi|setz|senta|座|앉|坐/i;
+    function openInPlace(s, params) {
+        if (!params || !s.poses || typeof s.poses.held !== 'function') return params;
+        let rel = params.rel || null;
+        if (!rel && params.pose === 'sit-open' && !SIT_WORDS.test(String(s.turnText || ''))) rel = 'open';
+        if (!rel) return params;
+        let Poses = pick(s.win, 'NEXUS_PRIVATE_POSES', './PrivatePoseController.js');
+        if ((!Poses || typeof Poses.transition !== 'function') && typeof module !== 'undefined' && module.exports) {
+            try {
+                Poses = require('./PrivatePoseController.js');
+            } catch (_) {
+                Poses = null;
+            }
+        }
+        if (!Poses || typeof Poses.transition !== 'function') return params;
+        let held = null;
+        try {
+            held = s.poses.held();
+        } catch (_) {
+            held = null;
+        }
+        const from = typeof held === 'string' ? held : null;
+        const to = Poses.transition(rel, from);
+        // Nothing to change ("close" while standing): she stays as she is.
+        if (!to) return { ...params, pose: 'stand', rel, from: null };
+        return { ...params, pose: to, rel, from };
+    }
+
     function pose(s, action) {
         if (!s.poses) return settle(action, 'failed', 'no-pose-system');
         if (action.params.pose === 'stand') {
@@ -1227,6 +1329,9 @@
             const out = s.poses.back();
             return settle(action, out.ok ? 'completed' : 'failed', out.ok ? null : out.why, { name: out.pose || '' });
         }
+        // OL3. Asked to open or close where she already is: nothing to move, nothing re-blended.
+        if (action.params.rel && action.params.from && action.params.from === action.params.pose)
+            return settle(action, 'completed', null, { name: action.params.pose, same: true });
         // NL1. A position that was asked for and that this build does not have: nothing runs, and
         // the reply is told so. `ask` is set when the words fit more than one preset.
         if (action.params.pose === 'unknown')
@@ -1713,6 +1818,56 @@
         return null;
     }
 
+    /**
+     * PS2. Their fist, as her body can show it: Forge's fisted states (assets/body_detail/
+     * states.json) by the position she holds, best first, and the first the look's pack holds is
+     * shown. Lying back it is the missionary states; on all fours the doggy ones; otherwise
+     * whichever exists. Stays until her skin changes again (a finish, the pace, the afterglow).
+     */
+    const FIST_STATES = Object.freeze({
+        doggy: { front: ['doggy-both-fisted'], anal: ['doggy-anal-fisted'], both: ['doggy-both-fisted'] },
+        missionary: {
+            front: ['missionary-fisted'],
+            anal: ['missionary-fisted-anal'],
+            both: ['missionary-fisted', 'missionary-fisted-anal'],
+        },
+    });
+    /*
+     * Codex (#200). What each target may show when her position has none of its own: never a
+     * different act (an anal request showed the front state). Asked for one target and it cannot
+     * be shown: nothing is, and they are told in words.
+     */
+    const FIST_BY_TARGET = Object.freeze({
+        front: ['missionary-fisted'],
+        anal: ['doggy-anal-fisted', 'missionary-fisted-anal'],
+        both: ['doggy-both-fisted'],
+    });
+
+    function fistState(s, where) {
+        const names = (s.skinStates || []).map((x) => x.name);
+        const group = poseGroup(s);
+        const byPose = FIST_STATES[group] || null;
+        const asked = where && where !== 'choose' ? where : null;
+        const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
+        for (const target of targets) {
+            const ordered = [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]];
+            const found = ordered.find((n) => names.includes(n));
+            if (found) return found;
+        }
+        return null;
+    }
+
+    function fistOn(s, action) {
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = fistState(s, action.params && action.params.where);
+        if (!chosen) return settle(action, 'failed', 'no-fist-state');
+        s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
+        action.result = { state: chosen };
+        return Promise.resolve(s.skin.apply(chosen))
+            .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
+            .catch(() => settle(action, 'failed', 'not-shown'));
+    }
+
     function finishOn(s, action) {
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
         const chosen = finishState(s, action.params.where);
@@ -1748,6 +1903,19 @@
      */
     const DOGGY_SWEAT_MS = 150 * 1000;
 
+    /**
+     * BS1. The room follows the position she holds: on the bed for a bed position in a room with
+     * a measured bed (PrivateBed), back where it was for anything else. Once per change of position.
+     */
+    function syncBed(s, held) {
+        const Bed = pick(s.win, 'NEXUS_PRIVATE_BED', './PrivateBed.js');
+        if (!Bed) return;
+        const want = Bed.isBedPose(held) ? held : null;
+        if (s.bedPose === want) return;
+        s.bedPose = want;
+        Bed.sync(s.win, want).catch(() => {});
+    }
+
     function watchDoggy(s) {
         if (!s || !s.poses || typeof s.poses.held !== 'function') return;
         let held = null;
@@ -1756,6 +1924,7 @@
         } catch (_) {
             held = null;
         }
+        syncBed(s, held);
         if (held === 'all-fours') {
             if (s.doggyTimer || s.doggySweaty) return;
             s.doggyTimer = (s.win.setTimeout || setTimeout)(() => {
@@ -1803,6 +1972,44 @@
     }
 
     /** UN32. Her skin's state right now, for the reply: the pack's own line, when not closed. */
+    /**
+     * PB1–PB2. What her bare look can show (PrivateBodyKnowledge): a short index of families every
+     * reply at the closest step, and a family's names only on the turn the person's words touch
+     * it, filtered by the position she holds — so she knows her body without the whole catalogue
+     * in every prompt. Her other bare looks are named when extras (piercings, tattoos…) are asked
+     * about: those come with a look, never live. Information, never an action.
+     */
+    function packLines(s) {
+        if ((levelOf(s) || 1) < 4) return [];
+        const K = pick(s.win, 'NEXUS_PRIVATE_BODY_KNOWLEDGE', './PrivateBodyKnowledge.js');
+        if (!K) return [];
+        const names = s.skin && Array.isArray(s.skinStates) ? s.skinStates.map((x) => x && x.name) : [];
+        let bareLooks = [];
+        let wearing = [];
+        try {
+            const Engine = pick(s.win, 'NEXUS_OUTFIT_DECISION_ENGINE', './OutfitDecisionEngine.js');
+            const current = s.closet && typeof s.closet.current === 'function' ? s.closet.current() : null;
+            const keyOf = Engine && typeof Engine.keyOf === 'function' ? Engine.keyOf : (l) => l && (l.lookId || l.id);
+            bareLooks = ((s.closet && s.closet.looks) || [])
+                .filter((l) => l && Engine && Engine.isBare(l) && (!current || keyOf(l) !== keyOf(current)))
+                .slice(0, 8)
+                // BD21. Forge says what each bare look's body has (look.body: preset, states,
+                // extras), so she can name the look with the piercing they asked for.
+                .map((l) => ({ name: String(l.name || '').slice(0, 60), extras: extrasOf(l) }));
+            wearing = extrasOf(current);
+        } catch (_) {
+            bareLooks = [];
+        }
+        const out = K.lines({ names, pose: poseGroup(s), text: s.turnText, bareLooks, wearing });
+        return [out.index, out.detail].filter(Boolean);
+    }
+
+    /** BD21. A look's painted extras from Forge's `body` field (strings only, at most four). */
+    function extrasOf(look) {
+        const extras = look && look.body && Array.isArray(look.body.extras) ? look.body.extras : [];
+        return extras.filter((e) => typeof e === 'string' && /^[a-z0-9-]{1,40}$/.test(e)).slice(0, 4);
+    }
+
     function skinLine(s) {
         if (!s.skin || !s.skinStates) return null;
         const now = s.skin.current();
@@ -1925,6 +2132,13 @@
 
     /** SUGGEST: her idea becomes a question for the person, with the look already resolved. */
     async function offerFrom(s, action) {
+        if (action.name === 'avatar.routine') {
+            // PP1. Her own show tag is an invitation, never a start: offered only when the show is
+            // open at the pace now and switched on; their yes runs it as their request.
+            const id = action.params && action.params.routine;
+            if (id && id !== 'choose') offerShowNow(s, id);
+            return;
+        }
         if (action.family === 'world') {
             // UN4. Her invitation: the place she named, if it is one of tonight's places.
             if (!s.canTravel || s.travel) return;
@@ -1987,6 +2201,27 @@
         }
     }
 
+    /**
+     * PP1. Invite them to one of her shows: an offer their yes, the card's button or their own
+     * words take. Only a show that exists, is switched on (MP1) and is open at the pace now; never
+     * over an outfit offer still waiting for its answer, and never in care.
+     */
+    function offerShowNow(s, id) {
+        const R = routinesOf(s);
+        if (!R || !R.ROUTINES || !R.ROUTINES[id] || s.session._care) return false;
+        if (typeof R.available === 'function' && !R.available(id)) return false;
+        if (R.level(id, poseLevelFn(s)) > (levelOf(s) || 1)) return false;
+        if (s.offer && s.offer.kind !== 'show') return false;
+        if (routineState(s) === 'running') return false;
+        s.offer = { kind: 'show', routine: id, name: R.ROUTINES[id].label, turnId: s.turnId };
+        emit();
+        return true;
+    }
+
+    function offerShow(id) {
+        return state ? offerShowNow(state, String(id || '')) : false;
+    }
+
     /** The person said yes to what was offered (their words, or the chip). */
     async function approveOffer(source) {
         const s = state;
@@ -1994,6 +2229,14 @@
         touched(s);
         const offer = s.offer;
         s.offer = null;
+        if (offer.kind === 'show') {
+            // PP1. Their yes is the show: asked of the policy and the pace again, as their approval.
+            return request(
+                'avatar.routine',
+                { routine: offer.routine, move: 'start' },
+                { source: source === 'control' ? 'control' : 'user-approved', turnId: s.turnId }
+            );
+        }
         if (offer.kind === 'travel') {
             // UN4. Their yes is the trip: asked again of the policy, as `user-approved`.
             return request(
@@ -2189,7 +2432,7 @@
                 ? Intent.affirmsGoing(s.turnText)
                 : typeof Intent.affirms === 'function' && Intent.affirms(s.turnText));
         if (s.offer && yes && !s.session._care) {
-            s.asked[travelling ? 'world' : 'wardrobe'] = s.turnId;
+            s.asked[travelling ? 'world' : s.offer.kind === 'show' ? 'avatar' : 'wardrobe'] = s.turnId;
             return approveOffer('user');
         }
         // UN4. A trip not taken: the next turn that is not a yes closes the invitation.
@@ -2396,7 +2639,9 @@
                       name: (s.wardrobe.result && s.wardrobe.result.name) || '',
                   }
                 : null,
-            offer: s.offer ? { kind: s.offer.kind, name: s.offer.name } : null,
+            offer: s.offer
+                ? { kind: s.offer.kind, name: s.offer.name, ...(s.offer.routine ? { routine: s.offer.routine } : {}) }
+                : null,
             last: s.log.length ? s.log[s.log.length - 1] : null,
             // UN35. Where they can finish that this look can show on her, at the closest step only:
             // the ⋯ menu draws a chip for each, so no chip is offered that could only be refused.
@@ -2871,11 +3116,18 @@
                 now.push('You have turned to face them again, holding your position.');
             else if (body.status === 'completed' && body.params.pose === 'back')
                 now.push(`You are back in the position you had before (${String(result).replace(/-/g, ' ')}).`);
+            else if (body.status === 'completed' && body.params.rel && body.params.from === body.params.pose)
+                now.push(
+                    `They asked you to ${body.params.rel} your legs and you already are, as far as this position goes (${named}${shape ? `: ${shape}` : ''}). Say so with your body, in a few words; nothing moved.`
+                );
             else if (body.status === 'completed')
                 now.push(
-                    shape
-                        ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
-                        : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`
+                    (body.params.rel && body.params.from
+                        ? `You did it where you were: from ${String(body.params.from).replace(/-/g, ' ')}, only your legs changed. `
+                        : '') +
+                        (shape
+                            ? `Your body is in that position now (${named}): ${shape}. Whatever you say about your body matches that. Stay in it until they ask you to stand.`
+                            : `Your body is in that position now (${named}). Stay in it until they ask you to stand.`)
                 );
             else if (body.why === 'pace')
                 now.push(
@@ -2948,6 +3200,18 @@
                 // predicts satisfaction): a few replies of closeness before anything new.
                 'Afterwards: stay close and unhurried. Short, tender, specific words about being together just now; slow and soft. Offer nothing new — no position, show, outfit or place — and do not ask for more; if they want more, they will say so. Never hurry them or make them feel they must leave or stay.'
             );
+        // PS2. Their fist, this turn: what her body shows, or why it could not.
+        const lastFist = [...s.log].reverse().find((a) => a.name === 'body.fist' && a.turnId === s.turnId);
+        if (lastFist && lastFist.status === 'completed')
+            now.push(
+                'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+            );
+        else if (lastFist && lastFist.status !== 'pending')
+            now.push(
+                lastFist.why === 'pace'
+                    ? 'They asked for their fist; the evening is not at its closest step, so nothing happens yet — tease them about it in words.'
+                    : 'They asked for their fist; this look cannot show it on your body, so answer them in words, without describing it on your skin.'
+            );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
             now.push(
@@ -2957,6 +3221,7 @@
             );
         const skin = skinLine(s);
         if (skin) now.push(`Your body right now: ${skin}. What you say about your body matches that.`);
+        for (const line of packLines(s)) now.push(line);
         // LM1. Her hands, when the living layer has them on her: read from the frame that moves them.
         let hands = null;
         try {
@@ -3002,6 +3267,7 @@
         consumeTravel,
         approveOffer,
         declineOffer,
+        offerShow,
         snapshot,
         outfitTruth,
         poseTruth,

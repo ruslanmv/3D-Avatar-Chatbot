@@ -69,7 +69,7 @@
         'arch-back': 'standing, arching your back',
         lounge: 'sitting on the floor, legs stretched out, leaning back a little',
         'sit-open':
-            'sitting on the edge of the seat, leaning back a little, knees wide apart, hands resting on the inside of your knees, head tilted towards them',
+            'sitting on the floor with your legs open wide in a V, leaning back a little, hands resting on the floor beside your hips, head tilted towards them',
         'kneel-wide':
             'kneeling with your knees wide apart, sitting back towards your heels, back arched, hands on your thighs',
         'knees-up':
@@ -446,7 +446,48 @@
         };
     }
 
-    const api = { POSES, EXPECT, BODY, INTIMATE, create, presetKey };
+    /**
+     * OL3. Her position remembered: what "open" and "close" mean from where she is.
+     *
+     * A request about her legs is a change to the position she holds, never a new one chosen from
+     * the words alone. "Apri le gambe" read on its own was the chair seat, so from lying with her
+     * knees up she sprang into a seat in mid-air (reported 2026-11-19). Every relative request
+     * goes through this one table, keyed by the position she holds (`null` when standing), so the
+     * same word lands differently on her back, kneeling or standing, and asking again where she
+     * already is changes nothing. A position missing from a row stays as it is: "open" on her
+     * front cannot open anything, and she is not moved somewhere else to obey the word.
+     */
+    const TRANSITIONS = Object.freeze({
+        open: Object.freeze({
+            '': 'sit-open', // standing: sit down on the floor, legs open
+            'lie-back': 'knees-up',
+            'lie-side': 'knees-up',
+            'knees-up': 'knees-up',
+            kneel: 'kneel-wide',
+            'kneel-up': 'kneel-wide',
+            'kneel-wide': 'kneel-wide',
+            lounge: 'sit-open',
+            'sit-open': 'sit-open',
+            straddle: 'straddle',
+            'all-fours': 'all-fours',
+        }),
+        close: Object.freeze({
+            'knees-up': 'lie-back',
+            'kneel-wide': 'kneel',
+            'sit-open': 'lounge',
+            straddle: 'kneel-up',
+        }),
+    });
+
+    /** The position `verb` ("open" | "close") takes her to from `held`, or `held` itself. */
+    function transition(verb, held) {
+        const row = TRANSITIONS[verb];
+        if (!row) return held || null;
+        const from = held || '';
+        return Object.prototype.hasOwnProperty.call(row, from) ? row[from] : held || null;
+    }
+
+    const api = { POSES, EXPECT, BODY, INTIMATE, TRANSITIONS, create, presetKey, transition };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_POSES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

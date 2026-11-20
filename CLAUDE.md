@@ -36,6 +36,14 @@ lab tool with `node tools/qa/lab-call.mjs <tool> '<json>'`.
 hook puts 24 first for the session (through `$CLAUDE_ENV_FILE`). On Node 22 the
 gate still passes, with an `EBADENGINE` warning from `npm ci`.
 
+## Branches and merges (the owner's rules, 2026-11-20)
+
+**Never merge or push to `main`** (here or in Forge): it is the owner's, after
+an audit. Session branch → PR into `ultimate` (`Updates`) → squash merge. After
+a squash, no force-push: `git merge -s ours origin/ultimate` once
+`git diff origin/ultimate` shows only your work. Workflows answer 403 to a
+session: ask the owner. Forge deploys and checks: Forge's CLAUDE.md.
+
 ## What this is
 
 A 3D VRM avatar chatbot: a static site rendered with Three.js, served by a small
@@ -260,12 +268,45 @@ one reaction at the finish; off draws nothing and removes nothing; measure with
 `tools/qa/living-motion-live.mjs`), `MP` for motion provenance
 (`src/gltf-viewer/MotionProvenance.js`: every motion Claude made, tagged by
 method, one switch per method; anything new that moves her body gets an entry in
-the same commit; the gallery is `tools/qa/motion-gallery.mjs`). `SW` for the
-safety words and the moments around them (`PrivateTurnDirector.js`: end and
-ease-off in all nine languages, hesitation eases off and checks in once; the
-bridge's proportionate finish and three replies of aftercare). Commit subjects
-match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
-comment line up.
+the same commit; the gallery is `tools/qa/motion-gallery.mjs`). `PP` for private
+rooms made for one of her shows
+(`src/experiences/private/PrivatePlaceScripts.js`: the striptease stage and the
+table dance lounge; her opening there, the room's brief, and an invitation once
+the pace opens the show — an offer only the person's yes, tap or words start;
+PP2: a striptease with nothing left to take off puts on a ready `show-strip-*`
+set first). `WR` for the Window Room (the same file and `PrivateRoutines.js`
+`window-evening`: her whole evening as an adult escort working her own window by
+her own choice — the deal at the door as chips answered locally and remembered,
+then her invitation as the pace opens it; price and time are story only; the
+finish stays the person's). `PS` for Private's personas
+(`src/experiences/private/PrivatePersonas.js`: Gina, Isabelle and Yuki, picked
+in setup as "Chi vuoi stasera?" — each a stated adult over 21 by her own choice,
+her voice per language, her room and her menu at the door; a test bans
+young-coded words in every persona text and line; PS2 `body.fist`, the person's
+words only at step 4, shows Forge's fisted states). `BS` for positions done on a
+bed (`src/experiences/private/PrivateBed.js`: the room is moved under her, never
+her; beds measured by `tools/vr/measure-bed.mjs`, never typed). `ID` for her
+standing idle (`src/gltf-viewer/RelaxedIdle.js`: arms solved per body so the
+hands rest beside the thighs, one elbow bent more, fingers curled; the default
+`relaxedIdle` preset; check with `tools/qa/idle-pose-check.mjs`). `PB` for what
+she knows of her body (`PrivateBodyKnowledge.js`, bridge `packLines`: a short
+index of families always, a family's names only when the person's words touch
+it, filtered by her position, under budgets a test enforces; extras come with a
+look, so she names looks she can change into; information never an action). `EA`
+for evening audits (`tools/qa/evening-stages.mjs`: one show played in its room
+on a real avatar, a frame per step with what moved, which clothes changed and
+what she says; `docs/claude/visual-review.md`). `SW` for the safety words and
+the moments around them (`PrivateTurnDirector.js`: end and ease-off in all nine
+languages, hesitation eases off and checks in once; the bridge's proportionate
+finish and three replies of aftercare). `OL` for her held position against
+everything else: "open your legs" changes the position she holds (on her back it
+is `knees-up`, kneeling `kneel-wide`; `sit-open` is now a floor seat), and a
+reply's mood never moves a body `vrPoseSystem.isHoldingBones()` says is held (no
+clip from `handleIntent` or `_intent`, no `setMode` override; OL3: "apri",
+"chiudi le gambe" go through `PrivatePoseController.transition` from the
+position she holds, one table). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -332,6 +373,8 @@ feature, and fix it there if it is wrong.
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Quality Lab (AX7–AX16)                            | Read `hub.json` first; never hand-edit lab data — regenerate with `tools/qa/` (`world-audit.mjs`, `animation-audit.mjs`, `hub.mjs`, `lab-publish.mjs --rescore-all`); the MCP server stays dependency-free (Playwright only lazily, in `lab_screenshot` / `--play`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `quality-lab/README.md`                                     |
 | Positions and animations in words (NL)            | One entry, `NEXUS_MOTION.onUserUtterance` (typed, mic, VR voice); words resolve against Pose Studio's catalogue and `NEXUS_MOTION_CLIPS.registry()`, never a second list; one table per language, never mixed; nothing is done before `confirmed` (rendered skeleton); no phrases for adult presets                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`             |
+| What she knows in Private (PB)                    | One-line index always; a family's detail only when the person's words or her position touch it; budgets enforced by test; never a full catalogue in every prompt                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `docs/claude/private-knowledge.md`                          |
+| QA tools index (EA, ID, BS)                       | Every review/measure script, how to run it, and what each taught; look at the frames, not only the numbers; nothing from `runs/` committed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `docs/claude/qa-tools.md`                                   |
 | Visual review (VA5, LM5, MP)                      | Judge motion, poses and looks on frames of a real VRM (Vita, AvatarSample_A), never Forge's mannequin; cameras from her bones; fixed clock for timed motion; nothing from `runs/` committed; every Claude-made motion is in `MotionProvenance.js` (test-enforced); rebuild the gallery at the end of motion work                                                                                                                                                                                                                                                                                                                                                                                                                                        | `docs/claude/visual-review.md`                              |
 | Animations / motion UX (AX16, MO)                 | `npm run audit:motion` before and after any motion change (`audits/motion/AGENT.md`); look at the frames — hips height missed a tilt and a leg flip; every offered gesture needs a `MotionClipMap.USE` hint; failed clips are tagged in `develop/NEEDS_FIX.md`, never shipped                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `docs/claude/animations-and-motion.md`                      |
 | Adult experience, Private presentation            | Intensity is only ConsentFlow's, moved by the person; ceiling only narrows; care mode is never configurable; client checks are not authorization                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `docs/claude/adult-experience-and-quality-lab.md`           |

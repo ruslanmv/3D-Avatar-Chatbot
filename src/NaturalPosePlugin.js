@@ -65,6 +65,14 @@
     }
 
     const PRESETS = {
+        // ID1. Solved for her own body (src/gltf-viewer/RelaxedIdle.js): arms close to her sides,
+        // hands beside her outer thighs with a gap, elbows slightly bent (one more), palms a little
+        // inward, fingers gently curled. The default; the fixed presets below stay selectable.
+        relaxedIdle: {
+            label: 'Relaxed Idle',
+            computed: true,
+            bones: {},
+        },
         relaxedStanding: {
             label: 'Relaxed Standing',
             // Arms lowered ~40° from T-pose, slight elbow bend, natural hand droop
@@ -127,7 +135,7 @@
     // STATE
     // =====================================================================
     let _active = false;
-    let _activePreset = 'naturalIdle';
+    let _activePreset = 'relaxedIdle';
     let _currentHumanoid = null; // VRM humanoid reference
     let _currentRoot = null; // avatar scene root
     let _isVRM = false;
@@ -149,8 +157,90 @@
      * @param {number} intensity - 0..1 blend factor
      * @param {Object} boneWeights - Per-bone intensity overrides
      */
+    /** ID1. Her T-pose, measured from the normalized bones: shoulders, arms, thighs, height. */
+    function _measure(humanoid) {
+        const names = [
+            'hips',
+            'head',
+            'leftFoot',
+            'leftUpperArm',
+            'rightUpperArm',
+            'leftHand',
+            'rightHand',
+            'leftUpperLeg',
+            'rightUpperLeg',
+        ];
+        const node = (n) => humanoid.getNormalizedBoneNode(n);
+        const saved = new Map();
+        // Measured in the T-pose: every bone the idle touches back to identity for the reading.
+        const R = window.NEXUS_RELAXED_IDLE;
+        const touched = R ? Object.keys(R.solve({}).bones).filter((n) => !n.endsWith('Twist')) : [];
+        for (const n of new Set([...touched, ...Object.keys(_lastBones || {})])) {
+            const b = node(n);
+            if (b) saved.set(b, b.quaternion.clone());
+            if (b) b.quaternion.set(0, 0, 0, 1);
+        }
+        const top = node('hips');
+        let root = top;
+        while (root && root.parent) root = root.parent;
+        if (root) root.updateMatrixWorld(true);
+        const at = {};
+        for (const n of names) if (node(n)) at[n] = node(n).getWorldPosition(new THREE.Vector3());
+        for (const [b, q] of saved) b.quaternion.copy(q);
+        if (!at.hips || !at.leftUpperArm || !at.leftHand) return null;
+        const cx = at.hips.x;
+        const side = (s) => ({
+            shoulderX: Math.abs(at[`${s}UpperArm`].x - cx),
+            armLength: at[`${s}UpperArm`].distanceTo(at[`${s}Hand`]),
+            thighX: at[`${s}UpperLeg`] ? Math.abs(at[`${s}UpperLeg`].x - cx) : 0.09,
+        });
+        return {
+            height: at.head && at.leftFoot ? at.head.y - at.leftFoot.y : 1.55,
+            left: side('left'),
+            right: at.rightUpperArm && at.rightHand ? side('right') : side('left'),
+        };
+    }
+    let _lastBones = null;
+
+    /** ID1. The relaxed idle's rotations for this body, as quaternion arrays like the fixed presets. */
+    function _computed(humanoid) {
+        const R = window.NEXUS_RELAXED_IDLE;
+        if (!R) return null;
+        const solved = R.solve(_measure(humanoid) || {});
+        const bones = {};
+        for (const [name, [x, y, z, deg]] of Object.entries(solved.bones)) {
+            if (name.endsWith('LowerArmTwist')) continue;
+            bones[name] = _quatFromAxisAngle(x, y, z, deg);
+        }
+        // The forearm: the bend, then the palm turned in about its own axis.
+        for (const s of ['left', 'right']) {
+            const bend = solved.bones[`${s}LowerArm`];
+            const twist = solved.bones[`${s}LowerArmTwist`];
+            if (!bend || !twist) continue;
+            const qb = new THREE.Quaternion().setFromAxisAngle(
+                new THREE.Vector3(bend[0], bend[1], bend[2]).normalize(),
+                (bend[3] * Math.PI) / 180
+            );
+            const qt = new THREE.Quaternion().setFromAxisAngle(
+                new THREE.Vector3(twist[0], twist[1], twist[2]).normalize(),
+                (twist[3] * Math.PI) / 180
+            );
+            const q = qb.multiply(qt);
+            bones[`${s}LowerArm`] = [q.x, q.y, q.z, q.w];
+        }
+        _lastBones = bones;
+        _lastAngles = solved.angles;
+        return bones;
+    }
+    let _lastAngles = null;
+
     function applyVRMPose(humanoid, presetName, intensity, boneWeights) {
-        const preset = PRESETS[presetName] || PRESETS.relaxedStanding;
+        let preset = PRESETS[presetName] || PRESETS.relaxedStanding;
+        // ID1. A computed preset is solved for this body now; without the solver, the old default.
+        if (preset.computed) {
+            const bones = _computed(humanoid);
+            preset = bones ? { ...preset, bones } : PRESETS.naturalIdle;
+        }
         const identityQuat = new THREE.Quaternion();
         const targetQuat = new THREE.Quaternion();
         const blendedQuat = new THREE.Quaternion();
@@ -186,7 +276,7 @@
      * Reset all VRM normalized bones to T-pose (identity).
      */
     function resetVRMPose(humanoid) {
-        const boneNames = Object.keys(PRESETS.relaxedStanding.bones);
+        const boneNames = Object.keys({ ...PRESETS.relaxedStanding.bones, ...(_lastBones || {}) });
         for (const boneName of boneNames) {
             const boneNode = humanoid.getNormalizedBoneNode(boneName);
             if (boneNode) {

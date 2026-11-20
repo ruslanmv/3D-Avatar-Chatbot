@@ -313,3 +313,6 @@ audits/animations/runs/
 audits/poses/runs/
 audits/private-positions/runs/
 audits/private-shows/runs/
+
+# E2E1: end-to-end Private runs (frames of Private, reports): never committed.
+audits/private-e2e/runs/

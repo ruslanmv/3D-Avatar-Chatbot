@@ -69,6 +69,7 @@
         'open-for-you',
         'from-behind',
         'everything',
+        'window-evening',
         'striptease',
         'choose',
     ]);
@@ -208,6 +209,8 @@
                 preset: (v) => (PRESET_NAME.test(String(v || '')) ? String(v) : undefined),
                 said: (v) => text(v, 80),
                 ask: (v) => text(v, 160),
+                // OL3. "open" | "close": relative to the position she holds (PrivatePoseController.transition).
+                rel: oneOf(['open', 'close']),
             },
             required: ['pose'],
         },
@@ -234,6 +237,9 @@
         },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
+        // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
+        // Their words only, at step 4, like the finish.
+        'body.fist': { family: 'body', params: { where: oneOf(['front', 'anal', 'both', 'choose']) }, required: [] },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
         'world.travel': {
@@ -331,6 +337,12 @@
             if (action.source === 'model') return { allow: false, why: 'user-only' };
         }
 
+        // PS2. Their fist: theirs to ask, at the top of the pace, never her tag's.
+        if (action.name === 'body.fist') {
+            if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
+            if (action.source === 'model') return { allow: false, why: 'user-only' };
+        }
+
         // LM7. Her body moves because they asked, never because the model wrote it.
         if (action.name === 'avatar.move' && action.source === 'model') return { allow: false, why: 'user-only' };
 
@@ -358,6 +370,10 @@
             case 'avatar':
                 // A reaction is an expression; a dance is a thing she does to the room.
                 if (action.name === 'avatar.react') return { allow: true };
+                // PP1. Her show, unasked, is an invitation their yes takes (the bridge re-asks this
+                // file then, as `user-approved`), never a start.
+                if (action.name === 'avatar.routine' && !asked && action.params && action.params.move === 'start')
+                    return { allow: false, why: 'not-asked', suggest: true };
                 return asked ? { allow: true } : { allow: false, why: 'not-asked' };
             case 'world':
                 // UN4. Her invitation is a question for them, never a trip: it becomes an offer
