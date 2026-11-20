@@ -905,7 +905,12 @@
             var privateOn = this.privateState && this.privateState.mode !== 'off';
             var dict = this.dictionary;
             if (dict && dict.catalogue) {
-                var tabs = [{ id: 'for-you', label: 'For you' }].concat(
+                var tabs = [{ id: 'for-you', label: 'For you' }];
+                // OC3. Every occasion Forge offers, as the Studio shows them: general ones to
+                // everyone, Private and After Dark once private outfits are open for her (gate 1).
+                if (dict.occasions({ privateOpen: this.privateState.mode === 'open' }).length)
+                    tabs.push({ id: 'occasions', label: 'Occasions' });
+                tabs = tabs.concat(
                     dict.groups({ privateOpen: false }).map(function (group) {
                         return { id: group.id, label: group.title };
                     })
@@ -1053,6 +1058,17 @@
                     onclick: run,
                 });
             };
+            if (canCreate && this.category === 'occasions' && this.dictionary && this.dictionary.catalogue) {
+                return h(doc, 'div', { class: 'nexus-try-on-sections' }, [
+                    this._occasionSections(chip, 'all') ||
+                        h(doc, 'p', { class: 'nexus-try-on-note', text: tx('view.noOccasions', 'No occasions yet.') }),
+                    h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, [
+                        chip('surprise', tx('view.surprise', 'Surprise me'), function () {
+                            self.surprise();
+                        }),
+                    ]),
+                ]);
+            }
             if (canCreate && this.category === 'collections' && this.collections) {
                 return this._collectionChips(chip);
             }
@@ -1121,7 +1137,7 @@
                 // OC2. Forge's private occasions first (Private, After Dark): their styles, as the
                 // Studio shows them, behind the same gate as these outfits — no grant needed.
                 return h(doc, 'div', { class: 'nexus-try-on-sections' }, [
-                    this._occasionSections(chip),
+                    this._occasionSections(chip, 'private'),
                     h(doc, 'p', {
                         class: 'nexus-try-on-section',
                         'data-key': 'section:outfits',
@@ -1277,12 +1293,15 @@
          * styles as chips ("✨ Fan service · 3"); a style tapped shows its looks, worn as any
          * dictionary entry is. Only called where private outfits are open for her.
          */
-        _occasionSections(chip) {
+        _occasionSections(chip, which) {
             var doc = this.doc;
             var self = this;
+            // OC3. `which`: 'private' (the Private tab: Private, After Dark) or 'all' (the Occasions
+            // tab: every occasion Forge offers, a private one only while private outfits are open).
+            var open = this.privateState && this.privateState.mode === 'open';
             var occasions = this.dictionary
-                ? this.dictionary.occasions({ privateOpen: true }).filter(function (o) {
-                      return o.private;
+                ? this.dictionary.occasions({ privateOpen: which === 'private' || open }).filter(function (o) {
+                      return which === 'all' || o.private;
                   })
                 : [];
             if (!occasions.length) return null;
@@ -1291,10 +1310,10 @@
                 'div',
                 { class: 'nexus-try-on-occasions', 'data-key': 'section:occasions' },
                 occasions.map(function (o) {
-                    var open = null;
+                    var shown = null;
                     var styleChips = o.styles.map(function (st) {
                         var key = o.id + '/' + st.id;
-                        if (self.styleOpen === key) open = st;
+                        if (self.styleOpen === key) shown = st;
                         return chip(
                             'style:' + key,
                             (st.icon ? st.icon + ' ' : '') + st.title + ' · ' + st.entries.length,
@@ -1302,7 +1321,7 @@
                                 self.styleOpen = self.styleOpen === key ? null : key;
                                 self.render();
                             },
-                            ' is-private' + (self.styleOpen === key ? ' is-on' : '')
+                            (o.private ? ' is-private' : '') + (self.styleOpen === key ? ' is-on' : '')
                         );
                     });
                     var parts = [
@@ -1313,21 +1332,21 @@
                         }),
                         h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, styleChips),
                     ];
-                    if (open) {
+                    if (shown) {
                         parts.push(
-                            h(doc, 'p', { class: 'nexus-try-on-note', text: open.blurb }),
+                            h(doc, 'p', { class: 'nexus-try-on-note', text: shown.blurb }),
                             h(
                                 doc,
                                 'div',
                                 { class: 'nexus-try-on-row nexus-try-on-chips', 'data-key': 'style-looks:' + o.id },
-                                open.entries.map(function (entry) {
+                                shown.entries.map(function (entry) {
                                     return chip(
                                         'look-of:' + entry.id,
                                         tx('outfit.' + entry.id, entry.title),
                                         function () {
                                             self.wearOutfit(entry);
                                         },
-                                        ' is-private'
+                                        entry.private ? ' is-private' : ''
                                     );
                                 })
                             )

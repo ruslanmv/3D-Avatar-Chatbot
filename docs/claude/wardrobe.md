@@ -270,3 +270,9 @@ job. `OutfitDictionary.normalize` keeps `occasions` (looks filtered to entries
 it kept, empty styles dropped); `dictionary.occasions({privateOpen})` hides a
 private occasion without it. The admin's whole registry (body states included)
 is the grant-gated Collections tab (GC1). Tests: `try-on-view.test.js` ▸ OC2.
+
+**OC3.** An **Occasions** tab (after For you) shows every occasion Forge offers,
+as the Studio does: general ones (Night out, Work, Gym, Vacation…) to everyone,
+and Private and After Dark only once private outfits are open for her (gate 1:
+`privateState.mode === 'open'`; "locked" is not enough). The Private tab keeps
+showing only the private occasions. Tests: `try-on-view.test.js` ▸ OC3.
