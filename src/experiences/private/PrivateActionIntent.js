@@ -723,6 +723,13 @@
     const FIST_ANAL = new RegExp(word('anal|ass|culo|nel culo|in the ass|cul|arsch|cu|anus|ano'), 'iu');
     const FIST_ANAL_CJK = /アナル|お尻|애널|엉덩이|屁眼|肛/u;
     const FIST_BOTH = new RegExp(word('both|entrambi|tutti e due|ambos|los dos|les deux|beide|os dois'), 'iu');
+    // L5. Her pussy, named: without it "the fist in my pussy" fell to the position's own order,
+    // which from behind tries her ass first.
+    const FIST_FRONT = new RegExp(
+        word('pussy|cunt|vagina|figa|fica|nella figa|coño|cono|chatte|muschi|fotze|buceta|xoxota|boceta'),
+        'iu'
+    );
+    const FIST_FRONT_CJK = /おまんこ|マンコ|보지|屄|小穴/u;
     const FIST_BOTH_CJK = /両方|둘 다|两个/u;
 
     /*
@@ -743,7 +750,49 @@
     );
     const FIST_NOT_CJK = /ない|しない|やめ|않|안 |싫|不|别|没/u;
 
+    /**
+     * L5. A bottle inside her, asked for: the word and a request to put it in, in each language.
+     * The same rules as the fist (a request, not a question, no negation anywhere).
+     */
+    const BOTTLE = new RegExp(word('bottle|bottiglia|botella|bouteille|flasche|garrafa'), 'iu');
+    const BOTTLE_CJK = /ボトル|瓶を|병을|瓶子/u;
+    const BOTTLE_IN = new RegExp(
+        word(
+            'in me|inside|in your|into you|in you|dentro|nella|nel|infila|mettimi|metti|ficca|en ti|dentro de|métete|metete|en toi|dans|rein|in dich|in deine|enfia|enfiar|em ti|na tua|no teu'
+        ),
+        'iu'
+    );
+    const BOTTLE_IN_CJK = /入れ|넣|插/u;
+    const BOTTLE_VERB = new RegExp(
+        word(
+            'put|stick|push|shove|insert|use|infilami|infila|mettimi|metti|ficcami|spingi|usa|métete|metete|méteme|meteme|mete|mets|enfonce|utilise|steck|schieb|benutz|enfia|mete|usa'
+        ),
+        'iu'
+    );
+
+    function bottleFrom(body) {
+        if (!BOTTLE.test(body) && !BOTTLE_CJK.test(body)) return null;
+        if (!BOTTLE_IN.test(body) && !BOTTLE_IN_CJK.test(body)) return null;
+        if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
+        if (
+            !FIST_REQUEST.test(body) &&
+            !BOTTLE_VERB.test(body) &&
+            !FIST_REQUEST_CJK.test(body) &&
+            !BOTTLE_IN_CJK.test(body)
+        )
+            return null;
+        const where =
+            FIST_BOTH.test(body) || FIST_BOTH_CJK.test(body)
+                ? 'both'
+                : FIST_ANAL.test(body) || FIST_ANAL_CJK.test(body)
+                  ? 'anal'
+                  : 'front';
+        return action('body.fist', { where, with: 'bottle' }, 'body');
+    }
+
     function fistFrom(body) {
+        const bottle = bottleFrom(body);
+        if (bottle) return bottle;
         if (!FIST.test(body) && !FIST_CJK.test(body)) return null;
         if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
         if (!FIST_REQUEST.test(body) && !FIST_REQUEST_CJK.test(body)) return null;
@@ -752,7 +801,9 @@
                 ? 'both'
                 : FIST_ANAL.test(body) || FIST_ANAL_CJK.test(body)
                   ? 'anal'
-                  : 'choose';
+                  : FIST_FRONT.test(body) || FIST_FRONT_CJK.test(body)
+                    ? 'front'
+                    : 'choose';
         return action('body.fist', { where }, 'body');
     }
 

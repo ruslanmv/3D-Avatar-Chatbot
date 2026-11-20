@@ -1914,7 +1914,13 @@
      * whichever exists. Stays until her skin changes again (a finish, the pace, the afterglow).
      */
     const FIST_STATES = Object.freeze({
-        doggy: { front: ['doggy-both-fisted'], anal: ['doggy-anal-fisted'], both: ['doggy-both-fisted'] },
+        // L5. From behind (all fours, face down, bent over: the doggy group), her pussy alone
+        // now has its own state (Forge's doggy-fisted); both stays the fallback for an old pack.
+        doggy: {
+            front: ['doggy-fisted', 'doggy-both-fisted'],
+            anal: ['doggy-anal-fisted'],
+            both: ['doggy-both-fisted'],
+        },
         missionary: {
             front: ['missionary-fisted'],
             anal: ['missionary-fisted-anal'],
@@ -1932,9 +1938,23 @@
         both: ['doggy-both-fisted'],
     });
 
-    function fistState(s, where) {
+    /**
+     * L5. A bottle instead of their fist: Forge paints it only from behind (doggy-bottle*), so
+     * in any other position it cannot be shown, and they are told in words. Never a fist state
+     * standing in for it: a different act is never shown for the one asked.
+     */
+    const BOTTLE_STATES = Object.freeze({
+        doggy: { front: ['doggy-bottle'], anal: ['doggy-bottle-anal'], both: ['doggy-bottle-anal', 'doggy-bottle'] },
+    });
+
+    function fistState(s, where, tool) {
         const names = (s.skinStates || []).map((x) => x.name);
         const group = poseGroup(s);
+        if (tool === 'bottle') {
+            const byPose = BOTTLE_STATES[group] || null;
+            const target = where && where !== 'choose' ? where : 'anal';
+            return ((byPose && byPose[target]) || []).find((n) => names.includes(n)) || null;
+        }
         const byPose = FIST_STATES[group] || null;
         const asked = where && where !== 'choose' ? where : null;
         const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
@@ -1948,7 +1968,7 @@
 
     function fistOn(s, action) {
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
-        const chosen = fistState(s, action.params && action.params.where);
+        const chosen = fistState(s, action.params && action.params.where, action.params && action.params.with);
         if (!chosen) return settle(action, 'failed', 'no-fist-state');
         s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
         action.result = { state: chosen };
@@ -1972,6 +1992,18 @@
         return found ? { place, state: found } : null;
     }
 
+    /**
+     * L5. A finish inside while their fist or a bottle has her stretched open: the same stretched
+     * state, filled (Forge's `<state>-cum`: doggy-fisted-cum, doggy-bottle-anal-cum…), when her
+     * look's pack holds it. A finish on her back or belly is not inside: the usual places.
+     */
+    function filledAfterFist(s, where) {
+        if (!s.fist || !['inside', 'ass', 'both', 'choose'].includes(where)) return null;
+        const filled = `${s.fist.state}-cum`;
+        const names = (s.skinStates || []).map((x) => x.name);
+        return names.includes(filled) ? { place: where === 'choose' ? 'inside' : where, state: filled } : null;
+    }
+
     function finishOn(s, action) {
         const where = action.params.where;
         // UR1. Her face, her mouth: shown on her face and in her words (the paint cannot reach it).
@@ -1982,7 +2014,10 @@
             return settle(action, 'completed', null, action.result);
         }
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
-        const chosen = stackedState(s, where === 'choose' ? 'inside' : where) || finishState(s, where);
+        const chosen =
+            filledAfterFist(s, where) ||
+            stackedState(s, where === 'choose' ? 'inside' : where) ||
+            finishState(s, where);
         if (!chosen) return settle(action, 'failed', 'no-finish-state');
         clearAfterglow(s);
         clearFinish(s);
@@ -3328,7 +3363,9 @@
         const lastFist = [...s.log].reverse().find((a) => a.name === 'body.fist' && a.turnId === s.turnId);
         if (lastFist && lastFist.status === 'completed')
             now.push(
-                'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+                lastFist.params && lastFist.params.with === 'bottle'
+                    ? 'They used a bottle on you, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+                    : 'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
             );
         else if (lastFist && lastFist.status !== 'pending')
             now.push(
