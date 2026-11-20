@@ -141,6 +141,9 @@ const PrivateConversationView = (() => {
         'window-show',
         'rounds',
         'used-marked',
+        // L5. Valentina's and Chiara's shows (No limits only, like the UR1 ones).
+        'full-service',
+        'like-last-time',
         'striptease',
     ]);
 

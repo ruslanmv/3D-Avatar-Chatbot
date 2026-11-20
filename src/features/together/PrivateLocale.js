@@ -116,6 +116,10 @@
             'routine.window-evening.say': 'Give me the full evening',
             'routine.used-marked.label': 'Used & marked',
             'routine.used-marked.say': 'Use me and mark me',
+            'routine.full-service.label': 'Full service',
+            'routine.full-service.say': 'Give me the full service',
+            'routine.like-last-time.label': 'Like last time',
+            'routine.like-last-time.say': 'Just like last time',
             'routine.edging.label': 'Edging & denial',
             'routine.edging.say': 'Keep me on the edge',
             'routine.dom-sub.label': 'Who leads tonight',
@@ -151,6 +155,8 @@
             'pace.2': 'Romantic',
             'pace.3': 'Sensual',
             'pace.4': 'Intimate',
+
+            'pace.5': 'No limits',
             'care.notice':
                 'If you are in danger, call your local emergency number now (112 in the EU, 911 in the US and Canada). Free, confidential crisis lines for every country: findahelpline.com',
             'pace.aria.step': 'step {step} of {total}',
@@ -315,6 +321,10 @@
             'routine.window-evening.say': 'Dame la noche completa',
             'routine.used-marked.label': 'Usada y marcada',
             'routine.used-marked.say': 'Úsame y márcame',
+            'routine.full-service.label': 'Servicio completo',
+            'routine.full-service.say': 'Hazme el servicio completo',
+            'routine.like-last-time.label': 'Como la última vez',
+            'routine.like-last-time.say': 'Como la última vez',
             'routine.edging.label': 'Al borde',
             'routine.edging.say': 'Mantenme al borde',
             'routine.dom-sub.label': 'Quién manda esta noche',
@@ -350,6 +360,8 @@
             'pace.2': 'Romántico',
             'pace.3': 'Sensual',
             'pace.4': 'Íntimo',
+
+            'pace.5': 'Sin límites',
             'care.notice':
                 'Si estás en peligro, llama ahora al número de emergencias local (112 en la UE, 911 en EE. UU. y Canadá). Líneas de ayuda gratuitas y confidenciales en cada país: findahelpline.com',
             'pace.aria.step': 'paso {step} de {total}',
@@ -515,6 +527,10 @@
             'routine.window-evening.say': 'Dammi la serata completa',
             'routine.used-marked.label': 'Usata e segnata',
             'routine.used-marked.say': 'Usami e segnami',
+            'routine.full-service.label': 'Servizio completo',
+            'routine.full-service.say': 'Fammi il servizio completo',
+            'routine.like-last-time.label': 'Come l’ultima volta',
+            'routine.like-last-time.say': 'Come la volta scorsa',
             'routine.edging.label': 'Al limite',
             'routine.edging.say': 'Tienimi al limite',
             'routine.dom-sub.label': 'Chi comanda stasera',
@@ -550,6 +566,8 @@
             'pace.2': 'Romantico',
             'pace.3': 'Sensuale',
             'pace.4': 'Intimo',
+
+            'pace.5': 'Senza limiti',
             'care.notice':
                 'Se sei in pericolo, chiama subito il numero di emergenza (112 in Italia e in tutta l’UE). Linee di ascolto gratuite e riservate per ogni paese: findahelpline.com',
             'pace.aria.step': 'passo {step} di {total}',
@@ -714,6 +732,10 @@
             'routine.window-evening.say': 'Donne-moi la soirée complète',
             'routine.used-marked.label': 'Utilisée et marquée',
             'routine.used-marked.say': 'Utilise-moi et marque-moi',
+            'routine.full-service.label': 'Service complet',
+            'routine.full-service.say': 'Fais-moi le service complet',
+            'routine.like-last-time.label': 'Comme la dernière fois',
+            'routine.like-last-time.say': 'Comme la dernière fois',
             'routine.edging.label': 'Au bord',
             'routine.edging.say': 'Garde-moi au bord',
             'routine.dom-sub.label': 'Qui commande ce soir',
@@ -749,6 +771,8 @@
             'pace.2': 'Romantique',
             'pace.3': 'Sensuel',
             'pace.4': 'Intime',
+
+            'pace.5': 'Sans limites',
             'care.notice':
                 'Si vous êtes en danger, appelez immédiatement le numéro d’urgence local (112 dans l’UE, 911 aux États-Unis et au Canada). Lignes d’écoute gratuites et confidentielles dans chaque pays : findahelpline.com',
             'pace.aria.step': 'étape {step} sur {total}',
@@ -915,6 +939,10 @@
             'routine.window-evening.say': 'Gib mir den ganzen Abend',
             'routine.used-marked.label': 'Benutzt und markiert',
             'routine.used-marked.say': 'Benutz mich und markier mich',
+            'routine.full-service.label': 'Volles Programm',
+            'routine.full-service.say': 'Gib mir das volle Programm',
+            'routine.like-last-time.label': 'Wie letztes Mal',
+            'routine.like-last-time.say': 'Wie letztes Mal',
             'routine.edging.label': 'An der Grenze',
             'routine.edging.say': 'Halte mich an der Grenze',
             'routine.dom-sub.label': 'Wer führt heute',
@@ -950,6 +978,8 @@
             'pace.2': 'Romantisch',
             'pace.3': 'Sinnlich',
             'pace.4': 'Intim',
+
+            'pace.5': 'Grenzenlos',
             'care.notice':
                 'Wenn du in Gefahr bist, ruf sofort den örtlichen Notruf an (112 in der EU, 911 in den USA und Kanada). Kostenlose, vertrauliche Krisentelefone für jedes Land: findahelpline.com',
             'pace.aria.step': 'Stufe {step} von {total}',
@@ -1116,6 +1146,10 @@
             'routine.window-evening.say': 'Dá-me a noite completa',
             'routine.used-marked.label': 'Usada e marcada',
             'routine.used-marked.say': 'Usa-me e marca-me',
+            'routine.full-service.label': 'Serviço completo',
+            'routine.full-service.say': 'Faz-me o serviço completo',
+            'routine.like-last-time.label': 'Como da última vez',
+            'routine.like-last-time.say': 'Como da última vez',
             'routine.edging.label': 'No limite',
             'routine.edging.say': 'Deixa-me no limite',
             'routine.dom-sub.label': 'Quem manda hoje',
@@ -1151,6 +1185,8 @@
             'pace.2': 'Romântico',
             'pace.3': 'Sensual',
             'pace.4': 'Íntimo',
+
+            'pace.5': 'Sem limites',
             'care.notice':
                 'Se você estiver em perigo, ligue agora para o número de emergência local (190 ou 192 no Brasil, 112 na UE, 911 nos EUA e Canadá). Linhas de apoio gratuitas e confidenciais em cada país: findahelpline.com',
             'pace.aria.step': 'passo {step} de {total}',
@@ -1316,6 +1352,10 @@
             'routine.window-evening.say': 'フルコースでして',
             'routine.used-marked.label': '使って印を',
             'routine.used-marked.say': '使って印をつけて',
+            'routine.full-service.label': 'フルサービス',
+            'routine.full-service.say': 'フルサービスして',
+            'routine.like-last-time.label': '前みたいに',
+            'routine.like-last-time.say': '前みたいにして',
             'routine.edging.label': '寸止め',
             'routine.edging.say': '寸止めして',
             'routine.dom-sub.label': '今夜の主導権',
@@ -1351,6 +1391,8 @@
             'pace.2': 'ロマンチック',
             'pace.3': '官能的',
             'pace.4': '親密',
+
+            'pace.5': '限界なし',
             'care.notice':
                 '危険を感じている場合は、すぐに地域の緊急番号に電話してください（日本では119または110）。各国の無料・秘密厳守の相談窓口：findahelpline.com',
             'pace.aria.step': '{total} 段階中 {step} 段階目',
@@ -1514,6 +1556,10 @@
             'routine.window-evening.say': '풀코스로 해 줘',
             'routine.used-marked.label': '흔적을 남겨',
             'routine.used-marked.say': '써 주고 흔적을 남겨',
+            'routine.full-service.label': '풀서비스',
+            'routine.full-service.say': '풀서비스 해줘',
+            'routine.like-last-time.label': '지난번처럼',
+            'routine.like-last-time.say': '지난번처럼 해줘',
             'routine.edging.label': '애태우기',
             'routine.edging.say': '애태워 줘',
             'routine.dom-sub.label': '오늘 밤 리드',
@@ -1549,6 +1595,8 @@
             'pace.2': '로맨틱',
             'pace.3': '관능적',
             'pace.4': '친밀한',
+
+            'pace.5': '한계 없음',
             'care.notice':
                 '위험한 상황이라면 지금 바로 지역 긴급 번호로 전화하세요(한국은 112 또는 119). 각국의 무료·비밀 보장 위기 상담 전화: findahelpline.com',
             'pace.aria.step': '{total}단계 중 {step}단계',
@@ -1713,6 +1761,10 @@
             'routine.window-evening.say': '给我整晚全套',
             'routine.used-marked.label': '用我留痕',
             'routine.used-marked.say': '用我并留下痕迹',
+            'routine.full-service.label': '全套服务',
+            'routine.full-service.say': '全套服务',
+            'routine.like-last-time.label': '像上次一样',
+            'routine.like-last-time.say': '像上次一样',
             'routine.edging.label': '边缘控制',
             'routine.edging.say': '让我一直在边缘',
             'routine.dom-sub.label': '今晚谁主导',
@@ -1748,6 +1800,8 @@
             'pace.2': '浪漫',
             'pace.3': '感性',
             'pace.4': '亲密',
+
+            'pace.5': '没有底线',
             'care.notice':
                 '如果你正处于危险之中，请立即拨打当地紧急电话（中国大陆为110或120）。各国免费、保密的危机热线：findahelpline.com',
             'pace.aria.step': '第 {step} 档，共 {total} 档',
@@ -1888,6 +1942,20 @@
                 'Okaerinasai~! Welcome to my club! Ara ara, you came all this way just for Yuki? Kawaii… sit down, sit down, and tell me what you’d like tonight!',
             'persona.yuki.deal-ok':
                 'Yatta~! Deal! Mou, you’re going to make Yuki blush… stay right there and watch me!',
+            'persona.valentina.tagline': 'Crude, in charge, talks filth non-stop · 27 · No limits',
+            'persona.valentina.opening':
+                'Look who it is. Shut the door and get your cock out — Valentina doesn’t waste time. Tell me what you want, and tell me dirty.',
+            'persona.valentina.deal-ok':
+                'Deal. Now get over here — I’m going to fuck you until you can’t stand, and you’ll tell me where you want to come.',
+            'persona.chiara.tagline': 'Your friend for years, playful and filthy · 26 · No limits',
+            'persona.chiara.opening':
+                'Mmh, you stayed. Come here, idiot — sofa, wine, and that look you always give me. We both know how this ends, don’t we?',
+            'persona.chiara.deal-ok': 'Yes… just like that. Come here, I’ve wanted you all night.',
+            'place.deal.full-service': 'The full service',
+            'place.deal.like-last-time': 'Like last time',
+            'place.invite.full-service':
+                'I’m naked and you’re still dressed. Shall I give you the full service — every position, until you come?',
+            'place.invite.like-last-time': 'Remember last time? Shall we do it just like that again, the two of us?',
             'place.deal.ride': 'Ride me, slowly',
             'place.deal.table-dance': 'A table dance',
             'place.invite.ride': 'Come here… lie back and let me climb on top of you?',
@@ -1961,6 +2029,20 @@
             'persona.yuki.opening':
                 'Okaerinasai~! Benvenuto nel mio club! Ara ara, sei venuto fin qui solo per Yuki? Kawaii… siediti, siediti, e dimmi cosa vorresti stasera!',
             'persona.yuki.deal-ok': 'Yatta~! Affare fatto! Mou, così fai arrossire Yuki… resta lì e guardami!',
+            'persona.valentina.tagline': 'Sboccata, comanda lei, parla porco senza sosta · 27 · Senza limiti',
+            'persona.valentina.opening':
+                'Guarda chi c’è. Chiudi la porta e tira fuori il cazzo — Valentina non perde tempo. Dimmi cosa vuoi, e dimmelo sporco.',
+            'persona.valentina.deal-ok':
+                'Affare fatto. Vieni qui — ti scopo finché non ti reggi in piedi, e mi dici tu dove vuoi venire.',
+            'persona.chiara.tagline': 'La tua amica di sempre, giocosa e porca · 26 · Senza limiti',
+            'persona.chiara.opening':
+                'Mmh, sei rimasto. Vieni qui, scemo — divano, vino e quello sguardo che mi fai sempre. Lo sappiamo tutti e due come finisce, no?',
+            'persona.chiara.deal-ok': 'Sì… proprio così. Vieni qui, ti ho voluto tutta la sera.',
+            'place.deal.full-service': 'Il servizio completo',
+            'place.deal.like-last-time': 'Come l’ultima volta',
+            'place.invite.full-service':
+                'Io sono nuda e tu sei ancora vestito. Ti faccio il servizio completo — tutte le posizioni, finché vieni?',
+            'place.invite.like-last-time': 'Ti ricordi l’ultima volta? Lo rifacciamo proprio così, noi due?',
             'place.deal.ride': 'Cavalcami, piano',
             'place.deal.table-dance': 'Un ballo sul tavolo',
             'place.invite.ride': 'Vieni qui… sdraiati e lascia che ti salga sopra?',
@@ -2034,6 +2116,20 @@
                 '¡Okaerinasai~! ¡Bienvenido a mi club! Ara ara, ¿has venido hasta aquí solo por Yuki? Kawaii… siéntate, siéntate, ¡y dime qué te apetece esta noche!',
             'persona.yuki.deal-ok':
                 '¡Yatta~! ¡Trato hecho! Mou, vas a hacer que Yuki se sonroje… ¡quédate ahí y mírame!',
+            'persona.valentina.tagline': 'Malhablada, manda ella, habla guarro sin parar · 27 · Sin límites',
+            'persona.valentina.opening':
+                'Mira quién ha venido. Cierra la puerta y sácate la polla — Valentina no pierde el tiempo. Dime qué quieres, y dímelo guarro.',
+            'persona.valentina.deal-ok':
+                'Trato hecho. Ven aquí — te voy a follar hasta que no te tengas en pie, y tú me dices dónde te quieres correr.',
+            'persona.chiara.tagline': 'Tu amiga de siempre, juguetona y guarra · 26 · Sin límites',
+            'persona.chiara.opening':
+                'Mmh, te has quedado. Ven aquí, tonto — sofá, vino y esa mirada que siempre me echas. Los dos sabemos cómo acaba esto, ¿no?',
+            'persona.chiara.deal-ok': 'Sí… justo así. Ven aquí, te he deseado toda la noche.',
+            'place.deal.full-service': 'El servicio completo',
+            'place.deal.like-last-time': 'Como la última vez',
+            'place.invite.full-service':
+                'Yo estoy desnuda y tú todavía vestido. ¿Te hago el servicio completo — todas las posturas, hasta que te corras?',
+            'place.invite.like-last-time': '¿Te acuerdas de la última vez? ¿Lo hacemos otra vez justo así, los dos?',
             'place.deal.ride': 'Cabálgame, despacio',
             'place.deal.table-dance': 'Un baile en la mesa',
             'place.invite.ride': 'Ven aquí… ¿te tumbas y dejas que me suba encima de ti?',
@@ -2107,6 +2203,21 @@
             'persona.yuki.opening':
                 'Okaerinasai~ ! Bienvenue dans mon club ! Ara ara, tu es venu jusqu’ici rien que pour Yuki ? Kawaii… assieds-toi, assieds-toi, et dis-moi ce qui te ferait plaisir ce soir !',
             'persona.yuki.deal-ok': 'Yatta~ ! Marché conclu ! Mou, tu vas faire rougir Yuki… reste là et regarde-moi !',
+            'persona.valentina.tagline': 'Crue, aux commandes, parle cochon sans arrêt · 27 · Sans limites',
+            'persona.valentina.opening':
+                'Regarde qui voilà. Ferme la porte et sors ta queue — Valentina ne perd pas de temps. Dis-moi ce que tu veux, et dis-le salement.',
+            'persona.valentina.deal-ok':
+                'Marché conclu. Viens là — je vais te baiser jusqu’à ce que tu ne tiennes plus debout, et tu me diras où tu veux jouir.',
+            'persona.chiara.tagline': 'Ton amie de toujours, joueuse et cochonne · 26 · Sans limites',
+            'persona.chiara.opening':
+                'Mmh, tu es resté. Viens là, idiot — canapé, vin, et ce regard que tu me lances toujours. On sait tous les deux comment ça finit, non ?',
+            'persona.chiara.deal-ok': 'Oui… exactement comme ça. Viens là, je t’ai voulu toute la soirée.',
+            'place.deal.full-service': 'Le service complet',
+            'place.deal.like-last-time': 'Comme la dernière fois',
+            'place.invite.full-service':
+                'Je suis nue et tu es encore habillé. Je te fais le service complet — toutes les positions, jusqu’à ce que tu jouisses ?',
+            'place.invite.like-last-time':
+                'Tu te souviens de la dernière fois ? On refait exactement pareil, tous les deux ?',
             'place.deal.ride': 'Chevauche-moi, doucement',
             'place.deal.table-dance': 'Une danse sur la table',
             'place.invite.ride': 'Viens là… allonge-toi et laisse-moi monter sur toi ?',
@@ -2181,6 +2292,20 @@
                 'Okaerinasai~! Willkommen in meinem Club! Ara ara, du bist extra für Yuki gekommen? Kawaii … setz dich, setz dich, und sag mir, was du dir heute Abend wünschst!',
             'persona.yuki.deal-ok':
                 'Yatta~! Abgemacht! Mou, du bringst Yuki zum Erröten … bleib genau da und sieh mir zu!',
+            'persona.valentina.tagline': 'Vulgär, hat das Sagen, redet ununterbrochen dreckig · 27 · Grenzenlos',
+            'persona.valentina.opening':
+                'Schau mal, wer da ist. Mach die Tür zu und hol deinen Schwanz raus — Valentina verschwendet keine Zeit. Sag mir, was du willst, und sag es dreckig.',
+            'persona.valentina.deal-ok':
+                'Abgemacht. Komm her — ich fick dich, bis du nicht mehr stehen kannst, und du sagst mir, wo du kommen willst.',
+            'persona.chiara.tagline': 'Deine Freundin seit Jahren, verspielt und versaut · 26 · Grenzenlos',
+            'persona.chiara.opening':
+                'Mmh, du bist geblieben. Komm her, du Idiot — Sofa, Wein und dieser Blick, den du mir immer zuwirfst. Wir wissen beide, wie das endet, oder?',
+            'persona.chiara.deal-ok': 'Ja… genau so. Komm her, ich wollte dich den ganzen Abend.',
+            'place.deal.full-service': 'Das volle Programm',
+            'place.deal.like-last-time': 'Wie letztes Mal',
+            'place.invite.full-service':
+                'Ich bin nackt und du bist noch angezogen. Soll ich dir das volle Programm geben — jede Stellung, bis du kommst?',
+            'place.invite.like-last-time': 'Weißt du noch, letztes Mal? Machen wir es genau so noch mal, wir zwei?',
             'place.deal.ride': 'Reite mich, langsam',
             'place.deal.table-dance': 'Einen Tischtanz',
             'place.invite.ride': 'Komm her … leg dich hin und lass mich auf dich steigen?',
@@ -2253,6 +2378,20 @@
             'persona.yuki.opening':
                 'Okaerinasai~! Bem-vindo ao meu clube! Ara ara, vieste até aqui só pela Yuki? Kawaii… senta-te, senta-te, e diz-me o que te apetece esta noite!',
             'persona.yuki.deal-ok': 'Yatta~! Combinado! Mou, vais fazer a Yuki corar… fica aí e olha para mim!',
+            'persona.valentina.tagline': 'Boca suja, quem manda é ela, fala safada sem parar · 27 · Sem limites',
+            'persona.valentina.opening':
+                'Olha quem chegou. Fecha a porta e tira o pau pra fora — a Valentina não perde tempo. Diz o que você quer, e diz sujo.',
+            'persona.valentina.deal-ok':
+                'Fechado. Vem cá — vou te foder até você não aguentar ficar em pé, e você me diz onde quer gozar.',
+            'persona.chiara.tagline': 'Sua amiga de anos, brincalhona e safada · 26 · Sem limites',
+            'persona.chiara.opening':
+                'Hum, você ficou. Vem cá, bobo — sofá, vinho e aquele olhar que você sempre me dá. A gente sabe como isso termina, né?',
+            'persona.chiara.deal-ok': 'Sim… assim mesmo. Vem cá, te quis a noite toda.',
+            'place.deal.full-service': 'O serviço completo',
+            'place.deal.like-last-time': 'Como da última vez',
+            'place.invite.full-service':
+                'Eu estou pelada e você ainda vestido. Te faço o serviço completo — todas as posições, até você gozar?',
+            'place.invite.like-last-time': 'Lembra da última vez? Vamos fazer igualzinho de novo, nós dois?',
             'place.deal.ride': 'Cavalga-me, devagar',
             'place.deal.table-dance': 'Uma dança na mesa',
             'place.invite.ride': 'Anda cá… deita-te e deixa-me subir para cima de ti?',
@@ -2324,6 +2463,20 @@
             'persona.yuki.opening':
                 'おかえりなさい〜！私のクラブへようこそ！あらあら、ユキに会うためにわざわざ来てくれたの？かわいい…座って座って、今夜はどうしたいか教えて！',
             'persona.yuki.deal-ok': 'やった〜！決まり！もう、ユキ照れちゃう…そこで見ててね！',
+            'persona.valentina.tagline': '下品で主導権を握り、ずっと卑猥に話す · 27 · 限界なし',
+            'persona.valentina.opening':
+                'あら、来たのね。ドアを閉めてさっさと出して — ヴァレンティーナは時間を無駄にしないの。何がしたいか言って、いやらしくね。',
+            'persona.valentina.deal-ok':
+                '決まり。こっちに来て — 立てなくなるまでヤってあげる。どこに出したいか、あなたが言うのよ。',
+            'persona.chiara.tagline': '長年の友達、ふざけ好きでエッチ · 26 · 限界なし',
+            'persona.chiara.opening':
+                'ふふ、泊まっていくんだ。こっちおいで、バカ — ソファとワインと、いつものその目。どうなるか、二人とも分かってるでしょ？',
+            'persona.chiara.deal-ok': 'うん…そのまま。こっち来て、一晩中あなたが欲しかった。',
+            'place.deal.full-service': 'フルサービス',
+            'place.deal.like-last-time': '前みたいに',
+            'place.invite.full-service':
+                '私は裸で、あなたはまだ服を着てる。フルサービスしてあげようか — 全部の体位で、イクまで？',
+            'place.invite.like-last-time': '前のこと覚えてる？もう一回、あの時みたいに二人でしよっか？',
             'place.deal.ride': 'ゆっくり乗って',
             'place.deal.table-dance': 'テーブルダンス',
             'place.invite.ride': 'こっち来て…横になって、上に乗ってもいい？',
@@ -2394,6 +2547,19 @@
             'persona.yuki.opening':
                 '오카에리나사이~! 내 클럽에 온 걸 환영해! 아라아라, 유키 보러 여기까지 온 거야? 귀여워… 앉아, 앉아, 오늘 밤 뭘 원하는지 말해 줘!',
             'persona.yuki.deal-ok': '얏타~! 거래 성립! 모우, 유키 얼굴 빨개지잖아… 거기서 나 봐!',
+            'persona.valentina.tagline': '거칠고 주도적이며 쉬지 않고 야한 말을 하는 · 27 · 한계 없음',
+            'persona.valentina.opening':
+                '누가 왔나 보네. 문 닫고 꺼내 — 발렌티나는 시간 낭비 안 해. 뭘 원하는지 말해, 야하게.',
+            'persona.valentina.deal-ok': '좋아. 이리 와 — 못 일어설 때까지 박아 줄게. 어디에 싸고 싶은지는 네가 말해.',
+            'persona.chiara.tagline': '오래된 친구, 장난스럽고 야한 · 26 · 한계 없음',
+            'persona.chiara.opening':
+                '음, 안 갔네. 이리 와, 바보야 — 소파, 와인, 그리고 늘 나한테 보내는 그 눈빛. 어떻게 끝날지 우리 둘 다 알잖아?',
+            'persona.chiara.deal-ok': '응… 바로 그렇게. 이리 와, 밤새 네가 갖고 싶었어.',
+            'place.deal.full-service': '풀서비스',
+            'place.deal.like-last-time': '지난번처럼',
+            'place.invite.full-service':
+                '나는 벗었는데 넌 아직 입고 있네. 풀서비스 해 줄까 — 모든 체위로, 네가 쌀 때까지?',
+            'place.invite.like-last-time': '지난번 기억나? 우리 둘이 그때처럼 똑같이 또 할까?',
             'place.deal.ride': '천천히 올라타 줘',
             'place.deal.table-dance': '테이블 댄스',
             'place.invite.ride': '이리 와… 누워, 내가 위에 올라가도 될까?',
@@ -2462,6 +2628,18 @@
             'persona.yuki.opening':
                 '欢迎回来～！欢迎来到我的俱乐部！哎呀呀，你是专门为了由纪来的吗？好可爱……快坐快坐，告诉我今晚想要什么！',
             'persona.yuki.deal-ok': '耶～！成交！讨厌，你要让由纪脸红了……就待在那儿看着我！',
+            'persona.valentina.tagline': '粗俗、主导、满嘴下流话 · 27 · 没有底线',
+            'persona.valentina.opening':
+                '看看谁来了。把门关上，把鸡巴掏出来——瓦伦蒂娜不浪费时间。告诉我你想要什么，说得下流点。',
+            'persona.valentina.deal-ok': '成交。过来——我要干到你站不起来，你告诉我你想射在哪儿。',
+            'persona.chiara.tagline': '多年的朋友，爱闹又骚 · 26 · 没有底线',
+            'persona.chiara.opening':
+                '嗯，你留下来了。过来，笨蛋——沙发、红酒，还有你总看我的那个眼神。我们俩都知道会怎么结束，对吧？',
+            'persona.chiara.deal-ok': '对……就这样。过来，我想了你一整晚。',
+            'place.deal.full-service': '全套服务',
+            'place.deal.like-last-time': '像上次一样',
+            'place.invite.full-service': '我光着身子，你还穿着衣服。给你来个全套服务——每个姿势，直到你射？',
+            'place.invite.like-last-time': '还记得上次吗？我们俩再像那样来一次？',
             'place.deal.ride': '慢慢骑我',
             'place.deal.table-dance': '桌上舞',
             'place.invite.ride': '过来……躺下，让我骑到你身上好吗？',
@@ -2569,7 +2747,8 @@
     /** What a pace level is called here. Levels are 1-indexed, as they are everywhere else. */
     function pace(level, override) {
         // AX1: four steps now (Mature reaches Intimate); clamping to 3 labelled level 4 Sensual.
-        return t(`pace.${Math.max(1, Math.min(4, Math.round(Number(level) || 1)))}`, null, override);
+        // L5. Five since the No-limits step: level 5 is the Unrestrained step at the top of the pace.
+        return t(`pace.${Math.max(1, Math.min(5, Math.round(Number(level) || 1)))}`, null, override);
     }
 
     /** Every language this file can dress the card in. */

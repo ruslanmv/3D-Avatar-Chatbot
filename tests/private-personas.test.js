@@ -15,19 +15,29 @@ const YOUNG =
 
 describe('PS1 personas: the data', () => {
     test('each is an adult (21+), reachable at her own step, in a private room, offering shows she knows', () => {
-        expect(all.map((p) => p.id).sort()).toEqual(['gina', 'isabelle', 'yuki']);
+        expect(all.map((p) => p.id).sort()).toEqual(['chiara', 'gina', 'isabelle', 'valentina', 'yuki']);
         for (const p of all) {
             expect(p.age).toBeGreaterThanOrEqual(21);
             expect(p.brief).toMatch(new RegExp(`\\b${p.age}\\b`));
             expect(p.brief).toMatch(/by your own choice|loves her job/);
             const room = worlds.find((w) => w.id === p.room);
-            expect(room && room.place && room.rating).toBe('private');
+            // L5. Chiara's is her own flat: a romantic room (anyone may load it), not a private one.
+            expect(room && room.place && ['private', 'romantic'].includes(room.rating)).toBe(true);
             for (const show of p.shows) expect(Routines.ROUTINES[show]).toBeTruthy();
             for (const deal of p.deals) expect(p.shows).toContain(deal);
         }
         // Gina is Intense only; the others open with a Sensual evening.
         expect(Personas.forLevel(3).map((p) => p.id)).toEqual(['isabelle', 'yuki']);
         expect(Personas.forLevel(4).map((p) => p.id)).toEqual(['gina', 'isabelle', 'yuki']);
+        // L5. Valentina and Chiara need the second gate as well (a Forge grant on this device).
+        expect(Personas.forLevel(4, { grant: true }).map((p) => p.id)).toEqual([
+            'gina',
+            'isabelle',
+            'yuki',
+            'valentina',
+            'chiara',
+        ]);
+        expect(Personas.forLevel(3, { grant: true }).map((p) => p.id)).toEqual(['isabelle', 'yuki']);
         expect(Personas.forLevel(2)).toEqual([]);
     });
 
@@ -100,5 +110,32 @@ describe('PS2 fisting: their words only, at the top of the pace', () => {
         expect(Policy.decide(fist('user'), facts(4)).allow).toBe(true);
         expect(Policy.decide(fist('user'), facts(3))).toMatchObject({ allow: false, why: 'pace' });
         expect(Policy.decide(fist('model'), facts(4))).toMatchObject({ allow: false, why: 'user-only' });
+    });
+});
+
+describe('L5 Chiara remembers, and Clear forgets', () => {
+    beforeEach(() => localStorage.clear());
+
+    test('an evening keeps last time until tonight has its own first position', () => {
+        Personas.remember('chiara', { evening: true });
+        Personas.remember('chiara', { position: 'spoon' });
+        Personas.remember('chiara', { position: 'legs-up' });
+        Personas.remember('chiara', { evening: true });
+        // Tonight began: last time is still what she can talk about.
+        expect(Personas.recall('chiara')).toMatchObject({ evenings: 2, positions: ['spoon', 'legs-up'] });
+        expect(Personas.promptLines('chiara', 'it').join(' ')).toMatch(/evening number 2.*spoon, then legs-up/);
+        Personas.remember('chiara', { position: 'straddle' });
+        expect(Personas.recall('chiara').positions).toEqual(['straddle']);
+    });
+
+    test('ids only, nobody else remembers, and Clear erases it', () => {
+        Personas.remember('chiara', { evening: true });
+        Personas.remember('chiara', { position: 'I said something private' });
+        expect(Personas.recall('chiara').positions).toEqual([]);
+        expect(Personas.remember('valentina', { evening: true })).toBeNull();
+        const Reset = require('../src/features/chat/ConversationReset.js');
+        expect(Reset.KEYS).toContain(Personas.MEMORY_KEY);
+        Reset.forget();
+        expect(localStorage.getItem(Personas.MEMORY_KEY)).toBeNull();
     });
 });

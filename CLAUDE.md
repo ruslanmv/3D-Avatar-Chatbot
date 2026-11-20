@@ -281,33 +281,33 @@ her own choice — the deal at the door as chips answered locally and remembered
 then her invitation as the pace opens it; price and time are story only; the
 finish stays the person's). `PS` for Private's personas
 (`src/experiences/private/PrivatePersonas.js`: Gina, Isabelle and Yuki, picked
-in setup as "Chi vuoi stasera?" — each a stated adult over 21 by her own choice,
-her voice per language, her room and her menu at the door; a test bans
-young-coded words in every persona text and line; PS2 `body.fist`, the person's
-words only at step 4, shows Forge's fisted states). `BS` for positions done on a
-bed (`src/experiences/private/PrivateBed.js`: the room is moved under her, never
-her; beds measured by `tools/vr/measure-bed.mjs`, never typed). `ID` for her
-standing idle (`src/gltf-viewer/RelaxedIdle.js`: arms solved per body so the
-hands rest beside the thighs, one elbow bent more, fingers curled; the default
-`relaxedIdle` preset; check with `tools/qa/idle-pose-check.mjs`). `PB` for what
-she knows of her body (`PrivateBodyKnowledge.js`, bridge `packLines`: a short
-index of families always, a family's names only when the person's words touch
-it, filtered by her position, under budgets a test enforces; extras come with a
-look, so she names looks she can change into; information never an action). `EA`
-for evening audits (`tools/qa/evening-stages.mjs`: one show played in its room
-on a real avatar, a frame per step with what moved, which clothes changed and
-what she says; `docs/claude/visual-review.md`). `SW` for the safety words and
-the moments around them (`PrivateTurnDirector.js`: end and ease-off in all nine
-languages, hesitation eases off and checks in once; the bridge's proportionate
-finish and three replies of aftercare). `OL` for her held position against
-everything else: "open your legs" changes the position she holds (on her back it
-is `knees-up`, kneeling `kneel-wide`; `sit-open` is now a floor seat), and a
-reply's mood never moves a body `vrPoseSystem.isHoldingBones()` says is held (no
-clip from `handleIntent` or `_intent`, no `setMode` override; OL3: "apri",
-"chiudi le gambe" go through `PrivatePoseController.transition` from the
-position she holds, one table). Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+in setup as "Chi vuoi stasera?"; `L5`: Valentina, Chiara, step 5 — each a stated
+adult over 21 by her own choice, her voice per language, her room and her menu
+at the door; a test bans young-coded words in every persona text and line; PS2
+`body.fist`, the person's words only at step 4, shows Forge's fisted states).
+`BS` for positions done on a bed (`src/experiences/private/PrivateBed.js`: the
+room is moved under her, never her; beds measured by `tools/vr/measure-bed.mjs`,
+never typed). `ID` for her standing idle (`src/gltf-viewer/RelaxedIdle.js`: arms
+solved per body so the hands rest beside the thighs, one elbow bent more,
+fingers curled; the default `relaxedIdle` preset; check with
+`tools/qa/idle-pose-check.mjs`). `PB` for what she knows of her body
+(`PrivateBodyKnowledge.js`, bridge `packLines`: a short index of families
+always, a family's names only when the person's words touch it, filtered by her
+position, under budgets a test enforces; extras come with a look, so she names
+looks she can change into; information never an action). `EA` for evening audits
+(`tools/qa/evening-stages.mjs`: one show played in its room on a real avatar, a
+frame per step with what moved, which clothes changed and what she says;
+`docs/claude/visual-review.md`). `SW` for the safety words and the moments
+around them (`PrivateTurnDirector.js`: end and ease-off in all nine languages,
+hesitation eases off and checks in once; the bridge's proportionate finish and
+three replies of aftercare). `OL` for her held position against everything else:
+"open your legs" changes the position she holds (on her back it is `knees-up`,
+kneeling `kneel-wide`; `sit-open` is now a floor seat), and a reply's mood never
+moves a body `vrPoseSystem.isHoldingBones()` says is held (no clip from
+`handleIntent` or `_intent`, no `setMode` override; OL3: "apri", "chiudi le
+gambe" go through `PrivatePoseController.transition` from the position she
+holds, one table). Commit subjects match: `A4: viewport background manager`. So
+`git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

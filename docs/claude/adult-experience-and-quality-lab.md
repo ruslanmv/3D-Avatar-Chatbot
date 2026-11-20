@@ -131,3 +131,26 @@ the explicit body), consent in the story, no minors or young-coded content, no
 incest, animals, real people, non-consent presented as real, injury or bodily
 waste. Tests: `tests/private-routines.test.js` ▸ UR1,
 `tests/behavior/private-actions.test.js` ▸ UR1.
+
+## No limits: step 5, Valentina and Chiara (L5)
+
+- **Step 5 is the Unrestrained step, drawn as a fifth dot.** ConsentFlow keeps its four levels;
+  nothing moves it. At 4, with both gates (the app's adult confirmation and a Forge grant the
+  bridge probed), Closer turns Unrestrained on (`TogetherCapability._advanceIntensity`) and the
+  ladder shows step 5 (`_paintLevel`, `_level5`). Ease from 5 turns it off and leaves the evening
+  at 4. A safe word, care mode, or easing below 4 ends it, as UR1 always did.
+- **Bare only.** Entering 5 asks the bridge to undress her (the press is the person's ask). It needs
+  a bare look from Forge; without one she stays dressed and the reason is reported. At 5 the model
+  can never dress her (`PrivateActionPolicy`: `bare-only`). The person's own "rivestiti" still does.
+- **The voice.** The bridge's RIGHT NOW adds a step-5 line: bare, and swearing natively in the
+  evening's language. The persona's own voice comes on top.
+- **Valentina** (27, an escort by her own choice, crude and in charge, in `roadside-motel`) and
+  **Chiara** (26, his friend of years, playful and filthy, in `apartment`) are `level5` personas.
+  `forLevel(max, { grant })` lists them only at Intense or Mature with a Forge grant on the device
+  (`playground.js` `hasForgeGrant`). Their shows are `full-service` and `like-last-time` (the UR1
+  route: Unrestrained only, words and chips in nine languages).
+- **Chiara remembers.** `PrivatePersonas.remember` keeps an evening count and the ids of the
+  positions taken (`nexus_private_chiara_memory`; ids only, never words). Her prompt tells her last
+  time's positions. Clear erases it (`ConversationReset.KEYS`).
+- **Check it live:** `node tools/qa/private-positions-live.mjs --level5`. It stands in for Forge's
+  grant answer, presses Closer past 4 and checks the fifth dot, then presses Ease back to 4.

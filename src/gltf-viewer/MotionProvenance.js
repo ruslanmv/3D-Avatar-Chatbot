@@ -145,6 +145,8 @@
         show('table-dance', 'VA3', 'Dances, turns, ends astride their lap'),
         // UR1. Unrestrained shows: existing positions and clips in a row, each with a skin state.
         show('used-marked', 'UR1', 'Kneels wide, knees up, all fours, astride, lies back'),
+        show('full-service', 'L5', 'On her knees, bent over, face down, astride facing away, legs up'),
+        show('like-last-time', 'L5', 'Spooning, astride, legs up, knees up, curled on her side'),
         show('edging', 'UR1', 'Kneels wide, sits open, astride, knees up — each held on the edge'),
         show('dom-sub', 'UR1', 'Kneels, kneels wide, all fours, astride'),
         show('oil-everything', 'UR1', 'On her front, lounging, knees up, all fours'),

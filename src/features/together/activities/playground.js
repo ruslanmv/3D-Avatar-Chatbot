@@ -125,6 +125,21 @@ const PlaygroundActivity = (() => {
         return null;
     }
 
+    /**
+     * L5. Whether this device holds Forge's second gate: a read grant (pasted in Settings or the
+     * site's own) or a signed-in capability endpoint. Only who the picker lists; the bridge probes
+     * Forge for real before step 5 can open.
+     */
+    function hasForgeGrant() {
+        try {
+            const w = globalObject();
+            const c = w && w.NEXUS_WARDROBE && w.NEXUS_WARDROBE.config;
+            return Boolean(c && (c.grant || c.capabilityUrl));
+        } catch (_) {
+            return false;
+        }
+    }
+
     /** PS1. The personas, from their global or by require in tests; null when not loaded. */
     function personasModule() {
         const win = globalObject();
@@ -1691,7 +1706,7 @@ const PlaygroundActivity = (() => {
         personas() {
             const P = personasModule();
             const top = this.prepareInput && this.prepareInput.maxLevel;
-            return P && top ? P.forLevel(top) : [];
+            return P && top ? P.forLevel(top, { grant: hasForgeGrant() }) : [];
         }
 
         places() {
