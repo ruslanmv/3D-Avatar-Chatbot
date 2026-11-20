@@ -38,18 +38,11 @@ gate still passes, with an `EBADENGINE` warning from `npm ci`.
 
 ## Branches and merges (the owner's rules, 2026-11-20)
 
-- **Never merge or push to `main`, in this repository or Forge.** `main` is the
-  owner's, after their own audit. Work on the session branch, open a PR into
-  `ultimate` (title and body `Updates`, commits `Updates of quality`), merge it
-  there. A squash merge keeps a branch's stray commits (frames once committed by
-  mistake) out of `ultimate`.
-- If the branch's PR was squash-merged and the next push is rejected, do not
-  force-push: `git merge -s ours origin/ultimate` when the branch already holds
-  everything `ultimate` has (check `git diff origin/ultimate` first).
-- A session cannot start GitHub workflows (403): ask the owner. Forge's rules,
-  its deploy from `ultimate` and its post-deploy checks
-  (`tools/qa/space_smoke.py`, `tools/qa/studio_shot.cjs`) are in Forge's
-  CLAUDE.md.
+**Never merge or push to `main`** (here or in Forge): it is the owner's, after
+an audit. Session branch → PR into `ultimate` (`Updates`) → squash merge. After
+a squash, no force-push: `git merge -s ours origin/ultimate` once
+`git diff origin/ultimate` shows only your work. Workflows answer 403 to a
+session: ask the owner. Forge deploys and checks: Forge's CLAUDE.md.
 
 ## What this is
 
