@@ -15,6 +15,10 @@
  *   take     At the top, every `--keys` chip is tapped: the line goes through the conversation
  *            surface and PrivateActionBridge; it must complete AND be confirmed on her rendered
  *            body (`result.seen`). A chip tapped below its step must be refused (`why: pace`).
+ *   L5       `--level5`: Closer at 4 opens step 5 (No limits) and Ease closes it; `--forge-grant`
+ *            makes the second gate real (the grant from FORGE_GRANT in the environment, never a
+ *            file); `--behind` adds each position from behind her; `--world <id>` picks the room
+ *            (`window-room` has a bed and nothing behind her). Writes sheet.png with every frame.
  *   ease     Holding the last position, Ease up is pressed until the evening is below its step:
  *            she must be standing again (UN28 `fitPoseToPace`).
  *
@@ -345,6 +349,10 @@ async function main() {
         else if (now.preset !== 'standing' || (now.last && now.last.pose !== 'stand'))
             fail(`ease: at ${now.level} she is still in ${now.preset}`);
         else console.log(`ok   ease to ${now.level}: standing`);
+        // L5. One sheet for the run: her renders at step 4 and 5, every position taken (and from
+        // behind with --behind), and the card at step 5. Built by the same browser, so a run is
+        // judged from one image rather than a folder (look at it: numbers missed a table in the way).
+        await sheet(browser).catch((e) => console.warn('sheet not drawn:', e.message));
     } finally {
         await browser.close();
         server.stop();
@@ -355,6 +363,36 @@ async function main() {
     if (report.errors.length) console.log(`page errors: ${report.errors.length}`);
     console.log(`\n${out}`);
     return report.failures.length ? 1 : 0;
+}
+
+/** L5. `sheet.png`: every frame this run took, labelled, in the order of the evening. */
+async function sheet(browser) {
+    const order = [
+        ['render-step-4', 'Step 4'],
+        ['render-step-5', 'Step 5 · No limits'],
+        ...KEYS.flatMap((k) => [
+            [k, k],
+            [`${k}-behind`, `${k} · behind`],
+        ]),
+        ['level-5', 'The card at step 5'],
+    ].filter(([f]) => fs.existsSync(path.join(out, `${f}.png`)));
+    if (!order.length) return;
+    const cells = order
+        .map(([f, label]) => {
+            const src = 'data:image/png;base64,' + fs.readFileSync(path.join(out, `${f}.png`)).toString('base64');
+            return `<figure><figcaption>${label}</figcaption><img src="${src}"></figure>`;
+        })
+        .join('');
+    const html =
+        '<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#111;color:#eee;font:13px system-ui;' +
+        'display:flex;flex-wrap:wrap;width:1500px}figure{margin:4px;width:362px}img{width:362px;height:auto;display:block}' +
+        'figcaption{padding:2px 0}</style>' +
+        cells;
+    const page = await browser.newPage({ viewport: { width: 1500, height: 600 } });
+    await page.setContent(html);
+    await page.screenshot({ path: path.join(out, 'sheet.png'), fullPage: true });
+    await page.close();
+    console.log(`sheet: ${path.join(out, 'sheet.png')}`);
 }
 
 main().then(
