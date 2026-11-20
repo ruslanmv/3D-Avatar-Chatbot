@@ -548,3 +548,103 @@ describe('GC1 the admin collections in Try-On, behind two gates', () => {
         expect(key(root, 'collection:body-note').textContent).toMatch(/1 body states/);
     });
 });
+
+describe('OC2 Forge occasions in the private tab: one gate, no grant', () => {
+    const { OutfitDictionary, normalize } = require('../../src/wardrobe/OutfitDictionary.js');
+    const RAW = {
+        groups: [
+            { id: 'lingerie', title: 'Lingerie' },
+            { id: 'casual', title: 'Casual' },
+        ],
+        outfits: [
+            {
+                id: 'lace-lingerie-set',
+                title: 'Lace set',
+                group: 'lingerie',
+                rating: 'private',
+                request: { prompt: 'black lace lingerie set' },
+            },
+            {
+                id: 'corset-mini',
+                title: 'Corset mini',
+                group: 'lingerie',
+                rating: 'private',
+                request: { prompt: 'corset top + mini' },
+            },
+            {
+                id: 'tee-jeans',
+                title: 'Tee & jeans',
+                group: 'casual',
+                rating: 'general',
+                request: { prompt: 'white tee + jeans' },
+            },
+        ],
+        occasions: [
+            {
+                id: 'private',
+                title: 'Private',
+                icon: '🔒',
+                question: 'Just for the two of you?',
+                private: true,
+                styles: [
+                    {
+                        id: 'lingerie',
+                        title: 'Lace editorial',
+                        icon: '🖤',
+                        blurb: 'Lace and satin sets',
+                        looks: ['lace-lingerie-set', 'not-here'],
+                    },
+                    { id: 'corsetry', title: 'Corsetry', icon: '🎀', blurb: 'Corsets', looks: ['corset-mini'] },
+                    { id: 'gone', title: 'Gone', looks: ['not-here'] },
+                ],
+            },
+            {
+                id: 'casual',
+                title: 'Casual',
+                private: false,
+                styles: [{ id: 'day', title: 'Day', looks: ['tee-jeans'] }],
+            },
+        ],
+    };
+
+    test('the dictionary keeps the occasions; a private one only with private open', () => {
+        const dictionary = new OutfitDictionary({ fetch: jest.fn() });
+        dictionary.catalogue = normalize(RAW);
+        expect(dictionary.occasions({ privateOpen: false }).map((o) => o.id)).toEqual(['casual']);
+        const priv = dictionary.occasions({ privateOpen: true }).find((o) => o.id === 'private');
+        // An id this Forge did not plan is dropped, and a style left empty with it.
+        expect(priv.styles.map((s) => [s.id, s.entries.map((e) => e.id)])).toEqual([
+            ['lingerie', ['lace-lingerie-set']],
+            ['corsetry', ['corset-mini']],
+        ]);
+    });
+
+    const setup = (mode) => {
+        const built = build({ generator: forge(jest.fn()) });
+        const dictionary = new OutfitDictionary({ fetch: jest.fn() });
+        dictionary.catalogue = normalize(RAW);
+        built.view.dictionary = dictionary;
+        built.view.wearOutfit = jest.fn();
+        built.view.setPrivate(
+            mode === 'open' ? { mode: 'open', picks: [] } : { mode: 'locked', why: 'Not declared adult.' }
+        );
+        key(built.root, 'tab:private').click();
+        return built;
+    };
+
+    test('open: the Private occasion with its styles; a style shows its looks, worn on tap', () => {
+        const { root, view } = setup('open');
+        expect(key(root, 'occasion:private').textContent).toMatch(/Private — Just for the two of you\?/);
+        expect(key(root, 'style:private/lingerie').textContent).toMatch(/Lace editorial · 1/);
+        expect(key(root, 'occasion:casual')).toBeNull(); // only private occasions here
+        key(root, 'style:private/corsetry').click();
+        key(root, 'look-of:corset-mini').click();
+        expect(view.wearOutfit).toHaveBeenCalledWith(expect.objectContaining({ id: 'corset-mini' }));
+    });
+
+    test('locked (no adult confirmation or declaration): no occasion at all', () => {
+        const { root } = setup('locked');
+        expect(key(root, 'section:occasions')).toBeNull();
+        expect(key(root, 'occasion:private')).toBeNull();
+    });
+});

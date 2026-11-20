@@ -117,6 +117,8 @@
         '.nexus-try-on-chip{padding:.4rem .62rem;border-radius:999px;cursor:pointer;font:500 .74rem/1 inherit;',
         'color:#d9eef3;background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.3)}',
         '.nexus-try-on-chip.is-private{color:#f6d9e6;background:rgba(240,143,182,.1);border-color:rgba(240,143,182,.4)}',
+        '.nexus-try-on-chip.is-on{border-color:rgba(240,143,182,.85);background:rgba(240,143,182,.22)}',
+        '.nexus-try-on-occasion{margin-bottom:.4rem}',
         '.nexus-try-on-chips{margin:0 0 .4rem}',
         '.nexus-try-on-section{margin:.35rem 0 .3rem;font-size:.66rem;font-weight:700;letter-spacing:.14em;',
         'text-transform:uppercase;color:#f0b7cf;text-align:left}',
@@ -1116,7 +1118,10 @@
                 // PT1. Two titled sections, outfits then tattoos. Tattoos used to be a few
                 // "✒ name" chips at the end of the outfit chips — easy to miss entirely, and
                 // missing outright when the catalogue landed after the tab was drawn.
+                // OC2. Forge's private occasions first (Private, After Dark): their styles, as the
+                // Studio shows them, behind the same gate as these outfits — no grant needed.
                 return h(doc, 'div', { class: 'nexus-try-on-sections' }, [
+                    this._occasionSections(chip),
                     h(doc, 'p', {
                         class: 'nexus-try-on-section',
                         'data-key': 'section:outfits',
@@ -1265,6 +1270,72 @@
                     })
                 );
             return h(doc, 'div', { class: 'nexus-try-on-sections', 'data-key': 'collection:' + open.id }, parts);
+        }
+
+        /**
+         * OC2. Each private occasion Forge offers (Private, After Dark…): a titled section with its
+         * styles as chips ("✨ Fan service · 3"); a style tapped shows its looks, worn as any
+         * dictionary entry is. Only called where private outfits are open for her.
+         */
+        _occasionSections(chip) {
+            var doc = this.doc;
+            var self = this;
+            var occasions = this.dictionary
+                ? this.dictionary.occasions({ privateOpen: true }).filter(function (o) {
+                      return o.private;
+                  })
+                : [];
+            if (!occasions.length) return null;
+            return h(
+                doc,
+                'div',
+                { class: 'nexus-try-on-occasions', 'data-key': 'section:occasions' },
+                occasions.map(function (o) {
+                    var open = null;
+                    var styleChips = o.styles.map(function (st) {
+                        var key = o.id + '/' + st.id;
+                        if (self.styleOpen === key) open = st;
+                        return chip(
+                            'style:' + key,
+                            (st.icon ? st.icon + ' ' : '') + st.title + ' · ' + st.entries.length,
+                            function () {
+                                self.styleOpen = self.styleOpen === key ? null : key;
+                                self.render();
+                            },
+                            ' is-private' + (self.styleOpen === key ? ' is-on' : '')
+                        );
+                    });
+                    var parts = [
+                        h(doc, 'p', {
+                            class: 'nexus-try-on-section',
+                            'data-key': 'occasion:' + o.id,
+                            text: (o.icon ? o.icon + ' ' : '') + o.title + (o.question ? ' — ' + o.question : ''),
+                        }),
+                        h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, styleChips),
+                    ];
+                    if (open) {
+                        parts.push(
+                            h(doc, 'p', { class: 'nexus-try-on-note', text: open.blurb }),
+                            h(
+                                doc,
+                                'div',
+                                { class: 'nexus-try-on-row nexus-try-on-chips', 'data-key': 'style-looks:' + o.id },
+                                open.entries.map(function (entry) {
+                                    return chip(
+                                        'look-of:' + entry.id,
+                                        tx('outfit.' + entry.id, entry.title),
+                                        function () {
+                                            self.wearOutfit(entry);
+                                        },
+                                        ' is-private'
+                                    );
+                                })
+                            )
+                        );
+                    }
+                    return h(doc, 'div', { class: 'nexus-try-on-occasion' }, parts);
+                })
+            );
         }
 
         /** PT1. What the tattoo gate is now: open private outfits, or private mode alone. */
