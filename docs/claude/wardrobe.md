@@ -236,3 +236,24 @@ with Forge's `tools/body_surface/detail_preview.py --out
 <this repo>/audits/poses/runs/detail` (its synthetic adult body only), then
 `node tools/qa/body-detail-render.mjs --vrm audits/poses/runs/detail/ref-natural.vrm`.
 The previews are explicit: they stay in the gitignored run folders.
+
+## The admin's collections in Try-On (GC1, 2026-11-20)
+
+Try-On's **Collections** tab shows every collection Forge's registry has —
+Adult, Private and the Private categories — behind two gates, both required:
+
+1. **Private is open for her** (`TryOnPrivate.evaluate` → `mode: 'open'`): Spicy
+   mode on with the person's own adult confirmation on this device, and her
+   character declared adult in Forge's library.
+2. **The owner gave this device access:** `ForgeLibraryClient.registry()`
+   (`GET /v1/registry`, which carries the device's read grant like every Forge
+   request) answers `access: "grant"`. Forge decides that from the grant; the
+   page never assumes it. A guest's answer has no Private collection at all.
+
+`TryOnHaulActivity.updateCollections` runs after every private evaluation
+(Spicy toggled, grant changed) and calls `TryOnView.setCollections(registry |
+null)`; null removes the tab. Inside a collection: an outfit is worn like any
+dictionary entry, a garment is made from its name, and body states are named
+in a note — they show on her bare looks in Private, never made here. Tests:
+`tests/wardrobe/try-on-view.test.js` ▸ GC1. Forge side:
+`docs/WARDROBE_REGISTRY.md` ▸ GC1.

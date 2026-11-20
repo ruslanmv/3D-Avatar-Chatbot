@@ -124,6 +124,17 @@
             return this._outfits;
         }
 
+        /**
+         * GC1. `GET /v1/registry`: every collection this caller may read. Forge answers a read grant
+         * (sent by the client on every request) with the admin's whole wardrobe and
+         * `access: "grant"`, and anyone else with no Private collection at all — so whether the
+         * owner has given this device access is Forge's answer, never this page's guess. Not
+         * cached: a grant pasted or withdrawn in Settings changes the answer.
+         */
+        registry() {
+            return this._require().request('/v1/registry');
+        }
+
         /** W16. `GET /v1/body-art`: placements and tattoo designs. */
         bodyArt() {
             if (!this._bodyArt) {

@@ -470,3 +470,81 @@ describe('TryOnView — tattoos have their own section in Private (PT1)', () => 
         expect(off).toEqual({ ok: false, why: 'Tattoos come with private mode, which is off.' });
     });
 });
+
+describe('GC1 the admin collections in Try-On, behind two gates', () => {
+    const { OutfitDictionary, normalize } = require('../../src/wardrobe/OutfitDictionary.js');
+    const REGISTRY = {
+        access: 'grant',
+        admin: false,
+        sections: [
+            { id: 'adult', title: 'Adult' },
+            { id: 'private-categories', title: 'Private · Categories' },
+        ],
+        collections: [
+            { id: 'striptease-show', title: 'Striptease Show', section: 'adult', count: 1, items: ['show-strip-red'] },
+            {
+                id: 'cat-creampie',
+                title: 'Creampie',
+                section: 'private-categories',
+                private: true,
+                count: 2,
+                items: ['state:creampie', 'under-bralette-v2'],
+            },
+            { id: 'empty', title: 'Empty', section: 'adult', count: 0, items: [] },
+        ],
+        items: [
+            { id: 'show-strip-red', kind: 'outfit', name: 'Striptease · red' },
+            { id: 'state:creampie', kind: 'body', name: 'Creampie' },
+            { id: 'under-bralette-v2', kind: 'garment', name: 'Bralette' },
+        ],
+    };
+    const setup = () => {
+        const built = build({ generator: forge(jest.fn()) });
+        const dictionary = new OutfitDictionary({ fetch: jest.fn() });
+        dictionary.catalogue = normalize({
+            groups: [{ id: 'erotic', title: 'Erotic', private: true }],
+            outfits: [
+                {
+                    id: 'show-strip-red',
+                    title: 'Striptease · red',
+                    group: 'erotic',
+                    rating: 'private',
+                    request: { prompt: 'red striptease dress' },
+                },
+            ],
+        });
+        built.view.dictionary = dictionary;
+        built.view.wearOutfit = jest.fn();
+        built.view.create = jest.fn();
+        return built;
+    };
+
+    test('no tab unless private is open AND Forge answered as a grant reader', () => {
+        const { root, view } = setup();
+        view.setCollections(REGISTRY); // gate 2 alone
+        expect(key(root, 'tab:collections')).toBeNull();
+        view.setPrivate({ mode: 'locked', why: 'Not declared adult.' });
+        expect(key(root, 'tab:collections')).toBeNull();
+        view.setPrivate({ mode: 'open', picks: [] }); // both
+        expect(key(root, 'tab:collections')).not.toBeNull();
+        view.setCollections(null); // the grant withdrawn: gone, and back to For you
+        expect(key(root, 'tab:collections')).toBeNull();
+    });
+
+    test('collections by section, then one collection: outfits worn, garments made, body states told', () => {
+        const { root, view } = setup();
+        view.setPrivate({ mode: 'open', picks: [] });
+        view.setCollections(REGISTRY);
+        key(root, 'tab:collections').click();
+        expect(key(root, 'section:private-categories').textContent).toMatch(/Private · Categories/);
+        expect(key(root, 'collection:empty')).toBeNull();
+        key(root, 'collection:striptease-show').click();
+        key(root, 'outfit:show-strip-red').click();
+        expect(view.wearOutfit).toHaveBeenCalledWith(expect.objectContaining({ id: 'show-strip-red' }));
+        key(root, 'collection:back').click();
+        key(root, 'collection:cat-creampie').click();
+        key(root, 'garment:under-bralette-v2').click();
+        expect(view.create).toHaveBeenCalledWith(expect.objectContaining({ prompt: 'Bralette' }));
+        expect(key(root, 'collection:body-note').textContent).toMatch(/1 body states/);
+    });
+});
