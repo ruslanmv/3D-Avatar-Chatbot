@@ -42,9 +42,12 @@ describe('UN36 shows: the data', () => {
         expect(at(1)).toEqual([]);
         expect(at(2)).toEqual(['tease']);
         expect(at(3)).toEqual(['tease', 'ride', 'table-dance']);
-        expect(at(4)).toEqual(Routines.ORDER);
+        // UR1. The Unrestrained shows open only with Unrestrained on; "show me" stays the striptease.
+        expect(at(4)).toEqual(Routines.ORDER.filter((id) => !Routines.unrestrainedOnly(id)));
+        expect(Routines.openAt(4, Policy.poseLevel, { unrestrained: true })).toEqual(Routines.ORDER);
         expect(Routines.boldest(3, Policy.poseLevel)).toBe('table-dance');
         expect(Routines.boldest(4, Policy.poseLevel)).toBe('striptease');
+        expect(Routines.boldest(4, Policy.poseLevel, { unrestrained: true })).toBe('striptease');
         // VA3. A striptease takes layers off: it opens only where undressing does.
         expect(Routines.level('striptease', Policy.poseLevel)).toBe(Policy.UNDRESS_LEVEL);
         expect(Routines.ROUTINES.striptease.steps.filter((x) => x.undress)).toHaveLength(3);
@@ -149,5 +152,31 @@ describe('UN36 the ⋯ menu: show chips follow the pace the card shows', () => {
         // Each position chip once.
         const keys = [...slot.querySelectorAll('[data-private-position]')].map((b) => b.dataset.privatePosition);
         expect(new Set(keys).size).toBe(keys.length);
+    });
+});
+
+describe('UR1 Unrestrained shows', () => {
+    const UR = Routines.ORDER.filter((id) => Routines.unrestrainedOnly(id));
+
+    test('seven of them, each at the closest step, none finishing on its own', () => {
+        expect(UR.sort()).toEqual([
+            'dom-sub',
+            'edging',
+            'oil-everything',
+            'rounds',
+            'tied',
+            'used-marked',
+            'window-show',
+        ]);
+        for (const id of UR) {
+            expect(Routines.level(id, Policy.poseLevel)).toBe(4);
+            for (const step of Routines.ROUTINES[id].steps) {
+                // A step may show arousal, the edge, oil or rope — never a finish (those are theirs).
+                if (step.skin) {
+                    expect(step.skin).not.toMatch(/cum|creampie|finish/);
+                    expect(['used', 'dripping', 'round-three', 'breasts-belly', 'oiled-used']).not.toContain(step.skin);
+                }
+            }
+        }
     });
 });

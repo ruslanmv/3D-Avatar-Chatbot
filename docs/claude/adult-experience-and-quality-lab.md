@@ -100,3 +100,34 @@ TogetherCapability) owns style data and capability resolution;
   `render-place-previews.mjs` in `tools/vr/page-driver.mjs`.
   `node tools/qa/lab-call.mjs <tool> '<json>'` calls any tool from a shell when
   the server is not loaded. Tool calls are async: answers are matched by id.
+
+## Unrestrained (UR1, 2026-11-20): the most explicit tier, gate 2
+
+Three conditions, all checked at the moment of use (`unrestrainedOn` in
+`PrivateActionBridge`): Forge accepted this device's read grant (asked once at
+the start of the evening: `GET /v1/body-surface/catalog` answers only an admin or
+a valid grant), the evening is at its closest step (ConsentFlow's, moved only by
+the person), and the person turned it on themselves (the ⋯ menu's toggle,
+`setUnrestrained`). A safe word, easing off or care turns it off; only the person
+turns it on again.
+
+What it opens:
+
+- Seven shows (`PrivateRoutines` `ROUTINES_UNRESTRAINED`): Used & marked, Edging
+  & denial, Who leads tonight (they choose who leads and which words — praise or
+  degradation — never assumed), Oil then everything, Tied for you, Round two/three,
+  Window show. A step's `skin` shows arousal, the edge, oil or rope; never a
+  finish, which stays the person's words or tap (UN34).
+- Finishes that build: each one stays on her and the next one stacks (dripping
+  or breasts-and-belly, then round three or oiled-used, then used — Forge's
+  composed states, BD22 there), when her look's pack has them.
+- Her face and her mouth as places to finish: in her expression and words only
+  (Forge's painter does not reach the face material).
+- Her most explicit voice: an UNRESTRAINED line in RIGHT NOW, in her persona's
+  own voice; the person's safe words still end it at once.
+
+Limits that hold in every tier: adults only (21+, adult design, detail review for
+the explicit body), consent in the story, no minors or young-coded content, no
+incest, animals, real people, non-consent presented as real, injury or bodily
+waste. Tests: `tests/private-routines.test.js` ▸ UR1,
+`tests/behavior/private-actions.test.js` ▸ UR1.

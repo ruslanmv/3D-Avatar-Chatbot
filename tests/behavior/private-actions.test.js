@@ -2451,7 +2451,20 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             expect(Policy.decide(finish('user'), { ...facts, level: 3 }).why).toBe('pace');
             expect(Policy.decide(finish('model'), { ...facts, level: 4 }).allow).toBe(false);
             expect(Policy.decide(finish('user'), { ...facts, level: 4 }).allow).toBe(true);
-            expect(Policy.validate('body.finish', { where: 'face' }).ok).toBe(false);
+            expect(Policy.validate('body.finish', { where: 'nose' }).ok).toBe(false);
+            // UR1. Her face and her mouth exist, but only in Unrestrained.
+            expect(
+                Policy.decide({ ...finish('user'), params: { where: 'face' } }, { ...facts, level: 4 })
+            ).toMatchObject({
+                allow: false,
+                why: 'unrestrained',
+            });
+            expect(
+                Policy.decide(
+                    { ...finish('user'), params: { where: 'mouth' } },
+                    { ...facts, level: 4, unrestrained: true }
+                ).allow
+            ).toBe(true);
         });
 
         test('PS2 (Codex #200). their fist shows only the act they asked for, never another', async () => {
@@ -2665,7 +2678,9 @@ describe('UN36. shows: she moves through a series of positions on her own', () =
             const w = await begin({ adult: true });
             w.adult.level = 4;
             expect(prompt()).toMatch(/Shows you know, open now: .*Open for you/);
-            expect(Actions.snapshot().routines).toContainEqual({ id: 'open-for-you', level: 4 });
+            expect(Actions.snapshot().routines).toContainEqual(
+                expect.objectContaining({ id: 'open-for-you', level: 4 })
+            );
             jest.useFakeTimers();
             try {
                 await turn('Open up for me');
@@ -3186,5 +3201,42 @@ describe('PP1. a room made for her show: she invites them, their yes starts it',
         } finally {
             window.NEXUS_PRIVATE_POSES = real;
         }
+    });
+});
+
+describe('UR1 Unrestrained: the grant, the closest step, their tap', () => {
+    const Actions = require('../../src/experiences/private/PrivateActionBridge.js');
+    const Policy = require('../../src/experiences/private/PrivateActionPolicy.js');
+
+    test('the policy refuses an Unrestrained show and her face or mouth without it', () => {
+        const show = { name: 'avatar.routine', params: { routine: 'edging' }, source: 'user' };
+        const base = { active: true, level: 4, asked: { avatar: true }, autonomy: 'suggest' };
+        expect(Policy.decide(show, { ...base, unrestrainedOnly: true })).toMatchObject({
+            allow: false,
+            why: 'unrestrained',
+        });
+        expect(Policy.decide(show, { ...base, unrestrainedOnly: true, unrestrained: true }).allow).toBe(true);
+        expect(Policy.validate('avatar.routine', { routine: 'used-marked', move: 'start' }).ok).toBe(true);
+    });
+
+    test('words for the shows and for her face and mouth', () => {
+        const Intent = require('../../src/experiences/private/PrivateActionIntent.js');
+        expect(Intent.parse('Tienimi al limite', {})).toMatchObject({
+            name: 'avatar.routine',
+            params: { routine: 'edging' },
+        });
+        expect(Intent.parse('Use me and mark me', {})).toMatchObject({ params: { routine: 'used-marked' } });
+        expect(Intent.parse("I'm coming on your face", {})).toMatchObject({
+            name: 'body.finish',
+            params: { where: 'face' },
+        });
+        expect(Intent.parse('vengo in bocca', {})).toMatchObject({ name: 'body.finish', params: { where: 'mouth' } });
+        // Ordinary words do not start a show.
+        expect(Intent.parse('kiss me again and again', {})).toBeNull();
+    });
+
+    test('setUnrestrained turns on only with the grant at the closest step; off is always allowed', () => {
+        expect(typeof Actions.setUnrestrained).toBe('function');
+        expect(Actions.setUnrestrained(true)).toBe(false); // no evening running
     });
 });

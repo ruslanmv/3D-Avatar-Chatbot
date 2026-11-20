@@ -2032,6 +2032,9 @@
                     onDecline: () => actions.declineOffer(),
                     // UN27. A position chip in the ⋯ menu is their line, sent as their turn.
                     onPosition: (line) => this._chooseReply(line),
+                    // UR1. Their switch for Unrestrained: the bridge decides whether it can turn on.
+                    onUnrestrained: (on) =>
+                        typeof actions.setUnrestrained === 'function' ? actions.setUnrestrained(on) : false,
                 });
             } catch (error) {
                 console.warn('[Private] the action strip could not be drawn', error);
