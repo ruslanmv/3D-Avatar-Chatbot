@@ -253,6 +253,228 @@
         }),
     });
 
+    /**
+     * UR1. Unrestrained shows: only while Unrestrained is on (the owner's grant confirmed by Forge,
+     * the evening at its closest step, and the person's own tap — PrivateActionBridge). Each is her
+     * positions in a row like every show, plus `skin`: a body state her look's skin pack shows at
+     * that step (arousal, the edge, oil, rope). Never a finish: where and when they finish stays
+     * the person's words or tap (UN34), and in Unrestrained each finish stays on her and builds.
+     */
+    const ROUTINES_UNRESTRAINED = Object.freeze({
+        'used-marked': Object.freeze({
+            label: 'Used & marked',
+            name: 'an evening where her body keeps everything they do to it',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'kneel-wide',
+                    hold: 12000,
+                    skin: 'aroused',
+                    body: 'kneeling wide in front of them, already wet, telling them to use you however they want tonight',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 20000,
+                    skin: 'open',
+                    body: 'on your back with your knees spread for them, open and waiting, begging them to take you',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    skin: 'both-open',
+                    body: 'on all fours, pushing back against them, both holes offered, asking them to leave their mark',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 20000,
+                    body: 'on top of them, grinding down, telling them everything they leave on you stays on you tonight',
+                },
+                {
+                    pose: 'lie-back',
+                    hold: 15000,
+                    body: 'lying back wrecked and smiling, showing them what they have done to you, asking where they want to leave the next one',
+                },
+            ]),
+        }),
+        edging: Object.freeze({
+            label: 'Edging & denial',
+            name: 'bringing them to the edge again and again, and stopping',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'kneel-wide',
+                    hold: 12000,
+                    skin: 'aroused',
+                    body: 'kneeling close, slow and teasing, telling them they are not allowed to come yet',
+                },
+                {
+                    pose: 'sit-open',
+                    hold: 15000,
+                    skin: 'edge',
+                    body: 'sitting open in front of them, touching yourself to the edge and stopping, making them watch',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 15000,
+                    skin: 'edge',
+                    body: 'on top of them, taking them almost all the way and freezing, making them beg for it',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 15000,
+                    skin: 'edge',
+                    body: 'on your back, trembling on the edge, telling them they come only when they ask you nicely',
+                },
+            ]),
+        }),
+        'dom-sub': Object.freeze({
+            label: 'Who leads tonight',
+            name: 'a dominant and submissive evening, with the words they chose',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'kneel',
+                    hold: 12000,
+                    body: 'on your knees, eyes up at them, asking whether they want to lead or to be led, and which words they want to hear',
+                },
+                {
+                    pose: 'kneel-wide',
+                    hold: 15000,
+                    skin: 'aroused',
+                    body: 'kneeling wide, doing exactly what the one who leads says, in the words they chose',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    skin: 'open',
+                    body: 'on all fours as you were told, holding still, waiting for permission',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 20000,
+                    body: 'taking them the way the one in charge allows, never one word they did not choose',
+                },
+            ]),
+        }),
+        'oil-everything': Object.freeze({
+            label: 'Oil, then everything',
+            name: 'a slow oil massage that turns into everything',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'lie-front',
+                    hold: 15000,
+                    skin: 'oiled',
+                    body: 'lying on your front, glistening with oil, asking for their hands all over you',
+                },
+                {
+                    pose: 'lounge',
+                    hold: 12000,
+                    skin: 'oiled-aroused',
+                    body: 'sitting back slick with oil, running your hands over your breasts and between your legs',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 20000,
+                    skin: 'oiled-aroused',
+                    body: 'on your back, oiled and open, sliding against them',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    body: 'on all fours, shining with oil, pushing back and asking for more',
+                },
+            ]),
+        }),
+        tied: Object.freeze({
+            label: 'Tied for you',
+            name: 'tied and held open for them',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'kneel',
+                    hold: 12000,
+                    skin: 'tied-edge',
+                    body: 'kneeling with rope across your body, wrists bound, checking in with them in a whisper before going on',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 20000,
+                    skin: 'tied-edge',
+                    body: 'tied on your back, knees held apart by the rope, unable to close, shaking for them',
+                },
+                {
+                    pose: 'lie-back',
+                    hold: 15000,
+                    body: 'still tied, breathless, asking them if they want you loosened or kept like this',
+                },
+            ]),
+        }),
+        rounds: Object.freeze({
+            label: 'Round two, round three',
+            name: 'one round after another, everything left on her',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    skin: 'sweaty',
+                    body: 'on all fours for round one, already sweating, telling them not to stop',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 20000,
+                    body: 'climbing back on top for round two, still dripping from the first',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 20000,
+                    body: 'on your back for round three, exhausted and still asking for more',
+                },
+                {
+                    pose: 'lie-back',
+                    hold: 15000,
+                    body: 'spent and glowing, everything from tonight still on you, asking for one more',
+                },
+            ]),
+        }),
+        'window-show': Object.freeze({
+            label: 'Window show',
+            name: 'a show at the window, knowing she is watched',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    clip: CLIPS.club,
+                    hold: 8000,
+                    body: 'dancing at the window, knowing the street can see you, loving it',
+                },
+                {
+                    pose: 'arch-back',
+                    hold: 10000,
+                    body: 'arching against the glass, showing yourself to whoever looks up',
+                },
+                {
+                    pose: 'bend-forward',
+                    hold: 10000,
+                    body: 'bending forward at the window, looking back at them over your shoulder',
+                },
+                {
+                    pose: 'sit-open',
+                    hold: 15000,
+                    skin: 'aroused',
+                    body: 'sitting open on the sill, for them and for anyone watching',
+                },
+            ]),
+        }),
+    });
+
     /** In the order they are offered, gentlest first. */
     const ORDER = Object.freeze([
         'tease',
@@ -264,10 +486,19 @@
         // WR1. Before the striptease: "show me" (the boldest open) stays a striptease, not the
         // whole evening, which is asked for by name or chosen at the Window Room's door.
         'window-evening',
+        // UR1. Unrestrained only (hidden otherwise); before the striptease, so "show me" outside
+        // Unrestrained is still the striptease.
+        'edging',
+        'oil-everything',
+        'tied',
+        'dom-sub',
+        'window-show',
+        'rounds',
+        'used-marked',
         'striptease',
     ]);
 
-    const ROUTINES = Object.freeze({ ...ROUTINES_BASE, ...ROUTINES_EXTRA });
+    const ROUTINES = Object.freeze({ ...ROUTINES_BASE, ...ROUTINES_EXTRA, ...ROUTINES_UNRESTRAINED });
 
     /**
      * MP1. Can this show run with what is switched on? Every show here was composed by Claude, and
@@ -315,14 +546,20 @@
         return need;
     }
 
-    /** The routines open at `at`, gentlest first. */
-    function openAt(at, poseLevel) {
-        return ORDER.filter((id) => level(id, poseLevel) <= (Number(at) || 1));
+    /** UR1. Whether a show is for Unrestrained only. */
+    function unrestrainedOnly(id) {
+        return Boolean(ROUTINES[id] && ROUTINES[id].unrestrained);
+    }
+
+    /** The routines open at `at`, gentlest first; Unrestrained ones only with `{ unrestrained }`. */
+    function openAt(at, poseLevel, options) {
+        const free = Boolean(options && options.unrestrained);
+        return ORDER.filter((id) => (free || !unrestrainedOnly(id)) && level(id, poseLevel) <= (Number(at) || 1));
     }
 
     /** "Show me" without a name: the boldest one this step of the evening allows. */
-    function boldest(at, poseLevel) {
-        const open = openAt(at, poseLevel);
+    function boldest(at, poseLevel, options) {
+        const open = openAt(at, poseLevel, options);
         return open.length ? open[open.length - 1] : null;
     }
 
@@ -333,7 +570,19 @@
         return SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, at + (direction > 0 ? 1 : -1)))];
     }
 
-    const api = { ROUTINES, ORDER, CLIPS, BLEND_S, SPEEDS, level, openAt, boldest, stepSpeed, available };
+    const api = {
+        ROUTINES,
+        ORDER,
+        CLIPS,
+        BLEND_S,
+        SPEEDS,
+        level,
+        openAt,
+        boldest,
+        stepSpeed,
+        available,
+        unrestrainedOnly,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ROUTINES = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

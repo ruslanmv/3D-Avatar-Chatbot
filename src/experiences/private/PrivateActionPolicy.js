@@ -70,12 +70,31 @@
         'from-behind',
         'everything',
         'window-evening',
+        'edging',
+        'oil-everything',
+        'tied',
+        'dom-sub',
+        'window-show',
+        'rounds',
+        'used-marked',
         'striptease',
         'choose',
     ]);
 
     /** UN34. Where the person may finish; `choose` lets the bridge pick from what her look shows. */
-    const FINISH_PLACES = Object.freeze(['back', 'inside', 'ass', 'both', 'all', 'belly', 'chest', 'choose']);
+    // UR1. `face` and `mouth`: only in Unrestrained, shown on her face and in her words (no paint).
+    const FINISH_PLACES = Object.freeze([
+        'back',
+        'inside',
+        'ass',
+        'both',
+        'all',
+        'belly',
+        'chest',
+        'face',
+        'mouth',
+        'choose',
+    ]);
     const FINISH_LEVEL = 4;
 
     /** UN5. PrivatePoseController.POSES' keys, plus `stand`; the adult ones open with undressing. */
@@ -335,7 +354,13 @@
         if (action.name === 'body.finish') {
             if (!(Number(f.level) >= FINISH_LEVEL)) return { allow: false, why: 'pace' };
             if (action.source === 'model') return { allow: false, why: 'user-only' };
+            // UR1. On her face or in her mouth: only in Unrestrained (the grant, the top step, their tap).
+            if ((action.params.where === 'face' || action.params.where === 'mouth') && !f.unrestrained)
+                return { allow: false, why: 'unrestrained' };
         }
+        // UR1. An Unrestrained show: only while Unrestrained is on.
+        if (action.name === 'avatar.routine' && f.unrestrainedOnly && !f.unrestrained)
+            return { allow: false, why: 'unrestrained' };
 
         // PS2. Their fist: theirs to ask, at the top of the pace, never her tag's.
         if (action.name === 'body.fist') {

@@ -137,6 +137,14 @@
             'The Window Room evening: dances at the window, sits on the bed, undresses, three positions, asks where to finish'
         ),
         show('table-dance', 'VA3', 'Dances, turns, ends astride their lap'),
+        // UR1. Unrestrained shows: existing positions and clips in a row, each with a skin state.
+        show('used-marked', 'UR1', 'Kneels wide, knees up, all fours, astride, lies back'),
+        show('edging', 'UR1', 'Kneels wide, sits open, astride, knees up — each held on the edge'),
+        show('dom-sub', 'UR1', 'Kneels, kneels wide, all fours, astride'),
+        show('oil-everything', 'UR1', 'On her front, lounging, knees up, all fours'),
+        show('tied', 'UR1', 'Kneels, knees up, lies back'),
+        show('rounds', 'UR1', 'All fours, astride, knees up, lies back'),
+        show('window-show', 'UR1', 'Dances the club clip, arches back, bends forward, sits open'),
         Object.freeze({
             id: 'layer:living',
             name: 'living',

@@ -154,6 +154,12 @@
         // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
         // evening (position, step, finish) each frame; never moves any of it.
         s.living = startLiving(s, o.deps && o.deps.living);
+        // UR1. Gate 2 for Unrestrained: does Forge accept this device's read grant? Asked once,
+        // of Forge itself — the body catalogue answers only an admin or a valid grant.
+        s.grantOk = false;
+        s.unrestrained = false;
+        s.finishCount = 0;
+        probeGrant(s, o.deps && o.deps.grantProbe);
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -619,6 +625,50 @@
         }
     }
 
+    /**
+     * UR1. Unrestrained: the evening's most explicit tier. Three things, all needed, and checked
+     * every time (never remembered past them): Forge accepted this device's read grant (the owner's
+     * permission), the evening is at its closest step (ConsentFlow's, moved only by the person),
+     * and the person turned it on themselves. Care, the safe words or easing off turn it off.
+     */
+    function probeGrant(s, injected) {
+        const ask =
+            typeof injected === 'function'
+                ? injected
+                : () => {
+                      const w = s.win && s.win.NEXUS_WARDROBE;
+                      const forge = w && w.service && w.service.controller && w.service.controller.forge;
+                      if (!forge || typeof forge.request !== 'function') return Promise.reject(new Error('no forge'));
+                      return forge.request('/v1/body-surface/catalog');
+                  };
+        Promise.resolve()
+            .then(ask)
+            .then(
+                () => {
+                    if (state !== s) return;
+                    s.grantOk = true;
+                    emit();
+                },
+                () => {
+                    if (state === s) s.grantOk = false;
+                }
+            );
+    }
+
+    function unrestrainedOn(s) {
+        return Boolean(s && s.grantOk && s.unrestrained && (levelOf(s) || 1) >= UNDRESS_AT && !s.session._care);
+    }
+
+    /** UR1. The person's own switch (the ⋯ menu's toggle). Returns whether it is on now. */
+    function setUnrestrained(on) {
+        const s = state;
+        if (!s) return false;
+        if (on && !(s.grantOk && (levelOf(s) || 1) >= UNDRESS_AT && !s.session._care)) return false;
+        s.unrestrained = Boolean(on);
+        emit();
+        return s.unrestrained;
+    }
+
     function facts(s, action) {
         const Policy = pick(s.win, 'NEXUS_PRIVATE_ACTION_POLICY', './PrivateActionPolicy.js');
         const asked = {};
@@ -630,6 +680,16 @@
             autonomy: Policy ? Policy.autonomy(s.win) : 'suggest',
             // UN1. Read at the moment of the decision, for undressing only; never written.
             level: levelOf(s),
+            // UR1. Unrestrained, read now; and whether this show is for Unrestrained only.
+            unrestrained: unrestrainedOn(s),
+            unrestrainedOnly: Boolean(
+                action &&
+                    action.name === 'avatar.routine' &&
+                    s.win &&
+                    s.win.NEXUS_PRIVATE_ROUTINES &&
+                    typeof s.win.NEXUS_PRIVATE_ROUTINES.unrestrainedOnly === 'function' &&
+                    s.win.NEXUS_PRIVATE_ROUTINES.unrestrainedOnly(action.params && action.params.routine)
+            ),
         };
     }
 
@@ -1057,13 +1117,15 @@
             p.move === 'again'
                 ? s.routine && s.routine.id
                 : !p.routine || p.routine === 'choose'
-                  ? R.boldest(at, levels)
+                  ? R.boldest(at, levels, { unrestrained: unrestrainedOn(s) })
                   : p.routine;
         if (!id || !R.ROUTINES[id]) return settle(action, 'failed', p.move === 'again' ? 'no-routine' : 'none-open');
         // MP1. Switched off in Settings (Motion created by Claude): not a matter of the pace.
         if (typeof R.available === 'function' && !R.available(id))
             return settle(action, 'failed', 'show-off', { routine: id });
         if (R.level(id, levels) > at) return settle(action, 'blocked', 'pace', { routine: id });
+        if (R.ROUTINES[id].unrestrained && !unrestrainedOn(s))
+            return settle(action, 'blocked', 'unrestrained', { routine: id });
         // The same show asked for again in the same moment (one line heard twice) is the one running.
         if (live && live.id === id && live.index === 0 && Date.now() - live.stepAt < 1500)
             return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
@@ -1218,6 +1280,12 @@
             } else {
                 stopShowClip(s, r);
                 ok = Boolean(s.poses.apply(step.pose, { duration: R.BLEND_S / r.speed }).ok);
+            }
+            // UR1. Her body at this step (arousal, the edge, oil, rope), when her look's pack has
+            // it. Never a finish (those are the person's), and never over a finish still on her.
+            if (ok && step.skin && s.skin && !s.finish && Array.isArray(s.skinStates)) {
+                if (s.skinStates.some((x) => x && x.name === step.skin))
+                    Promise.resolve(s.skin.apply(step.skin)).catch(() => {});
             }
         } catch (error) {
             console.warn('[Private] a show step could not run', error);
@@ -1868,9 +1936,32 @@
             .catch(() => settle(action, 'failed', 'not-shown'));
     }
 
+    /**
+     * UR1. In Unrestrained, each finish stays on her and the next one builds on it: dripping,
+     * then round three, then used — when her look's pack has them. Outside it, as before.
+     */
+    const STACK = Object.freeze([['dripping', 'breasts-belly'], ['round-three', 'oiled-used'], ['used']]);
+    function stackedState(s, place) {
+        if (!unrestrainedOn(s) || !(s.finishCount > 0)) return null;
+        const names = (s.skinStates || []).map((x) => x.name);
+        const tier = STACK[Math.min(s.finishCount, STACK.length) - 1] || [];
+        const facing = place === 'belly' || place === 'chest';
+        const pick = tier.filter((n) => (facing ? n !== 'dripping' : n !== 'breasts-belly'));
+        const found = pick.find((n) => names.includes(n));
+        return found ? { place, state: found } : null;
+    }
+
     function finishOn(s, action) {
+        const where = action.params.where;
+        // UR1. Her face, her mouth: shown on her face and in her words (the paint cannot reach it).
+        if (where === 'face' || where === 'mouth') {
+            if (!unrestrainedOn(s)) return settle(action, 'blocked', 'unrestrained');
+            s.finishCount = (s.finishCount || 0) + 1;
+            action.result = { place: where, state: null };
+            return settle(action, 'completed', null, action.result);
+        }
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
-        const chosen = finishState(s, action.params.where);
+        const chosen = stackedState(s, where === 'choose' ? 'inside' : where) || finishState(s, where);
         if (!chosen) return settle(action, 'failed', 'no-finish-state');
         clearAfterglow(s);
         clearFinish(s);
@@ -1891,6 +1982,7 @@
             }, FINISH_HOLD_MS),
         };
         action.result = { place: chosen.place, state: chosen.state };
+        s.finishCount = (s.finishCount || 0) + 1;
         return Promise.resolve(s.skin.apply(chosen.state))
             .then((ok) => settle(action, ok ? 'completed' : 'failed', ok ? null : 'not-shown', action.result))
             .catch(() => settle(action, 'failed', 'not-shown'));
@@ -2390,6 +2482,8 @@
         touched(s);
         const intent = turn && turn.intent;
         if (intent === 'end' || intent === 'pace-down') {
+            // UR1. A safe word or easing off ends Unrestrained; only the person turns it on again.
+            s.unrestrained = false;
             // Codex (#196). Easing off (or hesitating) stills her too: a position allowed at the
             // lower step stays held, and the movement they had asked for must not go on under it.
             if (s.moving) {
@@ -2655,8 +2749,17 @@
                 const R = s.win && s.win.NEXUS_PRIVATE_ROUTINES;
                 const Policy = s.win && s.win.NEXUS_PRIVATE_ACTION_POLICY;
                 if (!R || !Policy || typeof Policy.poseLevel !== 'function') return [];
-                return R.ORDER.map((id) => ({ id, level: R.level(id, (key) => Policy.poseLevel(key) || 1) }));
+                return R.ORDER.map((id) => ({
+                    id,
+                    level: R.level(id, (key) => Policy.poseLevel(key) || 1),
+                    unrestrained: Boolean(R.ROUTINES[id] && R.ROUTINES[id].unrestrained),
+                }));
             })(),
+            // UR1. The ⋯ menu's toggle: offered with the grant at the closest step; on by their tap.
+            unrestrained: {
+                available: Boolean(s.grantOk && (levelOf(s) || 1) >= UNDRESS_AT && !s.session._care),
+                on: unrestrainedOn(s),
+            },
             routine: s.routine ? { id: s.routine.id, state: routineState(s), step: s.routine.index } : null,
             // UN13. `provisional`: the opening room is not confirmed yet; `committed`: kept in history.
             story: s.story
@@ -2862,7 +2965,7 @@
         // when they ask (their words or a chip).
         {
             const R = s.poses ? routinesOf(s) : null;
-            const open = R ? R.openAt(levelOf(s) || 1, poseLevelFn(s)) : [];
+            const open = R ? R.openAt(levelOf(s) || 1, poseLevelFn(s), { unrestrained: unrestrainedOn(s) }) : [];
             if (open.length)
                 lines.push(
                     `- Shows you know, open now: ${open.map((id) => `${R.ROUTINES[id].label} (${R.ROUTINES[id].name})`).join('; ')}. When they ask for one by name, or just "show me", the app moves your body through it step by step, slowly, holding each position. You never start one on your own: you may invite one by name in a few words. During a show, say a short, sensual line at each step about what you are showing them and how it feels to be watched; they can say slower, faster or stop. When it ends, ask them if they want more.`
@@ -3212,6 +3315,36 @@
                     ? 'They asked for their fist; the evening is not at its closest step, so nothing happens yet — tease them about it in words.'
                     : 'They asked for their fist; this look cannot show it on your body, so answer them in words, without describing it on your skin.'
             );
+        // UR1. Unrestrained: her most explicit voice, and what they finished on that has no paint.
+        if (unrestrainedOn(s)) {
+            now.push(
+                'UNRESTRAINED is on — they chose it: talk as filthy and explicit as they want, name every act and every part of you plainly, moan, beg, tell them exactly what you want them to do to you. In your own voice tonight (who you are), never softer than they ask. Their words still lead: a safe word, "slower" or "stop" ends it at once.'
+            );
+            now.push(
+                'If they want to be degraded or praised, ask once which they want and keep to their answer; never degrade them or yourself unless they said yes to it.'
+            );
+            const done = [...s.log]
+                .reverse()
+                .find((a) => a.name === 'body.finish' && a.turnId === s.turnId && a.status === 'completed');
+            const place = done && done.result && done.result.place;
+            if (place === 'face')
+                now.push(
+                    'They just came on your face: show it — eyes closed, lips parted, licking your lips — and say how it feels.'
+                );
+            if (place === 'mouth')
+                now.push('They just came in your mouth: show it — you swallow, smile up at them — and say it.');
+            if ((s.finishCount || 0) > 1)
+                now.push(
+                    `They have finished ${s.finishCount} times tonight; everything they left is still on you. Say so.`
+                );
+        }
+        const offUnrestrained = [...s.log].reverse().find((a) => a.turnId === s.turnId && a.why === 'unrestrained');
+        if (offUnrestrained)
+            now.push(
+                s.grantOk
+                    ? 'They asked for something from the Unrestrained side of the evening; it is off right now. Tell them warmly it opens when they turn Unrestrained on in the menu, at the closest step.'
+                    : 'They asked for something from the Unrestrained side of the evening; this device does not have it. Say so lightly and offer what you can do now.'
+            );
         const lastFinish = [...s.log].reverse().find((a) => a.name === 'body.finish' && a.turnId === s.turnId);
         if (lastFinish && lastFinish.status !== 'completed' && lastFinish.status !== 'pending')
             now.push(
@@ -3277,6 +3410,7 @@
         onChange,
         promptLines,
         closetSummary,
+        setUnrestrained,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_ACTIONS = api;

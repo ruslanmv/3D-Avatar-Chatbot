@@ -449,6 +449,15 @@
         'iu'
     );
     const FINISH_PLACES = [
+        // UR1. Her face and her mouth (Unrestrained only; the policy decides).
+        [
+            'face',
+            'on your face|in your face|on her face|in faccia|sulla faccia|sul viso|sul tuo viso|en tu cara|en la cara|sur ton visage|sur ta figure|sur ton visage|ins gesicht|in dein gesicht|auf dein gesicht|na tua cara|na cara|no teu rosto|no seu rosto',
+        ],
+        [
+            'mouth',
+            'in your mouth|down your throat|in bocca|nella tua bocca|in gola|en tu boca|en la boca|dans ta bouche|dans la bouche|in deinen mund|in den mund|na tua boca|na boca|na sua boca',
+        ],
         ['all', 'all over|everywhere|ovunque|dappertutto|addosso|por todas partes|partout|überall|toda (?:você|voce)'],
         ['both', 'both holes|in both|entrambi i buchi|in entrambi|ambos agujeros|les deux trous|beide löcher|nos dois'],
         ['ass', 'ass|asshole|butt|culo|culetto|nel sedere|cul|arsch|bunda|cu'],
@@ -491,6 +500,35 @@
         [
             'table-dance',
             'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
+        ],
+        // UR1. The Unrestrained shows (each also needs Unrestrained on: the bridge and the policy).
+        [
+            'used-marked',
+            'used and marked|use me and mark me|usami e segnami|usata e segnata|úsame y márcame|usada y marcada|utilise-moi et marque-moi|utilisée et marquée|benutz mich und markier mich|benutzt und markiert|usa-me e marca-me|usada e marcada|使って印をつけて|써 주고 흔적을 남겨|用我并留下痕迹',
+        ],
+        [
+            'edging',
+            'edge me|edging|keep me on the edge|tienimi al limite|portami al limite|mantenme al borde|llévame al borde|garde-moi au bord|halte mich an der grenze|deixa-me no limite|mantém-me no limite|寸止めして|애태워 줘|让我一直在边缘',
+        ],
+        [
+            'dom-sub',
+            'who leads tonight|dominate me|chi comanda stasera|dominami|quién manda esta noche|domíname|dominame|qui commande ce soir|domine-moi|wer führt heute|dominier mich|quem manda hoje|domina-me|今夜はどっちが支配する|오늘 밤은 누가 리드해|今晚谁主导',
+        ],
+        [
+            'oil-everything',
+            'oil then everything|oil massage|oil me up|olio e poi tutto|massaggio con l.olio|aceite y luego todo|masaje con aceite|huile puis tout|massage à l.huile|öl und dann alles|ölmassage|óleo e depois tudo|massagem com óleo|オイルからすべて|오일 마사지부터 전부|先油按摩再全部',
+        ],
+        [
+            'tied',
+            'tie me up|tied for you|legami|legata per te|átame|atame|atada para ti|attache-moi|attachée pour toi|fessel mich|gefesselt für dich|amarra-me|amarrada para ti|縛って|묶어 줘|把我绑起来',
+        ],
+        [
+            'rounds',
+            'round two|round three|secondo round|terzo round|segunda ronda|tercera ronda|deuxième round|troisième round|zweite runde|dritte runde|segunda rodada|terceira rodada|二回戦|두 번째 라운드|再来一轮',
+        ],
+        [
+            'window-show',
+            'window show|show at the window|spettacolo alla finestra|show alla finestra|show en la ventana|espectáculo en la ventana|show à la fenêtre|spectacle à la fenêtre|show am fenster|show na janela|窓辺のショー|창가 쇼|窗边表演',
         ],
         // WR1. The Window Room's whole evening.
         [
@@ -650,6 +688,8 @@
     const FINISH_VERB_CJK = /イク|イっ|イキそう|射精|쌀게|싼다|쌀 것 같|射了|要射|射在|射满|射进/u;
     const FINISH_WITH_PLACE_CJK = /出す|出して|出すよ/u;
     const FINISH_PLACES_CJK = [
+        ['face', /顔に|얼굴에|脸上/u],
+        ['mouth', /口に|口の中|입에|입안에|嘴里/u],
         ['all', /全身|온몸/u],
         ['both', /両方|둘 다|两个洞/u],
         ['ass', /お尻|엉덩이|屁股/u],

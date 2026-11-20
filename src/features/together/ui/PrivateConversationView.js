@@ -120,6 +120,14 @@ const PrivateConversationView = (() => {
         // WR1. Before the striptease: "show me" (the boldest open) stays a striptease, not the
         // whole evening, which is asked for by name or chosen at the Window Room's door.
         'window-evening',
+        // UR1. Unrestrained only: listed while Unrestrained is on.
+        'edging',
+        'oil-everything',
+        'tied',
+        'dom-sub',
+        'window-show',
+        'rounds',
+        'used-marked',
         'striptease',
     ]);
 
@@ -1158,10 +1166,49 @@ const PrivateConversationView = (() => {
             // UN27. The session hands in how a position chip speaks; a reset (`showActions({})`)
             // hands in nothing and the chips go with it.
             this._onPosition = typeof handlers.onPosition === 'function' ? handlers.onPosition : null;
+            // UR1. Unrestrained: whether it can be offered here, whether it is on, and the switch.
+            this._unrestrained = (now && now.unrestrained) || { available: false, on: false };
+            this._onUnrestrained = typeof handlers.onUnrestrained === 'function' ? handlers.onUnrestrained : null;
             this._paintPositions();
             this._paintFinish();
             this._paintRoutines();
+            this._paintUnrestrained();
             return true;
+        }
+
+        /**
+         * UR1. The person's own switch for Unrestrained, at the top of the ⋯ menu: shown only where
+         * the bridge says it can be offered (Forge accepted this device's grant, the closest step),
+         * pressed only by them. Gone the moment either is not true.
+         */
+        _paintUnrestrained() {
+            const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
+            if (!slot) return null;
+            let group = slot.querySelector('.nexus-private-unrestrained');
+            const u = this._unrestrained || {};
+            if (!u.available || !this._onUnrestrained || (this._paceLevel || 1) < 4) {
+                if (group) group.remove();
+                return null;
+            }
+            if (!group) {
+                group = this.doc.createElement('div');
+                group.className = 'nexus-private-positions nexus-private-unrestrained';
+                group.setAttribute('role', 'group');
+                const button = this.doc.createElement('button');
+                button.type = 'button';
+                button.className = 'nexus-private-position nexus-private-unrestrained-toggle';
+                group.appendChild(button);
+                slot.insertBefore(group, slot.firstChild);
+            }
+            const button = group.querySelector('button');
+            button.setAttribute('aria-pressed', u.on ? 'true' : 'false');
+            button.textContent = `${t('unrestrained.label')} · ${t(u.on ? 'unrestrained.on' : 'unrestrained.off')}`;
+            button.title = t('unrestrained.hint');
+            group.setAttribute('aria-label', t('unrestrained.label'));
+            button.onclick = () => {
+                if (this._onUnrestrained) this._onUnrestrained(!u.on);
+            };
+            return group;
         }
 
         /**
@@ -1186,7 +1233,14 @@ const PrivateConversationView = (() => {
             let group = slot.querySelector('.nexus-private-routines');
             // Every show with the step it opens at, cut here to the pace this card shows.
             const ids = (this._routines || [])
-                .filter((r) => r && ROUTINE_KEYS.includes(r.id) && r.level <= (this._paceLevel || 1))
+                .filter(
+                    (r) =>
+                        r &&
+                        ROUTINE_KEYS.includes(r.id) &&
+                        r.level <= (this._paceLevel || 1) &&
+                        // UR1. An Unrestrained show only while Unrestrained is on.
+                        (!r.unrestrained || Boolean(this._unrestrained && this._unrestrained.on))
+                )
                 .map((r) => r.id);
             let spicy = false;
             try {

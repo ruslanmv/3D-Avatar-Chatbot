@@ -32,11 +32,14 @@
 
     /** Families, in the order they are listed. `re` matches a skin-pack state name. */
     const FAMILIES = Object.freeze([
-        { id: 'arousal', re: /^(aroused|flushed|goosebumps|sweaty|afterglow|open|wide-open|anus-open|both-open)$/ },
-        { id: 'pumped-oiled', re: /^(pumped|pumped-open|oiled|oiled-aroused)$/ },
+        {
+            id: 'arousal',
+            re: /^(aroused|flushed|goosebumps|sweaty|afterglow|open|wide-open|anus-open|both-open|edge|after-shower)$/,
+        },
+        { id: 'pumped-oiled', re: /^(pumped|pumped-open|oiled|oiled-aroused|oiled-used)$/ },
         { id: 'fisting', re: /fisted|stretched/ },
-        { id: 'sado', re: /^sado-/ },
-        { id: 'finishes', re: /cum|creampie|finish/ },
+        { id: 'sado', re: /^(sado-|tied-)/ },
+        { id: 'finishes', re: /cum|creampie|finish|^(dripping|used|round-three|breasts-belly)$/ },
         { id: 'sweat', re: /sweaty/ },
     ]);
     const LABEL = Object.freeze({
