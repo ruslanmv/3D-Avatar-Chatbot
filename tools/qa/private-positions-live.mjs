@@ -41,6 +41,14 @@ const KEYS = arg('--keys', 'sit-open,kneel-wide,knees-up,straddle').split(',').f
 // L5. Also take the No-limits step: Forge's grant answer is stood in for (this page has no Forge
 // grant in a test run), then Closer at 4 must open step 5 and Ease must close it again.
 const LEVEL5 = process.argv.includes('--level5');
+// L5. With `--forge-grant`, the second gate is real: the grant is read from FORGE_GRANT in the
+// environment (never an argument, file or log) and given to the page as Settings would keep it,
+// so the bridge's probe asks the deployed Forge. Without it, Forge's answer is stood in for.
+const REAL_GRANT = process.argv.includes('--forge-grant') ? String(process.env.FORGE_GRANT || '').trim() : '';
+if (process.argv.includes('--forge-grant') && !REAL_GRANT) {
+    console.error('--forge-grant needs the grant in FORGE_GRANT');
+    process.exit(2);
+}
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -68,6 +76,8 @@ async function main() {
             localStorage.setItem('nexus_spicy_verified', 'true');
             localStorage.setItem('npc_enabled', 'false');
         }, LANG);
+        if (REAL_GRANT)
+            await ctx.addInitScript((grant) => localStorage.setItem('wardrobe_forge_grant', grant), REAL_GRANT);
         const page = await ctx.newPage();
         page.on('pageerror', (e) => report.errors.push(String(e.message || e).slice(0, 240)));
         await page.goto(server.base + '/', { waitUntil: 'domcontentloaded' });
@@ -81,7 +91,7 @@ async function main() {
             { timeout: 240000 }
         );
         await page.waitForTimeout(2500);
-        if (LEVEL5)
+        if (LEVEL5 && !REAL_GRANT)
             await page.evaluate(() => {
                 // The second gate, answered as Forge answers a valid grant (200 on the catalogue).
                 const w = window.NEXUS_WARDROBE;
@@ -213,15 +223,51 @@ async function main() {
                         closer: !!document.querySelector(`${row} [data-private-action="closer"]`),
                     };
                 }, row);
+            // The real probe is a request to Forge: give it time to answer.
+            await page
+                .waitForFunction(() => window.NEXUS_PRIVATE_ACTIONS.snapshot().unrestrained?.available, null, {
+                    timeout: 90000,
+                })
+                .catch(() => {});
             await page.waitForTimeout(1500);
+            const shot = async (name) => {
+                const canvas = await page.evaluateHandle(() => window.NEXUS_VIEWER.renderer.domElement);
+                await canvas.screenshot({ path: path.join(out, `${name}.png`) }).catch(() => {});
+            };
+            await shot('render-step-4');
             const before = await five();
             if (!(before.u && before.u.available)) fail(`level5: not available at 4 (${JSON.stringify(before.u)})`);
             if (before.dots !== 5 || !before.closer)
                 fail(`level5: at 4 the ladder has ${before.dots} dots, Closer ${before.closer}`);
             await click('closer');
+            // Entering 5 undresses her through Forge's bare look: wait for the wardrobe to answer.
+            await page
+                .waitForFunction(
+                    () => {
+                        const snap = window.NEXUS_PRIVATE_ACTIONS.snapshot();
+                        const l = snap.last;
+                        return (
+                            snap.outfitState === 'bare' ||
+                            (l && l.name === 'wardrobe.undress' && l.status !== 'pending')
+                        );
+                    },
+                    null,
+                    { timeout: 240000, polling: 500 }
+                )
+                .catch(() => {});
             await settle();
-            await page.waitForTimeout(2500);
+            await page.waitForTimeout(3000);
             const on = await five();
+            on.undress = await page.evaluate(() => {
+                const l = window.NEXUS_PRIVATE_ACTIONS.snapshot().last;
+                return l ? { name: l.name, status: l.status, why: l.why } : null;
+            });
+            on.voice = await page.evaluate(() =>
+                window.NEXUS_PRIVATE_ACTIONS.promptLines()
+                    .filter((x) => /NO LIMITS|UNRESTRAINED/.test(x))
+                    .map((x) => x.slice(0, 90))
+            );
+            await shot('render-step-5');
             report.level5 = { before, on };
             if (!(on.u && on.u.on) || on.current !== '5' || on.level !== 4)
                 fail(`level5: Closer did not open step 5 (${JSON.stringify(on)})`);
