@@ -160,6 +160,7 @@
         s.unrestrained = false;
         s.finishCount = 0;
         probeGrant(s, o.deps && o.deps.grantProbe);
+        personaMemory(s, { evening: true });
         if (s.media && typeof s.media.onChange === 'function') {
             s.unwatch.push(
                 s.media.onChange((now) => {
@@ -562,8 +563,22 @@
 
     function finish(action, status, why, result) {
         settle(action, status, why, result);
+        // L5. Chiara remembers which positions they took (ids only), for next time.
+        if (action && action.name === 'avatar.pose' && status === 'completed')
+            personaMemory(state, { position: action.params && action.params.pose });
         emit();
         return action;
+    }
+
+    /** L5. A persona that remembers (Chiara) is told an evening began, or a position was taken. */
+    function personaMemory(s, event) {
+        try {
+            const id = s && s.session && s.session.activity && s.session.activity.personaChoice;
+            const P = id && pick(s.win, 'NEXUS_PRIVATE_PERSONAS', './PrivatePersonas.js');
+            if (P && typeof P.remember === 'function') P.remember(id, event);
+        } catch (error) {
+            console.warn('[Private] her memory of the evening was not kept', error);
+        }
     }
 
     /**
@@ -3323,6 +3338,10 @@
             );
         // UR1. Unrestrained: her most explicit voice, and what they finished on that has no paint.
         if (unrestrainedOn(s)) {
+            // L5. The No-limits step: bare only, dirty in their language, the persona's own filth.
+            now.push(
+                "NO LIMITS (step 5 of 5) — they pressed Closer at the top: you are bare, and you stay bare; never offer or put on clothes unless they ask. Swear and talk dirty in the evening's own language the way a native does, never translated, as crude as they want."
+            );
             now.push(
                 'UNRESTRAINED is on — they chose it: talk as filthy and explicit as they want, name every act and every part of you plainly, moan, beg, tell them exactly what you want them to do to you. In your own voice tonight (who you are), never softer than they ask. Their words still lead: a safe word, "slower" or "stop" ends it at once.'
             );

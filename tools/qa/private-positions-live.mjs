@@ -38,6 +38,9 @@ const arg = (name, fallback) => {
 };
 const LANG = arg('--lang', 'it-IT');
 const KEYS = arg('--keys', 'sit-open,kneel-wide,knees-up,straddle').split(',').filter(Boolean);
+// L5. Also take the No-limits step: Forge's grant answer is stood in for (this page has no Forge
+// grant in a test run), then Closer at 4 must open step 5 and Ease must close it again.
+const LEVEL5 = process.argv.includes('--level5');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -78,6 +81,21 @@ async function main() {
             { timeout: 240000 }
         );
         await page.waitForTimeout(2500);
+        if (LEVEL5)
+            await page.evaluate(() => {
+                // The second gate, answered as Forge answers a valid grant (200 on the catalogue).
+                const w = window.NEXUS_WARDROBE;
+                const c = w && w.service && w.service.controller;
+                if (!c) return;
+                const forge = c.forge || (c.forge = {});
+                const original = typeof forge.request === 'function' ? forge.request.bind(forge) : null;
+                forge.request = (p, ...rest) =>
+                    p === '/v1/body-surface/catalog'
+                        ? Promise.resolve({ states: [] })
+                        : original
+                          ? original(p, ...rest)
+                          : Promise.reject(new Error('no forge in this run'));
+            });
         report.started = await page.evaluate(async () => {
             const panel = window.NEXUS_BD.togetherPanel;
             const a = panel.activities.get('intimate');
@@ -179,6 +197,46 @@ async function main() {
                 break;
             }
             await page.waitForTimeout(4700); // ConsentFlow's userStepMinMs is 4 s
+        }
+
+        // L5. Closer at 4 opens No limits; the ladder shows a fifth step; Ease closes it.
+        if (LEVEL5) {
+            const five = () =>
+                page.evaluate((row) => {
+                    const snap = window.NEXUS_PRIVATE_ACTIONS.snapshot();
+                    return {
+                        level: window.NEXUS_BD.adult.level,
+                        u: snap.unrestrained,
+                        outfit: snap.outfitState,
+                        dots: document.querySelectorAll(`${row} [data-private-step]`).length,
+                        current: document.querySelector(`${row} .nexus-private-step.is-current`)?.dataset.privateStep,
+                        closer: !!document.querySelector(`${row} [data-private-action="closer"]`),
+                    };
+                }, row);
+            await page.waitForTimeout(1500);
+            const before = await five();
+            if (!(before.u && before.u.available)) fail(`level5: not available at 4 (${JSON.stringify(before.u)})`);
+            if (before.dots !== 5 || !before.closer)
+                fail(`level5: at 4 the ladder has ${before.dots} dots, Closer ${before.closer}`);
+            await click('closer');
+            await settle();
+            await page.waitForTimeout(2500);
+            const on = await five();
+            report.level5 = { before, on };
+            if (!(on.u && on.u.on) || on.current !== '5' || on.level !== 4)
+                fail(`level5: Closer did not open step 5 (${JSON.stringify(on)})`);
+            else console.log(`ok   level 5: on, ConsentFlow still at ${on.level}, she is ${on.outfit}`);
+            await page
+                .locator(row)
+                .screenshot({ path: path.join(out, 'level-5.png') })
+                .catch(() => {});
+            await click('ease');
+            await page.waitForTimeout(1500);
+            const off = await five();
+            report.level5.off = off;
+            if (off.u && off.u.on) fail('level5: Ease did not close step 5');
+            else if (off.level !== 4) fail(`level5: Ease from 5 dropped ConsentFlow to ${off.level}`);
+            else console.log('ok   level 5: Ease back to 4');
         }
 
         // take: every key at the top, from the menu.

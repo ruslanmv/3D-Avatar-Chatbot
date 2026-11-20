@@ -62,7 +62,8 @@
      * a test can read. Adding a key that stores conversation and not adding it here is the
      * failure this list exists to make visible.
      */
-    const KEYS = Object.freeze(['nexus_chat_messages', 'nexus_chat_display']);
+    // L5. Chiara's memory of their evenings (position ids and a count): Clear forgets her too.
+    const KEYS = Object.freeze(['nexus_chat_messages', 'nexus_chat_display', 'nexus_private_chiara_memory']);
 
     /**
      * Keys that look like conversation and are deliberately left alone. Kept as data, and

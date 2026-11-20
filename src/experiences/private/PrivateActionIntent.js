@@ -502,6 +502,15 @@
             'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
         ],
         // UR1. The Unrestrained shows (each also needs Unrestrained on: the bridge and the policy).
+        // L5. Valentina's and Chiara's shows, by name in nine languages.
+        [
+            'full-service',
+            '(?:give me )?the full service|full service|(?:fammi )?il servizio completo|servizio completo|(?:hazme )?el servicio completo|servicio completo|(?:fais-moi )?le service complet|service complet|(?:gib mir )?das volle programm|volles programm|(?:faz-me )?o serviço completo|serviço completo|フルサービスして|フルサービス|풀서비스 해줘|풀서비스|全套服务',
+        ],
+        [
+            'like-last-time',
+            '(?:just )?like last time|come l.ultima volta|come la volta scorsa|como la última vez|como la ultima vez|comme la dernière fois|wie letztes mal|wie beim letzten mal|como da última vez|como da ultima vez|前みたいにして|前みたいに|지난번처럼 해줘|지난번처럼|像上次一样',
+        ],
         [
             'used-marked',
             'used and marked|use me and mark me|usami e segnami|usata e segnata|úsame y márcame|usada y marcada|utilise-moi et marque-moi|utilisée et marquée|benutz mich und markier mich|benutzt und markiert|usa-me e marca-me|usada e marcada|使って印をつけて|써 주고 흔적을 남겨|用我并留下痕迹',

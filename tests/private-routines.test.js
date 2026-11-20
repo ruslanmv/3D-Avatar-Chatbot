@@ -162,6 +162,9 @@ describe('UR1 Unrestrained shows', () => {
         expect(UR.sort()).toEqual([
             'dom-sub',
             'edging',
+            // L5. Valentina's and Chiara's shows.
+            'full-service',
+            'like-last-time',
             'oil-everything',
             'rounds',
             'tied',

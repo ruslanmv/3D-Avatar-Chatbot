@@ -77,6 +77,9 @@
         'window-show',
         'rounds',
         'used-marked',
+        // L5. Valentina's and Chiara's shows.
+        'full-service',
+        'like-last-time',
         'striptease',
         'choose',
     ]);
@@ -355,6 +358,14 @@
         if (!SOURCES.includes(action.source)) return { allow: false, why: 'unknown-source' };
         if (!f.active) return { allow: false, why: 'not-in-private' };
         if (f.care && !QUIETING.includes(action.name)) return { allow: false, why: 'care' };
+        // L5. No limits is bare only: she is never dressed by the model or a show there. The
+        // person's own words still dress her ("rivestiti" is theirs to say), and easing to 4 ends it.
+        if (
+            f.unrestrained &&
+            action.source === 'model' &&
+            ['wardrobe.wear', 'wardrobe.change', 'wardrobe.create', 'wardrobe.redress'].includes(action.name)
+        )
+            return { allow: false, why: 'bare-only' };
         // UN1. Before who asked: the person's own words below the top of the pace are refused too.
         if (action.name === 'wardrobe.undress' && !(Number(f.level) >= UNDRESS_LEVEL))
             return { allow: false, why: 'pace' };

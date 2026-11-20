@@ -2023,6 +2023,14 @@
         _showActions(now) {
             if (this._stopped || this.state === 'complete' || !this.view || typeof this.view.showActions !== 'function')
                 return;
+            // L5. The grant answers after the session began, and a safe word or care turns the
+            // No-limits step off: the ladder follows what the bridge says, once per change.
+            const u = (now && now.unrestrained) || {};
+            const five = `${Boolean(u.available)}/${Boolean(u.on)}`;
+            if (five !== this._fiveShown) {
+                this._fiveShown = five;
+                this._paintLevel();
+            }
             try {
                 const actions = actionBridge();
                 this.view.showActions(now, {
@@ -2144,6 +2152,35 @@
                 ? pace.stepUp({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { changed: false };
 
+            // L5. At the top of ConsentFlow's four steps, Closer is the way into the fifth: No
+            // limits, the Unrestrained step (both gates: the app's adult confirmation and Forge's
+            // grant). ConsentFlow's level stays 4 — nothing here moves it — and the bridge
+            // refuses unless the grant answered, the evening is at 4 and care mode is off.
+            if (!next.changed && this._level5().available && !this._level5().on) {
+                const actions = actionBridge();
+                const on = actions && typeof actions.setUnrestrained === 'function' && actions.setUnrestrained(true);
+                if (on) {
+                    // Bare only: the press is the person's own ask, so a dressed body undresses.
+                    try {
+                        const snap = actions.snapshot();
+                        if (
+                            snap &&
+                            snap.outfitState &&
+                            snap.outfitState !== 'bare' &&
+                            typeof actions.request === 'function'
+                        )
+                            actions.request('wardrobe.undress', { step: 'all', naked: true }, { source: 'control' });
+                    } catch (error) {
+                        console.warn('[Private] No limits: she could not undress', error);
+                    }
+                    this._paintLevel();
+                    const locale = localeModel();
+                    this._status(`✓ ${locale && typeof locale.pace === 'function' ? locale.pace(5) : 5}`);
+                    this._intent('lean_in', 0.35);
+                    return true;
+                }
+            }
+
             // At the preset's ceiling. The forward control is not drawn here, so this is reachable
             // only by a typed request — and the honest answer is that there is no more to give
             // rather than a line implying the preset could be changed mid-session.
@@ -2205,6 +2242,15 @@
          */
         _easeUp() {
             if (this._stopped || this.state === 'complete') return false;
+            // L5. From No limits, Ease is one step: back to 4, Unrestrained off, nothing else.
+            if (this._level5().on) {
+                const actions = actionBridge();
+                if (actions && typeof actions.setUnrestrained === 'function') actions.setUnrestrained(false);
+                this._withdrawOffers();
+                this._paintLevel();
+                this._status(t('status.eased'));
+                return true;
+            }
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             const next = pace
@@ -3231,13 +3277,40 @@
          *
          * Nothing here is on a timer of its own. It only ever draws what the state already is.
          */
+        /** L5. Whether the No-limits step is there to take (both gates, at 4), and whether it is on. */
+        _level5() {
+            try {
+                const actions = actionBridge();
+                const snap = actions && typeof actions.snapshot === 'function' ? actions.snapshot() : null;
+                const u = snap && snap.unrestrained;
+                return { available: Boolean(u && u.available), on: Boolean(u && u.on) };
+            } catch (_) {
+                return { available: false, on: false };
+            }
+        }
+
         _paintLevel() {
             if (!this.view) return;
             const pace = paceModel();
             const level = this._level();
-            const shown = pace
+            let shown = pace
                 ? pace.describe({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
+            // L5. A fifth dot while the No-limits step can be taken, current while it is on.
+            const five = this._level5();
+            if (five.available && Array.isArray(shown.steps) && shown.maxLevel === 4) {
+                shown = Object.assign({}, shown, {
+                    maxLevel: 5,
+                    level: five.on ? 5 : shown.level,
+                    steps: shown.steps
+                        .map((s) => Object.assign({}, s, { current: five.on ? false : s.current }))
+                        .concat([{ level: 5, label: 'No limits', reached: five.on, current: five.on }]),
+                    atCeiling: five.on,
+                    forward: five.on ? '' : shown.level >= 4 ? 'Closer' : shown.forward,
+                    forwardKey: five.on ? '' : shown.level >= 4 ? 'closer' : shown.forwardKey,
+                    canEase: true,
+                });
+            }
             this.view.setPace(shown);
             // UN28. A position above the step the evening is now at is let go of (she stands).
             try {

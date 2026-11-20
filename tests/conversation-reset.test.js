@@ -43,11 +43,13 @@ function mainFn(name) {
     return body;
 }
 
-const CHAT_KEYS = ['nexus_chat_messages', 'nexus_chat_display'];
+const CHAT_KEYS = ['nexus_chat_messages', 'nexus_chat_display', 'nexus_private_chiara_memory'];
 
 function seedConversation() {
     localStorage.setItem('nexus_chat_messages', JSON.stringify([{ role: 'user', content: 'my medical results' }]));
     localStorage.setItem('nexus_chat_display', JSON.stringify([{ sender: 'user', text: 'my medical results' }]));
+    // L5. Chiara's memory of their evenings is conversation too: Clear forgets it.
+    localStorage.setItem('nexus_private_chiara_memory', JSON.stringify({ evenings: 2, positions: ['spoon'] }));
 }
 
 beforeEach(() => {

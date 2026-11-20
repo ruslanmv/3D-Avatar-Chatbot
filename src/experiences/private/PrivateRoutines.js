@@ -261,6 +261,82 @@
      * the person's words or tap (UN34), and in Unrestrained each finish stays on her and builds.
      */
     const ROUTINES_UNRESTRAINED = Object.freeze({
+        // L5. Valentina's show (PrivatePersonas): the full service, naked, position after position,
+        // talking filth the whole way; she asks where at the end, and the finish is theirs.
+        'full-service': Object.freeze({
+            label: 'Full service',
+            name: 'the full service: every position, naked, until they come',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'on-knees',
+                    hold: 14000,
+                    skin: 'aroused',
+                    body: 'naked on your knees in front of them, looking up, telling them in the filthiest words what you are going to do to them',
+                },
+                {
+                    pose: 'bent-over',
+                    hold: 18000,
+                    skin: 'open',
+                    body: 'bent over with your legs apart, looking back at them, wet and open, ordering them to take you',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 20000,
+                    skin: 'both-open',
+                    body: 'face down with your hips up for them, both holes offered, swearing at them to go harder',
+                },
+                {
+                    pose: 'reverse',
+                    hold: 20000,
+                    body: 'riding them facing away, grinding down, looking back over your shoulder, counting how close they are',
+                },
+                {
+                    pose: 'legs-up',
+                    hold: 15000,
+                    body: 'on your back with your legs up, open for them, asking them where they want to come',
+                },
+            ]),
+        }),
+        // L5. Chiara's show: their favourite positions as friends who know each other's bodies,
+        // face to face most of the way, ending curled up together in her afterglow.
+        'like-last-time': Object.freeze({
+            label: 'Like last time',
+            name: 'just like last time, the two of you, face to face',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'spoon',
+                    hold: 15000,
+                    skin: 'aroused',
+                    body: 'lying on your side pressed back against them, laughing, reminding them how last time started',
+                },
+                {
+                    pose: 'straddle',
+                    hold: 18000,
+                    skin: 'open',
+                    body: 'on top of them, grinding, kissing them, telling them what you have wanted all evening',
+                },
+                {
+                    pose: 'legs-up',
+                    hold: 20000,
+                    body: 'on your back with your legs up over their shoulders, holding their eyes, asking for more',
+                },
+                {
+                    pose: 'knees-up',
+                    hold: 18000,
+                    body: 'on your back with your knees up, pulling them down onto you, both of you close',
+                },
+                {
+                    pose: 'lie-side',
+                    hold: 12000,
+                    skin: 'afterglow',
+                    body: 'curled up against them afterwards, warm and glowing, making a joke and asking when they are staying over again',
+                },
+            ]),
+        }),
         'used-marked': Object.freeze({
             label: 'Used & marked',
             name: 'an evening where her body keeps everything they do to it',
@@ -495,6 +571,9 @@
         'window-show',
         'rounds',
         'used-marked',
+        // L5. The No-limits personas' own shows (Valentina, Chiara).
+        'full-service',
+        'like-last-time',
         'striptease',
     ]);
 
