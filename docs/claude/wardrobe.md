@@ -257,3 +257,16 @@ dictionary entry, a garment is made from its name, and body states are named
 in a note — they show on her bare looks in Private, never made here. Tests:
 `tests/wardrobe/try-on-view.test.js` ▸ GC1. Forge side:
 `docs/WARDROBE_REGISTRY.md` ▸ GC1.
+
+## Forge's occasions in Try-On (OC2, 2026-11-20)
+
+Try-On's open **Private** tab shows Forge's private occasions — 🔒 Private and
+🌙 After Dark — as the Studio does: the occasion's title and question, its styles
+as chips with their look counts, and a tapped style's looks, worn like any
+dictionary entry. One gate only, the Private tab's own (Spicy mode with the
+person's adult confirmation, and her character's adult declaration): **no
+grant is needed**, because these are outfits Forge already offers and gates per
+job. `OutfitDictionary.normalize` keeps `occasions` (looks filtered to entries
+it kept, empty styles dropped); `dictionary.occasions({privateOpen})` hides a
+private occasion without it. The admin's whole registry (body states included)
+is the grant-gated Collections tab (GC1). Tests: `try-on-view.test.js` ▸ OC2.

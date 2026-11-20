@@ -98,7 +98,45 @@
             });
         });
         if (!outfits.length) return null;
-        return { groups: groups, outfits: outfits };
+        // OC2. Forge's occasions (`GET /v1/outfits` ▸ occasions): a style is a list of these
+        // entries' ids, so a look id that is not here (skipped above, or not this Forge's) is
+        // dropped, and a style left empty with it. `private` is the occasion's own claim (Private,
+        // After Dark): such an occasion is offered only where private outfits are open for her.
+        var occasions = (Array.isArray(raw.occasions) ? raw.occasions : [])
+            .filter(function (o) {
+                return o && ID.test(String(o.id || '')) && Array.isArray(o.styles);
+            })
+            .map(function (o) {
+                return {
+                    id: o.id,
+                    title: cleanText(o.title || o.id, MAX_TITLE),
+                    icon: cleanText(o.icon || '', 4),
+                    question: cleanText(o.question || '', MAX_TITLE * 2),
+                    private: o.private === true,
+                    styles: o.styles
+                        .filter(function (st) {
+                            return st && ID.test(String(st.id || '')) && Array.isArray(st.looks);
+                        })
+                        .map(function (st) {
+                            return {
+                                id: st.id,
+                                title: cleanText(st.title || st.id, MAX_TITLE),
+                                icon: cleanText(st.icon || '', 4),
+                                blurb: cleanText(st.blurb || '', MAX_TITLE * 2),
+                                looks: st.looks.map(String).filter(function (id) {
+                                    return seen[id] === true;
+                                }),
+                            };
+                        })
+                        .filter(function (st) {
+                            return st.looks.length > 0;
+                        }),
+                };
+            })
+            .filter(function (o) {
+                return o.styles.length > 0;
+            });
+        return { groups: groups, outfits: outfits, occasions: occasions };
     }
 
     /**
@@ -263,6 +301,44 @@
                     return entry.group === group.id;
                 });
             });
+        }
+
+        /**
+         * OC2. Forge's occasions she may be offered: a private one (Private, After Dark) only with
+         * `privateOpen`, every style's looks filtered to the entries she may be offered.
+         */
+        occasions(options) {
+            var open = Boolean(options && options.privateOpen);
+            var cat = this.catalogue;
+            if (!cat || !Array.isArray(cat.occasions)) return [];
+            var byId = {};
+            this.entries({ privateOpen: open }).forEach(function (entry) {
+                byId[entry.id] = entry;
+            });
+            return cat.occasions
+                .filter(function (o) {
+                    return open || !o.private;
+                })
+                .map(function (o) {
+                    return Object.assign({}, o, {
+                        styles: o.styles
+                            .map(function (st) {
+                                return Object.assign({}, st, {
+                                    entries: st.looks
+                                        .map(function (id) {
+                                            return byId[id];
+                                        })
+                                        .filter(Boolean),
+                                });
+                            })
+                            .filter(function (st) {
+                                return st.entries.length > 0;
+                            }),
+                    });
+                })
+                .filter(function (o) {
+                    return o.styles.length > 0;
+                });
         }
 
         /** An entry by id or by title (any case), among those she may be offered. */
