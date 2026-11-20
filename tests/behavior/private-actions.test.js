@@ -2572,6 +2572,78 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             }
         });
 
+        test('L5. from behind (face down, bent over, all fours): fist, then filled; a bottle, then filled', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'doggy-fisted', body: 'your pussy stretched open from their fist' },
+                    { name: 'doggy-fisted-cum', body: 'your fisted pussy full of cum' },
+                    { name: 'doggy-both-fisted', body: 'both holes fisted' },
+                    { name: 'doggy-bottle-anal', body: 'your ass stretched round by a bottle' },
+                    { name: 'doggy-bottle-anal-cum', body: 'your stretched ass full of cum' },
+                ];
+                return skin;
+            };
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                // Face down, hips up: their fist in her pussy is its own state, not both holes.
+                held = 'face-down';
+                await say('fammi il pugno nella figa');
+                await flush();
+                expect(calls[calls.length - 1]).toBe('apply:doggy-fisted');
+                // Then they finish inside: the same stretched pussy, filled.
+                await say('vengo dentro di te');
+                await flush();
+                expect(calls[calls.length - 1]).toBe('apply:doggy-fisted-cum');
+                // Bent over, a bottle in her ass, then filled.
+                held = 'bent-over';
+                await say('mettimi la bottiglia nel culo');
+                await flush();
+                expect(Actions.snapshot().last).toMatchObject({ name: 'body.fist', params: { with: 'bottle' } });
+                expect(calls[calls.length - 1]).toBe('apply:doggy-bottle-anal');
+                expect(Actions.promptLines().join('\n')).toMatch(/They used a bottle on you/);
+                await say("I'm coming inside you");
+                await flush();
+                expect(calls[calls.length - 1]).toBe('apply:doggy-bottle-anal-cum');
+                // Lying on her back a bottle cannot be shown: nothing is, and never a fist instead.
+                held = 'lie-back';
+                const before = calls.length;
+                await say('put the bottle in me');
+                await flush();
+                expect(Actions.snapshot().last).toMatchObject({
+                    name: 'body.fist',
+                    status: 'failed',
+                    why: 'no-fist-state',
+                });
+                expect(calls.length).toBe(before);
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
+
         test('UN35. on all fours a while she sweats; finishing on her back again is a second load', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;

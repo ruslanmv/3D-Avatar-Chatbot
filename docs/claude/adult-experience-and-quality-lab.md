@@ -154,3 +154,9 @@ waste. Tests: `tests/private-routines.test.js` ▸ UR1,
   time's positions. Clear erases it (`ConversationReset.KEYS`).
 - **Check it live:** `node tools/qa/private-positions-live.mjs --level5`. It stands in for Forge's
   grant answer, presses Closer past 4 and checks the fifth dot, then presses Ease back to 4.
+- **Fist and bottle from behind (L5).** All fours, face down and bent over share Forge's
+  doggy states. Their fist in her pussy is `doggy-fisted` (named in the person's words: "figa",
+  "pussy", "coño"…). A bottle is `body.fist` with `with: 'bottle'` (`doggy-bottle`,
+  `doggy-bottle-anal`), shown from behind only and never replaced by a fist state. A finish inside
+  while she is stretched shows the same state filled (`<state>-cum`, `filledAfterFist`). In Forge
+  they are the `fist` and `bottle` skin packs, so "fisted, then filled" switches live in one look.

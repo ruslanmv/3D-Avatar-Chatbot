@@ -275,7 +275,12 @@
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
         // Their words only, at step 4, like the finish.
-        'body.fist': { family: 'body', params: { where: oneOf(['front', 'anal', 'both', 'choose']) }, required: [] },
+        // L5. `with`: their hand (the default) or a bottle (Forge paints it from behind only).
+        'body.fist': {
+            family: 'body',
+            params: { where: oneOf(['front', 'anal', 'both', 'choose']), with: oneOf(['hand', 'bottle']) },
+            required: [],
+        },
         // UN4. A different room for the evening: one of the places this device can show, and
         // only ever because the person said so (their words, their yes, their tap).
         'world.travel': {
