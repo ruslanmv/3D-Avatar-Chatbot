@@ -144,6 +144,20 @@
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
     }
     /** PX6. The one door an action takes into a Private session. See `PrivateActionBridge`. */
+    /** PP1. What each private room is for; her shows; the policy's steps for a position. */
+    function placeScripts() {
+        return optional('../../experiences/private/PrivatePlaceScripts.js', 'NEXUS_PRIVATE_PLACE_SCRIPTS');
+    }
+    function routinesModule() {
+        return optional('../../experiences/private/PrivateRoutines.js', 'NEXUS_PRIVATE_ROUTINES');
+    }
+    function personasModule() {
+        return optional('../../experiences/private/PrivatePersonas.js', 'NEXUS_PRIVATE_PERSONAS');
+    }
+    function actionPolicy() {
+        return optional('../../experiences/private/PrivateActionPolicy.js', 'NEXUS_PRIVATE_ACTION_POLICY');
+    }
+
     function actionBridge() {
         return optional('../../experiences/private/PrivateActionBridge.js', 'NEXUS_PRIVATE_ACTIONS');
     }
@@ -702,6 +716,9 @@
             ...(capability ? profile.capabilityLines(capability) : []),
             // AX5. Where they are, when nothing richer already says it.
             ...(profile ? profile.sceneLines(privateScene(ctx.activity)) : []),
+            // PS1. Who she is tonight, when a persona was chosen: her character and her voice in
+            // the evening's language. Otherwise the room's brief, while it is on screen (PP1).
+            ...(personaLines(ctx.activity).length ? personaLines(ctx.activity) : placeLines(ctx.activity)),
             '',
             ...attentionLines(),
             '',
@@ -871,6 +888,52 @@
             return { title: w.title, note: w.note };
         } catch (_) {
             return null;
+        }
+    }
+
+    /** PS1. The persona's character and voice, with what they chose at the door. */
+    function personaLines(activity) {
+        try {
+            const P = personasModule();
+            const id = activity && activity.personaChoice;
+            if (!P || !id) return [];
+            const session = activity._privateExperience;
+            const lang = session && typeof session._currentLanguage === 'function' ? session._currentLanguage() : 'en';
+            const lines = P.promptLines(id, lang);
+            const wish = session && session._placeWish;
+            const R = routinesModule();
+            if (wish && R && R.ROUTINES && R.ROUTINES[wish])
+                lines.push(
+                    `TONIGHT'S DEAL: they chose ${R.ROUTINES[wish].name} at the door. Lead them to it as the pace allows; anything else only if they ask.`
+                );
+            return lines;
+        } catch (_) {
+            return [];
+        }
+    }
+
+    /**
+     * PP1. The room's script while it is on screen: the same agreement as `privateScene` (the
+     * activity chose it and the renderer shows it, or its light stand-in), and its brief for her.
+     */
+    function placeLines(activity) {
+        try {
+            const P = placeScripts();
+            const choice = activity && activity.worldChoice;
+            const vr = global && global.NEXUS_VIEWER && global.NEXUS_VIEWER.vrWorlds;
+            const active = vr && vr.activeId;
+            const worlds = activity && activity._worldCatalogue && activity._worldCatalogue.worlds;
+            if (!P || !choice || !active || !Array.isArray(worlds)) return [];
+            const w = worlds.find((x) => x && x.id === active);
+            if (!w || (w.id !== choice && w.lightFor !== choice)) return [];
+            // WR1. What they chose at the door, by the show's own name.
+            const session = activity._privateExperience;
+            const wish = session && session._placeWish;
+            const R = routinesModule();
+            const deal = wish && R && R.ROUTINES && R.ROUTINES[wish] ? R.ROUTINES[wish].name : '';
+            return P.promptLines(P.forWorld(w.id, w.lightFor), deal);
+        } catch (_) {
+            return [];
         }
     }
 
@@ -1710,12 +1773,19 @@
             const locale = localeModel();
             const placeLine =
                 place && locale && typeof locale.t === 'function' ? locale.t('opening.place', { place }) : '';
-            this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
+            // PP1. In a room made for one of her shows, she opens in its own words — she knows
+            // where she is and what it is for — and, if the pace already opens the show, invites
+            // them to it in the same breath. Elsewhere, the evening's opening as before.
+            const room = this._placeOpening();
+            if (room) this._speak(room.invite ? `${room.line} ${room.invite}` : room.line);
+            else this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
             // the second exchange before offering a choice would have got the feel wrong.
-            this._offerChoices([], { source: 'local' });
+            if (room && room.deals) this._dealChoices();
+            else if (!(room && room.invite && this._showChoices(room.show)))
+                this._offerChoices([], { source: 'local' });
             // Earliest-at rather than fires-at, and each of these waits for a quiet moment.
             //
             // What is *not* here any more (P12): the consent check-in at 120 s, the closing line at
@@ -2106,7 +2176,10 @@
             // The music comes back up to where it started, since the person asked for more rather
             // than less. `softenSoundtrack` took it down; this is the same dial the other way.
             if (this.view && typeof this.view.restoreSoundtrack === 'function') this.view.restoreSoundtrack();
-            this._speakStepLine('levelLines', asked.level, 'Okay. A little closer, still at your pace.');
+            // PP1. In her show's room, the step that opens the show is her cue: she invites them to
+            // it instead of only acknowledging the step. Their yes, the chip or their words start it.
+            const invited = this._invitePlace(asked.level);
+            if (!invited) this._speakStepLine('levelLines', asked.level, 'Okay. A little closer, still at your pace.');
             this._emit('private:intensity', {
                 preset: this.preset.id,
                 level: asked.level,
@@ -2249,6 +2322,132 @@
             return this._pendingChoices.length;
         }
 
+        /** PP1. The script of the room Private chose for tonight, if it is one of hers. */
+        _placeScript() {
+            // PS1. A persona is the evening's script wherever she is: her opening, her menu.
+            const persona = this.activity && this.activity.personaChoice;
+            const Personas = personasModule();
+            if (persona && Personas) {
+                const own = Personas.script(persona);
+                if (own) return own;
+            }
+            const P = placeScripts();
+            const choice = this.activity && this.activity.worldChoice;
+            return P && choice ? P.forWorld(choice) : null;
+        }
+
+        /** PP1. The show this room invites to at `level`, once per show per evening. */
+        _placeShow(level) {
+            const P = placeScripts();
+            const script = this._placeScript();
+            if (!P || !script) return null;
+            // WR1 (Codex #199). A room with a menu at the door invites to nothing before the deal:
+            // stepping the pace up first used to offer the gentlest show and skip their choice.
+            if (Array.isArray(script.deals) && script.deals.length && !this._placeWish) return null;
+            if (!this._placeOffered) this._placeOffered = new Set();
+            const policy = actionPolicy();
+            return P.showToOffer(script, {
+                level,
+                routines: routinesModule(),
+                poseLevel: policy && policy.poseLevel,
+                offered: this._placeOffered,
+                wish: this._placeWish || null,
+            });
+        }
+
+        /** PP1. Her first line in the room, and the invitation when the show is already open. */
+        _placeOpening() {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (!script || !locale || typeof locale.t !== 'function') return null;
+            const key = script.openingKey || `place.${script.id}.opening`;
+            const line = locale.t(key);
+            if (!line || line === key) return null;
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            // WR1. A room with a menu at the door asks first: no invitation before the deal.
+            if (Array.isArray(script.deals) && script.deals.length)
+                return { line, invite: '', show: null, deals: true };
+            const show = this._placeShow(level);
+            const invite = show ? this._offerPlaceShow(show) : '';
+            return { line, invite, show: invite ? show : null };
+        }
+
+        /** PP1. Offer the show through the bridge; the invitation line, or '' when not offered. */
+        _offerPlaceShow(show) {
+            const locale = localeModel();
+            const actions = actionBridge();
+            if (!actions || typeof actions.offerShow !== 'function' || !actions.offerShow(show)) return '';
+            this._placeOffered.add(show);
+            const key = `place.invite.${show}`;
+            const line = locale && typeof locale.t === 'function' ? locale.t(key) : '';
+            return line && line !== key ? line : '';
+        }
+
+        /** PP1. After a step forward: invite them to the show it opened, said and offered. */
+        _invitePlace(level) {
+            const show = this._placeShow(level);
+            if (!show) return false;
+            const line = this._offerPlaceShow(show);
+            if (!line) return false;
+            this._sayBrief(line);
+            this._showChoices(show);
+            return true;
+        }
+
+        /** WR1. The room's menu at the door, as chips: one per deal, in the card's language. */
+        _dealChoices() {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (!script || !Array.isArray(script.deals) || !locale || typeof locale.t !== 'function') return false;
+            const lines = script.deals
+                .map((id) => locale.t(`place.deal.${id}`))
+                .filter((x, i) => x && x !== `place.deal.${script.deals[i]}`);
+            return lines.length ? this._offerChoices(lines, { source: 'local' }) : false;
+        }
+
+        /** WR1. Which deal a chip line is, or null. Only in a room with a menu, before a deal. */
+        _dealFor(line) {
+            const script = this._placeScript();
+            const locale = localeModel();
+            if (this._placeWish || !script || !Array.isArray(script.deals) || !locale) return null;
+            return script.deals.find((id) => cleanText(locale.t(`place.deal.${id}`), 200) === line) || null;
+        }
+
+        /**
+         * WR1. They chose at the door. Remembered for the evening (the prompt says it, and the
+         * invitation follows it); she answers at once in her own words; and if the pace already
+         * opens what they chose, she invites them to it now. Nothing starts without their yes.
+         */
+        _takeDeal(id) {
+            this._placeWish = id;
+            const locale = localeModel();
+            const script = this._placeScript();
+            const okKey = (script && script.dealOkKey) || 'place.deal.ok';
+            const ok = locale && typeof locale.t === 'function' ? locale.t(okKey) : '';
+            if (ok && ok !== okKey) this._speak(ok);
+            this._emit('private:deal', { preset: this.preset.id, deal: id });
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            if (!this._invitePlace(level)) this._offerChoices([], { source: 'local' });
+            return true;
+        }
+
+        /** PP1. Is this the "not yet" chip's line, in the card's language? */
+        _isNotYet(line) {
+            const locale = localeModel();
+            const later = locale && typeof locale.t === 'function' ? locale.t('place.notyet') : '';
+            return Boolean(later && later !== 'place.notyet' && line === cleanText(later, 200));
+        }
+
+        /** PP1. The show's own line (it runs as their words) and "not yet", as the next taps. */
+        _showChoices(show) {
+            const locale = localeModel();
+            if (!locale || typeof locale.t !== 'function') return false;
+            const say = locale.t(`routine.${show}.say`);
+            const later = locale.t('place.notyet');
+            if (!say || say === `routine.${show}.say`) return false;
+            return this._offerChoices([say, later && later !== 'place.notyet' ? later : null], { source: 'local' });
+        }
+
         _offerChoices(list, { source = 'local' } = {}) {
             if (this._stopped || this.state === 'complete' || !this.view) return false;
             if (typeof this.view.showChoices !== 'function') return false;
@@ -2293,6 +2492,17 @@
             const api = choicesModel();
             const line = cleanText(text, 200);
             if (!line) return false;
+            // PP1 (Codex #198). "Not yet" under her invitation withdraws it: otherwise the offer
+            // stayed up, and a "yes" to something else in the next two turns started the show.
+            // WR1. A deal at the door is answered here, in her words, and remembered for the evening.
+            const deal = this._dealFor(line);
+            if (deal) return this._takeDeal(deal);
+            if (this._isNotYet(line)) {
+                const actions = actionBridge();
+                const offer = actions && typeof actions.snapshot === 'function' ? actions.snapshot().offer : null;
+                if (offer && offer.kind === 'show' && typeof actions.declineOffer === 'function')
+                    actions.declineOffer();
+            }
             if (api && typeof api.isQuiet === 'function' && api.isQuiet(line)) {
                 this._choseQuiet();
                 return true;
@@ -3126,6 +3336,13 @@
          */
         _intent(name, intensity = 0.3) {
             if (!this.bus || typeof this.bus.emit !== 'function' || this._stopped) return false;
+            // OL2. Not while a position holds her: a body clip over it stood her up mid-reply.
+            try {
+                const vps = global.vrPoseSystem;
+                if (vps && typeof vps.isHoldingBones === 'function' && vps.isHoldingBones()) return false;
+            } catch (_) {
+                /* no pose system: nothing is held */
+            }
             try {
                 this.bus.emit('intent', { name, intensity, source: 'private' });
                 return true;

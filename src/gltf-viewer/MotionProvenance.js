@@ -85,7 +85,11 @@
         });
 
     const ITEMS = Object.freeze([
-        preset('sittingOpen', 'UN24', 'Seated on the edge, knees apart, leaning back a little'),
+        preset(
+            'sittingOpen',
+            'OL1',
+            'Seated on the floor, legs open in a wide V, leaning back a little (was a chair seat, UN24)'
+        ),
         preset('kneelingWide', 'UN24', 'Kneeling, knees wide, sitting back towards the heels, back arched'),
         preset(
             'floorOpen',
@@ -127,6 +131,11 @@
         show('from-behind', 'UN36', 'Kneels wide, then on all fours, turned away'),
         show('everything', 'UN36', 'Sits open, on her back with knees up, on all fours turned away'),
         show('striptease', 'VA3', 'Dances the two CC0 clips, a layer off at each cue, ends kneeling'),
+        show(
+            'window-evening',
+            'WR1',
+            'The Window Room evening: dances at the window, sits on the bed, undresses, three positions, asks where to finish'
+        ),
         show('table-dance', 'VA3', 'Dances, turns, ends astride their lap'),
         Object.freeze({
             id: 'layer:living',

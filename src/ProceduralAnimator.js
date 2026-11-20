@@ -727,10 +727,31 @@
         } catch (_) {}
     }
 
+    /**
+     * OL2. Whether a held position owns her bones (Private's positions, the VR puppet). A reply's
+     * talk / happy / thinking mode set `animOverride` over it and turned the humanoid's
+     * auto-update off, so the body layer drew her standing base pose under a position she was
+     * holding. Pose Studio's own editing does not claim bones, so it keeps the override.
+     */
+    function heldElsewhere() {
+        try {
+            const vps = typeof window !== 'undefined' ? window.vrPoseSystem : null;
+            return Boolean(vps && typeof vps.isHoldingBones === 'function' && vps.isHoldingBones());
+        } catch (_) {
+            return false;
+        }
+    }
+
     function setMode(nextMode, durationMs) {
         mode = (nextMode || 'idle').toLowerCase();
         const dur = Number.isFinite(durationMs) ? durationMs : 1200;
         modeUntilMs = performance.now() + Math.max(0, dur);
+        if (poseMode && heldElsewhere()) {
+            // The mode is remembered (the face and voice code read it) but never drives her body.
+            forceMode = false;
+            animOverride = false;
+            return;
+        }
 
         // Enable force mode for non-idle modes (quick actions)
         // This makes procedural animations visible even with baked animations
@@ -1135,5 +1156,7 @@
         // a Behavior chip in Pose Studio really put her in its mode; a highlighted chip proves only
         // that the click landed.
         getMode: () => mode,
+        // OL2. Whether a mode is driving her body over a pose right now (tests/held-pose-reply.test.js).
+        isAnimOverride: () => animOverride,
     };
 })();

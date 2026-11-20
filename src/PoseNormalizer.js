@@ -82,7 +82,9 @@
         },
 
         // Active preset name
-        preset: 'naturalIdle',
+        // ID1. The relaxed idle solved for her body (NaturalPosePlugin `relaxedIdle`); the
+        // world-space presets here stay for GLB avatars, which fall back to relaxedStanding.
+        preset: 'relaxedIdle',
     };
 
     // =====================================================================

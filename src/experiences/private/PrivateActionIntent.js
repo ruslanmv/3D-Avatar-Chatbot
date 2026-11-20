@@ -492,6 +492,11 @@
             'table-dance',
             'table dance|lap dance|give me a (?:table|lap) dance|dance on the table for me|ballo sul tavolo|fammi un ballo sul tavolo|baile en la mesa|hazme un baile en la mesa|danse sur la table|fais-moi une danse sur la table|tischtanz|mach mir einen tischtanz|dança na mesa|faz uma dança na mesa(?: para mim)?|テーブルダンス|테이블 댄스|桌上舞',
         ],
+        // WR1. The Window Room's whole evening.
+        [
+            'window-evening',
+            'the full evening|give me the full evening|la serata completa|dammi la serata completa|la noche completa|dame la noche completa|la soirée complète|donne-moi la soirée complète|den ganzen abend|gib mir den ganzen abend|a noite completa|dá-me a noite completa|da-me a noite completa|フルコースでして|풀코스로 해 줘|给我整晚全套',
+        ],
         [
             'everything',
             'show me everything|fammi vedere tutto|enséñamelo todo|ensenamelo todo|montre-moi tout|zeig mir alles|mostra-me tudo|全部見せて|다 보여줘|全部给我看',
@@ -654,6 +659,54 @@
         ['inside', /中に|中で|안에|里面/u],
     ];
 
+    /**
+     * PS2. Fisting, in the app's languages. Only words that mean it: "pugno" or "puño" alone is
+     * also a punch, so they count only with the act around them (il pugno dentro, fammi il pugno).
+     * Anal when they say so; both when they say both; otherwise the bridge picks by her position.
+     */
+    const FIST = new RegExp(
+        word(
+            'fist me|fisting|fist you|your fist|my fist|whole hand inside|fammi il pugno|ti faccio il pugno|il pugno dentro|col pugno dentro|pugno nella|pugno nel culo|mano intera dentro|meterte el puño|el puño dentro|mi puño|tu puño|con el puño|mon poing|ton poing|le poing en|faust rein|meine faust|deine faust|o punho dentro|meu punho|teu punho|enfiar o punho'
+        ),
+        'iu'
+    );
+    const FIST_CJK = /フィスト|拳を入れ|拳入れ|피스팅|주먹을 넣|拳交|拳头插/u;
+    const FIST_ANAL = new RegExp(word('anal|ass|culo|nel culo|in the ass|cul|arsch|cu|anus|ano'), 'iu');
+    const FIST_ANAL_CJK = /アナル|お尻|애널|엉덩이|屁眼|肛/u;
+    const FIST_BOTH = new RegExp(word('both|entrambi|tutti e due|ambos|los dos|les deux|beide|os dois'), 'iu');
+    const FIST_BOTH_CJK = /両方|둘 다|两个/u;
+
+    /*
+     * Codex (#200). Only a request runs it: "Do you like fisting?" and "I do not want fisting"
+     * named the act and showed it on her. Now the message must ask (a request cue), must not be a
+     * question, and must hold no negation anywhere — NEGATED only looks at the start.
+     */
+    const FIST_REQUEST = new RegExp(
+        word(
+            "fist me|fammi|voglio|vorrei|dammi|ti faccio|prendi|i want|give me|let me|take my|i'm going to|quiero|dame|déjame|dejame|toma|meterte|je veux|donne-moi|laisse-moi|prends|ich will|gib mir|lass mich|nimm|quero|dá-me|da-me|deixa-me|toma|enfiar"
+        ),
+        'iu'
+    );
+    const FIST_REQUEST_CJK = /して|したい|入れて|해 줘|해줘|넣어|넣을게|想要|给我|让我/u;
+    const FIST_NOT = new RegExp(
+        word("not|don't|don’t|do not|never|no|non|mai|niente|nunca|ni|pas|jamais|nicht|kein|keine|nie|não|nao|nem"),
+        'iu'
+    );
+    const FIST_NOT_CJK = /ない|しない|やめ|않|안 |싫|不|别|没/u;
+
+    function fistFrom(body) {
+        if (!FIST.test(body) && !FIST_CJK.test(body)) return null;
+        if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
+        if (!FIST_REQUEST.test(body) && !FIST_REQUEST_CJK.test(body)) return null;
+        const where =
+            FIST_BOTH.test(body) || FIST_BOTH_CJK.test(body)
+                ? 'both'
+                : FIST_ANAL.test(body) || FIST_ANAL_CJK.test(body)
+                  ? 'anal'
+                  : 'choose';
+        return action('body.fist', { where }, 'body');
+    }
+
     function finishFrom(body) {
         if (FINISH_VERB.test(body)) {
             for (const [where, words] of FINISH_PLACES) {
@@ -803,6 +856,22 @@
             /背中を反らして|허리를\s?젖혀|弯起背/u,
         ],
     ];
+    /**
+     * OL3. Her legs, relative to the position she holds: "apri", "aprile di più", "open up",
+     * "chiudi le gambe". These name no position, so they mean nothing without one — the bridge
+     * resolves them through PrivatePoseController.transition from where she is. The bare forms
+     * are the whole utterance only ("apri la finestra" is not her legs); the close forms name
+     * the legs or knees, or say "chiudile".
+     */
+    const OPEN_ALONE =
+        /^(?:apri(?:le|ti)?(?: di più| ancora| bene)?|allargale|più aperte|open(?: up| them| wider| more)?|wider|spread(?: them| wider)?|ábrelas|abrelas|abre(?:las)? más|ouvre(?:-les)?(?: plus)?|écarte(?:-les)?|öffne(?: sie| dich)?|spreiz sie|mais abertas|abre-as)[\s!.…]*$/iu;
+    const OPEN_CJK = /^(?:もっと)?開いて[!！。]*$|^(?:더\s?)?벌려[!！.]*$|^张开[!！。]*$/u;
+    const CLOSE_WORDS =
+        /\b(?:chiudi(?:le)?|stringi) (?:le )?(?:gambe|ginocchia)\b|^chiudile\b|\bclose (?:your|ur) (?:legs|knees)\b|^close them\b|\bcierra(?:las)? (?:las )?piernas\b|^ciérralas|\b(?:serre|ferme) (?:les )?jambes\b|\bschlie(?:ß|ss) (?:die )?beine\b|\bfech[ae] (?:as )?pernas\b/iu;
+    const CLOSE_CJK = /脚を閉じて|다리를\s?오므려|合上腿|并拢/u;
+    /** OL3. Words that ask her to sit: "siediti a gambe aperte" is the seat, not her legs where she is. */
+    const SIT_WORDS = /sied|sedut|\bsit\b|sient|sentad|assi[es]|assoi|setz|senta|座|앉|坐/iu;
+
     const STAND_WORDS = new RegExp(
         `^(?:${word('alzati|in piedi|stand up|get up|levántate|levantate|lève-toi|leve-toi|steh auf|levanta-te')}|立って|일어나|站起来)`,
         'iu'
@@ -876,9 +945,17 @@
             return action('wardrobe.redress', {}, 'wardrobe');
         for (const [key, words, cjk] of POSE_WORDS) {
             const re = new RegExp(`^(?:${word(words)})`, 'iu');
-            if (re.test(body) || re.test(inner) || cjk.test(body))
+            if (re.test(body) || re.test(inner) || cjk.test(body)) {
+                // OL3. "Apri le gambe" is relative to where she is; "siediti a gambe aperte" is the seat.
+                if (key === 'sit-open' && !SIT_WORDS.test(body))
+                    return action('avatar.pose', { pose: key, rel: 'open' }, 'avatar');
                 return action('avatar.pose', { pose: key }, 'avatar');
+            }
         }
+        if (c.poseHeld && (OPEN_ALONE.test(body) || OPEN_CJK.test(body)))
+            return action('avatar.pose', { pose: 'sit-open', rel: 'open' }, 'avatar');
+        if (c.poseHeld && (CLOSE_WORDS.test(body) || CLOSE_CJK.test(body)))
+            return action('avatar.pose', { pose: 'lie-back', rel: 'close' }, 'avatar');
         if (c.poseHeld && STAND_WORDS.test(body)) return action('avatar.pose', { pose: 'stand' }, 'avatar');
         if (c.poseHeld && AS_BEFORE.test(body)) return action('avatar.pose', { pose: 'back' }, 'avatar');
         // While she holds a position, turning keeps it (her whole body turns in place).
@@ -1065,6 +1142,9 @@
         // UN34. Coming, and where: before anything could read "on your back" as a position.
         const finished = !NEGATED.test(body) ? finishFrom(body) : null;
         if (finished) return finished;
+        // PS2. Their fist, asked for in words: after the finish (its words win), before shows.
+        const fisted = !NEGATED.test(body) ? fistFrom(body) : null;
+        if (fisted) return fisted;
         // UN36. A show, after positions (their words win) and finishing.
         const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
         if (show) return show;
@@ -1225,6 +1305,7 @@
         travelFrom,
         bodyFrom,
         finishFrom,
+        fistFrom,
         routineFrom,
         motionFrom,
         queryFrom,

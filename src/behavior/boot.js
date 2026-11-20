@@ -165,6 +165,17 @@
         'src/experiences/private/PrivatePoseController.js',
         // UN36. The shows she knows: series of her positions, run by the bridge.
         'src/experiences/private/PrivateRoutines.js',
+        // PP1. What each private room is for: her opening there and the show she invites them to.
+        // After the routines (it asks which are open), before TogetherCapability, which runs it.
+        'src/experiences/private/PrivatePlaceScripts.js',
+        // PS1. Who she is tonight (Gina, Isabelle, Yuki): before TogetherCapability, which runs it.
+        'src/experiences/private/PrivatePersonas.js',
+        // BS1. Positions done on a bed are done on the room's bed. Before the bridge, which asks it.
+        'src/experiences/private/PrivateBed.js',
+        // PB2. What she knows of her body: an index always, details when asked. Before the bridge.
+        'src/experiences/private/PrivateBodyKnowledge.js',
+        // ID1. The standing idle's arms, solved for her body; read by NaturalPosePlugin on load.
+        'src/gltf-viewer/RelaxedIdle.js',
         // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.
         'src/experiences/private/PrivateLivingMotion.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.
@@ -494,6 +505,21 @@
                  */
                 handleIntent(intent) {
                     if (!intent || !intent.name) return null;
+                    // OL2. A held position owns her body (Private's "sdraiati con le ginocchia su",
+                    // the VR puppet). A clip picked for a reply's mood played over it: the mixer
+                    // wrote her standing into the normalized rig, the hold copied it onto her
+                    // skeleton, so she stood up to speak — and when the clip ended three.js put
+                    // the saved values back and she lay down again (reported 2026-11-19). The
+                    // face still follows the mood (expressions are not clips); the body stays.
+                    try {
+                        const vps = global.vrPoseSystem;
+                        if (vps && typeof vps.isHoldingBones === 'function' && vps.isHoldingBones()) {
+                            if (this.pickLog) this.pickLog.record(intent, null, blackboard.snapshot());
+                            return null;
+                        }
+                    } catch (_) {
+                        /* no pose system: nothing is held */
+                    }
                     const candidates = selector.topK(intent, registry, config.topK || 3);
                     const picked = ranker.best(candidates, intent, blackboard);
                     // Recorded before the early return, because "she did nothing" is the

@@ -117,6 +117,9 @@ const PrivateConversationView = (() => {
         'open-for-you',
         'from-behind',
         'everything',
+        // WR1. Before the striptease: "show me" (the boldest open) stays a striptease, not the
+        // whole evening, which is asked for by name or chosen at the Window Room's door.
+        'window-evening',
         'striptease',
     ]);
 
@@ -211,10 +214,10 @@ const PrivateConversationView = (() => {
 #${ROW_ID} .nexus-private-more[aria-expanded="true"]{background:rgba(248,172,198,.09)}
 #${ROW_ID} .nexus-private-more:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
 #${ROW_ID} .nexus-private-more-panel{
-  position:absolute;right:8px;top:40px;z-index:5;
+  position:absolute;right:8px;top:40px;z-index:30;isolation:isolate;
   width:min(300px,calc(100% - 16px));max-height:calc(100% - 52px);overflow-y:auto;
   padding:6px 8px 8px;border:1px solid rgba(244,164,189,.22);border-radius:12px;
-  background:rgba(22,20,31,.97);box-shadow:0 10px 28px rgba(0,0,0,.35)
+  background:#16141f;box-shadow:0 10px 28px rgba(0,0,0,.45)
 }
 #${ROW_ID} .nexus-private-more-panel[hidden]{display:none}
 #${ROW_ID} .nexus-private-more-head{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
@@ -1263,7 +1266,7 @@ const PrivateConversationView = (() => {
                     button.dataset.privateFinish = key;
                     group.appendChild(button);
                 }
-                const positions = slot.querySelector('.nexus-private-positions:not(.nexus-private-finish)');
+                const positions = slot.querySelector('.nexus-private-poses');
                 slot.insertBefore(group, positions ? positions.nextSibling : slot.firstChild);
             }
             group.setAttribute('aria-label', t('finish.title'));
@@ -1302,7 +1305,13 @@ const PrivateConversationView = (() => {
         _paintPositions() {
             const slot = this.row && this.row.querySelector('.nexus-private-action-slot');
             if (!slot) return null;
-            let group = slot.querySelector('.nexus-private-positions');
+            // Codex-style lesson (2026-11-19, a phone): the shows and finish groups share the
+            // `nexus-private-positions` class for their look, so a plain lookup found one of them,
+            // saw other keys, removed it and built another Positions group — every repaint added
+            // one and Shows vanished. Positions has its own class now, and strays are removed.
+            const mine = slot.querySelectorAll('.nexus-private-poses');
+            for (let i = 1; i < mine.length; i += 1) mine[i].remove();
+            let group = mine[0] || null;
             const win = this.win || (typeof window !== 'undefined' ? window : null);
             const policy = win && win.NEXUS_PRIVATE_ACTION_POLICY;
             const opensAt = (policy && Number(policy.UNDRESS_LEVEL)) || 4;
@@ -1329,7 +1338,7 @@ const PrivateConversationView = (() => {
             }
             if (!group) {
                 group = this.doc.createElement('div');
-                group.className = 'nexus-private-positions';
+                group.className = 'nexus-private-positions nexus-private-poses';
                 group.setAttribute('role', 'group');
                 const title = this.doc.createElement('span');
                 title.className = 'nexus-private-positions-title';
@@ -1450,6 +1459,11 @@ const PrivateConversationView = (() => {
                           ? 'outfit.offer.wear'
                           : 'outfit.offer.create';
                 text = t(key, { name: offer.name || '' });
+                // PP1. Her show, in its own name in the card's language (the ⋯ menu's chip label).
+                if (offer.kind === 'show') {
+                    const label = t(`routine.${offer.routine}.label`);
+                    text = `💃 ${label && label !== `routine.${offer.routine}.label` ? label : offer.name || ''}`;
+                }
                 buttons.push(['approve', t('outfit.yes'), handlers.onApprove, false]);
                 buttons.push(['decline', t('outfit.no'), handlers.onDecline, true]);
             } else if (outfit && outfit.status === 'creating') {
