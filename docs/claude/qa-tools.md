@@ -54,9 +54,30 @@ placement (BS1) on purpose.
 | --- | --- |
 | `OLLABRIDGE_TOKEN=… FORGE_GRANT=… node tools/qa/private-e2e.mjs [--lang it] [--room bright-hotel] [--persona gina] [--turns file.json]` | A real Private evening: the real app, a real model (OllaBridge Cloud), the real wardrobe (Forge with a read grant), real words. Per turn: her reply, the action the bridge took, what she was told of her body, a frame; checks for leaked tags, silence, expected actions. `index.html` per run |
 
+Before the browser starts, one direct call checks the model (E2E2): a model that
+cannot answer stops the run in a second with the provider's reason. On 2026-11-19
+`grok-best` answered HTTP 402 (its provider's credits ran out), and two whole
+runs "failed" every turn on the app's own English filler lines — read a run whose
+replies are all "Still here…", "Never mind the question…" as **no model**, not a
+bad model. Pick another with `OLLABRIDGE_MODEL` (`free-best`, `homepilot-auto`
+answered; both return their reasoning as text, so judge the words, not only the
+actions).
+
 Secrets come from the environment only (`OLLABRIDGE_TOKEN`, or `OLLABRIDGE_PAIR_CODE`
 to pair first; `FORGE_GRANT`) and are never written to the report, the console or
 a file. A reply through the cloud model takes about a minute; nine turns take ten.
+
+## Positions on the floor (OL)
+
+| Tool | What it answers |
+| --- | --- |
+| `node tools/qa/pose-shots.mjs --poses sittingOpen,lyingKneesUp --views front,side --grid` | A preset's front and side on the real avatar with a grid at her sole plane: is her seat on the floor or in the air? (`sittingOpen` floated in front of the bed until OL1 made it a floor seat) |
+
+Relative requests ("apri", "chiudi le gambe") are one table,
+`PrivatePoseController.TRANSITIONS`; a new position gets a row there in the same
+commit, or "open" leaves her as she is. A reply never moves a held position
+(OL2: `handleIntent`, `_intent`, `ProceduralAnimator.setMode` check
+`vrPoseSystem.isHoldingBones()`).
 
 ## Motion, poses and looks (VA, LM, MP)
 
