@@ -276,3 +276,12 @@ as the Studio does: general ones (Night out, Work, Gym, Vacation…) to everyone
 and Private and After Dark only once private outfits are open for her (gate 1:
 `privateState.mode === 'open'`; "locked" is not enough). The Private tab keeps
 showing only the private occasions. Tests: `try-on-view.test.js` ▸ OC3.
+
+**GC3 (UI hiding, the owner's call).** Forge flags each outfit offered only by
+After Dark (`grant: true` in `/v1/outfits`; one Private also offers is not
+flagged). `OutfitDictionary.entries`/`find`/`occasions` leave flagged outfits
+out until `setGranted(true)`, which `TryOnHaulActivity.updateCollections` calls
+when Forge answers the registry as a grant reader (gate 2). So at gate 1 alone
+Try-On's lists, "surprise me" and typed requests never offer them. Private's
+in-scene wardrobe reads with `includeGranted: true`: it only recognises looks
+she already has (her striptease sets, so the show, PP2, still changes her).

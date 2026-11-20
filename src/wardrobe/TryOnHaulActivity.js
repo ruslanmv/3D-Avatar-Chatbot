@@ -469,6 +469,10 @@ const TryOnHaulActivity = (() => {
                     console.warn('[Try-On] collections unavailable', error);
                 }
             }
+            // GC3. The same answer opens After Dark's outfits in the dictionary: both gates, or
+            // they stay out of every list on this page.
+            const dict = pageDictionary();
+            if (dict && typeof dict.setGranted === 'function') dict.setGranted(Boolean(registry));
             if (view) view.setCollections(registry);
         }
 
