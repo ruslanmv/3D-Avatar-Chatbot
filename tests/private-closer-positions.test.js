@@ -10,7 +10,19 @@ const Intent = require('../src/experiences/private/PrivateActionIntent.js');
 const Policy = require('../src/experiences/private/PrivateActionPolicy.js');
 const Poses = require('../src/experiences/private/PrivatePoseController.js');
 
-const CLOSER = ['sit-open', 'kneel-wide', 'knees-up', 'straddle'];
+const CLOSER = [
+    'sit-open',
+    'kneel-wide',
+    'knees-up',
+    'straddle',
+    // UN38.
+    'face-down',
+    'legs-up',
+    'bent-over',
+    'spoon',
+    'reverse',
+    'on-knees',
+];
 const pose = (said) => {
     const r = Intent.parse(said, {});
     return r && r.name === 'avatar.pose' ? r.params.pose : null;
@@ -38,7 +50,22 @@ describe('UN27 closer positions: keys and gates', () => {
         expect(at(1)).toEqual([]);
         expect(at(2)).toEqual(['kneel-wide']);
         expect(at(3)).toEqual(['kneel-wide', 'sit-open', 'straddle']);
-        expect(at(4)).toEqual(['all-fours', 'kneel-wide', 'knees-up', 'sit-open', 'straddle']);
+        // UN38. The six added at the top open there too, with the two explicit ones before them.
+        expect(at(4)).toEqual(
+            [
+                'all-fours',
+                'kneel-wide',
+                'knees-up',
+                'sit-open',
+                'straddle',
+                'face-down',
+                'legs-up',
+                'bent-over',
+                'spoon',
+                'reverse',
+                'on-knees',
+            ].sort()
+        );
         // Undressing still waits for the top, whatever the positions do.
         expect(Policy.UNDRESS_LEVEL).toBe(4);
         expect(Policy.poseLevel('kneel')).toBe(0);
@@ -159,13 +186,26 @@ describe('UN27 the ⋯ menu: position chips', () => {
         expect(chips()).toHaveLength(0);
         spicy = true;
         view.showActions({}, { onPosition: () => {} });
-        expect(chips()).toHaveLength(5);
+        expect(chips()).toHaveLength(KEYS_IN_ORDER.length);
         view.showActions({}); // the session's reset
         expect(chips()).toHaveLength(0);
     });
 });
 
-const KEYS_IN_ORDER = ['sit-open', 'kneel-wide', 'knees-up', 'straddle', 'all-fours'];
+const KEYS_IN_ORDER = [
+    'sit-open',
+    'kneel-wide',
+    'knees-up',
+    'straddle',
+    'all-fours',
+    // UN38.
+    'face-down',
+    'legs-up',
+    'bent-over',
+    'spoon',
+    'reverse',
+    'on-knees',
+];
 
 test('UN27 floorOpen stays out of every list until it rests on the floor', () => {
     const fs = require('fs');
@@ -189,7 +229,7 @@ describe('UN27 the ⋯ menu: chips before any action', () => {
         view.mount({ scene: 'Private cabaret' });
         view.setPositionHandler(() => {});
         view.setPace({ level: 4, steps: [], hasLadder: false });
-        expect(document.querySelectorAll('.nexus-private-position')).toHaveLength(5);
+        expect(document.querySelectorAll('.nexus-private-position')).toHaveLength(KEYS_IN_ORDER.length);
         view.setPositionHandler(null);
         expect(document.querySelectorAll('.nexus-private-position')).toHaveLength(0);
         view.destroy();
@@ -237,5 +277,45 @@ describe('OL3 her position remembered: open and close are relative to where she 
     test.each(['apri la finestra', 'apri', 'chiudi la porta'])('"%s" is not her legs when nothing asks it', (said) => {
         const r = Intent.parse(said, said === 'apri' ? {} : { poseHeld: true });
         expect(r && r.name === 'avatar.pose' && r.params.rel).toBeFalsy();
+    });
+});
+
+describe('UN38 six more positions', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    const vps = read('src/gltf-viewer/VRPoseSystem.js');
+    const panel = read('src/PoseStudioPanel.js');
+    const UN38 = ['face-down', 'legs-up', 'bent-over', 'spoon', 'reverse', 'on-knees'];
+
+    test.each(UN38)('%s is its own grounded preset, listed by Pose Studio as adult', (key) => {
+        const preset = Poses.POSES[key].preset;
+        // Its own block, with what it rests on: grounding is what keeps it off the air.
+        const block = new RegExp(`\\n    ${preset}: \\{[\\s\\S]*?\\n    \\},`).exec(vps);
+        expect(block).not.toBeNull();
+        expect(block[0]).toMatch(/support: \{ ground: \[/);
+        expect(block[0]).toMatch(/adult: true/);
+        expect(vps).toContain(`'${preset}',`); // PRESET_ORDER
+        expect(panel).toMatch(new RegExp(`name: '${preset}'[^}]*adult: true`));
+    });
+
+    test.each(UN38)('%s opens only at the top, is described as a body, and closes somewhere plainer', (key) => {
+        expect(Policy.poseLevel(key)).toBe(4);
+        expect(Poses.BODY[key].split(' ').length).toBeGreaterThan(6);
+        expect(Poses.INTIMATE.map((p) => p.key)).toContain(key);
+        const closed = Poses.transition('close', key);
+        expect(Poses.POSES[closed]).toBeDefined();
+        expect(Policy.poseLevel(closed)).toBeLessThanOrEqual(Policy.poseLevel(key));
+    });
+
+    test('the plainer words still mean the plainer positions', () => {
+        expect(pose('bend over')).toBe('bend-forward');
+        expect(pose('straddle me')).toBe('straddle');
+        expect(pose('kneel')).toBe('kneel');
+        expect(pose('on your side')).toBe('lie-side');
+        expect(pose('bend over for me')).toBe('bent-over');
+        expect(pose('ride me facing away')).toBe('reverse');
+        expect(pose('mettiti in ginocchio davanti a me')).toBe('on-knees');
+        expect(pose('faccia in giù e sedere in su')).toBe('face-down');
     });
 });

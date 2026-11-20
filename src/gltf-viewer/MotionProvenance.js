@@ -98,6 +98,12 @@
         ),
         preset('lyingKneesUp', 'UN26', 'On her back, knees raised and apart, feet on the floor'),
         preset('straddle', 'UN26', 'Kneeling up astride, knees wide, back arched, hands forward'),
+        preset('faceDownArched', 'UN38', 'Face down, chest and forearms on the floor, hips raised over the knees'),
+        preset('legsOverShoulders', 'UN38', 'On her back, legs raised high and almost straight'),
+        preset('bentOverWide', 'UN38', 'Standing, bent deep from the hips, feet apart, hands by her knees'),
+        preset('spoonArched', 'UN38', 'On her side, back arched, top knee up, looking over her shoulder'),
+        preset('reverseStraddle', 'UN38', 'Kneeling astride, turned away, leaning forward, looking back'),
+        preset('kneelingOffer', 'UN38', 'Kneeling tall, knees a little apart, hands on thighs, face lifted'),
         Object.freeze({
             id: 'transition:stagger',
             name: 'stagger',

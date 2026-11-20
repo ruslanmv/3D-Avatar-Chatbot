@@ -78,6 +78,14 @@
         'kneel-wide': { rock: 'kneel', touch: ['chest', 'belly'], arch: 0.9 },
         'kneel-up': { rock: 'kneel', touch: ['chest', 'belly'], arch: 0.8 },
         kneel: { rock: 'kneel', touch: ['chest', 'belly'], arch: 0.6 },
+        // UN38. Taken from behind (face down, bent over) rocks as all fours does; facing away
+        // astride rides; legs up rolls as lying; on her side and kneeling in front she breathes.
+        'face-down': { rock: 'behind', touch: null, arch: 1 },
+        'bent-over': { rock: 'behind', touch: null, arch: 0.8 },
+        'legs-up': { rock: 'lying', touch: null, arch: 0.6 },
+        reverse: { rock: 'ride', touch: null, arch: 0.8 },
+        spoon: { rock: null, touch: null, arch: 0.4 },
+        'on-knees': { rock: null, touch: null, arch: 0.3 },
         'arch-back': { rock: 'stand', touch: ['chest', 'belly'], arch: 0.5 },
     });
 

@@ -1095,6 +1095,162 @@ const POSE_PRESETS = {
             rightLowerArm: eulerDegToQuat(0, 30, 0),
         },
     },
+    // UN38. Six more closer positions for Private, built from presets that were measured grounded
+    // (handsKnees, lyingKneesUp, standingBendForward, lyingSide, straddle, kneelingUp) rather than
+    // from the "VR Sim" set below: rendered on AvatarSample_A with a floor grid (2026-11-20),
+    // proneBone stood floating, reverseCowgirl hovered in a squat, spooning lay on her back and
+    // standingBehind held a T-pose with her arms. Each keeps its template's leg geometry, so what
+    // touched the floor there touches it here, and changes only what the position adds.
+    faceDownArched: {
+        label: 'Face Down, Hips Up',
+        adult: true,
+        // handsKnees with the trunk tipped down past horizontal until the chest rests on the
+        // floor, hips high over the knees, forearms flat ahead of her head. The thigh angle grows
+        // by exactly what the hips lost (−78 → −128, 72 → 122), so the thighs stay vertical and
+        // the knees land where handsKnees put them.
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg', 'upperChest'] },
+        bones: {
+            hips: eulerDegToQuat(-128, 0, 0),
+            spine: eulerDegToQuat(14, 0, 0), // Arched: the small of her back drops
+            chest: eulerDegToQuat(10, 0, 0),
+            upperChest: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(30, 0, 0), // Head lifted off the floor, looking ahead
+            head: eulerDegToQuat(18, 0, 0),
+            leftUpperLeg: eulerDegToQuat(122, 0, -14), // Knees a little apart
+            rightUpperLeg: eulerDegToQuat(122, 0, 14),
+            leftLowerLeg: eulerDegToQuat(-99, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-99, 0, 0),
+            leftFoot: eulerDegToQuat(-12, 0, 0),
+            rightFoot: eulerDegToQuat(-12, 0, 0),
+            leftUpperArm: eulerDegToQuat(0, -80, 0), // Elbows down by her head, as lyingFront
+            rightUpperArm: eulerDegToQuat(0, 80, 0),
+            leftLowerArm: eulerDegToQuat(0, 0, -90), // Forearms flat on the floor
+            rightLowerArm: eulerDegToQuat(0, 0, 90),
+        },
+    },
+    legsOverShoulders: {
+        label: 'Legs Up',
+        adult: true,
+        // lyingKneesUp with the thighs carried past vertical towards her chest and the knees
+        // almost straight: legs raised as if resting on the shoulders of someone kneeling at her
+        // hips. Only her back is on the floor.
+        support: { ground: ['hips', 'spine', 'chest', 'upperChest', 'head'] },
+        bones: {
+            hips: eulerDegToQuat(90, 0, 0), // Supine
+            spine: eulerDegToQuat(4, 0, 0),
+            neck: eulerDegToQuat(-14, 0, 0), // Looking down her body
+            head: eulerDegToQuat(-6, 0, 0),
+            leftUpperLeg: eulerDegToQuat(105, 0, -16),
+            rightUpperLeg: eulerDegToQuat(105, 0, 16),
+            leftLowerLeg: eulerDegToQuat(-22, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-22, 0, 0),
+            leftFoot: eulerDegToQuat(30, 0, 0), // Toes pointed
+            rightFoot: eulerDegToQuat(30, 0, 0),
+            leftUpperArm: eulerDegToQuat(0, 0, -40), // Arms along the floor (Z on her back)
+            rightUpperArm: eulerDegToQuat(0, 0, 40),
+            leftLowerArm: eulerDegToQuat(0, 0, -70),
+            rightLowerArm: eulerDegToQuat(0, 0, 70),
+        },
+    },
+    bentOverWide: {
+        label: 'Bent Over, Legs Apart',
+        adult: true,
+        // standingBendForward hinged deeper, feet apart, back arched, hands braced on her knees.
+        // The thighs counter-rotate the hips (−70 → 66) so the legs stay vertical on her feet.
+        support: { ground: ['leftFoot', 'rightFoot'] },
+        bones: {
+            hips: eulerDegToQuat(-70, 0, 0),
+            spine: eulerDegToQuat(10, 0, 0), // Arched rather than rounded
+            chest: eulerDegToQuat(6, 0, 0),
+            upperChest: eulerDegToQuat(2, 0, 0),
+            neck: eulerDegToQuat(34, 0, 0), // Looking ahead
+            head: eulerDegToQuat(16, 0, 0),
+            leftShoulder: eulerDegToQuat(0, 0, 6),
+            rightShoulder: eulerDegToQuat(0, 0, -6),
+            leftUpperArm: eulerDegToQuat(28, 0, 70), // Arms down to her knees
+            rightUpperArm: eulerDegToQuat(28, 0, -70),
+            leftLowerArm: eulerDegToQuat(0, -20, 0),
+            rightLowerArm: eulerDegToQuat(0, 20, 0),
+            leftUpperLeg: eulerDegToQuat(66, 0, -12), // Feet apart
+            rightUpperLeg: eulerDegToQuat(66, 0, 12),
+            leftLowerLeg: eulerDegToQuat(-4, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-4, 0, 0),
+            leftFoot: eulerDegToQuat(4, 0, 0),
+            rightFoot: eulerDegToQuat(4, 0, 0),
+        },
+    },
+    spoonArched: {
+        label: 'Spooning',
+        adult: true,
+        // lyingSide (UN6's roll about Z, on her right side) with her back arched and her hips
+        // pushed back, the top knee drawn up, and her head turned a little over her shoulder
+        // towards someone lying behind her.
+        support: { ground: ['hips', 'rightUpperLeg', 'rightLowerLeg', 'rightUpperArm'] },
+        bones: {
+            hips: eulerDegToQuat(0, 0, -90),
+            spine: eulerDegToQuat(10, 0, 0), // Arched: hips back
+            chest: eulerDegToQuat(6, 0, 0),
+            neck: eulerDegToQuat(0, -24, 8), // Looking back over her shoulder
+            head: eulerDegToQuat(0, -20, 6),
+            leftUpperLeg: eulerDegToQuat(62, 0, 0), // Top knee drawn up
+            rightUpperLeg: eulerDegToQuat(18, 0, 0),
+            leftLowerLeg: eulerDegToQuat(-80, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-30, 0, 0),
+            rightUpperArm: eulerDegToQuat(0, 70, 0),
+            rightLowerArm: eulerDegToQuat(0, 40, 0),
+            leftUpperArm: eulerDegToQuat(18, 0, 72),
+            leftLowerArm: eulerDegToQuat(0, -20, 0),
+        },
+    },
+    reverseStraddle: {
+        label: 'Straddling (Facing Away)',
+        adult: true,
+        // straddle's legs, turned round: her back to the person, leaning forward from the waist
+        // with her hands on her own knees, looking back over her shoulder. The turn is the hips'
+        // own yaw, so the legs (relative to the hips) keep straddle's measured kneel.
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'] },
+        bones: {
+            hips: eulerDegToQuat(0, 180, 0),
+            spine: eulerDegToQuat(-28, 0, 0), // Leaning forward
+            chest: eulerDegToQuat(-14, 0, 0),
+            neck: eulerDegToQuat(10, 35, 0), // Over her shoulder
+            head: eulerDegToQuat(6, 35, 0),
+            leftUpperLeg: eulerDegToQuat(15, 0, -38),
+            rightUpperLeg: eulerDegToQuat(15, 0, 38),
+            leftLowerLeg: eulerDegToQuat(-105, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-105, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
+            leftUpperArm: eulerDegToQuat(40, 0, 62), // Hands down on her knees
+            rightUpperArm: eulerDegToQuat(40, 0, -62),
+            leftLowerArm: eulerDegToQuat(0, -25, 0),
+            rightLowerArm: eulerDegToQuat(0, 25, 0),
+        },
+    },
+    kneelingOffer: {
+        label: 'Kneeling (In Front)',
+        adult: true,
+        // kneelingUp's legs (shins on the floor), knees a little apart, sitting tall with her
+        // hands on her thighs and her face lifted to someone standing in front of her.
+        support: { ground: ['leftLowerLeg', 'rightLowerLeg'] },
+        bones: {
+            hips: eulerDegToQuat(0, 0, 0),
+            spine: eulerDegToQuat(4, 0, 0),
+            chest: eulerDegToQuat(2, 0, 0),
+            leftUpperLeg: eulerDegToQuat(6, 0, -14),
+            rightUpperLeg: eulerDegToQuat(6, 0, 14),
+            leftLowerLeg: eulerDegToQuat(-96, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-96, 0, 0),
+            leftFoot: eulerDegToQuat(-70, 0, 0),
+            rightFoot: eulerDegToQuat(-70, 0, 0),
+            leftUpperArm: eulerDegToQuat(10, 0, 74), // Hands on her thighs, as kneelingWide
+            rightUpperArm: eulerDegToQuat(10, 0, -74),
+            leftLowerArm: eulerDegToQuat(0, -25, 0),
+            rightLowerArm: eulerDegToQuat(0, 25, 0),
+            neck: eulerDegToQuat(14, 0, 0), // Face lifted
+            head: eulerDegToQuat(16, 0, 0),
+        },
+    },
     // =====================================================================
     // TOP 5 VR SIMULATION POSES (Steam Adult — Spicy Mode only)
     // =====================================================================
@@ -1504,6 +1660,13 @@ const PRESET_ORDER = [
     'kneelingWide',
     'lyingKneesUp', // UN26
     'straddle',
+    // UN38. The closer positions Private offers at the top of the pace.
+    'faceDownArched',
+    'legsOverShoulders',
+    'bentOverWide',
+    'spoonArched',
+    'reverseStraddle',
+    'kneelingOffer',
     // Adult — Ground poses
     'allFoursArched',
     'handsKnees',

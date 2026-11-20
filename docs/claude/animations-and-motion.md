@@ -140,6 +140,16 @@ avatar heights, and writes `report.md`, `index.html` (all frames) and
   the ⋯ chips follow the step; easing below a held position's step stands her up
   (`PrivateActionBridge.fitPoseToPace`, called after every pace repaint).
   Verified live: chips 0 / 1 / 3 / 5 by step, straddle at 3, Ease up → standing.
+- **UN38.** Six more at step 4: `face-down` (`faceDownArched`), `legs-up`
+  (`legsOverShoulders`), `bent-over` (`bentOverWide`), `spoon` (`spoonArched`),
+  `reverse` (`reverseStraddle`), `on-knees` (`kneelingOffer`). Each is a new
+  preset copied from a grounded one (handsKnees, lyingKneesUp,
+  standingBendForward, lyingSide, straddle, kneelingUp) with its leg geometry
+  kept. The old "VR Sim" presets were rendered first and rejected: proneBone
+  floats, reverseCowgirl hovers, spooning lies on her back, standingBehind
+  holds a T-pose. Finishes follow the position (`POSE_GROUP`: from behind →
+  doggy, legs up → missionary, facing away → cowgirl). There is no 69: a
+  single avatar cannot show one. Checked with `pose-shots.mjs --grid`.
 
 ## Tools for poses and Private positions (UN29)
 

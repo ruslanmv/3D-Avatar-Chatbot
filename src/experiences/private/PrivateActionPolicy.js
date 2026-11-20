@@ -113,6 +113,13 @@
         'kneel-wide',
         'knees-up',
         'straddle',
+        // UN38.
+        'face-down',
+        'legs-up',
+        'bent-over',
+        'spoon',
+        'reverse',
+        'on-knees',
         'stand',
         'back',
         'turn',
@@ -143,6 +150,13 @@
         straddle: 3,
         'knees-up': 4,
         'all-fours': 4,
+        // UN38. The six added for the top of the pace: explicit, so with undressing, at 4.
+        'face-down': 4,
+        'legs-up': 4,
+        'bent-over': 4,
+        spoon: 4,
+        reverse: 4,
+        'on-knees': 4,
     });
     /** The adult positions: every key with an opening level. */
     const ADULT_POSES = Object.keys(POSE_LEVEL);

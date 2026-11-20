@@ -46,6 +46,14 @@
         'kneel-wide': { preset: 'kneelingWide', adult: true },
         'knees-up': { preset: 'lyingKneesUp', adult: true },
         straddle: { preset: 'straddle', adult: true },
+        // UN38. Six more, each its own preset built from a grounded one (VRPoseSystem says which),
+        // gated like the others: open at the top of the pace, only while Spicy mode lists them.
+        'face-down': { preset: 'faceDownArched', adult: true },
+        'legs-up': { preset: 'legsOverShoulders', adult: true },
+        'bent-over': { preset: 'bentOverWide', adult: true },
+        spoon: { preset: 'spoonArched', adult: true },
+        reverse: { preset: 'reverseStraddle', adult: true },
+        'on-knees': { preset: 'kneelingOffer', adult: true },
     });
 
     /**
@@ -76,6 +84,17 @@
             'lying on your back, knees raised and apart, feet flat on the floor, arms resting up by your head, looking down along your body at them',
         straddle:
             'kneeling up astride their lap, knees wide on either side of them, back arched, hands resting on their shoulders',
+        // UN38. Read off the renders (front and side, AvatarSample_A, 2026-11-20).
+        'face-down': 'face down, chest and forearms on the floor, knees under you, hips raised high, back arched',
+        'legs-up':
+            'lying on your back with your legs raised high, almost straight, as if resting on their shoulders, arms on the floor by your head',
+        'bent-over':
+            'standing bent forward from the hips, feet apart, back arched, hands down by your knees, looking ahead',
+        spoon: 'lying on your side, back arched and hips pushed back towards them, top knee drawn up, looking back over your shoulder',
+        reverse:
+            'kneeling astride their lap facing away from them, leaning forward, hands down by your knees, looking back over your shoulder',
+        'on-knees':
+            'kneeling in front of them, knees a little apart, sitting tall, hands on your thighs, face lifted to them',
     });
 
     /** UN27. The closer positions, in the order they are offered: key and a short name for lists. */
@@ -85,6 +104,13 @@
         Object.freeze({ key: 'knees-up', name: 'on your back with your knees up' }),
         Object.freeze({ key: 'straddle', name: 'straddling them' }),
         Object.freeze({ key: 'all-fours', name: 'on all fours' }),
+        // UN38.
+        Object.freeze({ key: 'face-down', name: 'face down with your hips up' }),
+        Object.freeze({ key: 'legs-up', name: 'on your back with your legs up' }),
+        Object.freeze({ key: 'bent-over', name: 'bent over, legs apart' }),
+        Object.freeze({ key: 'spoon', name: 'spooning, on your side' }),
+        Object.freeze({ key: 'reverse', name: 'straddling them facing away' }),
+        Object.freeze({ key: 'on-knees', name: 'on your knees in front of them' }),
     ]);
 
     /**
@@ -123,6 +149,12 @@
         'kneel-wide': 'Kneeling',
         'knees-up': 'Lying',
         straddle: 'Kneeling',
+        // UN38. Bent over has no category, like bend-forward: standing is not a grounded check.
+        'face-down': 'Ground',
+        'legs-up': 'Lying',
+        spoon: 'Lying',
+        reverse: 'Kneeling',
+        'on-knees': 'Kneeling',
     });
 
     function create(options) {
@@ -470,12 +502,25 @@
             'sit-open': 'sit-open',
             straddle: 'straddle',
             'all-fours': 'all-fours',
+            // UN38. Already as open as they go: asking again keeps her where she is.
+            'face-down': 'face-down',
+            'legs-up': 'legs-up',
+            'bent-over': 'bent-over',
+            spoon: 'spoon',
+            reverse: 'reverse',
+            'on-knees': 'kneel-wide',
         }),
         close: Object.freeze({
             'knees-up': 'lie-back',
             'kneel-wide': 'kneel',
             'sit-open': 'lounge',
             straddle: 'kneel-up',
+            // UN38. Each closes into the plain position it was built from.
+            'legs-up': 'lie-back',
+            'bent-over': 'bend-forward',
+            spoon: 'lie-side',
+            reverse: 'kneel-up',
+            'on-knees': 'kneel',
         }),
     });
 

@@ -835,6 +835,39 @@
         // ginocchio", "仰向けで膝を立てて" contains "仰向け"), and the first match wins. Gated like all
         // fours: the policy opens them only at the top of the pace. Every line the ⋯ menu sends
         // (PrivateLocale `position.*.say`) is matched here, in its own language — a test holds it.
+        // UN38. Six more, ahead of the plainer ones they contain ("bück dich für mich" starts like
+        // "bück dich", "うつ伏せでお尻を上げて" contains "うつ伏せ", "ride me facing away" like the
+        // ride show). Each line the ⋯ menu sends is matched in its own language (a test holds it).
+        [
+            'face-down',
+            "(?:mettiti |stai )?(?:a )?faccia in giù,? (?:e |col |con il )?(?:sedere|culo) (?:in su|in alto|all'insù)|face down,? (?:and )?(?:ass|butt|hips) up|(?:ponte )?boca abajo,? con el culo (?:arriba|en pompa)|visage en bas,? (?:les )?fesses relevées|la tête en bas,? les fesses en l.air|gesicht nach unten,? (?:hintern|arsch|po) hoch|cara para baixo,? bunda para cima|empina a bunda",
+            /うつ伏せでお尻を上げて|お尻を上げて|엎드려서\s?엉덩이를\s?들어|엉덩이를\s?들어|趴下撅起屁股|撅起屁股/u,
+        ],
+        [
+            'legs-up',
+            '(?:metti |appoggia )?le gambe sulle mie spalle|gambe in alto|(?:alza|solleva) le gambe|(?:put |rest )?your legs (?:up )?(?:on|over) my shoulders|legs (?:up )?(?:on|over) my shoulders|(?:put |raise |lift )?your legs (?:up )?in the air|legs in the air|(?:pon )?las piernas (?:sobre|en) mis hombros|piernas (?:arriba|en el aire)|levanta las piernas|mets tes jambes sur mes épaules|(?:les )?jambes (?:levées|en l.air)|lève les jambes|leg deine beine auf meine schultern|beine (?:auf meine schultern|hoch|in die luft)|põe as pernas nos meus ombros|poe as pernas nos meus ombros|pernas (?:nos meus ombros|para cima|para o ar)|levanta as pernas',
+            /脚を私の肩に乗せて|脚を肩に|다리를\s?내\s?어깨에\s?올려|다리를\s?어깨에|把腿放在我肩上|腿放在我肩上|把腿举起来/u,
+        ],
+        [
+            'bent-over',
+            'piegati per me|piegati (?:a|con le) gambe (?:aperte|larghe)|bend over for me|bend over with your legs (?:apart|open|spread)|inclínate para mí|inclinate para mi|inclínate y abre las piernas|penche-toi pour moi|penche-toi,? (?:les )?jambes écartées|bück dich für mich|bueck dich fuer mich|bück dich (?:und spreiz die beine|breitbeinig)|curva-te para mim|curva-te de pernas abertas',
+            /前かがみになって脚を開いて|前かがみで脚を開いて|다리를\s?벌리고\s?숙여|为我弯下腰|弯下腰分开腿/u,
+        ],
+        [
+            'spoon',
+            '(?:mettiti )?a cucchiaio(?: con me)?|a cucchiaino(?: con me)?|spoon (?:with )?me|let me spoon you|spooning|(?:hagamos |haz )?(?:la )?cucharita(?: conmigo)?|en (?:petite )?cuillère(?: avec moi)?|löffelchen(?:stellung)?(?: mit mir)?|(?:de )?conchinha(?: comigo)?',
+            /横向きで後ろから抱かせて|横向きで後ろから|옆으로\s?누워서\s?등을\s?기대|侧躺让我从后面抱你|勺子式/u,
+        ],
+        [
+            'reverse',
+            'cavalcami di spalle|(?:mettiti )?a cavalcioni di spalle|a cavalcioni al contrario|ride me (?:facing away|backwards)|straddle me facing away|reverse cowgirl|móntame de espaldas|montame de espaldas|a horcajadas de espaldas|vaquera invertida|chevauche-moi dos à moi|à califourchon dos à moi|reite mich rückwärts|reite mich rueckwaerts|rittlings mit dem rücken zu mir|monta em mim de costas|montada de costas',
+            /後ろ向きでまたがって|背面騎乗位|등을\s?보이며\s?올라타|背对着我跨坐|反向骑乘/u,
+        ],
+        [
+            'on-knees',
+            '(?:mettiti |stai )?in ginocc?hio davanti a me|inginocchiati davanti a me|(?:get )?on your knees (?:in front of|before) me|kneel (?:down )?(?:in front of|before) me|(?:ponte )?de rodillas (?:delante de|frente a) mí|(?:ponte )?de rodillas (?:delante de|frente a) mi|arrodíllate (?:delante de|frente a) mí|(?:mets-toi )?à genoux devant moi|knie dich vor mich(?: hin)?|knie vor mir|(?:fica )?de joelhos na minha frente|de joelhos à minha frente|ajoelha-te à minha frente',
+            /私の前でひざまずいて|私の前で跪いて|내\s?앞에\s?무릎\s?꿇어|跪在我面前/u,
+        ],
         [
             'sit-open',
             '(?:siediti |stai seduta )?(?:a|con le) gambe (?:aperte|larghe)|apri le gambe|allarga le gambe|sit with your legs (?:open|apart|spread)|(?:open|spread) your legs|(?:siéntate |sientate )?con las piernas abiertas|abre las piernas|(?:assieds-toi |assois-toi )?les jambes écartées|écarte les jambes|setz dich breitbeinig(?: hin)?|spreiz die beine|(?:senta(?:-te)? |sente )?de pernas abertas|abr[ae] as pernas',
