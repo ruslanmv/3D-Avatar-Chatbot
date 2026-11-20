@@ -447,7 +447,29 @@ const TryOnHaulActivity = (() => {
             const state = await evaluatePrivate(identity, generator);
             if (view) view.setPrivate(state);
             privateIsOpen = Boolean(state && state.mode === 'open');
+            await updateCollections(privateIsOpen);
             return privateIsOpen;
+        }
+
+        /**
+         * GC1. The admin's collections, behind two gates: Private is open for her here (the
+         * person's own adult confirmation in Spicy mode, and her character's adult declaration —
+         * TryOnPrivate) AND Forge reads this device's grant (the owner gave access: the registry
+         * answers `access: "grant"`). Either one missing, the tab is not there at all.
+         */
+        async function updateCollections(open) {
+            if (!view || typeof view.setCollections !== 'function') return;
+            let registry = null;
+            const lib = generator && generator.library;
+            if (open && lib && typeof lib.registry === 'function') {
+                try {
+                    const answer = await lib.registry();
+                    if (answer && (answer.access === 'grant' || answer.admin === true)) registry = answer;
+                } catch (error) {
+                    console.warn('[Try-On] collections unavailable', error);
+                }
+            }
+            if (view) view.setCollections(registry);
         }
 
         function pageDictionary() {

@@ -269,6 +269,9 @@
             this._revealNext = false;
             // W10. What private mode unlocks for her: {mode: off | locked | open}, from TryOnPrivate.
             this.privateState = { mode: 'off' };
+            /** GC1. Forge's registry when both gates are open (TryOnHaulActivity), else null. */
+            this.collections = null;
+            this.collectionId = null;
             this._onKey = this._onKey.bind(this);
         }
 
@@ -321,6 +324,16 @@
         setPrivate(state) {
             this.privateState = state || { mode: 'off' };
             if (this.privateState.mode === 'off' && this.category === 'private') this.category = 'for-you';
+            this.render();
+        }
+
+        /** GC1. The admin's collections, or null when either gate is closed. */
+        setCollections(registry) {
+            this.collections = registry && Array.isArray(registry.collections) ? registry : null;
+            if (!this.collections && this.category === 'collections') {
+                this.category = 'for-you';
+                this.collectionId = null;
+            }
             this.render();
         }
 
@@ -896,6 +909,8 @@
                     })
                 );
                 if (privateOn) tabs.push({ id: 'private', label: 'Private', private: true });
+                if (this.collections && this.privateState.mode === 'open')
+                    tabs.push({ id: 'collections', label: 'Collections', private: true });
                 return tabs;
             }
             return this.Intent.CATEGORIES.filter(function (category) {
@@ -1036,6 +1051,9 @@
                     onclick: run,
                 });
             };
+            if (canCreate && this.category === 'collections' && this.collections) {
+                return this._collectionChips(chip);
+            }
             if (canCreate && this.category === 'private') {
                 if (this.privateState.mode === 'locked') {
                     // PT1. Private outfits wait for her avatar's declaration; the tattoos Forge
@@ -1158,6 +1176,95 @@
                 })
             );
             return h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, chips);
+        }
+
+        /**
+         * GC1. The admin's collections, by section, then one collection's items. An outfit is worn
+         * as any dictionary entry is (her copy, else made); a garment is made from its name; a
+         * body state is shown as what it is — it lives on her bare looks (Private), never a
+         * garment to make here.
+         */
+        _collectionChips(chip) {
+            var doc = this.doc;
+            var self = this;
+            var reg = this.collections;
+            var byId = {};
+            (reg.items || []).forEach(function (item) {
+                byId[item.id] = item;
+            });
+            var open = (reg.collections || []).find(function (c) {
+                return c.id === self.collectionId;
+            });
+            if (!open) {
+                var sections = (reg.sections || []).map(function (section) {
+                    var list = (reg.collections || []).filter(function (c) {
+                        return c.section === section.id && !c.archived && c.count > 0;
+                    });
+                    if (!list.length) return null;
+                    return h(doc, 'div', { class: 'nexus-try-on-section', 'data-key': 'section:' + section.id }, [
+                        h(doc, 'p', { class: 'nexus-try-on-section-title', text: section.title }),
+                        h(
+                            doc,
+                            'div',
+                            { class: 'nexus-try-on-row nexus-try-on-chips' },
+                            list.map(function (c) {
+                                return chip(
+                                    'collection:' + c.id,
+                                    c.title + ' · ' + c.count,
+                                    function () {
+                                        self.collectionId = c.id;
+                                        self.render();
+                                    },
+                                    c.private ? ' is-private' : ''
+                                );
+                            })
+                        ),
+                    ]);
+                });
+                return h(doc, 'div', { class: 'nexus-try-on-sections' }, sections);
+            }
+            var chips = [
+                chip('collection:back', '‹ ' + tx('view.allCollections', 'All collections'), function () {
+                    self.collectionId = null;
+                    self.render();
+                }),
+            ];
+            var body = 0;
+            (open.items || []).forEach(function (id) {
+                var item = byId[id];
+                if (!item) return;
+                if (item.kind === 'outfit') {
+                    var entry = self.dictionary && self.dictionary.find(item.id, { privateOpen: true });
+                    if (entry)
+                        chips.push(
+                            chip('outfit:' + entry.id, tx('outfit.' + entry.id, entry.title), function () {
+                                self.wearOutfit(entry);
+                            })
+                        );
+                } else if (item.kind === 'garment') {
+                    chips.push(
+                        chip('garment:' + item.id, item.name, function () {
+                            self.create({ prompt: item.name, mode: 'fresh', baseLookId: null, label: item.name });
+                        })
+                    );
+                } else {
+                    body += 1;
+                }
+            });
+            var parts = [h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, chips)];
+            if (body)
+                parts.push(
+                    h(doc, 'p', {
+                        class: 'nexus-try-on-note',
+                        'data-key': 'collection:body-note',
+                        text: tx(
+                            'view.collectionBody',
+                            '{n} body states in “{title}” show on her bare looks, in Private: ask for them there.',
+                            { n: body, title: open.title }
+                        ),
+                    })
+                );
+            return h(doc, 'div', { class: 'nexus-try-on-sections', 'data-key': 'collection:' + open.id }, parts);
         }
 
         /** PT1. What the tattoo gate is now: open private outfits, or private mode alone. */
