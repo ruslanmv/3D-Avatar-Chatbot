@@ -41,6 +41,9 @@ const KEYS = arg('--keys', 'sit-open,kneel-wide,knees-up,straddle').split(',').f
 // L5. Also take the No-limits step: Forge's grant answer is stood in for (this page has no Forge
 // grant in a test run), then Closer at 4 must open step 5 and Ease must close it again.
 const LEVEL5 = process.argv.includes('--level5');
+// The room the evening runs in. The cabaret is the default; its tables stand behind her, so
+// views from behind (`--behind`) read better in a room with a bed, e.g. `--world window-room`.
+const WORLD = arg('--world', 'private-cabaret');
 // L5. With `--forge-grant`, the second gate is real: the grant is read from FORGE_GRANT in the
 // environment (never an argument, file or log) and given to the page as Settings would keep it,
 // so the bridge's probe asks the deployed Forge. Without it, Forge's answer is stood in for.
@@ -106,22 +109,22 @@ async function main() {
                           ? original(p, ...rest)
                           : Promise.reject(new Error('no forge in this run'));
             });
-        report.started = await page.evaluate(async () => {
+        report.started = await page.evaluate(async (world) => {
             const panel = window.NEXUS_BD.togetherPanel;
             const a = panel.activities.get('intimate');
-            if (a.setAtmosphere) a.setAtmosphere({ world: 'private-cabaret' });
+            if (a.setAtmosphere) a.setAtmosphere({ world });
             const opt = (panel.contractFor('intimate')?.inputs() || []).find((x) => x.id === 'mature') || {
                 id: 'mature',
             };
             const r = await panel.startActivity('intimate', opt);
             return { ok: !!(r && r.ok), why: r && r.why };
-        });
+        }, WORLD);
         if (!report.started.ok) throw new Error(`Private did not start: ${report.started.why}`);
         await page
-            .waitForFunction(() => /private-cabaret/.test(window.NEXUS_VIEWER.vrWorlds?.activeId || ''), null, {
+            .waitForFunction((w) => (window.NEXUS_VIEWER.vrWorlds?.activeId || '').includes(w), WORLD, {
                 timeout: 120000,
             })
-            .catch(() => fail('start: private-cabaret not shown'));
+            .catch(() => fail(`start: ${WORLD} not shown`));
         await page.waitForTimeout(3000);
 
         const row = '#nexus-private-conversation-row';
@@ -297,6 +300,31 @@ async function main() {
             report.takes.push({ key, ...now });
             const canvas = await page.evaluateHandle(() => window.NEXUS_VIEWER.renderer.domElement);
             await canvas.screenshot({ path: path.join(out, `${key}.png`) }).catch(() => {});
+            // L5. `--behind`: the same position from behind her and a little above, the way the
+            // person sees it from behind. "Behind" is read off her posed skeleton (hips to head,
+            // flat), not her file's forward axis, which VRM 0.x and 1.0 disagree on.
+            if (process.argv.includes('--behind')) {
+                await page.evaluate(() => {
+                    const T = window.THREE;
+                    const v = window.NEXUS_VIEWER;
+                    const h = v.avatarManager._currentVRM.humanoid;
+                    const hips = h.getRawBoneNode('hips').getWorldPosition(new T.Vector3());
+                    const head = h.getRawBoneNode('head').getWorldPosition(new T.Vector3());
+                    const ahead = head.clone().sub(hips).setY(0);
+                    if (ahead.lengthSq() < 1e-4) ahead.set(0, 0, 1); // upright: her own forward
+                    ahead.normalize();
+                    v.camera.position.copy(
+                        hips
+                            .clone()
+                            .addScaledVector(ahead, -0.95)
+                            .add(new T.Vector3(0, 0.3, 0))
+                    );
+                    v.controls.target.copy(hips);
+                    v.controls.update();
+                });
+                await page.waitForTimeout(500);
+                await canvas.screenshot({ path: path.join(out, `${key}-behind.png`) }).catch(() => {});
+            }
             if (!now.last || now.last.pose !== key || now.last.status !== 'completed' || !now.last.seen)
                 fail(`take ${key}: ${JSON.stringify(now.last)}`);
             console.log(`${now.last && now.last.status === 'completed' ? 'ok  ' : 'FAIL'} ${key} → ${now.preset}`);
