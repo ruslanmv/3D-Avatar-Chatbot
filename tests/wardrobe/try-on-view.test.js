@@ -648,3 +648,77 @@ describe('OC2 Forge occasions in the private tab: one gate, no grant', () => {
         expect(key(root, 'occasion:private')).toBeNull();
     });
 });
+
+describe('OC3 an Occasions tab with every occasion Forge offers', () => {
+    const { OutfitDictionary, normalize } = require('../../src/wardrobe/OutfitDictionary.js');
+    const RAW = {
+        groups: [
+            { id: 'lingerie', title: 'Lingerie' },
+            { id: 'casual', title: 'Casual' },
+        ],
+        outfits: [
+            {
+                id: 'lace-lingerie-set',
+                title: 'Lace set',
+                group: 'lingerie',
+                rating: 'private',
+                request: { prompt: 'black lace lingerie set' },
+            },
+            {
+                id: 'tee-jeans',
+                title: 'Tee & jeans',
+                group: 'casual',
+                rating: 'general',
+                request: { prompt: 'white tee + jeans' },
+            },
+        ],
+        occasions: [
+            {
+                id: 'work',
+                title: 'Work',
+                icon: '💼',
+                private: false,
+                styles: [{ id: 'day', title: 'Day', looks: ['tee-jeans'] }],
+            },
+            {
+                id: 'private',
+                title: 'Private',
+                icon: '🔒',
+                private: true,
+                styles: [{ id: 'lingerie', title: 'Lace editorial', looks: ['lace-lingerie-set'] }],
+            },
+        ],
+    };
+    const setup = (mode) => {
+        const built = build({ generator: forge(jest.fn()) });
+        const dictionary = new OutfitDictionary({ fetch: jest.fn() });
+        dictionary.catalogue = normalize(RAW);
+        built.view.dictionary = dictionary;
+        built.view.wearOutfit = jest.fn();
+        built.view.setPrivate(mode);
+        return built;
+    };
+
+    test('without gate 1: the general occasions only', () => {
+        const { root, view } = setup({ mode: 'off' });
+        key(root, 'tab:occasions').click();
+        expect(key(root, 'occasion:work')).not.toBeNull();
+        expect(key(root, 'occasion:private')).toBeNull();
+        key(root, 'style:work/day').click();
+        key(root, 'look-of:tee-jeans').click();
+        expect(view.wearOutfit).toHaveBeenCalledWith(expect.objectContaining({ id: 'tee-jeans' }));
+    });
+
+    test('locked (Spicy on, character not declared): still no private occasion', () => {
+        const { root } = setup({ mode: 'locked', why: 'Not declared adult.' });
+        key(root, 'tab:occasions').click();
+        expect(key(root, 'occasion:private')).toBeNull();
+    });
+
+    test('gate 1 open: every occasion, the private ones too', () => {
+        const { root } = setup({ mode: 'open', picks: [] });
+        key(root, 'tab:occasions').click();
+        expect(key(root, 'occasion:work')).not.toBeNull();
+        expect(key(root, 'occasion:private')).not.toBeNull();
+    });
+});
