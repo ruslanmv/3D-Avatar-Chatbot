@@ -102,7 +102,7 @@ async function main() {
                 const l = window.NEXUS_PRIVATE_ACTIONS.snapshot().last;
                 return {
                     level: window.NEXUS_BD.adult.level,
-                    chips: [...document.querySelectorAll(`${row} .nexus-private-position`)].map(
+                    chips: [...document.querySelectorAll(`${row} [data-private-position]`)].map(
                         (b) => b.dataset.privatePosition
                     ),
                     last: l

@@ -25,6 +25,11 @@
         'all-fours',
         'straddle',
         'lounge',
+        // UN38. Bent over and kneeling in front stay on the floor: she stands or kneels there.
+        'face-down',
+        'legs-up',
+        'spoon',
+        'reverse',
     ]);
 
     function isBedPose(pose) {

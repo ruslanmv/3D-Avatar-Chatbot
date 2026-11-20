@@ -1819,6 +1819,12 @@
         'knees-up': 'missionary',
         'lie-back': 'missionary',
         straddle: 'cowgirl',
+        // UN38. From behind (face down, bent over) as on all fours; legs up as on her back;
+        // facing away astride as astride. Spooning and kneeling keep the general order.
+        'face-down': 'doggy',
+        'bent-over': 'doggy',
+        'legs-up': 'missionary',
+        reverse: 'cowgirl',
     });
     const FINISH_BY_POSE = Object.freeze({
         missionary: {

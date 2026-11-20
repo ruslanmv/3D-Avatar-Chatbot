@@ -64,6 +64,13 @@
         { name: 'seatedChair', label: 'Seated (Chair)', category: 'Adult', adult: true },
         { name: 'lyingKneesUp', label: 'Knees Up', category: 'Adult', adult: true }, // UN26
         { name: 'straddle', label: 'Straddling', category: 'Adult', adult: true },
+        // UN38. Built from the grounded presets above (VRPoseSystem has why).
+        { name: 'faceDownArched', label: 'Face Down', category: 'Adult', adult: true },
+        { name: 'legsOverShoulders', label: 'Legs Up', category: 'Adult', adult: true },
+        { name: 'bentOverWide', label: 'Bent Over', category: 'Adult', adult: true },
+        { name: 'spoonArched', label: 'Spooning', category: 'Adult', adult: true },
+        { name: 'reverseStraddle', label: 'Facing Away', category: 'Adult', adult: true },
+        { name: 'kneelingOffer', label: 'Kneeling In Front', category: 'Adult', adult: true },
         // Adult — Top 5 VR Simulation (Spicy Mode only)
         { name: 'missionary', label: 'Missionary', category: 'VR Sim', adult: true },
         { name: 'doggyStyle', label: 'Doggy Style', category: 'VR Sim', adult: true },
