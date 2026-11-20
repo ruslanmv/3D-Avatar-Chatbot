@@ -93,6 +93,9 @@
                 request: preset ? { prompt: prompt, preset: preset } : { prompt: prompt },
                 // Either Forge's rating or the group's claim is enough to make it private.
                 private: entry.rating !== 'general' || group.private,
+                // GC3. Offered only by an occasion that needs the owner's grant (After Dark):
+                // hidden in this page until its second gate is open (`setGranted`).
+                grant: entry.grant === true,
                 slots: (Array.isArray(entry.slots) ? entry.slots : []).map(String).slice(0, 8),
                 tags: (Array.isArray(entry.tags) ? entry.tags : []).map(String).slice(0, 8),
             });
@@ -211,6 +214,8 @@
             this.snapshotUrl = options.snapshotUrl || SNAPSHOT_URL;
             this.bodyArtSnapshotUrl = options.bodyArtSnapshotUrl || BODY_ART_SNAPSHOT_URL;
             this.catalogue = null; // {groups, outfits, source: 'forge' | 'snapshot'}
+            /** GC3. Gate 2 confirmed by Forge (a read grant it accepted): After Dark's outfits shown. */
+            this.granted = false;
             this.bodyArtCatalogue = null;
             this._loading = null;
         }
@@ -284,11 +289,22 @@
         /** Entries she may be offered now. Private ones only when private outfits are open. */
         entries(options) {
             var open = Boolean(options && options.privateOpen);
+            // `includeGranted`: for code that only recognises looks she already has (Private's
+            // in-scene wardrobe tagging her striptease sets for the show, PP2), never for a list.
+            var granted = this.granted === true || Boolean(options && options.includeGranted);
             var catalogue = this.catalogue;
             if (!catalogue) return [];
             return catalogue.outfits.filter(function (entry) {
+                // GC3. After Dark's outfits stay out of every list, chip and "surprise me" — and
+                // out of `find`, so words cannot reach them either — until gate 2 is open.
+                if (entry.grant && !granted) return false;
                 return open || !entry.private;
             });
+        }
+
+        /** GC3. Gate 2: Forge accepted this device's read grant (the haul learns it from the registry). */
+        setGranted(value) {
+            this.granted = value === true;
         }
 
         /** Groups with at least one entry she may be offered, in Forge's order. */

@@ -228,7 +228,11 @@
             try {
                 if (dict && typeof dict.load === 'function') await dict.load();
                 this.entries =
-                    dict && typeof dict.entries === 'function' ? dict.entries({ privateOpen: this.privateOpen }) : [];
+                    dict && typeof dict.entries === 'function'
+                        ? // GC3. Every entry, After Dark's included: these tag looks she already has
+                          // (her striptease sets, for the show) — the hiding is for Try-On's lists.
+                          dict.entries({ privateOpen: this.privateOpen, includeGranted: true })
+                        : [];
             } catch (_) {
                 this.entries = [];
             }

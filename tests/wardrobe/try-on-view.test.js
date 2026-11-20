@@ -722,3 +722,60 @@ describe('OC3 an Occasions tab with every occasion Forge offers', () => {
         expect(key(root, 'occasion:private')).not.toBeNull();
     });
 });
+
+describe('GC3 After Dark outfits: hidden until both gates are open', () => {
+    const { OutfitDictionary, normalize } = require('../../src/wardrobe/OutfitDictionary.js');
+    const RAW = {
+        groups: [
+            { id: 'erotic', title: 'Erotic', private: true },
+            { id: 'lingerie', title: 'Lingerie' },
+        ],
+        outfits: [
+            {
+                id: 'show-strip-red',
+                title: 'Striptease red',
+                group: 'erotic',
+                rating: 'private',
+                grant: true,
+                request: { prompt: 'red striptease dress' },
+            },
+            {
+                id: 'lace-lingerie-set',
+                title: 'Lace set',
+                group: 'lingerie',
+                rating: 'private',
+                request: { prompt: 'black lace lingerie set' },
+            },
+        ],
+    };
+    const setup = () => {
+        const built = build({ generator: forge(jest.fn()) });
+        const dictionary = new OutfitDictionary({ fetch: jest.fn() });
+        dictionary.catalogue = normalize(RAW);
+        built.view.dictionary = dictionary;
+        built.view.setPrivate({ mode: 'open', picks: [] });
+        key(built.root, 'tab:private').click();
+        return { ...built, dictionary };
+    };
+
+    test('gate 1 only: the Private list has the lace set, not the striptease; words cannot find it', () => {
+        const { root, dictionary } = setup();
+        expect(key(root, 'outfit:lace-lingerie-set')).not.toBeNull();
+        expect(key(root, 'outfit:show-strip-red')).toBeNull();
+        expect(dictionary.find('show-strip-red', { privateOpen: true })).toBeNull();
+        // Private's in-scene wardrobe still recognises a striptease set she has (the show, PP2).
+        expect(dictionary.entries({ privateOpen: true, includeGranted: true }).map((e) => e.id)).toContain(
+            'show-strip-red'
+        );
+    });
+
+    test('both gates: the striptease set appears', () => {
+        const { root, view, dictionary } = setup();
+        dictionary.setGranted(true);
+        view.render();
+        expect(key(root, 'outfit:show-strip-red')).not.toBeNull();
+        dictionary.setGranted(false); // the grant withdrawn
+        view.render();
+        expect(key(root, 'outfit:show-strip-red')).toBeNull();
+    });
+});
