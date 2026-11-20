@@ -23,7 +23,8 @@
  * height (lying poses read better from 3.6,1.8).
  *
  * Starts nexus-proxy itself if nothing is serving (tools/vr/page-driver.mjs). Writes
- * audits/poses/runs/<stamp>-shots/{<preset>-<view>.png, report.json, index.html}. Exit 1 when a
+ * audits/poses/runs/<stamp>-shots/{<preset>-<view>.png, sheet.png, report.json, index.html}: look at
+ * sheet.png first (UN38: every pose side by side, a column each). Exit 1 when a
  * `reach` preset leaves a palm off the floor (> 20 mm), 2 when the run itself failed.
  */
 import fs from 'node:fs';
@@ -115,6 +116,10 @@ async function main() {
             report.results.push({ id, ...r, palms, shots, fail });
             console.log(`${fail ? 'FAIL' : 'ok  '} ${id}  blend ${r.blendSeconds}s  palms ${palms.join('/') || '—'}`);
         }
+        // UN38. One contact sheet: a column per pose, one row per view. Comparing nine poses
+        // meant opening eighteen files (or a PIL script in scratch); a floating seat or a T-pose
+        // arm is obvious when the poses stand side by side. Drawn by the same browser.
+        await sheet(browser, report.results);
     } finally {
         await browser.close();
         server.stop();
@@ -134,6 +139,34 @@ async function main() {
     console.log(`\n${out}/index.html`);
     if (report.errors.length) console.log(`page errors: ${report.errors.length}`);
     return report.results.some((r) => r.fail) ? 1 : 0;
+}
+
+/** UN38. `sheet.png`: every shot of the run in one image, labelled, columns by pose. */
+async function sheet(browser, results) {
+    if (!results.length) return;
+    const W = 260;
+    const cells = VIEWS.map(
+        (view) =>
+            `<tr><th>${view}</th>` +
+            results
+                .map((r) => {
+                    const f = path.join(out, `${r.id}-${view}.png`);
+                    const src = fs.existsSync(f)
+                        ? 'data:image/png;base64,' + fs.readFileSync(f).toString('base64')
+                        : '';
+                    return `<td>${src ? `<img src="${src}" width="${W}">` : '—'}</td>`;
+                })
+                .join('') +
+            '</tr>'
+    ).join('');
+    const head = results.map((r) => `<th>${r.id}${r.fail ? ' ✕ ' + r.fail : ''}</th>`).join('');
+    const html =
+        `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#111;color:#eee;font:13px system-ui">` +
+        `<table style="border-collapse:collapse"><tr><th></th>${head}</tr>${cells}</table>`;
+    const page = await browser.newPage({ viewport: { width: 80 + W * results.length, height: 400 } });
+    await page.setContent(html);
+    await page.screenshot({ path: path.join(out, 'sheet.png'), fullPage: true });
+    await page.close();
 }
 
 main().then(

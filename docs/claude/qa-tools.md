@@ -72,6 +72,7 @@ a file. A reply through the cloud model takes about a minute; nine turns take te
 | Tool | What it answers |
 | --- | --- |
 | `node tools/qa/pose-shots.mjs --poses sittingOpen,lyingKneesUp --views front,side --grid` | A preset's front and side on the real avatar with a grid at her sole plane: is her seat on the floor or in the air? (`sittingOpen` floated in front of the bed until OL1 made it a floor seat) |
+| `npm run audit:position-wiring -- [keys]` (`tools/qa/position-wiring.mjs`) | UN38. Is every Private position in every table it needs: preset, order, Pose Studio, provenance, controller, policy, words, nine locale packs whose chip line parses back to the key, and the ⋯ chip. Optional columns cover bed, motion, finish and category. Needs no browser and takes seconds. Exit 1 names what is missing. `pose-shots` also writes `sheet.png`, every pose front and side in one image. |
 
 Relative requests ("apri", "chiudi le gambe") are one table,
 `PrivatePoseController.TRANSITIONS`; a new position gets a row there in the same
