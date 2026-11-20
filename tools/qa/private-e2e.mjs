@@ -65,6 +65,12 @@ const LEAKED_TAG = /<\s*\/?\s*(play|pose|go|gesture|wardrobe|action|tag)\b|\[(sm
 async function main() {
     const token = await deviceToken();
     if (!token) throw new Error('set OLLABRIDGE_TOKEN (or OLLABRIDGE_PAIR_CODE) in the environment');
+    // E2E2. One direct call to the model before anything else. Twice on 2026-11-19 a whole run
+    // (ten minutes, nine turns) "failed" on every turn because grok-best answered HTTP 402 (the
+    // provider's credits ran out) and the app filled each silence with its own English lines,
+    // which looked like a bad model. A model that cannot answer now stops the run in a second,
+    // with the provider's own reason. `--skip-preflight` runs anyway (to test the fallbacks).
+    if (!process.argv.includes('--skip-preflight')) await preflight(token);
     const grant = process.env.FORGE_GRANT || '';
     const turns = arg('--turns', '') ? JSON.parse(fs.readFileSync(arg('--turns'), 'utf8')) : DEFAULT_TURNS;
     fs.mkdirSync(out, { recursive: true });
@@ -223,6 +229,36 @@ async function main() {
 
 function toRe(x) {
     return x instanceof RegExp ? x : new RegExp(String(x), 'i');
+}
+
+/** E2E2. The model answers a one-line request through OllaBridge, or the run stops with why. */
+async function preflight(token) {
+    const started = Date.now();
+    let res;
+    try {
+        res = await fetch(`${OB_URL}/v1/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+                model: OB_MODEL,
+                messages: [{ role: 'user', content: 'Reply with one short word.' }],
+                max_tokens: 16,
+            }),
+            signal: AbortSignal.timeout(90000),
+        });
+    } catch (e) {
+        throw new Error(`preflight: ${OB_URL} did not answer (${e.message}); nothing was run`);
+    }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const why = (body.detail && (body.detail.message || body.detail.error)) || body.error || '';
+        throw new Error(
+            `preflight: model ${OB_MODEL} answered HTTP ${res.status} ${String(why).slice(0, 240)} — ` +
+                'pick another with OLLABRIDGE_MODEL (GET /v1/models lists them); nothing was run'
+        );
+    }
+    const served = body.model || OB_MODEL;
+    console.log(`preflight: ${OB_MODEL} → ${served} answered in ${Date.now() - started} ms`);
 }
 
 /** A device token: the environment's, or one paired now from a pairing code (kept in memory). */

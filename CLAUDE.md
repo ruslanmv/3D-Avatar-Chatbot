@@ -36,6 +36,14 @@ lab tool with `node tools/qa/lab-call.mjs <tool> '<json>'`.
 hook puts 24 first for the session (through `$CLAUDE_ENV_FILE`). On Node 22 the
 gate still passes, with an `EBADENGINE` warning from `npm ci`.
 
+## Branches and merges (the owner's rules, 2026-11-20)
+
+**Never merge or push to `main`** (here or in Forge): it is the owner's, after
+an audit. Session branch → PR into `ultimate` (`Updates`) → squash merge. After
+a squash, no force-push: `git merge -s ours origin/ultimate` once
+`git diff origin/ultimate` shows only your work. Workflows answer 403 to a
+session: ask the owner. Forge deploys and checks: Forge's CLAUDE.md.
+
 ## What this is
 
 A 3D VRM avatar chatbot: a static site rendered with Three.js, served by a small
