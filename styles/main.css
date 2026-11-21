@@ -1612,6 +1612,65 @@ body {
     word-wrap: break-word;
 }
 
+/* MF1. Her replies formatted (src/features/chat/MessageFormat.js): paragraphs and lists with
+   room to breathe, links you can tap, and each link's site small beside it. */
+.message-text.nexus-msg-formatted p {
+    margin: 0 0 0.55em;
+}
+.message-text.nexus-msg-formatted p:last-child,
+.message-text.nexus-msg-formatted ol:last-child,
+.message-text.nexus-msg-formatted ul:last-child {
+    margin-bottom: 0;
+}
+.message-text.nexus-msg-formatted ol,
+.message-text.nexus-msg-formatted ul {
+    margin: 0.2em 0 0.6em;
+    padding-left: 1.35em;
+}
+.message-text.nexus-msg-formatted li {
+    margin: 0.3em 0;
+}
+.message-text.nexus-msg-formatted li::marker {
+    color: #00e5ff;
+    font-weight: 700;
+}
+.message-text.nexus-msg-formatted strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+.message-text.nexus-msg-formatted code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    padding: 0.08em 0.35em;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.08);
+}
+.message-text a.nexus-msg-link {
+    color: #5fe3ff;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: rgba(95, 227, 255, 0.45);
+    text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+}
+.message-text a.nexus-msg-link:hover,
+.message-text a.nexus-msg-link:focus-visible {
+    color: #ffffff;
+    text-decoration-color: #ffffff;
+    outline: none;
+}
+.message-text .nexus-msg-site {
+    margin-left: 0.4em;
+    padding: 0.05em 0.45em;
+    border-radius: 999px;
+    font-size: 0.72em;
+    letter-spacing: 0.02em;
+    color: rgba(245, 250, 252, 0.7);
+    background: rgba(0, 229, 255, 0.1);
+    border: 1px solid rgba(0, 229, 255, 0.22);
+    white-space: nowrap;
+}
+
 /* ============================================
    Modals
    ============================================ */

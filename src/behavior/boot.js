@@ -105,6 +105,8 @@
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
         'src/features/chat/ReplyClean.js',
+        // MF1. Her replies drawn with tappable links, bold and lists (never innerHTML).
+        'src/features/chat/MessageFormat.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;

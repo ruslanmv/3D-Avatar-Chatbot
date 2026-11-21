@@ -90,6 +90,17 @@
      * Deliberately built from the callbacks the host hands over rather than from its own DOM
      * knowledge: this file must not grow a second opinion about what a chat row looks like.
      */
+    /**
+     * MF1. Her streamed reply drawn as formatted text (tappable links, bold, lists) by
+     * `NEXUS_MESSAGE_FORMAT`; plain text when that module is not loaded.
+     */
+    function showReply(el, full) {
+        const text = String(full == null ? '' : full);
+        const F = global && global.NEXUS_MESSAGE_FORMAT;
+        if (F && typeof F.render === 'function') F.render(el, text);
+        else el.textContent = text;
+    }
+
     function defaultSurface(hooks = {}) {
         return {
             id: 'default',
@@ -129,11 +140,11 @@
                 return {
                     id: 'default',
                     append(full) {
-                        if (textDiv) textDiv.textContent = String(full == null ? '' : full);
+                        if (textDiv) showReply(textDiv, full);
                         if (typeof hooks.scroll === 'function') hooks.scroll();
                     },
                     finish(full) {
-                        if (textDiv) textDiv.textContent = String(full == null ? '' : full);
+                        if (textDiv) showReply(textDiv, full);
                     },
                     discard() {
                         if (row && row.parentElement) row.parentElement.removeChild(row);
