@@ -3373,9 +3373,40 @@ async function fetchAndPopulateModels(provider, selectElement) {
             selectElement.innerHTML = '<option value="">No models available</option>';
         }
 
-        // Restore current selection if it exists
-        if (config.model && result.models.includes(config.model)) {
-            selectElement.value = config.model;
+        // MC1. Keep the chosen model while the provider still offers it; otherwise the newest it
+        // offers, saved, and said once. A retired model (gpt-3.5-turbo, 2026-11-21) stayed
+        // selected and every message failed with `model_not_found`.
+        const offered = (result.models || []).length
+            ? result.models
+            : (result.modelEntries || []).map((e) => e && (e.id || e.value)).filter(Boolean);
+        const pick =
+            window.LLMManager && typeof window.LLMManager.pickModel === 'function'
+                ? window.LLMManager.pickModel
+                : (saved, list) => (saved && list.includes(saved) ? saved : list[0] || saved || '');
+        const chosen = pick(config.model, offered);
+        if (chosen) selectElement.value = chosen;
+        if (chosen && config.model && chosen !== config.model && provider === config.provider && offered.length > 1) {
+            const was = config.model;
+            config.model = chosen;
+            try {
+                localStorage.setItem('ai_model', chosen);
+                if (window._nexusLLM && typeof __nexusProviderPatch === 'function') {
+                    window._nexusLLM.updateSettings(
+                        __nexusProviderPatch(provider, {
+                            apiKey: config.apiKey,
+                            model: chosen,
+                            baseUrl: config.baseUrl,
+                            watsonxProjectId: config.watsonxProjectId,
+                            systemPrompt: config.systemPrompt,
+                        })
+                    );
+                }
+            } catch (_) {
+                /* private browsing: the dropdown still shows the newest */
+            }
+            const note = document.getElementById('test-connection-status');
+            console.warn(`[Main] ${was} is no longer offered by ${provider}; switched to ${chosen}`);
+            if (note) note.textContent = `ℹ️ ${was} is no longer available; switched to ${chosen}.`;
         }
     } catch (e) {
         console.error('[Main] Failed to fetch models:', e);
@@ -6813,6 +6844,14 @@ function __nexusWireTestButton() {
         setStatus(result.message, result.ok ? 'ok' : 'err');
         btn.disabled = false;
         btn.textContent = LABEL;
+        // MC1. The model was retired: load what the provider offers now; the newest is chosen,
+        // saved and said (fetchAndPopulateModels), ready to test again.
+        if (!result.ok && /model_not_found|has been deprecated|does not exist|not_found_error/i.test(result.message)) {
+            const modelSelect = document.getElementById('model-select');
+            const selected = document.querySelector('input[name="provider"]:checked');
+            if (modelSelect && selected && (selected.value === 'openai' || selected.value === 'claude'))
+                fetchAndPopulateModels(selected.value, modelSelect).catch(() => {});
+        }
     });
 }
 

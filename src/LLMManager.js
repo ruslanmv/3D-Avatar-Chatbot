@@ -222,6 +222,52 @@
      * LLMManager Class
      * Handles all LLM provider operations
      */
+    /*
+     * MC1. The models a provider offers for chat, newest first, read from its own model list —
+     * never a list typed into this file. Typed lists went stale: the OpenAI default list still
+     * offered `gpt-3.5-turbo` after OpenAI retired it, a saved choice kept pointing at it, and
+     * every message failed with `model_not_found` (2026-11-21). The provider's `/v1/models`
+     * says what exists and when it was made (`created`, or `created_at` for Anthropic).
+     *
+     * Kept: chat models. Left out: what cannot answer a chat message (audio, realtime, speech,
+     * transcription, images, embeddings, moderation, search and computer-use variants) and the
+     * retired GPT-3.5 family. Order: plain names before dated snapshots of the same, then
+     * newest first, so the first entry is the one to default to.
+     */
+    const NOT_CHAT =
+        /(audio|realtime|tts|transcribe|whisper|image|dall-e|embedding|moderation|search|computer-use|instruct|babbage|davinci)/i;
+    function chatModels(provider, data) {
+        const list = (data && Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).filter(
+            (m) => m && typeof m.id === 'string'
+        );
+        const kept = list.filter((m) => {
+            const id = m.id;
+            if (provider === 'claude') return id.startsWith('claude-');
+            if (!/^(gpt-|o\d|chatgpt-)/.test(id)) return false;
+            if (/^gpt-3\.5/.test(id)) return false;
+            return !NOT_CHAT.test(id);
+        });
+        const when = (m) => {
+            const t = m.created != null ? Number(m.created) * 1000 : Date.parse(m.created_at || '');
+            return Number.isFinite(t) ? t : 0;
+        };
+        const dated = (id) => /-\d{4}-?\d{2}-?\d{2}$|-\d{8}$/.test(id);
+        kept.sort((a, b) => {
+            if (dated(a.id) !== dated(b.id)) return dated(a.id) ? 1 : -1;
+            return when(b) - when(a) || b.id.localeCompare(a.id);
+        });
+        const names = {};
+        for (const m of kept) if (m.display_name) names[m.id] = m.display_name;
+        return { models: kept.map((m) => m.id), names };
+    }
+
+    /** MC1. The saved model while the provider still offers it; otherwise the newest one. */
+    function pickModel(saved, models) {
+        const list = Array.isArray(models) ? models : [];
+        if (saved && list.includes(saved)) return saved;
+        return list[0] || saved || '';
+    }
+
     class LLMManager {
         constructor() {
             this._settings = this._loadSettings();
@@ -275,13 +321,56 @@
          * @param {object} updates
          * @param {Function} fn - async; its result is returned
          */
+        /**
+         * MC1. A model the provider has retired is replaced, once, by the newest it offers, and
+         * the message is sent again. A retired default (`gpt-3.5-turbo`, `claude-3-5-sonnet-latest`)
+         * otherwise failed every message until someone opened Settings and knew what to pick.
+         * The new choice is saved (both stores), so it sticks; any other failure is the caller's.
+         */
+        async _withCurrentModel(provider, run) {
+            try {
+                return await run();
+            } catch (error) {
+                const gone = /model_not_found|has been deprecated|does not exist|not_found_error|invalid model/i.test(
+                    String((error && error.message) || error)
+                );
+                // Not inside a connection test (`withSettings`): it reports what really happened.
+                if (!gone || this._replacingModel || this._trial) throw error;
+                const before = this._settings[provider] && this._settings[provider].model;
+                let next = '';
+                try {
+                    const offered = await this.fetchAvailableModels();
+                    next = pickModel('', (offered && offered.models) || []);
+                } catch (_) {
+                    next = '';
+                }
+                if (!next || next === before) throw error;
+                console.warn(`[LLMManager] ${before} is no longer offered by ${provider}; using ${next}`);
+                this.updateSettings({ [provider]: { model: next } });
+                try {
+                    if (global.localStorage && global.localStorage.getItem('ai_provider') === provider)
+                        global.localStorage.setItem('ai_model', next);
+                } catch (_) {
+                    /* private browsing: the manager's own store already has it */
+                }
+                this._replacingModel = true;
+                try {
+                    return await run();
+                } finally {
+                    this._replacingModel = false;
+                }
+            }
+        }
+
         async withSettings(updates, fn) {
             const before = this._settings;
             this._settings = this._deepMerge(this.getSettings(), updates || {});
+            this._trial = true;
             try {
                 return await fn();
             } finally {
                 this._settings = before;
+                this._trial = false;
             }
         }
 
@@ -314,11 +403,15 @@
             }
 
             if (provider === LLMProvider.OPENAI) {
-                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory, options);
+                return await this._withCurrentModel(provider, () =>
+                    this._chatOpenAI(userMessage, systemPrompt, conversationHistory, options)
+                );
             }
 
             if (provider === LLMProvider.CLAUDE) {
-                return await this._chatClaude(userMessage, systemPrompt, conversationHistory, options);
+                return await this._withCurrentModel(provider, () =>
+                    this._chatClaude(userMessage, systemPrompt, conversationHistory, options)
+                );
             }
 
             if (provider === LLMProvider.WATSONX) {
@@ -351,10 +444,14 @@
 
             // Providers that support streaming
             if (provider === LLMProvider.OPENAI) {
-                return this._streamOpenAI(userMessage, systemPrompt, conversationHistory, onToken);
+                return this._withCurrentModel(provider, () =>
+                    this._streamOpenAI(userMessage, systemPrompt, conversationHistory, onToken)
+                );
             }
             if (provider === LLMProvider.CLAUDE) {
-                return this._streamClaude(userMessage, systemPrompt, conversationHistory, onToken);
+                return this._withCurrentModel(provider, () =>
+                    this._streamClaude(userMessage, systemPrompt, conversationHistory, onToken)
+                );
             }
             if (provider === LLMProvider.OLLAMA) {
                 return this._streamOllama(userMessage, systemPrompt, conversationHistory, onToken);
@@ -1597,8 +1694,10 @@
         async _fetchOpenAIModels() {
             const { api_key: rawKey, base_url } = this._settings.openai;
 
-            // Fallback models (always point to latest flagship versions)
-            const fallback = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'];
+            // MC1. No typed list: without a key or an answer there is nothing to offer but the
+            // model already chosen (so the dropdown keeps it), and the reason.
+            const saved = this._settings.openai && this._settings.openai.model;
+            const fallback = saved ? [saved] : [];
 
             // Trim whitespace
             const api_key = (rawKey || '').trim();
@@ -1606,7 +1705,7 @@
             if (!api_key) {
                 return {
                     models: fallback,
-                    error: 'Missing API Key - using default list',
+                    error: 'Add your API key, then Fetch Models to load the models it can use',
                 };
             }
 
@@ -1637,25 +1736,8 @@
 
                 const data = await res.json();
 
-                // SMART FILTERING & SORTING: Prioritize gpt-4o, then gpt-4, then o1 models
-                const models = (data.data || [])
-                    .map((m) => m.id)
-                    .filter((id) => id.startsWith('gpt') || id.startsWith('o1'))
-                    .sort((a, b) => {
-                        // Priority 1: gpt-4o (flagship)
-                        if (a === 'gpt-4o') return -1;
-                        if (b === 'gpt-4o') return 1;
-
-                        // Priority 2: o1 models
-                        const aO1 = a.startsWith('o1');
-                        const bO1 = b.startsWith('o1');
-                        if (aO1 && !bO1) return -1;
-                        if (!aO1 && bO1) return 1;
-
-                        // Priority 3: Alphabetical
-                        return a.localeCompare(b);
-                    });
-
+                // MC1. The provider's own list: chat models, newest first.
+                const { models } = chatModels('openai', data);
                 return { models: models.length > 0 ? models : fallback, error: null };
             } catch (e) {
                 return {
@@ -1668,13 +1750,9 @@
         async _fetchClaudeModels() {
             const { api_key: rawKey, base_url } = this._settings.claude;
 
-            // Fallback models using "latest" aliases (auto-update to newest versions)
-            const fallback = [
-                'claude-3-5-sonnet-latest', // ✅ Auto-updates to newest 3.5 Sonnet
-                'claude-3-5-haiku-latest', // ✅ Auto-updates to newest 3.5 Haiku
-                'claude-3-opus-latest', // ✅ Auto-updates to newest Opus
-                'claude-3-5-sonnet-20241022', // Specific backup
-            ];
+            // MC1. No typed list (see `chatModels`): the model already chosen, if any.
+            const saved = this._settings.claude && this._settings.claude.model;
+            const fallback = saved ? [saved] : [];
 
             // Trim whitespace (prevents copy/paste issues)
             const api_key = (rawKey || '').trim();
@@ -1682,7 +1760,7 @@
             if (!api_key) {
                 return {
                     models: fallback,
-                    error: 'No API key - using default model list',
+                    error: 'Add your API key, then Fetch Models to load the models it can use',
                 };
             }
 
@@ -1729,34 +1807,15 @@
 
                 const data = await response.json();
 
-                // SMART SORTING: Prioritize "latest" aliases and "3-5" series
-                const models = (data.data || [])
-                    .map((m) => m.id)
-                    .filter((id) => id && id.startsWith('claude-'))
-                    .sort((a, b) => {
-                        // Priority 1: Aliases containing "latest"
-                        const aLatest = a.includes('latest');
-                        const bLatest = b.includes('latest');
-                        if (aLatest && !bLatest) return -1;
-                        if (!aLatest && bLatest) return 1;
-
-                        // Priority 2: "3-5" series (newest)
-                        const a35 = a.includes('3-5');
-                        const b35 = b.includes('3-5');
-                        if (a35 && !b35) return -1;
-                        if (!a35 && b35) return 1;
-
-                        // Priority 3: Newest date (descending)
-                        return b.localeCompare(a);
-                    });
-
+                // MC1. The provider's own list, newest first, with Anthropic's display names.
+                const { models, names } = chatModels('claude', data);
                 if (models.length === 0) {
                     console.warn('[LLMManager] No Claude models found in API response, using fallback');
                     return { models: fallback, error: 'No models in API response - using defaults' };
                 }
 
                 console.log('[LLMManager] ✅ Fetched Claude models:', models);
-                return { models: models, error: null };
+                return { models: models, modelNames: names, error: null };
             } catch (e) {
                 console.error('[LLMManager] ❌ Failed to fetch Claude models:', e.message);
 
@@ -2297,6 +2356,8 @@
     // Expose to global scope
     // ===============================================
     LLMManager.visibleMessageText = visibleMessageText;
+    LLMManager.chatModels = chatModels;
+    LLMManager.pickModel = pickModel;
     global.LLMManager = LLMManager;
     global.LLMProvider = LLMProvider;
 })(window);
