@@ -46,3 +46,16 @@ describe('PV8. close in the heading, pace in the body', () => {
         );
     });
 });
+
+describe('PV9. the options button is only its three dots', () => {
+    test('no outline circle; still a 44 px target on touch', () => {
+        document.body.innerHTML = '<div id="chat-history"></div>';
+        const view = new Private.View({ doc: document, win: window });
+        view.mount({ scene: 'Window room' });
+        const css = document.getElementById('nexus-private-conversation-styles').textContent;
+        const rule = css.match(/#nexus-private-conversation-row \.nexus-private-more\{([^}]*)\}/)[1];
+        expect(rule).toMatch(/border:0/);
+        expect(css).toMatch(/\.nexus-private-more\{min-width:44px\}/);
+        view.destroy();
+    });
+});

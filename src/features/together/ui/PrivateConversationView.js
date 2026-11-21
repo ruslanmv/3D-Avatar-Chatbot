@@ -248,12 +248,13 @@ const PrivateConversationView = (() => {
 #${ROW_ID} .nexus-private-more{
   order:4;flex:0 0 auto;margin-left:6px;width:32px;height:28px;padding:0;
   display:inline-flex;align-items:center;justify-content:center;
-  border:1px solid rgba(248,172,198,.25);border-radius:999px;background:transparent;
-  color:#f3bbcd;font:inherit;font-size:1rem;line-height:1;cursor:pointer
+  /* PV9. Just the three dots (owner, 2026-11-21): no outline circle; the tap target stays 44 px. */
+  border:0;border-radius:999px;background:transparent;
+  color:#f3bbcd;font:inherit;font-size:1.35rem;font-weight:700;letter-spacing:.04em;line-height:1;cursor:pointer;opacity:.85
 }
 #${ROW_ID} .nexus-private-more[hidden]{display:none}
 #${ROW_ID} .nexus-private-more:hover,
-#${ROW_ID} .nexus-private-more[aria-expanded="true"]{background:rgba(248,172,198,.09)}
+#${ROW_ID} .nexus-private-more[aria-expanded="true"]{opacity:1;color:#f8cbdb}
 #${ROW_ID} .nexus-private-more:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
 #${ROW_ID} .nexus-private-more-panel{
   position:absolute;right:8px;top:40px;z-index:30;isolation:isolate;
