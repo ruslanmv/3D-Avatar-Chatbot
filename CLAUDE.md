@@ -20,8 +20,8 @@ reports. The steps it follows:
 4. **Measure, change one thing, measure again**, then `npm run validate` and
    commit code with any regenerated lab data. Slash commands: `/nexus-start`,
    `/lab-next`, `/lab-check`, `/new-zone`, `/motion-audit`, `/add-place`,
-   `/pose-check`, `/new-position` (a Private position, end to end),
-   `/body-detail` (bare-body variants in Forge, seen here).
+   `/pose-check`, `/new-position` (a Private position), `/body-detail` (Forge's
+   bare variants), `/level5-sheet` (level 5 on a real Forge: one sheet).
 
 **Cloud sessions: attach only this repository.** Per the Claude Code docs
 (code.claude.com/docs/en/settings.md ▸ Settings in cloud sessions, and
