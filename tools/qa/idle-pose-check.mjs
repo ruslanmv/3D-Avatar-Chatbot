@@ -2,7 +2,7 @@
 /**
  * ID1. Her standing idle, measured: how her arms hang, front and side, on the real avatar.
  *
- *   node tools/qa/idle-pose-check.mjs [--vrm vendor/avatars/AvatarSample_A.vrm,…] [--wait 6] [--out dir]
+ *   node tools/qa/idle-pose-check.mjs [--vrm vendor/avatars/AvatarSample_A.vrm,…] [--wait 6] [--out dir] [--mobile]
  *
  * For each avatar: loads it on the main page, waits for the idle to settle, photographs her from the
  * front and the side, and measures from the rendered skeleton —
@@ -27,6 +27,7 @@ const arg = (name, fallback) => {
     const i = process.argv.indexOf(name);
     return i > 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 };
+const MOBILE = process.argv.includes('--mobile');
 const VRMS = arg('--vrm', 'vendor/avatars/AvatarSample_A.vrm,vendor/avatars/Vita.vrm').split(',').filter(Boolean);
 const WAIT = Number(arg('--wait', '6')) * 1000;
 /** ID2. A line to speak while photographed (co-speech gestures), or '' to skip. */
@@ -132,7 +133,12 @@ async function main() {
     const browser = await chromium.launch();
     const report = [];
     try {
-        const page = await (await browser.newContext({ viewport: { width: 1800, height: 1000 } })).newPage();
+        // SG6. `--mobile`: a phone (412×915, touch, coarse pointer), as the owner's own frames were
+        // taken — SpeechGestures switches to its phone profile (no finger bones) on a coarse pointer.
+        const context = MOBILE
+            ? { viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 }
+            : { viewport: { width: 1800, height: 1000 } };
+        const page = await (await browser.newContext(context)).newPage();
         page.setDefaultTimeout(240000);
         await page.addInitScript(HELPERS);
         await page.goto(server.base + '/', { waitUntil: 'domcontentloaded' });
