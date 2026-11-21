@@ -231,3 +231,31 @@ describe('BD33. tied, two hands: agreed with a traffic light, ends held close', 
         expect(Director.classify('mettiti il vestito rosso').intent).not.toBe('end');
     });
 });
+
+describe('BD34. the strength of her marks: their words only', () => {
+    const Intent = require('../src/experiences/private/PrivateActionIntent.js');
+    const Policy = require('../src/experiences/private/PrivateActionPolicy.js');
+    const marks = (t) => {
+        const a = Intent.parse(t, { poseHeld: true });
+        return a && a.name === 'avatar.marks' ? a.params.move : null;
+    };
+    test.each([
+        ['segnami di più', 'more'],
+        ['mark me harder', 'more'],
+        ['más marcas', 'more'],
+        ['mehr Spuren', 'more'],
+        ['もっと跡をつけて', 'more'],
+        ['meno segni', 'less'],
+        ['fewer marks', 'less'],
+        ["don't mark me more", 'less'],
+    ])('"%s" → %s', (said, move) => expect(marks(said)).toBe(move));
+    test('"harder" alone is her tempo and "mark" alone is talk, never the marks', () => {
+        expect(marks('harder')).toBeNull();
+        expect(marks('I like the mark on your neck')).toBeNull();
+    });
+    test('the model never changes them', () => {
+        expect(Policy.decide({ name: 'avatar.marks', source: 'model', params: { move: 'more' } }, {})).toMatchObject({
+            allow: false,
+        });
+    });
+});

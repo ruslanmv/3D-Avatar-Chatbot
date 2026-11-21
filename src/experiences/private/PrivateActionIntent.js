@@ -698,6 +698,33 @@
     const HAIR_LEFT = new RegExp(word('left|sinistra|izquierda|gauche|links|esquerda'), 'iu');
     const HAIR_RIGHT = new RegExp(word('right|destra|derecha|droite|rechts|direita'), 'iu');
 
+    /**
+     * BD34. Her marks stronger or lighter, explicit words only ("harder" alone is the motion's
+     * tempo, and "mark" alone is talk), in the nine languages.
+     */
+    const MARKS_MORE = new RegExp(
+        word(
+            'mark me (?:more|harder)|more marks|stronger marks|leave (?:more |stronger )?marks|segnami (?:di più|più forte|di piu|piu forte)|più segni|piu segni|segni più forti|segni piu forti|lasciami (?:più |piu )?segni|márcame más|marcame mas|más marcas|mas marcas|marcas más fuertes|marque-moi plus|plus de marques|marques plus fortes|markier mich mehr|mehr spuren|stärkere spuren|staerkere spuren|marca-me mais|mais marcas|marcas mais fortes'
+        ),
+        'iu'
+    );
+    const MARKS_MORE_CJK = /もっと跡をつけて|跡を強く|자국 더 남겨|자국 더 세게|多留点痕迹|痕迹重一点/u;
+    const MARKS_LESS = new RegExp(
+        word(
+            'fewer marks|less marks|lighter marks|no marks|meno segni|segni più leggeri|segni piu leggeri|niente segni|menos marcas|marcas más suaves|moins de marques|marques plus légères|weniger spuren|leichtere spuren|marcas mais leves'
+        ),
+        'iu'
+    );
+    const MARKS_LESS_CJK = /跡は少なく|跡を薄く|자국 덜|자국 약하게|少留点痕迹|痕迹轻一点/u;
+    function marksFrom(body) {
+        if (MARKS_LESS.test(body) || MARKS_LESS_CJK.test(body))
+            return action('avatar.marks', { move: 'less' }, 'avatar');
+        if (MARKS_MORE.test(body) || MARKS_MORE_CJK.test(body))
+            // "Don't mark me more" is a no: never a stronger mark.
+            return action('avatar.marks', { move: NEGATED.test(body) ? 'less' : 'more' }, 'avatar');
+        return null;
+    }
+
     function hairFrom(body) {
         if (HAIR_BACK.test(body) || HAIR_BACK_CJK.test(body)) return action('avatar.hair', { move: 'back' }, 'avatar');
         if (HAIR_ASIDE.test(body) || HAIR_ASIDE_CJK.test(body)) {
@@ -1345,6 +1372,9 @@
         // is not "move for me").
         const hair = !NEGATED.test(body) ? hairFrom(body) : null;
         if (hair) return hair;
+        // BD34. Her marks, stronger or lighter (a "no marks" is a less, so before the negation gate).
+        const marks = marksFrom(body);
+        if (marks) return marks;
         // UN36. A show, after positions (their words win) and finishing.
         const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
         if (show) return show;
@@ -1509,6 +1539,7 @@
         routineFrom,
         motionFrom,
         hairFrom,
+        marksFrom,
         queryFrom,
         stylesIn,
         coloursIn,

@@ -282,6 +282,8 @@
             params: { move: oneOf(['aside', 'back']), side: oneOf(['front', 'left', 'right']) },
             required: ['move'],
         },
+        // BD34. The strength of her marks in "Legata e spalancata": more or less. Their words only.
+        'avatar.marks': { family: 'avatar', params: { move: oneOf(['more', 'less']) }, required: ['move'] },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
@@ -413,6 +415,8 @@
         if (action.name === 'avatar.move' && action.source === 'model') return { allow: false, why: 'user-only' };
         // HA1. Her hair moves because they asked, never because the model wrote it.
         if (action.name === 'avatar.hair' && action.source === 'model') return { allow: false, why: 'user-only' };
+        // BD34. So do her marks.
+        if (action.name === 'avatar.marks' && action.source === 'model') return { allow: false, why: 'user-only' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };

@@ -145,6 +145,9 @@
             // HA1. Her hair aside (tests inject it; the page's NEXUS_HAIR_ASIDE otherwise).
             hairDeps: (o.deps && o.deps.hair) || null,
             hairAside: null,
+            // BD34. How strong the marks of "Legata e spalancata" are: 1 barely there (default),
+            // 2 light, 3 strong, raised and lowered only by the person's words.
+            marks: 1,
             unwatch: [],
             // UN3. The evening's outline and narrative state (StoryWeaver / StoryDirector).
             story: null,
@@ -925,6 +928,8 @@
                 return move(s, action);
             case 'avatar.hair':
                 return hair(s, action);
+            case 'avatar.marks':
+                return marksTo(s, action);
             case 'avatar.pose': {
                 // UN36. A position they ask for ends any show she is giving: their words lead.
                 stopRoutine(s);
@@ -1109,6 +1114,99 @@
      * stands, or when the evening ends. A body without spring hair answers `no-hair`, and the
      * model is told the truth rather than a hair move that did not happen.
      */
+    /**
+     * BD34. The marks of "Legata e spalancata" in three strengths (Forge's packs rough-soft,
+     * rough-light, rough): `sado-soft-*` barely there, the default; `sado-light-*` light;
+     * `sado-*` strong, only when the person asks. A look holds one strength, so changing strength
+     * may change her look (her bare look whose pack holds it), keeping her pose.
+     */
+    const MARK_PREFIX = Object.freeze({ 1: 'sado-soft-', 2: 'sado-light-', 3: 'sado-' });
+    function markBase(name) {
+        return String(name || '').replace(/^sado-(?:soft|light)-/, 'sado-');
+    }
+    function markLevelOf(name) {
+        if (/^sado-soft-/.test(name)) return 1;
+        if (/^sado-light-/.test(name)) return 2;
+        return /^sado-/.test(name) ? 3 : 0;
+    }
+    function atMarks(name, level) {
+        return markBase(name).replace(/^sado-/, MARK_PREFIX[level] || 'sado-');
+    }
+    /** The state to show for `name` at the evening's strength or gentler, never stronger; null if none. */
+    function markedFor(s, name) {
+        if (!/^sado-/.test(String(name || ''))) return name;
+        const names = (s.skinStates || []).map((x) => x && x.name);
+        for (let level = s.marks || 1; level >= 1; level -= 1) {
+            const candidate = atMarks(name, level);
+            if (names.includes(candidate)) return candidate;
+        }
+        return null;
+    }
+    function marksShow(routine) {
+        return Boolean(routine && routine.steps.some((step) => /^sado-/.test(step.skin || '')));
+    }
+    function marksReady(s, level) {
+        const names = (s.skinStates || []).map((x) => x && x.name);
+        return names.includes(atMarks('sado-roped-open', level)) || names.includes(atMarks('sado-both-fisted', level));
+    }
+    /** Her bare look holding the marks at `level`, put on keeping her pose; true once its pack is on. */
+    async function wearMarksLook(s, level, alive) {
+        if (marksReady(s, level)) return true;
+        const want = [atMarks('sado-roped-open', level), atMarks('sado-both-fisted', level)];
+        const look = ((s.closet && s.closet.looks) || []).find(
+            (l) => l && l.body && Array.isArray(l.body.states) && want.some((n) => l.body.states.includes(n))
+        );
+        if (!look || !s.closet || typeof s.closet.wearLook !== 'function') return false;
+        const out = await keepingPose(s, () => s.closet.wearLook(look, alive || (() => state === s)));
+        if (!out || !out.ok) return false;
+        syncSkin(s);
+        for (let i = 0; i < 60 && !marksReady(s, level); i += 1) {
+            await new Promise((resolve) => (s.win.setTimeout || setTimeout)(resolve, 200));
+            if (state !== s) return false;
+        }
+        return marksReady(s, level);
+    }
+    /** BD34. "Mark me more" / "fewer marks": their words only; the same moment at the new strength. */
+    async function marksTo(s, action) {
+        const p = action.params || {};
+        // One line heard twice (typed and echoed, or two listeners) changes the strength once:
+        // within one turn, the second answers with the strength the first set.
+        // The turn id alone missed it (2026-11-21): the same line reached the bridge under two
+        // turn ids, the second started while the first was still changing her look, stepped the
+        // strength again and both failed against each other. So also: one change at a time (a
+        // time window would swallow a person asking twice on purpose).
+        if (s.marksBusy || (action.turnId != null && s.marksTurn === action.turnId))
+            return settle(action, 'completed', null, { marks: s.marks, same: true });
+        s.marksTurn = action.turnId;
+        s.marksBusy = true;
+        try {
+            return await marksStep(s, action, p);
+        } finally {
+            s.marksBusy = false;
+        }
+    }
+    async function marksStep(s, action, p) {
+        const before = s.marks || 1;
+        const level = Math.max(1, Math.min(3, before + (p.move === 'less' ? -1 : 1)));
+        if (level === before) return settle(action, 'completed', null, { marks: level, same: true });
+        const current = s.skin && typeof s.skin.current === 'function' ? s.skin.current() : null;
+        s.marks = level;
+        if (!/^sado-/.test(String(current || ''))) {
+            emit();
+            return settle(action, 'completed', null, { marks: level }); // used when marks next show
+        }
+        const ok = await wearMarksLook(s, level);
+        const next = ok ? markedFor(s, current) : null;
+        if (!next || markLevelOf(next) !== level) {
+            s.marks = before;
+            return settle(action, 'failed', 'no-marks-look', { marks: before });
+        }
+        if (s.fist && /^sado-/.test(s.fist.state)) s.fist.state = atMarks(s.fist.state, level);
+        await Promise.resolve(s.skin.apply(next)).catch(() => {});
+        emit();
+        return settle(action, 'completed', null, { marks: level, state: next });
+    }
+
     function hairApi(s) {
         return (s && s.hairDeps) || (s && s.win && s.win.NEXUS_HAIR_ASIDE) || null;
     }
@@ -1198,6 +1296,21 @@
         // bare, or her wardrobe has no layer under what she wears), she first puts on one of her
         // ready striptease sets — a look already made for her, so it loads at once and nothing is
         // generated — and the show begins once it is on. Without one, the show runs as before.
+        // BD34. A show that marks her starts in the look holding the marks at the evening's level
+        // (barely there unless the person asked for more), so the strong marks never show unasked.
+        if (marksShow(R.ROUTINES[id]) && !marksReady(s, s.marks)) {
+            r.dressing = true;
+            emit();
+            const alive = () => state === s && s.routine === r && !r.done;
+            wearMarksLook(s, s.marks, alive)
+                .catch(() => false)
+                .then(() => {
+                    if (!alive()) return;
+                    r.dressing = false;
+                    nextStep(s, r);
+                });
+            return settle(action, 'completed', null, { routine: id, name: R.ROUTINES[id].name });
+        }
         const outfit = needsShowOutfit(s, R.ROUTINES[id]) ? showOutfit(s) : null;
         if (outfit) {
             r.dressing = true;
@@ -1346,8 +1459,10 @@
             // it. Never a finish (those are the person's), and never over a finish still on her.
             // BD31. Nor over their fist: once they have given it, the gape stays until they finish.
             if (ok && step.skin && s.skin && !s.finish && !s.fist && Array.isArray(s.skinStates)) {
-                if (s.skinStates.some((x) => x && x.name === step.skin))
-                    Promise.resolve(s.skin.apply(step.skin)).catch(() => {});
+                // BD34. A mark is shown at the evening's strength, never stronger.
+                const skin = markedFor(s, step.skin);
+                if (skin && s.skinStates.some((x) => x && x.name === skin))
+                    Promise.resolve(s.skin.apply(skin)).catch(() => {});
             }
         } catch (error) {
             console.warn('[Private] a show step could not run', error);
@@ -2008,8 +2123,10 @@
         const asked = where && where !== 'choose' ? where : null;
         const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
         for (const target of targets) {
-            const ordered = [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]];
-            const found = ordered.find((n) => names.includes(n));
+            const ordered = [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]].map((n) =>
+                markedFor(s, n)
+            );
+            const found = ordered.find((n) => n && names.includes(n));
             if (found) return found;
         }
         return null;
@@ -2074,7 +2191,10 @@
         if (!s.fist || !['inside', 'ass', 'both', 'choose'].includes(where)) return null;
         const place = where === 'choose' ? 'inside' : where;
         const names = (s.skinStates || []).map((x) => x.name);
-        const precise = (AFTER_ANAL_FIST[s.fist.state] || {})[place];
+        // BD34. A marked fist is filled at its own strength: the map is keyed by the strong name.
+        const base = markBase(s.fist.state);
+        const strong = (AFTER_ANAL_FIST[base] || {})[place];
+        const precise = strong && base !== s.fist.state ? atMarks(strong, markLevelOf(s.fist.state)) : strong;
         const filled = [precise, `${s.fist.state}-cum`].filter(Boolean).find((n) => names.includes(n));
         return filled ? { place, state: filled } : null;
     }
@@ -3514,6 +3634,22 @@
             now.push('They asked you to move, but you are not holding a position yet: say so warmly, and invite one.');
         else if (s.poses && typeof s.poses.held === 'function' && s.poses.held())
             now.push('You hold that position still; you move in it only if they ask you to.');
+        // BD34. How strong her marks are, so her words match her skin.
+        const skinNow = s.skin && typeof s.skin.current === 'function' ? s.skin.current() : null;
+        if (/^sado-/.test(String(skinNow || ''))) {
+            const strength = [
+                '',
+                'barely there, the faintest blush',
+                'light, thin pink lines',
+                'strong, red and clear',
+            ][markLevelOf(skinNow)];
+            now.push(
+                `The marks on your skin are ${strength}. They grow only when they ask ("mark me more"), and fade when they ask for fewer.`
+            );
+        }
+        const askedMarks = [...s.log].reverse().find((a) => a.name === 'avatar.marks' && a.turnId === s.turnId);
+        if (askedMarks && askedMarks.why === 'no-marks-look')
+            now.push('They asked for different marks, but you have no look with them right now: say so playfully.');
         // HA1. Her hair, as the person asked: her words match it, and a body without it says so.
         const askedHair = [...s.log].reverse().find((a) => a.name === 'avatar.hair' && a.turnId === s.turnId);
         if (s.hairAside)
