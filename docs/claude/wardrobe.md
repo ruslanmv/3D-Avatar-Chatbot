@@ -320,3 +320,19 @@ request. `tests/wardrobe/fantasy-contract.test.js` fails when a persona, show, r
 names a costume Forge has no fantasy for, or anything in `banned` (words that read as a minor).
 Adding a fantasy: in Forge first (`docs/WARDROBE_FANTASIES.md`), then sync.
 
+## PL1: her persona dressed for levels 1–3 (2026-11-21)
+
+Each persona (`PrivatePersonas.js`, `looks`) lists Forge outfit ids for levels 1, 2 and 3, best
+first: a short dress at 1, stockings or fishnets at 2, lingerie at 3 (Gina: red bodycon →
+fishnets → guêpière; Isabelle: evening gown → slip dress → balconette; Yuki: cosplay → maid or
+nurse → bodysuit; Valentina: corset & mini → stockings → guêpière; Chiara: jeans → slip dress →
+lace set). `PrivateActionBridge.dressForPace` puts on the first she has when the session starts
+and each time the pace goes up (from `fitPoseToPace`), or offers the first to be made (their yes
+makes it). Never when easing down, never from 4 (undressing is the person's), never in No limits,
+and never again once the person chose her clothes in their own words. Test:
+`tests/behavior/private-persona-looks-pl1.test.js`.
+
+PV7: while Private runs, `#chat-history` carries `nexus-private-quiet` and everything but the
+Private row is hidden (one CSS rule, so chat restore re-appending messages changes nothing); the
+class comes off on destroy. Test: `tests/private-world/private-quiet-history.test.js`.
+

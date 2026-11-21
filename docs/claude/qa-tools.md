@@ -161,4 +161,4 @@ use a token only in one command's environment, never in a file.
   (`setMode('talk', …)`) while capturing.
 
 Gestures while speaking: the 2026-11-21 audit (robotic hands on a phone), its measurements,
-likely causes and the next steps are in `docs/claude/gesture-audit.md` (SG6).
+likely causes and the next steps are in `docs/qa/GESTURE_AUDIT.md` (SG6).

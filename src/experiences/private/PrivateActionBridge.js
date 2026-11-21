@@ -134,6 +134,10 @@
             looksFitBusy: false,
             // FN1. Forge's fantasy catalogue (assets/wardrobe/fantasies.json), loaded once.
             fantasies: (o.deps && o.deps.fantasies) || null,
+            // PL1. The highest step her persona's look was put on for, and whether the person chose
+            // her clothes themselves this evening (then the persona's plan stops).
+            personaDressedAt: 0,
+            userDressed: false,
             turnText: '',
             asked: {},
             lastFamily: null,
@@ -165,6 +169,11 @@
         const s = state;
         startStory(s, o.deps && o.deps.story);
         loadFantasies(s);
+        // PL1. Her persona's look for where the evening starts, once her looks are listed.
+        if (s.closet && typeof s.closet.open === 'function')
+            Promise.resolve(s.closet.open())
+                .then(() => dressForPace(s))
+                .catch(() => null);
         // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
         // evening (position, step, finish) each frame; never moves any of it.
         s.living = startLiving(s, o.deps && o.deps.living);
@@ -861,6 +870,8 @@
         if (source !== 'control') s.byTurn.set(key, action);
         if (action.family === 'music' && ['music.play', 'music.search'].includes(action.name)) s.music = action;
         if (action.family === 'wardrobe') {
+            // PL1. Their own words chose her clothes: her persona's plan steps aside for the evening.
+            if (source === 'user') s.userDressed = true;
             // LT10. This request replaces the one before it (`alive()` below turns false for
             // that one). If its look is still downloading, it is stopped now: before, it landed
             // on her first and was undone afterwards, so an outfit she no longer wanted (in
@@ -1849,9 +1860,67 @@
      * control, like every other action. Called after every repaint of the pace; does nothing when
      * what she holds is still open, or when she holds nothing. Never raises or lowers the level.
      */
+    /*
+     * PL1. Her persona dressed for the evening's step (PrivatePersonas `looks`, levels 1–3). Gina
+     * kept the avatar's cardigan and shorts at "Romantico" while saying "affare fatto": a woman
+     * working her window is dressed for it. Only upward (easing down never re-dresses her), never
+     * once the person chose her clothes in their own words, never from 4 (undressing is the
+     * person's), never in No limits. Wears a look she has; if she has none, offers the first to be
+     * made — their yes makes it.
+     */
+    function dressForPace(s) {
+        try {
+            if (!s || state !== s || s.session._stopped || s.session._care || s.unrestrained || s.userDressed) return;
+            const closet = s.closet;
+            if (!closet || !Array.isArray(closet.looks) || !closet.privateOpen) return;
+            const P = pick(s.win, 'NEXUS_PRIVATE_PERSONAS', './PrivatePersonas.js');
+            const id = s.session.activity && s.session.activity.personaChoice;
+            const persona = P && P.PERSONAS && id ? P.PERSONAS[id] : null;
+            if (!persona || !persona.looks) return;
+            const level = Number(levelOf(s)) || 1;
+            if (level >= 4 || level <= (s.personaDressedAt || 0)) return;
+            const ids = persona.looks[Math.min(level, 3)] || [];
+            if (!ids.length) return;
+            s.personaDressedAt = level;
+            let current = null;
+            try {
+                current = typeof closet.current === 'function' ? closet.current() : null;
+            } catch (_) {
+                current = null;
+            }
+            if (current && ids.includes(current.outfitId)) return;
+            for (const oid of ids) {
+                const look = closet.looks.find((l) => l && l.outfitId === oid && l.wardrobeState !== 'bare');
+                if (!look) continue;
+                Promise.resolve(closet.wearLook(look, () => state === s && !s.userDressed))
+                    .then(() => emit())
+                    .catch(() => null);
+                return;
+            }
+            const entry = (closet.entries || []).find((e) => e && e.id === ids[0]);
+            if (entry && entry.request && !s.offer)
+                s.offer = {
+                    kind: 'create',
+                    spec: {
+                        prompt: entry.request.prompt,
+                        preset: entry.request.preset,
+                        outfitId: entry.id,
+                        label: entry.title,
+                        private: Boolean(entry.private),
+                    },
+                    name: entry.title,
+                    turnId: s.turnId,
+                    from: 'persona',
+                };
+        } catch (error) {
+            console.warn('[Private] her outfit for the evening was not put on', error);
+        }
+    }
+
     function fitPoseToPace() {
         fitSkinToPace();
         const s = state;
+        dressForPace(s);
         // UN36. Easing below what a running show needs stops it where it is.
         if (s && routineState(s) === 'running') {
             const R = routinesOf(s);
