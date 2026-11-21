@@ -2967,7 +2967,7 @@ export class VRPoseSystem {
         // position was refused and she stood up again. A real body drops its chest instead: pitch
         // the spine forward about her own left-right axis, just enough to bring the shoulders
         // down by what is still missing, then reach again. Bodies whose hands already reach are
-        // never touched (the loop does not start), and the pitch is capped at 12 degrees.
+        // never touched (the loop does not start), and the pitch is capped at 20 degrees (AvatarSample_O needed more than 12).
         const short = () => Math.max(...reach.map((k) => (gaps[k] == null ? 0 : gaps[k])));
         const spine = this._bones.get('chest') || this._bones.get('spine');
         const lr = (() => {
@@ -2994,12 +2994,12 @@ export class VRPoseSystem {
             const ys = reach.map((k) => this._supportSkinY([k])).filter((y) => y != null);
             return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : null;
         };
-        for (let pass = 0; pitchOn && spine && lr && pass < 4 && short() > 0.004 && Math.abs(pitched) < 0.21; pass++) {
+        for (let pass = 0; pitchOn && spine && lr && pass < 4 && short() > 0.004 && Math.abs(pitched) < 0.35; pass++) {
             const shoulder = this._bones.get('leftUpperArm') || this._bones.get('rightUpperArm');
             const lever = shoulder
                 ? shoulder.getWorldPosition(new THREE.Vector3()).distanceTo(spine.getWorldPosition(new THREE.Vector3()))
                 : 0.3;
-            let angle = Math.min(0.21 - Math.abs(pitched), short() / Math.max(lever, 0.1));
+            let angle = Math.min(0.35 - Math.abs(pitched), short() / Math.max(lever, 0.1));
             // Which way is "down" depends on the file's axes: try it, keep the side that lowers her hands.
             const y0 = handsY();
             pitch(angle);

@@ -136,7 +136,7 @@
             name: 'chest-reach',
             method: 'procedural-transition',
             batch: 'VS1',
-            what: 'Arms too short for a hands-down pose: the chest pitches forward (at most 12°) until both palms reach the floor',
+            what: 'Arms too short for a hands-down pose: the chest pitches forward (at most 20°) until both palms reach the floor',
             files: ['src/gltf-viewer/VRPoseSystem.js'],
             remove: 'Delete the VS1 block (chest pitch) in _placeSupportHands in VRPoseSystem.js; the arms alone reach, and a body they cannot reach the floor on is refused the position.',
         }),

@@ -241,6 +241,8 @@
             const bones = _computed(humanoid);
             preset = bones ? { ...preset, bones } : PRESETS.naturalIdle;
         }
+        const ud = (_currentRoot && _currentRoot.userData) || {};
+        const facesPlusZ = !!ud.isVRM && ud.vrmForwardNegZ === false;
         const identityQuat = new THREE.Quaternion();
         const targetQuat = new THREE.Quaternion();
         const blendedQuat = new THREE.Quaternion();
@@ -261,6 +263,15 @@
 
             // Set target quaternion from preset
             targetQuat.set(quatArray[0], quatArray[1], quatArray[2], quatArray[3]);
+            // VS2. These rotations were tuned on VRM 0.x bodies (facing -Z). A VRM 1.0 body faces
+            // +Z (AvatarManager's `vrmForwardNegZ` false), where the same rotation about Z raises
+            // the arm it was meant to lower: AvatarSample_O and Model_Girl stood with both arms
+            // over their heads (2026-11-21). A half turn about Y between the two frames maps
+            // (x, y, z, w) to (-x, y, -z, w); VRM 0.x bodies are untouched.
+            if (facesPlusZ) {
+                targetQuat.x = -targetQuat.x;
+                targetQuat.z = -targetQuat.z;
+            }
 
             // Blend between identity (T-pose) and target based on intensity
             blendedQuat.copy(identityQuat).slerp(targetQuat, effectiveIntensity);
