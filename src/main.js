@@ -3575,7 +3575,7 @@ function _updateOllaBridgePairUI() {
         // Cleared when unpaired so no stale label survives in the hidden box.
         deviceEl.textContent = !paired ? '' : deviceId ? 'Device ' + deviceId : 'Token stored on this browser';
     }
-    return paired;
+    return _refreshOllaBridgeGrantLine(paired, deviceEl);
 }
 
 /**
@@ -7050,3 +7050,49 @@ window.addEventListener('ollabridge-notice', (e) => {
     const notice = e && e.detail && e.detail.notice;
     if (notice) showMessage(notice, 'warning');
 });
+
+/**
+ * OB3. Under the device id, one line on what this pairing may use of the operator's shared
+ * AI ("Shared AI: unlimited", "… 12,000 of 50,000 tokens left this month", "No shared AI…").
+ *
+ * The element is created here rather than in index.html on purpose: the parity harness
+ * freezes index.html line numbers, and one added line in the settings panel would shift
+ * every reference below it. For the same reason this function lives at the end of main.js
+ * (the harness also pins main.js lines) and is called on the line that used to say
+ * `return paired;` — it returns `paired` unchanged. A stale answer can't overwrite a newer
+ * one: each refresh takes a sequence number and only the latest one writes. The counter is
+ * a property of the (hoisted) function, so a call before this point of the script runs is safe.
+ */
+function _refreshOllaBridgeGrantLine(paired, deviceEl) {
+    const seq = (_refreshOllaBridgeGrantLine.seq = (_refreshOllaBridgeGrantLine.seq || 0) + 1);
+    let line = document.getElementById('ollabridge-grant-line');
+    if (!paired || !deviceEl || !deviceEl.parentNode) {
+        if (line) line.textContent = '';
+        return paired;
+    }
+    if (!line) {
+        line = document.createElement('div');
+        line.id = 'ollabridge-grant-line';
+        line.style.cssText = 'font-size: 0.68rem; color: rgba(255, 255, 255, 0.65); margin-top: 2px;';
+        deviceEl.parentNode.appendChild(line);
+    }
+    try {
+        if (!window._nexusLLM && typeof window.LLMManager === 'function') {
+            window._nexusLLM = new window.LLMManager();
+        }
+        const mgr = window._nexusLLM;
+        if (!mgr || typeof mgr.getOllaBridgeGrant !== 'function') return paired;
+        mgr.getOllaBridgeGrant()
+            .then((result) => {
+                if (seq !== _refreshOllaBridgeGrantLine.seq) return;
+                const view = window.LLMManager.describeOllaBridgeGrant(result);
+                line.textContent = view.text;
+                line.style.color =
+                    view.state === 'none' || view.state === 'exhausted' ? '#f59e0b' : 'rgba(255, 255, 255, 0.65)';
+            })
+            .catch((e) => console.warn('[Main] OllaBridge grant lookup failed:', e));
+    } catch (e) {
+        console.warn('[Main] OllaBridge grant lookup failed:', e);
+    }
+    return paired;
+}

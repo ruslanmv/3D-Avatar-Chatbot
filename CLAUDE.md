@@ -243,11 +243,12 @@ doing what the conversation says; `docs/audits/animation-runtime-audit.md`),
 (`docs/qa/NATURAL_LANGUAGE_MOTION_ACCEPTANCE.md`), `RP` for the review packets
 of a body state (Forge's RP1; here `tools/qa/look-turntable.mjs`), `CG` for
 character gates (one adult confirmation per device; Forge's per-file `bodyState`
-said for her) and `CV` for clothing visibility
-(`src/wardrobe/ClothingVisibility.js`: hidden only where Forge's
-`/v1/visibility` allows it for the exact bytes on stage). Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+said for her), `OB` for the OllaBridge gateway client (OB3: inference grants —
+the operator's shared AI, `docs/INFERENCE_GRANTS.md` in ollabridge-cloud) and
+`CV` for clothing visibility (`src/wardrobe/ClothingVisibility.js`: hidden only
+where Forge's `/v1/visibility` allows it for the exact bytes on stage). Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

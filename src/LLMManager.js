@@ -202,6 +202,61 @@
         return body.replace(/\n{3,}/g, '\n\n').trim();
     }
 
+    /**
+     * OB3. One line for Settings saying what this pairing may use of the operator's shared AI.
+     *
+     * The gateway now gates its cloud routes (Free Best and the rest — paid for by whoever runs
+     * OllaBridge Cloud) behind an inference grant: the operator grants a customer, and the
+     * customer's admin may share that with each member. A paired avatar used to have no way to
+     * tell "this works because I was granted it" from "this works because nobody checks yet",
+     * so the first sign of a missing or used-up grant was a failed reply mid-conversation.
+     *
+     * Pure: takes what getOllaBridgeGrant() returned, returns `{state, text}`. An older gateway
+     * without the endpoint (404) or an unreachable one yields an empty text, so the box shows
+     * exactly what it showed before.
+     *
+     * @param {{ok: boolean, status?: number, data?: object}} result
+     * @returns {{state: string, text: string}}
+     */
+    function describeOllaBridgeGrant(result) {
+        if (!result || !result.ok || !result.data) {
+            return { state: result && result.status === 404 ? 'unsupported' : 'unknown', text: '' };
+        }
+        const data = result.data;
+        if (data.principal && data.principal.kind === 'system') {
+            return { state: 'system', text: 'Shared AI: full access (operator key)' };
+        }
+        const fmt = (n) => Number(n).toLocaleString('en-US');
+        const active = (Array.isArray(data.grants) ? data.grants : []).filter((g) => g && g.active);
+        if (!active.length) {
+            if (data.mode === 'enforce') {
+                return {
+                    state: 'none',
+                    text: 'No shared AI on this account. Your own paired PC still works; ask your provider for access to cloud routes.',
+                };
+            }
+            return { state: 'open', text: 'Shared AI: open while the operator is testing (no grant yet)' };
+        }
+        // Member grants come first in the gateway's answer and are the narrower share.
+        const g = active[0];
+        const parts = [];
+        if (g.unlimited || g.monthly_token_limit === null || g.monthly_token_limit === undefined) {
+            parts.push('Shared AI: unlimited');
+        } else {
+            const left = Math.max(0, Number(g.tokens_remaining_this_period) || 0);
+            if (left === 0) {
+                return {
+                    state: 'exhausted',
+                    text: `Shared AI: this month's ${fmt(g.monthly_token_limit)} tokens are used up`,
+                };
+            }
+            parts.push(`Shared AI: ${fmt(left)} of ${fmt(g.monthly_token_limit)} tokens left this month`);
+        }
+        if (!g.all_aliases && Array.isArray(g.aliases) && g.aliases.length) parts.push(g.aliases.join(', '));
+        if (g.expires_at) parts.push('until ' + String(g.expires_at).slice(0, 10));
+        return { state: g.unlimited ? 'unlimited' : 'limited', text: parts.join(' · ') };
+    }
+
     function visibleMessageText(message) {
         const thought = (text) => {
             // AX16. A plain "THOUGHT:" paragraph before the answer (not a <think> wrapper).
@@ -1384,6 +1439,14 @@
          * @returns {Promise<string|null>}
          */
         async _gatewayErrorFor(res) {
+            // OB3. A refusal from the gateway's inference-grant check (no grant, an alias the
+            // grant does not cover, the month's tokens used up) carries its own sentence. Without
+            // this it fell through to "OllaBridge Error: 403 - {json}", which tells the person
+            // nothing about the one thing that fixes it: asking whoever shared the AI with them.
+            if (res && (res.status === 401 || res.status === 403 || res.status === 429)) {
+                const grantMsg = await this._grantRefusalFor(res);
+                if (grantMsg) return grantMsg;
+            }
             if (res && (res.status === 502 || res.status === 503) && typeof res.clone === 'function') {
                 try {
                     const body = await res.clone().json();
@@ -2247,6 +2310,54 @@
             }
         }
 
+        /**
+         * OB3. The sentence for a request the gateway's inference-grant check refused, or null
+         * when the refusal is something else. Only `type: "inference_grant"` counts — a 401 from
+         * a wrong API key keeps its existing handling.
+         * @param {Response} res
+         * @returns {Promise<string|null>}
+         */
+        async _grantRefusalFor(res) {
+            if (!res || typeof res.clone !== 'function') return null;
+            try {
+                const body = await res.clone().json();
+                const err = body && body.detail && body.detail.error;
+                if (!err || err.type !== 'inference_grant') return null;
+                const message = typeof err.message === 'string' && err.message ? err.message : '';
+                return `OllaBridge: ${message || 'shared AI is not available to this account (' + err.code + ').'}`;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        /**
+         * OB3. What the OllaBridge operator has shared with this pairing (or key).
+         *
+         * Reads `GET /account/inference` with the token chat already uses, so it answers for
+         * exactly the identity the gateway will check. Never throws: Settings must render even
+         * when the gateway is older than inference grants (404) or unreachable.
+         *
+         * @returns {Promise<{ok: boolean, status?: number, data?: object, error?: string}>}
+         */
+        async getOllaBridgeGrant() {
+            const cfg = this._settings.ollabridge || {};
+            const base_url = (cfg.base_url || '').replace(/\/$/, '');
+            const authToken = (cfg.api_key || '').trim() || (cfg.pair_token || '').trim();
+            if (!base_url || !authToken) return { ok: false, error: 'not paired' };
+
+            // Direct, like chat itself (see tests/ollabridge-direct.test.js): the gateway answers
+            // CORS, and the serverless proxy would only add a hop holding the pairing token.
+            const url = `${base_url}/account/inference`;
+            const headers = { Authorization: `Bearer ${authToken}` };
+            try {
+                const res = await fetch(url, { headers });
+                if (!res.ok) return { ok: false, status: res.status, error: `HTTP ${res.status}` };
+                return { ok: true, status: res.status, data: await res.json() };
+            } catch (e) {
+                return { ok: false, error: e && e.message ? e.message : String(e) };
+            }
+        }
+
         // ===============================================
         // Utilities
         // ===============================================
@@ -2278,6 +2389,7 @@
     // Expose to global scope
     // ===============================================
     LLMManager.visibleMessageText = visibleMessageText;
+    LLMManager.describeOllaBridgeGrant = describeOllaBridgeGrant;
     global.LLMManager = LLMManager;
     global.LLMProvider = LLMProvider;
 })(window);
