@@ -1121,6 +1121,12 @@
      * may change her look (her bare look whose pack holds it), keeping her pose.
      */
     const MARK_PREFIX = Object.freeze({ 1: 'sado-soft-', 2: 'sado-light-', 3: 'sado-' });
+    /*
+     * BD36. The app stops at light (owner, 2026-11-21: "I don't like the 3rd level… we arrive
+     * level 2"). Forge keeps the strong states and their packs, so raising this brings them back
+     * with no rebuild; until then no skin, show step or fist here ever picks a strong `sado-*`.
+     */
+    const MAX_MARKS = 2;
     function markBase(name) {
         return String(name || '').replace(/^sado-(?:soft|light)-/, 'sado-');
     }
@@ -1136,7 +1142,7 @@
     function markedFor(s, name) {
         if (!/^sado-/.test(String(name || ''))) return name;
         const names = (s.skinStates || []).map((x) => x && x.name);
-        for (let level = s.marks || 1; level >= 1; level -= 1) {
+        for (let level = Math.min(s.marks || 1, MAX_MARKS); level >= 1; level -= 1) {
             const candidate = atMarks(name, level);
             if (names.includes(candidate)) return candidate;
         }
@@ -1195,7 +1201,7 @@
     }
     async function marksStep(s, action, p) {
         const before = s.marks || 1;
-        const level = Math.max(1, Math.min(3, before + (p.move === 'less' ? -1 : 1)));
+        const level = Math.max(1, Math.min(MAX_MARKS, before + (p.move === 'less' ? -1 : 1)));
         if (level === before) return settle(action, 'completed', null, { marks: level, same: true });
         const current = s.skin && typeof s.skin.current === 'function' ? s.skin.current() : null;
         s.marks = level;
@@ -3672,7 +3678,9 @@
                 'strong, red and clear',
             ][markLevelOf(skinNow)];
             now.push(
-                `The marks on your skin are ${strength}. They grow only when they ask ("mark me more"), and fade when they ask for fewer.`
+                markLevelOf(skinNow) >= MAX_MARKS
+                    ? `The marks on your skin are ${strength}: as strong as they go tonight. They fade when they ask for fewer.`
+                    : `The marks on your skin are ${strength}. They grow only when they ask ("mark me more"), and fade when they ask for fewer.`
             );
         }
         const askedMarks = [...s.log].reverse().find((a) => a.name === 'avatar.marks' && a.turnId === s.turnId);
