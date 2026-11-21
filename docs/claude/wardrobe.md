@@ -297,3 +297,13 @@ decides (a different one scores against), a style matches by type, group and occ
 without these fields match by name as before. The plan for the rest (Forge's `suggest`, the
 shortlist in the prompt, story costume plans at steps 4–5) is Forge's `docs/WARDROBE_RAG.md`.
 Test: `tests/behavior/private-wardrobe-meaning-wm1.test.js`.
+
+WM3: in Private the bridge asks Forge's `POST /v1/wardrobes/{slug}/suggest` for the scene
+(`refreshLooksFit`: room from the renderer, persona, pace step, what she wears, the last thing
+said about clothes; asked again only when one of those changes, never awaited) and puts Forge's
+`prompt` (≤ 5 numbered looks, ≤ 2 lettered outfits to make) in place of the ten names. The
+model answers `look="2"` or `look="A"`; `fitParams` maps the number to that look's id and the
+letter to the outfit to make (offered on the person's yes; she says she ordered it online). A
+number not on the last list matches nothing. Test: `tests/behavior/private-looks-fit-wm3.test.js`.
+Note: `nexus_private_wardrobe_autonomy` defaults to `off`, which tells her to change only when
+asked; under `suggest` she offers looks from the list.

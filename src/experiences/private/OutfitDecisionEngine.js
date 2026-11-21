@@ -196,6 +196,12 @@
         const worn = (look) => Boolean(wornKey) && keyOf(look) === wornKey;
         const recent = Array.isArray(i.recent) ? i.recent : [];
 
+        // WM3. A look Forge ranked for the scene, chosen by its number: by id, exactly.
+        if (request.id) {
+            const exact = looks.find((l) => keyOf(l) === request.id || l.id === request.id || l.lookId === request.id);
+            if (exact && !worn(exact)) return { kind: 'look', look: exact, generate: false, reason: 'named' };
+            return null;
+        }
         if (request.look) {
             const named = byName(request.look, looks);
             if (named) return { kind: 'look', look: named, generate: false, reason: 'named' };
