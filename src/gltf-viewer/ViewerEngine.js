@@ -2446,7 +2446,10 @@ export class ViewerEngine {
         const onMood = (event) => {
             const detail = (event && event.detail) || {};
             try {
-                this.vrWorlds?.setMood?.(detail.light || null, { instant: detail.instant === true });
+                this.vrWorlds?.setMood?.(detail.light || null, {
+                    instant: detail.instant === true,
+                    room: detail.room || null, // NL1: sky, fog and floor too
+                });
             } catch (error) {
                 console.warn('[VRWorlds] mood not applied', error);
             }

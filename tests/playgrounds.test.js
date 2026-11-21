@@ -245,6 +245,7 @@ describe('moods', () => {
                 'classroom-day',
                 'cozy-warm',
                 'neon-blue-purple',
+                'normal-room',
                 'pub-amber',
                 'romantic-evening',
                 'studio-soft',
@@ -268,6 +269,23 @@ describe('moods', () => {
         expect(mid.hemi).toBeCloseTo((a.hemi + b.hemi) / 2);
         expect(Worlds.blendLight(a, b, 7)).toEqual(Worlds.normalizeLight(b));
         expect(Worlds.MOOD_SECONDS).toBeGreaterThanOrEqual(0.5);
+    });
+
+    test('NL1. normal light repaints the Window Room red sky, fog and floor; null gives them back', () => {
+        const room = Moods.get('normal-room').room;
+        const raw = require('../assets/vr-worlds/worlds.json');
+        const world = (raw.worlds || raw).find((w) => w.id === 'window-room');
+        const lit = Worlds.roomFor(world, room);
+        expect(lit.sky).toEqual(room.sky);
+        expect(lit.fog).toMatchObject({ color: room.fog.color, near: world.fog.near, far: world.fog.far });
+        expect(lit.ground).toMatchObject({ color: room.ground.color, radius: world.ground.radius });
+        expect(Worlds.roomFor(world, null)).toEqual({ sky: world.sky, fog: world.fog, ground: world.ground });
+        // Nothing reddish left in the normal room.
+        for (const c of [lit.sky.top, lit.sky.horizon, lit.sky.bottom, lit.fog.color, lit.ground.color]) {
+            const [r, g, b] = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+            expect(r - Math.min(g, b)).toBeLessThan(45);
+        }
+        expect(Templates.TEMPLATES.find((t) => t.id === 'window-room').moods).toContain('normal-room');
     });
 
     test('a mood needs a world up; nothing changes the light of plain VR or the desktop', () => {

@@ -208,6 +208,25 @@
      * becomes a light (`setMood`), so a preset cannot do what a catalogue entry may not: the
      * floors under hemi and fill are what keep her face lit, and they hold here too. Pure.
      */
+    /**
+     * NL1. The sky, fog and floor to show: the mood's `room` over the world's own, each part only
+     * where both have it (a panorama world has no painted sky to recolour; a world without fog
+     * gets none). `room` null gives the world's own colours back.
+     */
+    function roomFor(world, room) {
+        const own = {
+            sky: (world && world.sky) || null,
+            fog: (world && world.fog) || null,
+            ground: (world && world.ground) || null,
+        };
+        if (!room) return own;
+        return {
+            sky: own.sky && room.sky ? room.sky : own.sky,
+            fog: own.fog && room.fog ? { ...own.fog, color: room.fog.color } : own.fog,
+            ground: own.ground && room.ground ? { ...own.ground, color: room.ground.color } : own.ground,
+        };
+    }
+
     function normalizeLight(raw) {
         const light = raw && typeof raw === 'object' ? raw : {};
         return {
@@ -1146,6 +1165,7 @@
          */
         function setMood(light, options) {
             if (!activeId || !worldNow) return false;
+            writeRoom(roomFor(worldNow, light ? options && options.room : null)); // NL1
             const to = light ? normalizeLight(light) : worldNow.light;
             if (options && options.instant) {
                 mood = null;
@@ -1154,6 +1174,32 @@
                 mood = { from: lightNow || worldNow.light, to, t: 0 };
             }
             return true;
+        }
+
+        /**
+         * NL1. A mood's `room` (sky, fog, floor), or the world's own when `r` is its own. Written
+         * from the world's data each time, never undone: choosing another mood rewrites the
+         * place's own colours, so nothing drifts however many times the light changes.
+         */
+        function writeRoom(r) {
+            if (!group || !r) return;
+            try {
+                const sky = group.getObjectByName('vr-world-panorama');
+                if (sky && r.sky && worldNow.sky && sky.material) {
+                    const texture = gradientSky(r.sky);
+                    if (texture) {
+                        if (sky.material.map) sky.material.map.dispose();
+                        sky.material.map = texture;
+                        sky.material.needsUpdate = true;
+                    }
+                }
+                if (r.fog && d.scene && d.scene.fog && d.scene.fog.color) d.scene.fog.color.set(r.fog.color);
+                const ground = group.getObjectByName('vr-world-ground');
+                if (ground && r.ground && ground.material && ground.material.color)
+                    ground.material.color.set(r.ground.color);
+            } catch (error) {
+                console.warn('[VRWorlds] room colours not applied', error);
+            }
         }
 
         // ── LW3: move her to a measured spot inside the world that is up ─────────────────
@@ -1421,6 +1467,7 @@
         writeSetting,
         loadCatalogue,
         createRuntime,
+        roomFor,
         attachSettings,
     };
 

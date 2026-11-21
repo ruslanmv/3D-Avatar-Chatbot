@@ -97,7 +97,7 @@ describe('PW security matrix — the items not covered elsewhere', () => {
         const s = setup();
         await flush();
         await s.core.act('light-warm', { instant: true });
-        expect(s.rt.setMood).toHaveBeenLastCalledWith(expect.any(Object), { instant: true });
+        expect(s.rt.setMood).toHaveBeenLastCalledWith(expect.any(Object), { instant: true, room: null });
         s.answers.privateOpen = false; // the person's End
         expect(s.core.gate().ok).toBe(false);
         expect(s.rt.setMood).toHaveBeenLastCalledWith(null, { instant: true });

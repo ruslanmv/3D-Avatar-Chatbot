@@ -64,6 +64,13 @@ if (process.argv.includes('--forge-grant') && !REAL_GRANT) {
 }
 // L5. Skin states to show on her after each position (see `states` above). Empty: none.
 const STATES = arg('--states', '').split(',').filter(Boolean);
+// BD38. Lines the person types after each position (`|` between lines): see `--say` below.
+// NL1. A playground mood for the room (`--mood normal-room`): see where it is applied below.
+const MOOD = arg('--mood', '');
+const SAY = (arg('--say') || '')
+    .split('|')
+    .map((x) => x.trim())
+    .filter(Boolean);
 // The library character whose prebuilt list holds those looks (Avatar A by default).
 const SLUG = arg('--slug', 'avatar-sample-a');
 const FORGE_URL = arg('--forge-url', '');
@@ -160,6 +167,22 @@ async function main() {
             })
             .catch(() => fail(`start: ${WORLD} not shown`));
         await page.waitForTimeout(3000);
+        // NL1. `--mood <id>`: the room in one of the playground moods (`normal-room`: the Window
+        // Room in ordinary light, sky, fog and floor included), the way 💡 Light sets it.
+        if (MOOD) {
+            report.mood = await page.evaluate((id) => {
+                const m = window.NEXUS_PLAYGROUND_MOODS && window.NEXUS_PLAYGROUND_MOODS.get(id);
+                if (!m) return { ok: false, why: 'no such mood' };
+                window.dispatchEvent(
+                    new CustomEvent('nexus-world-mood', {
+                        detail: { light: m.light, room: m.room || null, instant: true },
+                    })
+                );
+                return { ok: true, label: m.label };
+            }, MOOD);
+            if (!report.mood.ok) fail(`mood ${MOOD}: ${report.mood.why}`);
+            await page.waitForTimeout(800);
+        }
 
         const row = '#nexus-private-conversation-row';
         const read = () =>
@@ -466,6 +489,50 @@ async function main() {
                     await canvas.screenshot({ path: path.join(out, `${key}-${st}.png`) }).catch(() => {});
                 }
             }
+            // BD38. `--say "line|line"`: each line typed into the chat as the person would (the
+            // conversation surface a chip speaks through), after the position. What the bridge did
+            // with it (action, status, the state shown) goes in the report, and she is framed
+            // from behind: proof the words reach her body, not only the QA switcher above.
+            for (const [i, line] of SAY.entries()) {
+                const before = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.log().length);
+                const sent = await page.evaluate(
+                    (l) => !!(window.NEXUS_CONVERSATION_SURFACE && window.NEXUS_CONVERSATION_SURFACE.send(l)),
+                    line
+                );
+                await page
+                    .waitForFunction(
+                        (n) => {
+                            const fresh = window.NEXUS_PRIVATE_ACTIONS.log().slice(n);
+                            return fresh.length && fresh.every((a) => a.status !== 'pending');
+                        },
+                        before,
+                        { timeout: 90000, polling: 250 }
+                    )
+                    .catch(() => {});
+                await page.waitForTimeout(2500);
+                const did = await page.evaluate(
+                    (n) =>
+                        window.NEXUS_PRIVATE_ACTIONS.log()
+                            .slice(n)
+                            .map((a) => ({
+                                name: a.name,
+                                status: a.status,
+                                why: a.why || null,
+                                result: a.result || null,
+                            })),
+                    before
+                );
+                const skin = await page.evaluate(() => {
+                    const b = window.NEXUS_PRIVATE_ACTIONS.snapshot();
+                    return (b && b.skin) || null;
+                });
+                await canvas.screenshot({ path: path.join(out, `${key}-say-${i + 1}.png`) }).catch(() => {});
+                report.said = [...(report.said || []), { key, line, sent, did, skin }];
+                const body = did.find((a) => a.name.startsWith('body.'));
+                if (!sent || !body || body.status !== 'completed')
+                    fail(`say "${line}" on ${key}: ${JSON.stringify(body || did)}`);
+                else console.log(`ok   say "${line}" on ${key} → ${body.name} ${JSON.stringify(body.result)}`);
+            }
             if (HAIR_ASIDE) await page.evaluate(() => window.NEXUS_HAIR_ASIDE && window.NEXUS_HAIR_ASIDE.release());
             if (!now.last || now.last.pose !== key || now.last.status !== 'completed' || !now.last.seen)
                 fail(`take ${key}: ${JSON.stringify(now.last)}`);
@@ -513,6 +580,7 @@ async function sheet(browser) {
             [`${k}-behind`, `${k} · behind`],
             [`${k}-behind-hair`, `${k} · behind · hair aside`],
             ...STATES.map((st) => [`${k}-${st}`, `${k} · ${st}`]),
+            ...SAY.map((line, i) => [`${k}-say-${i + 1}`, `${k} · "${line}"`]),
         ]),
         ['level-5', 'The card at step 5'],
     ].filter(([f]) => fs.existsSync(path.join(out, `${f}.png`)));

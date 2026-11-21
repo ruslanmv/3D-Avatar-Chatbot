@@ -114,6 +114,30 @@
                 exposure: 1,
             }),
         }),
+        // NL1. The room in ordinary light, for a person who wants the Window Room (or any place)
+        // without its red: daylight lamps, and `room` repaints its sky, fog and floor too, which
+        // a light alone never reached (the red sky and floor stayed). Back to the place's own
+        // colours when another mood, or none, is chosen.
+        'normal-room': Object.freeze({
+            label: 'Normal light',
+            light: Object.freeze({
+                sky: '#f4f8ff',
+                ground: '#707078',
+                hemi: 0.95,
+                key: '#fff6e8',
+                keyIntensity: 1.1,
+                fill: '#e4eeff',
+                fillIntensity: 0.65,
+                rim: '#ffffff',
+                rimIntensity: 0.25,
+                exposure: 1,
+            }),
+            room: Object.freeze({
+                sky: Object.freeze({ top: '#dde4ec', horizon: '#f2eee8', bottom: '#cfc7bd' }),
+                fog: Object.freeze({ color: '#e9e5df' }),
+                ground: Object.freeze({ color: '#b8a68f' }),
+            }),
+        }),
         'romantic-evening': Object.freeze({
             label: 'Evening',
             light: Object.freeze({
@@ -138,7 +162,10 @@
     /** A preset by id, or null. Returns a copy: callers cannot edit the table. Pure. */
     function get(id) {
         const preset = PRESETS[String(id || '')];
-        return preset ? { id: String(id), label: preset.label, light: { ...preset.light } } : null;
+        if (!preset) return null;
+        const out = { id: String(id), label: preset.label, light: { ...preset.light } };
+        if (preset.room) out.room = preset.room; // NL1
+        return out;
     }
 
     const api = { PRESETS, ids, get };
