@@ -359,7 +359,11 @@
                 const preset = a.preset ? d.preset && d.preset(a.preset) : null;
                 if (!rt || typeof rt.setMood !== 'function' || (a.preset && !preset))
                     return note(id, false, 'no-light');
-                const ok = rt.setMood(preset ? preset.light : null, { instant: Boolean(o.instant) }) === true;
+                const ok =
+                    rt.setMood(preset ? preset.light : null, {
+                        instant: Boolean(o.instant),
+                        room: (preset && preset.room) || null, // NL1
+                    }) === true;
                 lit = ok ? Boolean(a.preset) : lit;
                 return note(id, ok, ok ? 'confirmed' : 'refused');
             }

@@ -367,7 +367,9 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
             state.mood = next.index;
             state.moodLabel = preset.label;
             win.dispatchEvent(
-                new win.CustomEvent('nexus-world-mood', { detail: { light: preset.light, instant: reducedMotion() } })
+                new win.CustomEvent('nexus-world-mood', {
+                    detail: { light: preset.light, room: preset.room || null, instant: reducedMotion() },
+                })
             );
         }
 

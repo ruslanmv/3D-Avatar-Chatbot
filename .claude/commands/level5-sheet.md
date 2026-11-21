@@ -59,6 +59,21 @@ state or a position, and put the two sheets side by side (step 5).
     - `--look-id <id> --look-sha <sha>`: one exact look, even one Forge has not
       listed (a rebuilt bare look is keep-existing).
     - `--lang en-US`: another language. Italian is the default.
+    - `--say "fammi il pugno nel culo|vengo dentro di te"`: lines typed into the
+      chat after each position, exactly as the person would (through the
+      conversation surface). The log says what the bridge did
+      (`ok say "…" → body.fist {"state":…}` or `FAIL` with why) and a frame from
+      behind is taken after each: proof the words reach her body. Without it the
+      `--states` frames are painted by a separate QA switcher and prove only the
+      look.
+    - `--mood normal-room`: the room in ordinary light (sky, fog and floor too,
+      not only the lamps), the way 💡 Light chooses it; any playground mood id
+      works.
+
+    To check that a request in the chat works end to end on the deployed Space,
+    the shortest run is `--keys all-fours --say "fammi il pugno nel culo"`
+    (2026-11-21 it caught `no-skin-pack`: her level-5 bare look had no pack,
+    BD38).
 
 4. **Read it.** The log says `ok` or `FAIL` per check: level 5 on with her bare,
    Ease back to 4, each position confirmed on her skeleton, easing to 3 stands

@@ -104,6 +104,12 @@ takes each position at the top of the pace and frames her from behind; writes `s
 - `--avatar <file>` / `--slug <library slug>`: another character (`AvatarSample_B.vrm`,
   `avatar-sample-b`).
 - `--hair-aside` adds `<key>-behind-hair.png` with her hair moved aside (HA1).
+- `--say "line|line"` (BD38) types each line into the chat after every position, as the person
+  would, and logs what the bridge did with it (`body.fist` completed with its state, or why
+  not), with a frame from behind: `<key>-say-<n>.png`. The way to prove a request in words
+  reaches her body; `--states` alone uses a QA switcher.
+- `--mood <id>` (NL1) puts the room in a playground mood after it loads: `normal-room` is any
+  place in ordinary light, sky, fog and floor included (the Window Room without its red).
 - `--look-id <id> --look-sha <sha256>` wears exactly that look, even one Forge has not listed
   (a rebuilt bare look is keep-existing), with that file's own hash.
 - With Forge's `tools/qa/verify_pack.sh` this is how a painter change is checked: one exact

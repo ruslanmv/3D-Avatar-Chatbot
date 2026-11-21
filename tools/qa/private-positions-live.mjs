@@ -65,6 +65,8 @@ if (process.argv.includes('--forge-grant') && !REAL_GRANT) {
 // L5. Skin states to show on her after each position (see `states` above). Empty: none.
 const STATES = arg('--states', '').split(',').filter(Boolean);
 // BD38. Lines the person types after each position (`|` between lines): see `--say` below.
+// NL1. A playground mood for the room (`--mood normal-room`): see where it is applied below.
+const MOOD = arg('--mood', '');
 const SAY = (arg('--say') || '')
     .split('|')
     .map((x) => x.trim())
@@ -165,6 +167,22 @@ async function main() {
             })
             .catch(() => fail(`start: ${WORLD} not shown`));
         await page.waitForTimeout(3000);
+        // NL1. `--mood <id>`: the room in one of the playground moods (`normal-room`: the Window
+        // Room in ordinary light, sky, fog and floor included), the way 💡 Light sets it.
+        if (MOOD) {
+            report.mood = await page.evaluate((id) => {
+                const m = window.NEXUS_PLAYGROUND_MOODS && window.NEXUS_PLAYGROUND_MOODS.get(id);
+                if (!m) return { ok: false, why: 'no such mood' };
+                window.dispatchEvent(
+                    new CustomEvent('nexus-world-mood', {
+                        detail: { light: m.light, room: m.room || null, instant: true },
+                    })
+                );
+                return { ok: true, label: m.label };
+            }, MOOD);
+            if (!report.mood.ok) fail(`mood ${MOOD}: ${report.mood.why}`);
+            await page.waitForTimeout(800);
+        }
 
         const row = '#nexus-private-conversation-row';
         const read = () =>

@@ -187,7 +187,8 @@
             rating: 'private',
             description: 'A small room behind a red-lit window: the whole evening with her.',
             image: PREVIEWS + 'window-room.webp',
-            moods: Object.freeze(['romantic-evening', 'neon-blue-purple', 'cozy-warm']),
+            // NL1. 💡 Light cycles these; 'normal-room' is the same room in ordinary light.
+            moods: Object.freeze(['romantic-evening', 'neon-blue-purple', 'cozy-warm', 'normal-room']),
             actions: Object.freeze([
                 { id: 'evening', kind: 'say', label: '🌹 The full evening', text: 'Give me the full evening' },
                 { id: 'striptease', kind: 'say', label: '💃 Striptease', text: 'Do a striptease for me' },
