@@ -337,7 +337,11 @@ async function main() {
                     // As the closet hands it over (TryOnHaulActivity): the hash Forge listed, so the
                     // download is verified and carries the read grant. Without it the loader
                     // fetches a private file bare and Forge answers 404.
-                    const wear = best.outputSha256 && !best.sha256 ? { ...best, sha256: best.outputSha256 } : best;
+                    const wear = {
+                        ...best,
+                        vrmUrl: c.forge.resolveUrl(best.vrmUrl),
+                        ...(best.outputSha256 && !best.sha256 ? { sha256: best.outputSha256 } : {}),
+                    };
                     window.__qaStateLook = wear;
                     await c.applyLook(wear);
                     return {
