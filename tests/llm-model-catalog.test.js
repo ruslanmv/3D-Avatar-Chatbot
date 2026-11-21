@@ -23,6 +23,10 @@ describe('MC1. chat models from the provider, newest first', () => {
             { id: 'gpt-image-1', created: 350 },
             { id: 'dall-e-3', created: 360 },
             { id: 'whisper-1', created: 5 },
+            { id: 'gpt-live-1.1', created: 900 },
+            { id: 'gpt-5.5-pro', created: 800 },
+            { id: 'gpt-5.5-pro-2026-04-23', created: 800 },
+            { id: 'gpt-5.3-codex', created: 700 },
         ],
     };
 
@@ -86,5 +90,49 @@ describe('MC1. chat models from the provider, newest first', () => {
         };
         await expect(m.sendMessage('hi', '', [])).rejects.toThrow(/401/);
         expect(calls).toBe(2);
+    });
+
+    test('a name the filter could not judge is skipped on its own refusal; the next newest answers', async () => {
+        localStorage.clear();
+        const m = new LLMManager();
+        m.updateSettings({ provider: 'openai', openai: { api_key: 'sk-test', model: 'gpt-3.5-turbo' } });
+        m.fetchAvailableModels = async () => ({ models: ['gpt-odd-1', 'gpt-6.2-sol', 'gpt-5.5'], error: null });
+        const seen = [];
+        m._chatOpenAI = async () => {
+            const model = m.getSettings().openai.model;
+            seen.push(model);
+            if (model === 'gpt-3.5-turbo') throw new Error('404 model_not_found');
+            if (model === 'gpt-odd-1') throw new Error('404 This is not a chat model');
+            return 'hello';
+        };
+        await expect(m.sendMessage('hello world', '', [])).resolves.toBe('hello');
+        expect(seen).toEqual(['gpt-3.5-turbo', 'gpt-odd-1', 'gpt-6.2-sol']);
+        expect(m.getSettings().openai.model).toBe('gpt-6.2-sol');
+    });
+
+    test('OpenAI is sent max_completion_tokens; another OpenAI-compatible server keeps max_tokens', async () => {
+        const sent = [];
+        const real = global.fetch;
+        global.fetch = async (url, init) => {
+            sent.push({ url, body: JSON.parse(init.body) });
+            return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'hi' } }] }) };
+        };
+        try {
+            for (const base_url of ['', 'http://127.0.0.1:1234']) {
+                const m = new LLMManager();
+                m._hasProxy = () => false;
+                m.updateSettings({
+                    provider: 'openai',
+                    openai: { api_key: 'sk-test', model: 'gpt-6.2-sol', base_url },
+                });
+                await m.sendMessage('hello world', '', []);
+            }
+        } finally {
+            global.fetch = real;
+        }
+        expect(sent[0].body.max_completion_tokens).toBeGreaterThan(0);
+        expect(sent[0].body.max_tokens).toBeUndefined();
+        expect(sent[1].body.max_tokens).toBeGreaterThan(0);
+        expect(sent[1].body.max_completion_tokens).toBeUndefined();
     });
 });

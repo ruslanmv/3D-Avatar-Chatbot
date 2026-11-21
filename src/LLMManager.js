@@ -234,8 +234,10 @@
      * retired GPT-3.5 family. Order: plain names before dated snapshots of the same, then
      * newest first, so the first entry is the one to default to.
      */
+    // Measured against OpenAI's list on 2026-11-21: `gpt-live-*`, the `-pro` models and `codex`
+    // answer "not a chat model / use v1/responses" on the chat endpoint this client calls.
     const NOT_CHAT =
-        /(audio|realtime|tts|transcribe|whisper|image|dall-e|embedding|moderation|search|computer-use|instruct|babbage|davinci)/i;
+        /(audio|realtime|tts|transcribe|whisper|image|dall-e|embedding|moderation|search|computer-use|instruct|babbage|davinci|live|codex|-pro(-|$))/i;
     function chatModels(provider, data) {
         const list = (data && Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).filter(
             (m) => m && typeof m.id === 'string'
@@ -259,6 +261,17 @@
         const names = {};
         for (const m of kept) if (m.display_name) names[m.id] = m.display_name;
         return { models: kept.map((m) => m.id), names };
+    }
+
+    /**
+     * MC1. The reply's length limit, named as the server expects. OpenAI's current models refuse
+     * `max_tokens` ("Use 'max_completion_tokens' instead", gpt-6.2-sol, 2026-11-21) and every model
+     * there accepts the new name; an OpenAI-compatible server at another base URL (LM Studio,
+     * vLLM…) may know only the old one, so it keeps it.
+     */
+    function openAITokens(baseUrl, n) {
+        const official = !baseUrl || /(^|\.)openai\.com/i.test(String(baseUrl));
+        return official ? { max_completion_tokens: n } : { max_tokens: n };
     }
 
     /** MC1. The saved model while the provider still offers it; otherwise the newest one. */
@@ -328,37 +341,52 @@
          * The new choice is saved (both stores), so it sticks; any other failure is the caller's.
          */
         async _withCurrentModel(provider, run) {
+            // "Retired" and "not a chat model" both mean: this name cannot answer here.
+            const unusable = (error) =>
+                /model_not_found|has been deprecated|does not exist|not_found_error|invalid model|not a chat model|not supported in the v1\/chat\/completions/i.test(
+                    String((error && error.message) || error)
+                );
             try {
                 return await run();
             } catch (error) {
-                const gone = /model_not_found|has been deprecated|does not exist|not_found_error|invalid model/i.test(
-                    String((error && error.message) || error)
-                );
                 // Not inside a connection test (`withSettings`): it reports what really happened.
-                if (!gone || this._replacingModel || this._trial) throw error;
+                if (!unusable(error) || this._replacingModel || this._trial) throw error;
                 const before = this._settings[provider] && this._settings[provider].model;
-                let next = '';
+                let offered = [];
                 try {
-                    const offered = await this.fetchAvailableModels();
-                    next = pickModel('', (offered && offered.models) || []);
+                    const answer = await this.fetchAvailableModels();
+                    offered = ((answer && answer.models) || []).filter((m) => m !== before);
                 } catch (_) {
-                    next = '';
+                    offered = [];
                 }
-                if (!next || next === before) throw error;
-                console.warn(`[LLMManager] ${before} is no longer offered by ${provider}; using ${next}`);
-                this.updateSettings({ [provider]: { model: next } });
-                try {
-                    if (global.localStorage && global.localStorage.getItem('ai_provider') === provider)
-                        global.localStorage.setItem('ai_model', next);
-                } catch (_) {
-                    /* private browsing: the manager's own store already has it */
-                }
+                // The newest first; a name the filter could not judge is skipped on its own
+                // refusal, up to three tries, so an unknown new kind never blocks the chat.
+                let last = error;
                 this._replacingModel = true;
                 try {
-                    return await run();
+                    for (const next of offered.slice(0, 3)) {
+                        this.updateSettings({ [provider]: { model: next } });
+                        try {
+                            const reply = await run();
+                            console.warn(`[LLMManager] ${before} cannot answer for ${provider}; now using ${next}`);
+                            try {
+                                if (global.localStorage && global.localStorage.getItem('ai_provider') === provider)
+                                    global.localStorage.setItem('ai_model', next);
+                            } catch (_) {
+                                /* private browsing: the manager's own store already has it */
+                            }
+                            return reply;
+                        } catch (e) {
+                            last = e;
+                            if (!unusable(e)) break;
+                        }
+                    }
                 } finally {
                     this._replacingModel = false;
                 }
+                // Nothing worked: the saved choice goes back as it was, and the error is shown.
+                this.updateSettings({ [provider]: { model: before } });
+                throw last;
             }
         }
 
@@ -479,7 +507,7 @@
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
                 ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
-            const body = { model, messages, max_tokens: this._tokenBudget(500), stream: true };
+            const body = { model, messages, ...openAITokens(base_url, this._tokenBudget(500)), stream: true };
 
             const res = this._hasProxy()
                 ? await this._fetchViaProxy(url, 'POST', headers, body)
@@ -1122,7 +1150,7 @@
             const body = {
                 model: model,
                 messages: messages,
-                max_tokens: this._tokenBudget(500),
+                ...openAITokens(base_url, this._tokenBudget(500)),
             };
 
             let res;
@@ -1147,7 +1175,7 @@
             return requireCompletion(data.choices?.[0]?.message?.content, {
                 provider: 'OpenAI',
                 finishReason: data.choices?.[0]?.finish_reason,
-                budget: body.max_tokens,
+                budget: body.max_completion_tokens || body.max_tokens,
             });
         }
 
