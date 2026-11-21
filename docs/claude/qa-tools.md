@@ -89,6 +89,27 @@ source rig (`audits/animations/run.mjs`), the living layer
 heels (`tools/qa/body-detail-render.mjs`), and the motion gallery
 (`tools/qa/motion-gallery.mjs`).
 
+## Her body from behind, and one exact Forge look (L5, HA, BD25–BD29)
+
+`node tools/qa/private-positions-live.mjs --level5 --behind --keys all-fours,face-down,bent-over`
+takes each position at the top of the pace and frames her from behind; writes `sheet.png`.
+
+- `--forge-grant` (grant from `FORGE_GRANT` in the environment only) and `--forge-url <url>`:
+  the second gate is real, against that Forge.
+- `--states a,b` wears her bare look whose skin pack holds most of them and switches each one
+  live (the app's own `NEXUS_SKIN_STATES`) after every position: `<key>-<state>.png`.
+- `--avatar <file>` / `--slug <library slug>`: another character (`AvatarSample_B.vrm`,
+  `avatar-sample-b`).
+- `--hair-aside` adds `<key>-behind-hair.png` with her hair moved aside (HA1).
+- `--look-id <id> --look-sha <sha256>` wears exactly that look, even one Forge has not listed
+  (a rebuilt bare look is keep-existing), with that file's own hash.
+- With Forge's `tools/qa/verify_pack.sh` this is how a painter change is checked: one exact
+  pack built on a local Forge that never publishes, worn here by id. Forge's
+  `tools/qa/compare_frames.py` puts runs side by side.
+
+`node tools/qa/provider-keys-check.mjs` (K1, K2): every provider's key field can be typed into,
+and Test Connection tries the provider the form shows (after Fetch Models), not the saved one.
+
 ## Forge (the wardrobe service, its own repository)
 
 `tools/prebuild_private.py` (BD21: every private bare look for every character —
@@ -99,6 +120,13 @@ see Forge's CLAUDE.md ▸ Looking at results. Read-only checks of the HF dataset
 use a token only in one command's environment, never in a file.
 
 ## Lessons these tools taught (so the next session does not relearn them)
+
+- Measure the body before changing a painter: Avatar A's thigh bands survived three paint
+  fixes because her crotch landmark was 4 cm under her real crotch (Forge BD29); Forge's
+  `tools/body_surface/anatomy_probe.py` finds that in seconds.
+- A test look built on a Forge with the HF backend is published unless
+  `WARDROBE_HF_PUBLISH=false`; a renderer that picks from the list shows the old look after a
+  rebuild of a listed bare look: wear the new one by `--look-id`.
 
 - Frame from her bones, never from the mesh box: a skinned mesh's box is its
   standing shape, so lying poses were framed as if she stood.
