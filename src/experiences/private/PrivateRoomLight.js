@@ -45,7 +45,16 @@
         }
     }
 
-    function moodEvent(win, normal) {
+    /** Meta's comfort guidance: no abrupt brightness change in a headset; a cut only for reduced motion. */
+    function reducedMotion(win) {
+        try {
+            return Boolean(win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function moodEvent(win, normal, instant) {
         const moods = win && win.NEXUS_PLAYGROUND_MOODS;
         const preset = normal && moods && typeof moods.get === 'function' ? moods.get(MOOD_ID) : null;
         if (normal && !preset) return false; // no preset here: leave the room as it is
@@ -53,8 +62,8 @@
             win.dispatchEvent(
                 new win.CustomEvent('nexus-world-mood', {
                     detail: preset
-                        ? { light: preset.light, room: preset.room || null, instant: true }
-                        : { light: null, room: null, instant: true },
+                        ? { light: preset.light, room: preset.room || null, instant: Boolean(instant) }
+                        : { light: null, room: null, instant: Boolean(instant) },
                 })
             );
             return true;
@@ -75,7 +84,8 @@
         }
         const now = Boolean(on);
         const w = win || global;
-        if (shownPrivate && w) moodEvent(w, Boolean(on));
+        // A flip in the middle of the evening blends (VRWorlds' MOOD_SECONDS), unless reduced motion.
+        if (shownPrivate && w) moodEvent(w, Boolean(on), reducedMotion(w));
         if (now !== was)
             for (const fn of [...listeners]) {
                 try {
@@ -103,7 +113,8 @@
         const onShown = (event) => {
             const d = (event && event.detail) || {};
             shownPrivate = d.id && d.rating === 'private' ? String(d.id) : null;
-            if (shownPrivate && isNormal()) moodEvent(w, true);
+            // The room arrives under the world's own fade to black: at once, so it never fades in red.
+            if (shownPrivate && isNormal()) moodEvent(w, true, true);
         };
         w.addEventListener('nexus-world-shown', onShown);
         installed = () => {

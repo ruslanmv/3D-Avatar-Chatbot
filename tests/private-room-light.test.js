@@ -47,6 +47,7 @@ describe('NL2. the room light in Private', () => {
         shown({ id: 'window-room', rating: 'private' });
         RL.setNormal(true, window);
         expect(moods.at(-1).room).toBeTruthy();
+        expect(moods.at(-1).instant).toBe(false); // blended mid-evening, never a jump (Meta comfort)
         RL.setNormal(false, window);
         expect(moods.at(-1)).toMatchObject({ light: null, room: null });
         expect(RL.isNormal()).toBe(false);
