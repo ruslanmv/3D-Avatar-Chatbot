@@ -148,7 +148,13 @@ function measure(page) {
         const bar = document.getElementById('nexus-playground-bar');
         const row = document.getElementById('nexus-private-conversation-row');
         const card = row && row.querySelector('.nexus-private-card');
-        const end = row && [...row.querySelectorAll('button')].find((b) => /^(End|Fine)\b/i.test(b.textContent.trim()));
+        // PV8. End is the heading's × now (aria-label "End chat" / "Termina chat"); the old text button
+        // is matched too so a before/after run measures both builds.
+        const end =
+            (row && row.querySelector('.nexus-private-end')) ||
+            (row && [...row.querySelectorAll('button')].find((b) => /^(End|Fine)\b/i.test(b.textContent.trim())));
+        const composer = document.getElementById('speech-text');
+        const composerBox = composer && (composer.closest('.chat-input-shell, .input-area, form') || composer);
         const input =
             document.getElementById('user-input') ||
             document.querySelector('.chat-input-shell textarea, .chat-input-shell input');
@@ -171,6 +177,17 @@ function measure(page) {
                   }
                 : null,
             privateCard: rect(row),
+            // PV8. The owner asked for ~8 px between the card and the message input.
+            gapToInput:
+                row && composerBox
+                    ? Math.round(composerBox.getBoundingClientRect().top - row.getBoundingClientRect().bottom)
+                    : null,
+            endTarget: end
+                ? {
+                      w: Math.round(end.getBoundingClientRect().width),
+                      h: Math.round(end.getBoundingClientRect().height),
+                  }
+                : null,
             transcript: card ? { visibleH: Math.round(card.clientHeight), contentH: card.scrollHeight } : null,
             endVisible: !!end && onTop(end),
             endRect: rect(end),

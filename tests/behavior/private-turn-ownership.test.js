@@ -100,14 +100,14 @@ describe('a beat never lands on top of a live turn', () => {
         // Well past 45 s, and twelve seconds past the old eight-second guess. The mood
         // question must not be on screen while she is mid-sentence.
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
 
         stream.finish('I was thinking that this is enough, actually.');
         // Her sentence lands, and then the beat does — after a real pause, not in the same
         // instant. P12 asks for a quiet moment before an unprompted line, so the wait here is
         // `GUIDANCE.idleMs` rather than the breathing room alone.
         jest.advanceTimersByTime(6000);
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
         jest.advanceTimersByTime(20000);
         expect(actions()).toEqual(expect.arrayContaining(['playful', 'tender']));
 
@@ -148,7 +148,7 @@ describe('a beat never lands on top of a live turn', () => {
         Surface.beginAssistant().discard();
 
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
 
         s.activity.stop('user');
     });
@@ -163,7 +163,7 @@ describe('the valves, because a dead provider must not mute the evening', () => 
         Surface.beginAssistant(); // never finished, never discarded — the 504-and-retry loop
 
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
 
         // Past the valve. The session resumes rather than sitting silent for the rest of the
         // evening, which is the worse of the two failures.
@@ -335,7 +335,7 @@ describe('a guided line waits for a lull, and gives up on one that never comes (
         }
 
         // Eighty seconds in, past two beats' earliest times, and neither has interrupted.
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
 
         s.activity.stop('user');
     });
@@ -348,7 +348,7 @@ describe('a guided line waits for a lull, and gives up on one that never comes (
         Surface.renderUser('I was just thinking about the light in here');
         Surface.beginAssistant().finish('It is nicer with the lamp off.');
         jest.advanceTimersByTime(6000);
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
 
         // They stop typing. Past the idle window, the script has something to offer.
         jest.advanceTimersByTime(20000);

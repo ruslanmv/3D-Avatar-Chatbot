@@ -89,7 +89,7 @@ describe('the forward control, over the real consent flow (P12)', () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
 
-        expect(actions()).toEqual(['closer', 'end']);
+        expect(actions()).toEqual(['end', 'closer']);
         const forward = document.querySelector('[data-private-action="closer"]');
         expect(forward.textContent).toBe('Closer →');
         expect(forward.classList.contains('is-primary')).toBe(true);
@@ -158,12 +158,12 @@ describe('the forward control, over the real consent flow (P12)', () => {
         ready();
         click('closer');
         expect(s.adult.level).toBe(3);
-        expect(actions()).toEqual(['ease', 'end']);
+        expect(actions()).toEqual(['end', 'ease']);
 
         click('ease');
         expect(s.adult.level).toBe(2);
         expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Romantic');
-        expect(actions()).toEqual(['ease', 'closer', 'end']);
+        expect(actions()).toEqual(['end', 'ease', 'closer']);
 
         s.activity.stop('user');
     });
