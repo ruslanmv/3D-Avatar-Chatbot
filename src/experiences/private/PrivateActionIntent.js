@@ -518,7 +518,7 @@
         ],
         [
             'two-hands',
-            'tied,? two hands|legata,? due mani|atada,? dos manos|attachée,? deux mains|attachee,? deux mains|gefesselt,? zwei hände|gefesselt,? zwei haende|amarrada,? duas mãos|amarrada,? duas maos|縛って両手で|묶고 두 손으로|绑起来两只手',
+            'tied and wide open|legata e spalancata|atada y abierta|attachée et grande ouverte|attachee et grande ouverte|gefesselt und weit offen|amarrada e escancarada|縛られて、開ききって|묶인 채 활짝|绑着全开',
         ],
         [
             'fist-then-ass',
