@@ -290,7 +290,12 @@ room is moved under her, never her; beds measured by `tools/vr/measure-bed.mjs`,
 never typed). `ID` for her standing idle (`src/gltf-viewer/RelaxedIdle.js`: arms
 solved per body so the hands rest beside the thighs, one elbow bent more,
 fingers curled; the default `relaxedIdle` preset; check with
-`tools/qa/idle-pose-check.mjs`). `PB` for what she knows of her body
+`tools/qa/idle-pose-check.mjs`). `HA` for her hair aside
+(`src/gltf-viewer/HairAside.js`: a mode added beside the positions, never a
+change to one; the person's ⋯ chip or words only, `avatar.hair`; her spring-bone
+hair falls along her forward, and the snapshot is written back on "back", when
+she stands and when the evening ends; see it with `--hair-aside` in
+`tools/qa/private-positions-live.mjs`). `PB` for what she knows of her body
 (`PrivateBodyKnowledge.js`, bridge `packLines`: a short index of families
 always, a family's names only when the person's words touch it, filtered by her
 position, under budgets a test enforces; extras come with a look, so she names

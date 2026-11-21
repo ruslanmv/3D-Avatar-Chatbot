@@ -68,6 +68,9 @@ const STATES = arg('--states', '').split(',').filter(Boolean);
 const SLUG = arg('--slug', 'avatar-sample-a');
 const FORGE_URL = arg('--forge-url', '');
 const AVATAR = arg('--avatar', '');
+// HA1. `--hair-aside`: after each plain frame from behind, her hair is moved aside (the mode the
+// ⋯ chip turns on, NEXUS_HAIR_ASIDE) and framed again; the state frames are then taken with it on.
+const HAIR_ASIDE = process.argv.includes('--hair-aside');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -403,6 +406,15 @@ async function main() {
                 });
                 await page.waitForTimeout(500);
                 await canvas.screenshot({ path: path.join(out, `${key}-behind.png`) }).catch(() => {});
+                if (HAIR_ASIDE) {
+                    const moved = await page.evaluate(() =>
+                        window.NEXUS_HAIR_ASIDE ? window.NEXUS_HAIR_ASIDE.applyCurrent('front') : -1
+                    );
+                    report.hairAside = { ...(report.hairAside || {}), [key]: moved };
+                    if (!(moved > 0)) fail(`hair aside on ${key}: ${moved} joints`);
+                    await page.waitForTimeout(2500);
+                    await canvas.screenshot({ path: path.join(out, `${key}-behind-hair.png`) }).catch(() => {});
+                }
                 // L5. Each state asked for, painted by the app's own switcher on the look she wears.
                 for (const st of report.stateLook && report.stateLook.ok ? STATES : []) {
                     const shown = await page.evaluate(async (st) => {
@@ -425,6 +437,7 @@ async function main() {
                     await canvas.screenshot({ path: path.join(out, `${key}-${st}.png`) }).catch(() => {});
                 }
             }
+            if (HAIR_ASIDE) await page.evaluate(() => window.NEXUS_HAIR_ASIDE && window.NEXUS_HAIR_ASIDE.release());
             if (!now.last || now.last.pose !== key || now.last.status !== 'completed' || !now.last.seen)
                 fail(`take ${key}: ${JSON.stringify(now.last)}`);
             console.log(`${now.last && now.last.status === 'completed' ? 'ok  ' : 'FAIL'} ${key} → ${now.preset}`);
@@ -469,6 +482,7 @@ async function sheet(browser) {
         ...KEYS.flatMap((k) => [
             [k, k],
             [`${k}-behind`, `${k} · behind`],
+            [`${k}-behind-hair`, `${k} · behind · hair aside`],
             ...STATES.map((st) => [`${k}-${st}`, `${k} · ${st}`]),
         ]),
         ['level-5', 'The card at step 5'],

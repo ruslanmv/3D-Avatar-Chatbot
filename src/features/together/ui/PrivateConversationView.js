@@ -255,13 +255,14 @@ const PrivateConversationView = (() => {
 /* UN27. The closer positions, first in the menu, only at the top of the pace. */
 #${ROW_ID} .nexus-private-positions{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 #${ROW_ID} .nexus-private-positions-title{flex:0 0 100%;font-size:.66rem;letter-spacing:.06em;color:#f3bbcd;opacity:.75}
-#${ROW_ID} .nexus-private-position{
+#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair{
   min-height:32px;padding:.3rem .7rem;border-radius:999px;border:1px solid rgba(240,143,182,.45);
   background:rgba(240,143,182,.1);color:#eef3f8;font:600 .74rem/1.2 system-ui,sans-serif;cursor:pointer
 }
-#${ROW_ID} .nexus-private-position:hover{background:rgba(240,143,182,.22)}
-#${ROW_ID} .nexus-private-position:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
-@media (pointer:coarse){#${ROW_ID} .nexus-private-position{min-height:44px}}
+#${ROW_ID} .nexus-private-position:hover,#${ROW_ID} .nexus-private-hair:hover{background:rgba(240,143,182,.22)}
+#${ROW_ID} .nexus-private-position:focus-visible,#${ROW_ID} .nexus-private-hair:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
+#${ROW_ID} .nexus-private-hair{border-style:dashed}
+@media (pointer:coarse){#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair{min-height:44px}}
 #${ROW_ID} #nexus-playground-bar{
   position:static;display:flex;width:100%;max-width:100%;margin:0;padding:0;
   background:none;box-shadow:none;border:0;border-radius:0;
@@ -1421,11 +1422,26 @@ const PrivateConversationView = (() => {
                     button.dataset.privatePosition = key;
                     group.appendChild(button);
                 }
+                // HA1. Her hair aside: a mode added to the list, after every position, never one of
+                // them (it changes no position); spoken like a chip, read by the bridge's avatar.hair.
+                const hair = this.doc.createElement('button');
+                hair.type = 'button';
+                hair.className = 'nexus-private-hair';
+                hair.dataset.privateHair = 'aside';
+                group.appendChild(hair);
                 slot.insertBefore(group, slot.firstChild);
             }
             // Words are set on every paint: the person can change the language mid-session.
             group.setAttribute('aria-label', t('positions.title'));
             group.querySelector('.nexus-private-positions-title').textContent = t('positions.title');
+            const hairChip = group.querySelector('.nexus-private-hair');
+            if (hairChip) {
+                hairChip.textContent = t('hair.aside.label');
+                hairChip.title = t('hair.aside.say');
+                hairChip.onclick = () => {
+                    if (this._onPosition) this._onPosition(t('hair.aside.say'), 'hair-aside');
+                };
+            }
             for (const button of group.querySelectorAll('.nexus-private-position')) {
                 const key = button.dataset.privatePosition;
                 button.textContent = t(`position.${key}.label`);
