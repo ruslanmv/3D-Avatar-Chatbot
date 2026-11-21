@@ -511,6 +511,23 @@
             'like-last-time',
             '(?:just )?like last time|come l.ultima volta|come la volta scorsa|como la última vez|como la ultima vez|comme la dernière fois|wie letztes mal|wie beim letzten mal|como da última vez|como da ultima vez|前みたいにして|前みたいに|지난번처럼 해줘|지난번처럼|像上次一样',
         ],
+        // BD31. The fist-then-inside stories, by their exact names (matched first: see STORY_SHOWS).
+        [
+            'fist-then-inside',
+            'first the fist,? then inside|prima il pugno,? poi dentro|primero el puño,? luego dentro|primero el puno,? luego dentro|d.abord le poing,? (?:et )?puis dedans|erst die faust,? dann rein|primeiro o punho,? depois dentro|先に拳、それから中に|먼저 주먹, 그다음 안에|先拳交再内射',
+        ],
+        [
+            'two-hands',
+            'tied and wide open|legata e spalancata|atada y abierta|attachée et grande ouverte|attachee et grande ouverte|gefesselt und weit offen|amarrada e escancarada|縛られて、開ききって|묶인 채 활짝|绑着全开',
+        ],
+        [
+            'fist-then-ass',
+            'the fist,? then the ass|prima il pugno,? poi il culo|primero el puño,? luego el culo|primero el puno,? luego el culo|d.abord le poing,? (?:et )?puis le cul|erst die faust,? dann der arsch|primeiro o punho,? depois o cu|先に拳、それからお尻に|먼저 주먹, 그다음 엉덩이에|先拳交再射屁股',
+        ],
+        [
+            'worse-than-last-time',
+            'worse than last time|peggio dell.ultima volta|peor que la última vez|peor que la ultima vez|pire que la dernière fois|schlimmer als letztes mal|pior do que da última vez|pior do que da ultima vez|前よりもっとひどく|지난번보다 더 심하게|比上次更狠',
+        ],
         [
             'used-marked',
             'used and marked|use me and mark me|usami e segnami|usata e segnata|úsame y márcame|usada y marcada|utilise-moi et marque-moi|utilisée et marquée|benutz mich und markier mich|benutzt und markiert|usa-me e marca-me|usada e marcada|使って印をつけて|써 주고 흔적을 남겨|用我并留下痕迹',
@@ -686,6 +703,16 @@
         if (HAIR_ASIDE.test(body) || HAIR_ASIDE_CJK.test(body)) {
             const side = HAIR_LEFT.test(body) ? 'left' : HAIR_RIGHT.test(body) ? 'right' : 'front';
             return action('avatar.hair', { move: 'aside', side }, 'avatar');
+        }
+        return null;
+    }
+
+    const STORY_SHOWS = ['fist-then-inside', 'worse-than-last-time', 'fist-then-ass', 'two-hands'];
+    function storyShowFrom(body) {
+        for (const [id, words] of ROUTINE_NAMES) {
+            if (!STORY_SHOWS.includes(id)) continue;
+            if (new RegExp(words, 'iu').test(body))
+                return action('avatar.routine', { routine: id, move: 'start' }, 'avatar');
         }
         return null;
     }
@@ -1301,6 +1328,10 @@
             !['playing', 'loading', 'searching'].includes(c.musicStatus)
         )
             return action('music.play', { query: '', again: true }, 'music');
+        // BD31. The two story shows are named with fist and finish words ("first the fist, then
+        // inside"): their exact names are read before anything could take them for the acts.
+        const story = !NEGATED.test(body) ? storyShowFrom(body) : null;
+        if (story) return story;
         // UN5. Her body, and dressing again, before anything could read them as clothes or talk.
         const posed = !NEGATED.test(body) ? bodyFrom(body, c) : null;
         if (posed) return posed;

@@ -1344,7 +1344,8 @@
             }
             // UR1. Her body at this step (arousal, the edge, oil, rope), when her look's pack has
             // it. Never a finish (those are the person's), and never over a finish still on her.
-            if (ok && step.skin && s.skin && !s.finish && Array.isArray(s.skinStates)) {
+            // BD31. Nor over their fist: once they have given it, the gape stays until they finish.
+            if (ok && step.skin && s.skin && !s.finish && !s.fist && Array.isArray(s.skinStates)) {
                 if (s.skinStates.some((x) => x && x.name === step.skin))
                     Promise.resolve(s.skin.apply(step.skin)).catch(() => {});
             }
@@ -1964,8 +1965,10 @@
         // now has its own state (Forge's doggy-fisted); both stays the fallback for an old pack.
         doggy: {
             front: ['doggy-fisted', 'doggy-both-fisted'],
-            anal: ['doggy-anal-fisted'],
-            both: ['doggy-both-fisted'],
+            // BD28. Or left open in a round ring, when her look is Forge's ring pack.
+            anal: ['doggy-anal-fisted', 'doggy-anal-ring'],
+            // BD33. Or tied and marked, when her look is Forge's rough pack.
+            both: ['doggy-both-fisted', 'sado-both-fisted'],
         },
         missionary: {
             front: ['missionary-fisted'],
@@ -1980,8 +1983,8 @@
      */
     const FIST_BY_TARGET = Object.freeze({
         front: ['missionary-fisted'],
-        anal: ['doggy-anal-fisted', 'missionary-fisted-anal'],
-        both: ['doggy-both-fisted'],
+        anal: ['doggy-anal-fisted', 'doggy-anal-ring', 'missionary-fisted-anal'],
+        both: ['doggy-both-fisted', 'sado-both-fisted'],
     });
 
     /**
@@ -2043,11 +2046,37 @@
      * state, filled (Forge's `<state>-cum`: doggy-fisted-cum, doggy-bottle-anal-cum…), when her
      * look's pack holds it. A finish on her back or belly is not inside: the usual places.
      */
+    /*
+     * BD31. Their fist in her ass, then they finish in her pussy: the owner's story, in that
+     * order. Forge's `<anal state>-cum` fills her ass; "inside" is her pussy, so it shows her
+     * ass still gaping and empty and her pussy full (the creampie state of that fist). "Both"
+     * fills both; "ass" fills the gape. Each falls back to the plain filled state when her pack
+     * does not hold the precise one.
+     */
+    const AFTER_ANAL_FIST = Object.freeze({
+        'doggy-anal-fisted': {
+            inside: 'doggy-anal-fisted-creampie',
+            both: 'doggy-both-fisted-cum',
+            ass: 'doggy-anal-fisted-cum',
+        },
+        'doggy-anal-ring': { inside: 'doggy-ring-creampie', both: 'doggy-both-ring-cum', ass: 'doggy-anal-ring-cum' },
+        // BD32. Their fist in her pussy, then they finish in her ass: her pussy left gaping, her
+        // ass full (Forge's doggy-fisted-anal-cum). "Inside" keeps the plain filled state.
+        'doggy-fisted': { ass: 'doggy-fisted-anal-cum', inside: 'doggy-fisted-cum', both: 'doggy-both-fisted-cum' },
+        // BD33. Tied, marked, both their hands: wherever they finish, both holes stay open, filled.
+        'sado-both-fisted': {
+            inside: 'sado-both-fisted-cum',
+            ass: 'sado-both-fisted-cum',
+            both: 'sado-both-fisted-cum',
+        },
+    });
     function filledAfterFist(s, where) {
         if (!s.fist || !['inside', 'ass', 'both', 'choose'].includes(where)) return null;
-        const filled = `${s.fist.state}-cum`;
+        const place = where === 'choose' ? 'inside' : where;
         const names = (s.skinStates || []).map((x) => x.name);
-        return names.includes(filled) ? { place: where === 'choose' ? 'inside' : where, state: filled } : null;
+        const precise = (AFTER_ANAL_FIST[s.fist.state] || {})[place];
+        const filled = [precise, `${s.fist.state}-cum`].filter(Boolean).find((n) => names.includes(n));
+        return filled ? { place, state: filled } : null;
     }
 
     function finishOn(s, action) {

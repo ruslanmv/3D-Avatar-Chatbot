@@ -113,12 +113,17 @@
         /^(?:ho finito|he terminado|ya terminé|j[’']ai fini|c[’']est fini|ich bin fertig|já terminei|acabei)(?: (?:per (?:oggi|stasera)|por hoy|pour ce soir|für heute|por hoje))?[\s.!…]*$/u,
         /やめて|もうやめる|終わりにして|おやすみ|그만해|그만하자|끝내자|잘 자|别做了|不要了|结束吧|够了|晚安/u,
         /^(?:そこまで|그만|停)[\s.!…。]*$/u,
+        // BD33. The traffic light a scene agrees at the door (Valentina's "tied, two hands"):
+        // red stops, as the whole of a message, so "a red dress" never does.
+        /^(?:red|red light|rosso|semaforo rosso|rojo|rouge|rot|vermelho|赤|빨강|빨간불|红|红灯)[\s.!…。]*$/u,
     ];
     const PACE_DOWN_I18N = [
         edge(
             'rallenta|calmati|vai piano|andiamo piano|piano piano|troppo (?:veloce|intenso|forte)|meno intenso|baja el ritmo|ve más despacio|tómatelo con calma|tomatelo con calma|demasiado (?:rápido|rapido|intenso)|menos intenso|ralentis|vas-y doucement|trop (?:vite|intense|fort)|moins intense|calme-toi|mach langsam|zu (?:schnell|viel|intensiv)|weniger intensiv|beruhig dich|vai com calma|muito (?:rápido|intenso)|menos intenso|acalma-te'
         ),
         /激しすぎ|速すぎ|落ち着いて|ゆっくりにして|너무 빨라|너무 세|살살 해|진정해|太快了|太激烈|轻一点|慢下来/u,
+        // BD33. Yellow eases off, as the whole of a message.
+        /^(?:yellow|yellow light|giallo|semaforo giallo|amarillo|jaune|gelb|amarelo|黄色|노랑|노란불|黄|黄灯)[\s.!…。]*$/u,
     ];
     /**
      * SW3. Hesitation: unsure is not a yes. "Maybe", "I'm not sure", "wait", "I'm not ready" ease

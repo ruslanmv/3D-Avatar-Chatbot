@@ -35,7 +35,14 @@ describe('L5 No limits', () => {
             return r && r.name === 'avatar.routine' ? r.params.routine || r.params.id : null;
         };
         for (const lang of Locale.languages())
-            for (const id of ['full-service', 'like-last-time']) {
+            for (const id of [
+                'full-service',
+                'like-last-time',
+                'fist-then-inside',
+                'worse-than-last-time',
+                'fist-then-ass',
+                'two-hands',
+            ]) {
                 const say = Locale.t(`routine.${id}.say`, null, lang);
                 expect([say, show(say)]).toEqual([say, id]);
             }

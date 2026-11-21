@@ -162,14 +162,20 @@ describe('UR1 Unrestrained shows', () => {
         expect(UR.sort()).toEqual([
             'dom-sub',
             'edging',
+            // BD32 and BD31. Their stories: the fist, then the ass / then inside.
+            'fist-then-ass',
+            'fist-then-inside',
             // L5. Valentina's and Chiara's shows.
             'full-service',
             'like-last-time',
             'oil-everything',
             'rounds',
             'tied',
+            // BD33.
+            'two-hands',
             'used-marked',
             'window-show',
+            'worse-than-last-time',
         ]);
         for (const id of UR) {
             expect(Routines.level(id, Policy.poseLevel)).toBe(4);
@@ -181,5 +187,47 @@ describe('UR1 Unrestrained shows', () => {
                 }
             }
         }
+    });
+});
+
+describe('BD31. the fist-then-inside stories: she invites, the person acts', () => {
+    test.each(['fist-then-inside', 'worse-than-last-time', 'fist-then-ass'])(
+        '%s never shows a fist or a finish on its own',
+        (id) => {
+            const r = Routines.ROUTINES[id];
+            expect(r && r.unrestrained).toBe(true);
+            for (const step of r.steps) {
+                expect(step.skin || '').not.toMatch(/fist|ring|cum|creampie|bottle/);
+                expect(step.body).not.toMatch(/\b(?:girl|teen|young|school)\b/i);
+            }
+            // Each ends where the person's finish lands from behind (the doggy states).
+            expect(['all-fours', 'face-down', 'bent-over']).toContain(r.steps[r.steps.length - 1].pose);
+        }
+    );
+});
+
+describe('BD33. tied, two hands: agreed with a traffic light, ends held close', () => {
+    const Director = require('../src/features/together/PrivateTurnDirector.js');
+    test('it ties and marks her, never shows their hands or a finish itself, and ends in aftercare', () => {
+        const r = Routines.ROUTINES['two-hands'];
+        expect(r.unrestrained).toBe(true);
+        expect(r.steps.map((x) => x.skin).filter(Boolean)).toEqual(['sado-roped-open', 'sado-whipped-open']);
+        expect(r.steps[r.steps.length - 1].pose).toBe('spoon');
+        expect(r.steps[r.steps.length - 1].body).toMatch(/untied|all right/);
+        expect(r.steps.map((x) => x.body).join(' ')).not.toMatch(/blood|bleed|wound|\bcut\b|injur/i);
+    });
+    test.each([
+        ['red', 'end'],
+        ['Rosso!', 'end'],
+        ['rojo', 'end'],
+        ['yellow', 'pace-down'],
+        ['giallo', 'pace-down'],
+        ['gelb', 'pace-down'],
+    ])('"%s" → %s', (said, intent) => {
+        expect(Director.classify(said).intent).toBe(intent);
+    });
+    test('a colour inside a sentence is just talk', () => {
+        expect(Director.classify('put on the red dress').intent).not.toBe('end');
+        expect(Director.classify('mettiti il vestito rosso').intent).not.toBe('end');
     });
 });

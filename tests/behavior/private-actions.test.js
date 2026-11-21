@@ -2572,6 +2572,113 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             }
         });
 
+        test.each([
+            ['doggy-anal-fisted', 'doggy-anal-fisted-creampie', 'doggy-both-fisted-cum'],
+            ['doggy-anal-ring', 'doggy-ring-creampie', 'doggy-both-ring-cum'],
+        ])(
+            'BD31. their fist in her ass (%s), then they come in her pussy: ass gaping and empty, pussy full',
+            async (fisted, creampie, both) => {
+                const calls = stubSkin();
+                const create = window.NEXUS_SKIN_STATES.create;
+                window.NEXUS_SKIN_STATES.create = () => {
+                    const skin = create();
+                    const attach = skin.attach;
+                    skin.attach = async (root, look) => [
+                        ...(await attach(root, look)),
+                        { name: fisted, body: 'your ass gaping after their fist' },
+                        { name: `${fisted}-cum`, body: 'your gaping ass full of cum' },
+                        { name: creampie, body: 'your ass gaping and empty, your pussy full' },
+                        { name: both, body: 'both holes open and full' },
+                    ];
+                    return skin;
+                };
+                let held = null;
+                const real = window.NEXUS_PRIVATE_POSES;
+                window.NEXUS_PRIVATE_POSES = {
+                    create: () => ({
+                        held: () => held,
+                        apply: () => ({ ok: true }),
+                        release: () => {},
+                        back: () => ({ ok: true }),
+                        describe: () => null,
+                    }),
+                };
+                window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+                const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+                try {
+                    const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                    window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                    w.adult.level = 4;
+                    await say('Mettiti il vestito da cocktail nero');
+                    await flush();
+                    await say('spogliati');
+                    await flush();
+                    held = 'all-fours';
+                    await say('fammi il pugno nel culo');
+                    await flush();
+                    expect(calls[calls.length - 1]).toBe(`apply:${fisted}`);
+                    // In her pussy: her ass stays gaping and empty, her pussy is full.
+                    await say('vengo dentro di te');
+                    await flush();
+                    expect(calls[calls.length - 1]).toBe(`apply:${creampie}`);
+                } finally {
+                    window.NEXUS_PRIVATE_POSES = real;
+                }
+            }
+        );
+
+        test.each([['doggy-fisted', 'doggy-fisted-anal-cum', 'doggy-both-fisted-cum']])(
+            'BD32. their fist in her pussy (%s), then they finish in her ass: pussy gaping, ass full',
+            async (fisted, creampie, both) => {
+                const calls = stubSkin();
+                const create = window.NEXUS_SKIN_STATES.create;
+                window.NEXUS_SKIN_STATES.create = () => {
+                    const skin = create();
+                    const attach = skin.attach;
+                    skin.attach = async (root, look) => [
+                        ...(await attach(root, look)),
+                        { name: fisted, body: 'your ass gaping after their fist' },
+                        { name: `${fisted}-cum`, body: 'your gaping ass full of cum' },
+                        { name: creampie, body: 'your ass gaping and empty, your pussy full' },
+                        { name: both, body: 'both holes open and full' },
+                    ];
+                    return skin;
+                };
+                let held = null;
+                const real = window.NEXUS_PRIVATE_POSES;
+                window.NEXUS_PRIVATE_POSES = {
+                    create: () => ({
+                        held: () => held,
+                        apply: () => ({ ok: true }),
+                        release: () => {},
+                        back: () => ({ ok: true }),
+                        describe: () => null,
+                    }),
+                };
+                window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+                const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+                try {
+                    const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                    window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                    w.adult.level = 4;
+                    await say('Mettiti il vestito da cocktail nero');
+                    await flush();
+                    await say('spogliati');
+                    await flush();
+                    held = 'all-fours';
+                    await say('fammi il pugno nella figa');
+                    await flush();
+                    expect(calls[calls.length - 1]).toBe(`apply:${fisted}`);
+                    // In her ass: her pussy stays gaping, her ass is full.
+                    await say('ti vengo nel culo');
+                    await flush();
+                    expect(calls[calls.length - 1]).toBe(`apply:${creampie}`);
+                } finally {
+                    window.NEXUS_PRIVATE_POSES = real;
+                }
+            }
+        );
+
         test('L5. from behind (face down, bent over, all fours): fist, then filled; a bottle, then filled', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
