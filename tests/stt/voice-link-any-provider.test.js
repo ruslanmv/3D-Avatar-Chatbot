@@ -36,34 +36,58 @@ describe('VL1. the voice keeps its own link to OllaBridge', () => {
         expect(Config.allowed('tts')).toEqual({ ok: true });
     });
 
-    test('not linked: the voice section offers the pairing code, whatever the provider', () => {
+    test('not linked: the voice section has no code box of its own and points to the one card', () => {
         localStorage.setItem('nexus_llm_settings', JSON.stringify({ provider: 'openai' }));
+        document.body.insertAdjacentHTML(
+            'afterbegin',
+            '<div id="ollabridge-card" class="config-section"><input id="ollabridge-pair-code" /></div>'
+        );
+        const card = document.getElementById('ollabridge-card');
+        card.scrollIntoView = jest.fn();
         Settings.attach({ doc: document, config: Config });
-        expect(document.getElementById('sonic-link-state').textContent).toMatch(/Not linked to OllaBridge/);
-        expect(document.getElementById('sonic-link-pair').style.display).toBe('flex');
+        expect(document.getElementById('sonic-link-state').textContent).toMatch(/Not linked.*OLLABRIDGE card/);
+        expect(document.querySelectorAll('input[id*="pair"]')).toHaveLength(1); // only the card's
+        document.getElementById('sonic-link-go').click();
+        expect(card.scrollIntoView).toHaveBeenCalled();
+        expect(document.activeElement.id).toBe('ollabridge-pair-code');
     });
 
-    test('pairing here keeps the chat on OpenAI, says linked, and starts her chosen voice again', async () => {
-        localStorage.setItem('nexus_llm_settings', JSON.stringify({ provider: 'openai', openai: { api_key: 'sk-x' } }));
-        const retry = jest.fn();
-        window.__nexusVoiceRetry = retry;
-        window.__nexusPairOllaBridgeCode = jest.fn(async (code) => {
-            const s = JSON.parse(localStorage.getItem('nexus_llm_settings'));
-            s.ollabridge = { base_url: 'https://app.ollabridge.com', pair_token: 'paired-' + code };
-            localStorage.setItem('nexus_llm_settings', JSON.stringify(s));
-            return { ok: true, device_id: 'd1' };
-        });
+    test('linked: the voice section says so and offers nothing to pair', () => {
+        localStorage.setItem(
+            'nexus_llm_settings',
+            JSON.stringify({
+                provider: 'openai',
+                ollabridge: { base_url: 'https://app.ollabridge.com', pair_token: 't' },
+            })
+        );
         Settings.attach({ doc: document, config: Config });
-        retry.mockClear();
-        document.getElementById('sonic-pair-code').value = 'ABCD1234';
-        document.getElementById('sonic-pair').click();
-        await new Promise((r) => setTimeout(r, 0));
-        expect(window.__nexusPairOllaBridgeCode).toHaveBeenCalledWith('ABCD1234');
-        expect(JSON.parse(localStorage.getItem('nexus_llm_settings')).provider).toBe('openai');
         expect(document.getElementById('sonic-link-state').textContent).toMatch(
             /Linked to OllaBridge \(app\.ollabridge\.com\).*any AI provider/
         );
-        expect(document.getElementById('sonic-link-pair').style.display).toBe('none');
-        expect(retry).toHaveBeenCalled();
+        expect(document.getElementById('sonic-link-go').style.display).toBe('none');
+    });
+});
+
+describe('VL2. one OllaBridge card, paired once', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../../src/main.js'), 'utf8');
+
+    test('the pairing row is moved into one always-shown card under AI PROVIDER, never copied', () => {
+        const mount = src.slice(
+            src.indexOf('function __nexusMountOllaBridgeCard'),
+            src.indexOf('function __nexusWireOllaBridgePairButton')
+        );
+        expect(mount).toMatch(/card\.append\(title, hint, row\)/);
+        expect(mount).toMatch(/row\.dataset\.always = '1'/);
+        expect(mount).toMatch(/providerSection\.insertAdjacentElement\('afterend', card\)/);
+        // Neither the provider switch nor the auth mode hides it any more.
+        expect(src).toMatch(/if \(pairRowHide && !pairRowHide\.dataset\.always\)/);
+    });
+
+    test("pairing with another provider selected never takes that provider's BASE URL", () => {
+        const pair = src.slice(
+            src.indexOf("btn.addEventListener('click', async () => {\n        const codeInput"),
+            src.indexOf("window.addEventListener('DOMContentLoaded', __nexusWireOllaBridgePairButton)")
+        );
+        expect(pair).toMatch(/selected\.value === 'ollabridge' && baseUrlInput \? baseUrlInput\.value\.trim\(\) : ''/);
     });
 });

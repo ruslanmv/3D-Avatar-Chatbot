@@ -3512,7 +3512,7 @@ function updateProviderFields() {
     if (watsonxRow) watsonxRow.style.display = 'none';
     if (baseurlRow) baseurlRow.style.display = 'none';
     const pairRowHide = $('ollabridge-pair-row');
-    if (pairRowHide) pairRowHide.style.display = 'none';
+    if (pairRowHide && !pairRowHide.dataset.always) pairRowHide.style.display = 'none'; // VL2: the card stays
     const authRowHide = $('ollabridge-auth-row');
     if (authRowHide) authRowHide.style.display = 'none';
     const remotePromptRow = $('ollabridge-remote-prompt-row');
@@ -3667,7 +3667,7 @@ window.addEventListener('DOMContentLoaded', __nexusWireOllaBridgeUnpairButton);
 function _updateOllaBridgeAuthUI() {
     const authModeSelect = $('ollabridge-auth-mode');
     const authHint = $('ollabridge-auth-hint');
-    const pairRow = $('ollabridge-pair-row');
+    const pairRowAll = $('ollabridge-pair-row');
     const apiKeyInput = $('api-key');
     const apiKeyRow = apiKeyInput ? apiKeyInput.closest('.input-group') : null;
 
@@ -3684,6 +3684,8 @@ function _updateOllaBridgeAuthUI() {
     function applyAuthMode() {
         _updateOllaBridgePairUI();
         const mode = authModeSelect.value;
+        // VL2. The pairing lives in its own card now, always shown: pairing is for her voice too.
+        const pairRow = pairRowAll && pairRowAll.dataset.always ? null : pairRowAll;
 
         if (mode === 'pairing') {
             // Device Pairing: show pair code row, hide API key
@@ -6994,6 +6996,59 @@ async function __nexusVoiceRetry() {
 }
 window.__nexusVoiceRetry = __nexusVoiceRetry;
 
+/**
+ * VL2. One OllaBridge card, always shown, right under AI PROVIDER: pair once there and it serves
+ * the chat (when OllaBridge is the provider) and her SonicAgent voice and listening (with any
+ * provider). The pairing row used to live inside API CONFIGURATION, shown only with OllaBridge
+ * selected, and VL1 added a second Pair box in ADVANCED VOICE; the owner asked for one place,
+ * used once. The existing row is moved, not copied, so its paired view ("✅ Paired — no code
+ * needed", Unpair) and its code box keep working exactly as before. Moved by script so
+ * `index.html` keeps its line numbers (the parity harness pins them).
+ */
+function __nexusMountOllaBridgeCard() {
+    const row = document.getElementById('ollabridge-pair-row');
+    const radio = document.querySelector('input[name="provider"][value="ollabridge"]');
+    const providerSection = radio && radio.closest('.config-section');
+    if (!row || !providerSection || document.getElementById('ollabridge-card')) return;
+    const card = document.createElement('div');
+    card.className = 'config-section';
+    card.id = 'ollabridge-card';
+    const title = document.createElement('h3');
+    title.className = 'config-title';
+    title.textContent = '🌉 OLLABRIDGE';
+    const hint = document.createElement('p');
+    hint.style.cssText = 'font-size: 0.72rem; color: #888; margin: 0 0 8px';
+    hint.textContent =
+        'Pair once. It is used for the chat when OllaBridge is the AI provider, and for her SonicAgent voice and listening with any provider.';
+    const label = row.querySelector('.input-label');
+    if (label) label.remove(); // the card's title says it
+    row.dataset.always = '1';
+    row.style.display = 'block';
+    // `.btn-primary`/`.btn-secondary` are styled only inside API CONFIGURATION's own rules; in
+    // the card they drew as bare system buttons. The app's `.secondary-btn` is styled anywhere.
+    for (const id of ['ollabridge-pair-btn', 'ollabridge-unpair-btn']) {
+        const b = document.getElementById(id);
+        if (b) {
+            b.classList.add('secondary-btn');
+            b.style.padding = '8px 14px';
+            b.style.flex = '0 0 auto';
+        }
+    }
+    const code = document.getElementById('ollabridge-pair-code');
+    if (code) {
+        code.style.minWidth = '0'; // the code box shares the row with Pair, inside the card
+        code.style.letterSpacing = '0.15em';
+    }
+    card.append(title, hint, row);
+    providerSection.insertAdjacentElement('afterend', card);
+    try {
+        _updateOllaBridgePairUI();
+    } catch (_) {
+        /* drawn again when Settings opens */
+    }
+}
+window.addEventListener('DOMContentLoaded', __nexusMountOllaBridgeCard);
+
 function __nexusWireOllaBridgePairButton() {
     const btn = document.getElementById('ollabridge-pair-btn');
     if (!btn) return;
@@ -7034,11 +7089,13 @@ function __nexusWireOllaBridgePairButton() {
         }
 
         try {
-            // Apply the current base_url (the OllaBridge field is showing: its provider is
-            // selected) and pair through the one shared function.
+            // VL2. BASE URL belongs to the selected provider: it is OllaBridge's only when
+            // OllaBridge is selected. With OpenAI selected it may hold OpenAI's address, which
+            // must never become OllaBridge's; the saved (or default) OllaBridge address is used.
+            const selected = document.querySelector('input[name="provider"]:checked');
             const baseUrlInput = document.getElementById('base-url');
             const result = await __nexusPairOllaBridgeCode(code, {
-                baseUrl: baseUrlInput && baseUrlInput.value.trim(),
+                baseUrl: selected && selected.value === 'ollabridge' && baseUrlInput ? baseUrlInput.value.trim() : '',
             });
 
             if (result.ok) {
