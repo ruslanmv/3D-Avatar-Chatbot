@@ -125,6 +125,8 @@
             'routine.like-last-time.say': 'Just like last time',
             'routine.fist-then-inside.label': 'First the fist, then inside',
             'routine.fist-then-inside.say': 'First the fist, then inside',
+            'routine.two-hands.label': 'Tied, two hands',
+            'routine.two-hands.say': 'Tied, two hands',
             'routine.fist-then-ass.label': 'The fist, then the ass',
             'routine.fist-then-ass.say': 'The fist, then the ass',
             'routine.worse-than-last-time.label': 'Worse than last time',
@@ -339,6 +341,8 @@
             'routine.like-last-time.say': 'Como la última vez',
             'routine.fist-then-inside.label': 'Primero el puño, luego dentro',
             'routine.fist-then-inside.say': 'Primero el puño, luego dentro',
+            'routine.two-hands.label': 'Atada, dos manos',
+            'routine.two-hands.say': 'Atada, dos manos',
             'routine.fist-then-ass.label': 'Primero el puño, luego el culo',
             'routine.fist-then-ass.say': 'Primero el puño, luego el culo',
             'routine.worse-than-last-time.label': 'Peor que la última vez',
@@ -554,6 +558,8 @@
             'routine.like-last-time.say': 'Come la volta scorsa',
             'routine.fist-then-inside.label': 'Prima il pugno, poi dentro',
             'routine.fist-then-inside.say': 'Prima il pugno, poi dentro',
+            'routine.two-hands.label': 'Legata, due mani',
+            'routine.two-hands.say': 'Legata, due mani',
             'routine.fist-then-ass.label': 'Prima il pugno, poi il culo',
             'routine.fist-then-ass.say': 'Prima il pugno, poi il culo',
             'routine.worse-than-last-time.label': 'Peggio dell’ultima volta',
@@ -768,6 +774,8 @@
             'routine.like-last-time.say': 'Comme la dernière fois',
             'routine.fist-then-inside.label': 'D’abord le poing, puis dedans',
             'routine.fist-then-inside.say': 'D’abord le poing, puis dedans',
+            'routine.two-hands.label': 'Attachée, deux mains',
+            'routine.two-hands.say': 'Attachée, deux mains',
             'routine.fist-then-ass.label': 'D’abord le poing, puis le cul',
             'routine.fist-then-ass.say': 'D’abord le poing, puis le cul',
             'routine.worse-than-last-time.label': 'Pire que la dernière fois',
@@ -984,6 +992,8 @@
             'routine.like-last-time.say': 'Wie letztes Mal',
             'routine.fist-then-inside.label': 'Erst die Faust, dann rein',
             'routine.fist-then-inside.say': 'Erst die Faust, dann rein',
+            'routine.two-hands.label': 'Gefesselt, zwei Hände',
+            'routine.two-hands.say': 'Gefesselt, zwei Hände',
             'routine.fist-then-ass.label': 'Erst die Faust, dann der Arsch',
             'routine.fist-then-ass.say': 'Erst die Faust, dann der Arsch',
             'routine.worse-than-last-time.label': 'Schlimmer als letztes Mal',
@@ -1200,6 +1210,8 @@
             'routine.like-last-time.say': 'Como da última vez',
             'routine.fist-then-inside.label': 'Primeiro o punho, depois dentro',
             'routine.fist-then-inside.say': 'Primeiro o punho, depois dentro',
+            'routine.two-hands.label': 'Amarrada, duas mãos',
+            'routine.two-hands.say': 'Amarrada, duas mãos',
             'routine.fist-then-ass.label': 'Primeiro o punho, depois o cu',
             'routine.fist-then-ass.say': 'Primeiro o punho, depois o cu',
             'routine.worse-than-last-time.label': 'Pior do que da última vez',
@@ -1415,6 +1427,8 @@
             'routine.like-last-time.say': '前みたいにして',
             'routine.fist-then-inside.label': '先に拳、それから中に',
             'routine.fist-then-inside.say': '先に拳、それから中に',
+            'routine.two-hands.label': '縛って両手で',
+            'routine.two-hands.say': '縛って両手で',
             'routine.fist-then-ass.label': '先に拳、それからお尻に',
             'routine.fist-then-ass.say': '先に拳、それからお尻に',
             'routine.worse-than-last-time.label': '前よりもっとひどく',
@@ -1628,6 +1642,8 @@
             'routine.like-last-time.say': '지난번처럼 해줘',
             'routine.fist-then-inside.label': '먼저 주먹, 그다음 안에',
             'routine.fist-then-inside.say': '먼저 주먹, 그다음 안에',
+            'routine.two-hands.label': '묶고 두 손으로',
+            'routine.two-hands.say': '묶고 두 손으로',
             'routine.fist-then-ass.label': '먼저 주먹, 그다음 엉덩이에',
             'routine.fist-then-ass.say': '먼저 주먹, 그다음 엉덩이에',
             'routine.worse-than-last-time.label': '지난번보다 더 심하게',
@@ -1842,6 +1858,8 @@
             'routine.like-last-time.say': '像上次一样',
             'routine.fist-then-inside.label': '先拳交再内射',
             'routine.fist-then-inside.say': '先拳交再内射',
+            'routine.two-hands.label': '绑起来两只手',
+            'routine.two-hands.say': '绑起来两只手',
             'routine.fist-then-ass.label': '先拳交再射屁股',
             'routine.fist-then-ass.say': '先拳交再射屁股',
             'routine.worse-than-last-time.label': '比上次更狠',
@@ -2035,6 +2053,9 @@
             'place.deal.full-service': 'The full service',
             'place.deal.like-last-time': 'Like last time',
             'place.deal.fist-then-inside': 'First the fist, then inside',
+            'place.deal.two-hands': 'Tied, two hands',
+            'place.invite.two-hands':
+                'Tie me up, mark me, then both your hands in me, one in each hole. My words are green, yellow and red. Deal?',
             'place.deal.fist-then-ass': 'The fist, then the ass',
             'place.invite.fist-then-ass':
                 'Tonight I want it rough: your whole fist in my pussy first, then you finish in my ass. Make it hurt the way I like. Deal?',
@@ -2130,6 +2151,9 @@
             'place.deal.full-service': 'Il servizio completo',
             'place.deal.like-last-time': 'Come l’ultima volta',
             'place.deal.fist-then-inside': 'Prima il pugno, poi dentro',
+            'place.deal.two-hands': 'Legata, due mani',
+            'place.invite.two-hands':
+                'Legami, segnami, e poi tutte e due le tue mani dentro di me, una per buco. Le mie parole: verde, giallo, rosso. Ci stai?',
             'place.deal.fist-then-ass': 'Prima il pugno, poi il culo',
             'place.invite.fist-then-ass':
                 'Stasera la voglio dura: prima il tuo pugno tutto nella figa, poi mi vieni nel culo. Fammi male come piace a me. Ci stai?',
@@ -2226,6 +2250,9 @@
             'place.deal.full-service': 'El servicio completo',
             'place.deal.like-last-time': 'Como la última vez',
             'place.deal.fist-then-inside': 'Primero el puño, luego dentro',
+            'place.deal.two-hands': 'Atada, dos manos',
+            'place.invite.two-hands':
+                'Átame, márcame, y luego tus dos manos dentro de mí, una en cada agujero. Mis palabras: verde, amarillo, rojo. ¿Trato?',
             'place.deal.fist-then-ass': 'Primero el puño, luego el culo',
             'place.invite.fist-then-ass':
                 'Esta noche lo quiero duro: primero tu puño entero en mi coño, luego te corres en mi culo. Que duela como me gusta. ¿Trato?',
@@ -2322,6 +2349,9 @@
             'place.deal.full-service': 'Le service complet',
             'place.deal.like-last-time': 'Comme la dernière fois',
             'place.deal.fist-then-inside': 'D’abord le poing, puis dedans',
+            'place.deal.two-hands': 'Attachée, deux mains',
+            'place.invite.two-hands':
+                'Attache-moi, marque-moi, puis tes deux mains en moi, une dans chaque trou. Mes mots : vert, jaune, rouge. Marché conclu ?',
             'place.deal.fist-then-ass': 'D’abord le poing, puis le cul',
             'place.invite.fist-then-ass':
                 'Ce soir je le veux brutal : d’abord ton poing entier dans ma chatte, puis tu jouis dans mon cul. Fais-moi mal comme j’aime. Marché conclu ?',
@@ -2420,6 +2450,9 @@
             'place.deal.full-service': 'Das volle Programm',
             'place.deal.like-last-time': 'Wie letztes Mal',
             'place.deal.fist-then-inside': 'Erst die Faust, dann rein',
+            'place.deal.two-hands': 'Gefesselt, zwei Hände',
+            'place.invite.two-hands':
+                'Fessel mich, markier mich, dann beide Hände in mir, eine in jedem Loch. Meine Worte: grün, gelb, rot. Abgemacht?',
             'place.deal.fist-then-ass': 'Erst die Faust, dann der Arsch',
             'place.invite.fist-then-ass':
                 'Heute will ich es hart: erst deine ganze Faust in meiner Muschi, dann kommst du in meinem Arsch. Tu mir weh, so wie ich es mag. Abgemacht?',
@@ -2515,6 +2548,9 @@
             'place.deal.full-service': 'O serviço completo',
             'place.deal.like-last-time': 'Como da última vez',
             'place.deal.fist-then-inside': 'Primeiro o punho, depois dentro',
+            'place.deal.two-hands': 'Amarrada, duas mãos',
+            'place.invite.two-hands':
+                'Amarra-me, marca-me, e depois as tuas duas mãos dentro de mim, uma em cada buraco. As minhas palavras: verde, amarelo, vermelho. Combinado?',
             'place.deal.fist-then-ass': 'Primeiro o punho, depois o cu',
             'place.invite.fist-then-ass':
                 'Hoje quero bruto: primeiro o teu punho todo na minha cona, depois vens-te no meu cu. Faz-me doer como eu gosto. Combinado?',
@@ -2609,6 +2645,9 @@
             'place.deal.full-service': 'フルサービス',
             'place.deal.like-last-time': '前みたいに',
             'place.deal.fist-then-inside': '先に拳、それから中に',
+            'place.deal.two-hands': '縛って両手で',
+            'place.invite.two-hands':
+                '縛って、跡をつけて、それから両手を私の中に、それぞれの穴に一つずつ。合図は緑、黄色、赤。いい？',
             'place.deal.fist-then-ass': '先に拳、それからお尻に',
             'place.invite.fist-then-ass':
                 '今夜は激しくして。まず拳をぜんぶ前に、それからお尻に出して。私の好きなように痛くして。いい？',
@@ -2699,6 +2738,9 @@
             'place.deal.full-service': '풀서비스',
             'place.deal.like-last-time': '지난번처럼',
             'place.deal.fist-then-inside': '먼저 주먹, 그다음 안에',
+            'place.deal.two-hands': '묶고 두 손으로',
+            'place.invite.two-hands':
+                '날 묶고, 흔적을 남기고, 그다음 두 손을 내 안에, 구멍마다 하나씩. 내 신호는 초록, 노랑, 빨강. 어때?',
             'place.deal.fist-then-ass': '먼저 주먹, 그다음 엉덩이에',
             'place.invite.fist-then-ass':
                 '오늘 밤은 거칠게. 먼저 네 주먹 전부 앞에, 그다음 엉덩이에 싸줘. 내가 좋아하는 방식으로 아프게 해줘. 어때?',
@@ -2787,6 +2829,9 @@
             'place.deal.full-service': '全套服务',
             'place.deal.like-last-time': '像上次一样',
             'place.deal.fist-then-inside': '先拳交再内射',
+            'place.deal.two-hands': '绑起来两只手',
+            'place.invite.two-hands':
+                '把我绑起来，留下痕迹，然后两只手都进来，一个洞一只。我的信号是绿、黄、红。成交？',
             'place.deal.fist-then-ass': '先拳交再射屁股',
             'place.invite.fist-then-ass':
                 '今晚我要粗暴的：先把整个拳头塞进我前面，然后射在我屁股里。弄疼我，就像我喜欢的那样。成交？',

@@ -41,6 +41,7 @@ describe('L5 No limits', () => {
                 'fist-then-inside',
                 'worse-than-last-time',
                 'fist-then-ass',
+                'two-hands',
             ]) {
                 const say = Locale.t(`routine.${id}.say`, null, lang);
                 expect([say, show(say)]).toEqual([say, id]);

@@ -147,6 +147,7 @@ const PrivateConversationView = (() => {
         'fist-then-inside',
         'worse-than-last-time',
         'fist-then-ass',
+        'two-hands',
         'striptease',
     ]);
 

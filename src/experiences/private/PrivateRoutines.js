@@ -367,6 +367,51 @@
                 },
             ]),
         }),
+        // BD33. Valentina's S/M scene, at the owner's request: tied, marked, then both their hands.
+        // Agreed at the door with a traffic light (green goes on, yellow eases off, red ends it and
+        // she goes straight to aftercare: PrivateTurnDirector). The marks are the play marks
+        // Forge paints (rope lines, welts), never a wound; the pain is in her words, her choice.
+        // Their two hands and the finish are theirs; the show ends untied, held, in aftercare.
+        'two-hands': Object.freeze({
+            label: 'Tied, two hands',
+            name: 'tied and marked, then both their hands, then held close',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'kneel-wide',
+                    hold: 16000,
+                    skin: 'sado-roped-open',
+                    body: 'kneeling wide, naked and tied, offering them your wrists, telling them how tight you want the rope and that your words are green, yellow and red',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 22000,
+                    skin: 'sado-whipped-open',
+                    body: 'face down with your hips up, counting every mark on your ass out loud, asking for the next one harder, saying green',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 12000,
+                    body: 'face down, breathing hard, checking in: asking them their colour, and telling them yours is green',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 24000,
+                    body: 'on all fours, begging for both their hands, one in each hole, telling them you are theirs tonight',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 18000,
+                    body: 'face down, hips up, pushing back, telling them to use you and finish in you',
+                },
+                {
+                    pose: 'spoon',
+                    hold: 16000,
+                    body: 'untied now, curled against them, soft and warm, telling them how good that was and asking if they are all right',
+                },
+            ]),
+        }),
         // BD31. Chiara's: they did it last time and she brings it up, laughing, wanting it worse;
         // then they finish inside her. The same rules: she invites, they act.
         'worse-than-last-time': Object.freeze({
@@ -684,6 +729,8 @@
         'worse-than-last-time',
         // BD32.
         'fist-then-ass',
+        // BD33.
+        'two-hands',
         'striptease',
     ]);
 

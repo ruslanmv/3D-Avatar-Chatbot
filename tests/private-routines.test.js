@@ -171,6 +171,8 @@ describe('UR1 Unrestrained shows', () => {
             'oil-everything',
             'rounds',
             'tied',
+            // BD33.
+            'two-hands',
             'used-marked',
             'window-show',
             'worse-than-last-time',
@@ -202,4 +204,30 @@ describe('BD31. the fist-then-inside stories: she invites, the person acts', () 
             expect(['all-fours', 'face-down', 'bent-over']).toContain(r.steps[r.steps.length - 1].pose);
         }
     );
+});
+
+describe('BD33. tied, two hands: agreed with a traffic light, ends held close', () => {
+    const Director = require('../src/features/together/PrivateTurnDirector.js');
+    test('it ties and marks her, never shows their hands or a finish itself, and ends in aftercare', () => {
+        const r = Routines.ROUTINES['two-hands'];
+        expect(r.unrestrained).toBe(true);
+        expect(r.steps.map((x) => x.skin).filter(Boolean)).toEqual(['sado-roped-open', 'sado-whipped-open']);
+        expect(r.steps[r.steps.length - 1].pose).toBe('spoon');
+        expect(r.steps[r.steps.length - 1].body).toMatch(/untied|all right/);
+        expect(r.steps.map((x) => x.body).join(' ')).not.toMatch(/blood|bleed|wound|\bcut\b|injur/i);
+    });
+    test.each([
+        ['red', 'end'],
+        ['Rosso!', 'end'],
+        ['rojo', 'end'],
+        ['yellow', 'pace-down'],
+        ['giallo', 'pace-down'],
+        ['gelb', 'pace-down'],
+    ])('"%s" → %s', (said, intent) => {
+        expect(Director.classify(said).intent).toBe(intent);
+    });
+    test('a colour inside a sentence is just talk', () => {
+        expect(Director.classify('put on the red dress').intent).not.toBe('end');
+        expect(Director.classify('mettiti il vestito rosso').intent).not.toBe('end');
+    });
 });

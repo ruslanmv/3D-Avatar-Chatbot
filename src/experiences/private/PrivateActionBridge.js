@@ -1967,7 +1967,8 @@
             front: ['doggy-fisted', 'doggy-both-fisted'],
             // BD28. Or left open in a round ring, when her look is Forge's ring pack.
             anal: ['doggy-anal-fisted', 'doggy-anal-ring'],
-            both: ['doggy-both-fisted'],
+            // BD33. Or tied and marked, when her look is Forge's rough pack.
+            both: ['doggy-both-fisted', 'sado-both-fisted'],
         },
         missionary: {
             front: ['missionary-fisted'],
@@ -1983,7 +1984,7 @@
     const FIST_BY_TARGET = Object.freeze({
         front: ['missionary-fisted'],
         anal: ['doggy-anal-fisted', 'doggy-anal-ring', 'missionary-fisted-anal'],
-        both: ['doggy-both-fisted'],
+        both: ['doggy-both-fisted', 'sado-both-fisted'],
     });
 
     /**
@@ -2062,6 +2063,12 @@
         // BD32. Their fist in her pussy, then they finish in her ass: her pussy left gaping, her
         // ass full (Forge's doggy-fisted-anal-cum). "Inside" keeps the plain filled state.
         'doggy-fisted': { ass: 'doggy-fisted-anal-cum', inside: 'doggy-fisted-cum', both: 'doggy-both-fisted-cum' },
+        // BD33. Tied, marked, both their hands: wherever they finish, both holes stay open, filled.
+        'sado-both-fisted': {
+            inside: 'sado-both-fisted-cum',
+            ass: 'sado-both-fisted-cum',
+            both: 'sado-both-fisted-cum',
+        },
     });
     function filledAfterFist(s, where) {
         if (!s.fist || !['inside', 'ass', 'both', 'choose'].includes(where)) return null;

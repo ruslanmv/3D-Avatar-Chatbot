@@ -517,6 +517,10 @@
             'first the fist,? then inside|prima il pugno,? poi dentro|primero el puño,? luego dentro|primero el puno,? luego dentro|d.abord le poing,? (?:et )?puis dedans|erst die faust,? dann rein|primeiro o punho,? depois dentro|先に拳、それから中に|먼저 주먹, 그다음 안에|先拳交再内射',
         ],
         [
+            'two-hands',
+            'tied,? two hands|legata,? due mani|atada,? dos manos|attachée,? deux mains|attachee,? deux mains|gefesselt,? zwei hände|gefesselt,? zwei haende|amarrada,? duas mãos|amarrada,? duas maos|縛って両手で|묶고 두 손으로|绑起来两只手',
+        ],
+        [
             'fist-then-ass',
             'the fist,? then the ass|prima il pugno,? poi il culo|primero el puño,? luego el culo|primero el puno,? luego el culo|d.abord le poing,? (?:et )?puis le cul|erst die faust,? dann der arsch|primeiro o punho,? depois o cu|先に拳、それからお尻に|먼저 주먹, 그다음 엉덩이에|先拳交再射屁股',
         ],
@@ -703,7 +707,7 @@
         return null;
     }
 
-    const STORY_SHOWS = ['fist-then-inside', 'worse-than-last-time', 'fist-then-ass'];
+    const STORY_SHOWS = ['fist-then-inside', 'worse-than-last-time', 'fist-then-ass', 'two-hands'];
     function storyShowFrom(body) {
         for (const [id, words] of ROUTINE_NAMES) {
             if (!STORY_SHOWS.includes(id)) continue;
