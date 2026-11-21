@@ -4351,12 +4351,12 @@ function _surface() {
             const made = _createStreamingBotMessage();
             return {
                 append: (full) => {
-                    made.textDiv.textContent = full;
+                    _showReplyText(made.textDiv, full, true);
                     const el = $('chat-history');
                     if (el) el.scrollTop = el.scrollHeight;
                 },
                 finish: (full) => {
-                    made.textDiv.textContent = full;
+                    _showReplyText(made.textDiv, full, true);
                 },
                 discard: () => {
                     if (made.row.parentElement) made.row.parentElement.removeChild(made.row);
@@ -5355,6 +5355,16 @@ function stopVoiceInput() {
 /* ============================
    Chat UI
    ============================ */
+/**
+ * MF1. Her replies formatted (links you can tap with their site, bold, lists); the person's own
+ * words stay exactly as typed. Plain text when the formatter is not loaded.
+ */
+function _showReplyText(el, text, formatted) {
+    const F = window.NEXUS_MESSAGE_FORMAT;
+    if (formatted && F && typeof F.render === 'function') F.render(el, text);
+    else el.textContent = text;
+}
+
 function addMessageToHistory(sender, text, attachments) {
     const chatHistory = $('chat-history');
     if (!chatHistory) return;
@@ -5372,7 +5382,7 @@ function addMessageToHistory(sender, text, attachments) {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    textDiv.textContent = text;
+    _showReplyText(textDiv, text, sender !== 'user');
 
     messageDiv.appendChild(senderDiv);
     messageDiv.appendChild(textDiv);
