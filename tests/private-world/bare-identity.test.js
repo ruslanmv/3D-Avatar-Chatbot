@@ -51,6 +51,32 @@ describe('BL2. bare identity from Forge', () => {
         expect(plan).toMatchObject({ state: 'bare', look: { id: 'look_bare' } });
     });
 
+    test('BD24. detailed bare looks sharing a name are each kept, told apart by their body', async () => {
+        const bare = (id, plan, states) => ({
+            id,
+            name: 'Bare authored body',
+            vrmUrl: `/v1/assets/looks/${id}/look.vrm`,
+            private: true,
+            wardrobeState: 'bare',
+            sourceSha256: HER,
+            plan,
+            body: { detail: 'natural', state: 'closed', states, extras: [], skinPack: true },
+        });
+        const looks = await loadLooks({
+            library: forge([
+                bare('look_core', 'bare-1', ['closed', 'open']),
+                bare('look_fist', 'bare-2', ['closed', 'doggy-fisted']),
+                bare('look_fist_again', 'bare-2', ['closed', 'doggy-fisted']),
+                { id: 'dress_1', name: 'Yellow sundress', vrmUrl: '/a.vrm', sourceSha256: HER },
+                { id: 'dress_2', name: 'Yellow sundress', vrmUrl: '/b.vrm', sourceSha256: HER },
+            ]),
+            identity: { kind: 'library', slug: 'her', sha256: HER },
+            privateOpen: true,
+        });
+        // Both packs, once each; plain looks still one per name (W17).
+        expect(looks.map((l) => l.id)).toEqual(['look_core', 'look_fist', 'dress_1']);
+    });
+
     test('a look made from another version of her is not hers', async () => {
         const looks = await loadLooks({
             library: forge([

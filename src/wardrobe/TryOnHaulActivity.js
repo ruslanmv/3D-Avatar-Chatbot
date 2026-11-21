@@ -228,8 +228,13 @@ const TryOnHaulActivity = (() => {
                             .trim()
                             .toLowerCase();
                         if (!name) return true;
-                        if (named.has(name)) return false;
-                        named.add(name);
+                        // BD24. A detailed bare look is told apart by its body, not its name: Forge
+                        // names every one "Bare authored body", and only the first survived, so
+                        // she could never wear her fist or gape pack (Avatar A, 2026-11-21). Its
+                        // plan (preset, states, extras) is its identity, as Forge lists it.
+                        const key = look.body ? `${name}|${look.plan || JSON.stringify(look.body)}` : name;
+                        if (named.has(key)) return false;
+                        named.add(key);
                         return true;
                     })
                     .forEach((look) =>

@@ -2936,13 +2936,13 @@ export class VRPoseSystem {
             hand.quaternion.copy(VRPoseSystem._localFor(parentFrame, frame));
             hand.updateMatrixWorld(true);
         };
-        for (const handKey of reach) {
+        const reachDown = (handKey) => {
             const chainName = handKey === 'leftHand' ? 'leftArm' : 'rightArm';
             const keys = IK_CHAINS[chainName].filter((k) => this._bones.has(k));
             const chain = keys.map((k) => this._bones.get(k));
             orient(handKey);
-            const before = this._supportSkinY([handKey]);
-            let gap = before == null ? null : before - floor;
+            const start = this._supportSkinY([handKey]);
+            let gap = start == null ? null : start - floor;
             for (let pass = 0; pass < 4 && gap != null && Math.abs(gap) > 0.004; pass++) {
                 const hand = this._bones.get(handKey);
                 const target = hand.getWorldPosition(new THREE.Vector3());
@@ -2952,9 +2952,69 @@ export class VRPoseSystem {
                 const now = this._supportSkinY([handKey]);
                 gap = now == null ? null : now - floor;
             }
+            return { start, gap };
+        };
+        const before = {};
+        const gaps = {};
+        for (const handKey of reach) {
+            const r = reachDown(handKey);
+            before[handKey] = r.start;
+            gaps[handKey] = r.gap;
+        }
+        // VS1. Arms too short for the pose: on fem_vroid, masc_vroid, AvatarSample_O and
+        // Model_Girl the arm chain stretched straight still left both palms 21 mm above the floor
+        // (measured 2026-11-21, all fours in the bright hotel), one over UN6's 20 mm, and the whole
+        // position was refused and she stood up again. A real body drops its chest instead: pitch
+        // the spine forward about her own left-right axis, just enough to bring the shoulders
+        // down by what is still missing, then reach again. Bodies whose hands already reach are
+        // never touched (the loop does not start), and the pitch is capped at 20 degrees (AvatarSample_O needed more than 12).
+        const short = () => Math.max(...reach.map((k) => (gaps[k] == null ? 0 : gaps[k])));
+        const spine = this._bones.get('chest') || this._bones.get('spine');
+        const lr = (() => {
+            const l = this._bones.get('leftUpperArm');
+            const r = this._bones.get('rightUpperArm');
+            if (!l || !r) return null;
+            const v = l.getWorldPosition(new THREE.Vector3()).sub(r.getWorldPosition(new THREE.Vector3()));
+            v.y = 0;
+            return v.lengthSq() < 1e-8 ? null : v.normalize();
+        })();
+        let pitched = 0;
+        // MP1. Claude's chest pitch, only while that method is on: off, the arms alone reach.
+        const MP = typeof window !== 'undefined' ? window.NEXUS_MOTION_PROVENANCE : null;
+        const pitchOn = !MP || MP.allowed('transition:chest-reach');
+        const pitch = (angle) => {
+            const parentWorld = spine.parent
+                ? spine.parent.getWorldQuaternion(new THREE.Quaternion())
+                : new THREE.Quaternion();
+            const turn = new THREE.Quaternion().setFromAxisAngle(lr, angle);
+            spine.quaternion.premultiply(parentWorld.clone().invert().multiply(turn).multiply(parentWorld));
+            spine.updateMatrixWorld(true);
+        };
+        const handsY = () => {
+            const ys = reach.map((k) => this._supportSkinY([k])).filter((y) => y != null);
+            return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : null;
+        };
+        for (let pass = 0; pitchOn && spine && lr && pass < 4 && short() > 0.004 && Math.abs(pitched) < 0.35; pass++) {
+            const shoulder = this._bones.get('leftUpperArm') || this._bones.get('rightUpperArm');
+            const lever = shoulder
+                ? shoulder.getWorldPosition(new THREE.Vector3()).distanceTo(spine.getWorldPosition(new THREE.Vector3()))
+                : 0.3;
+            let angle = Math.min(0.35 - Math.abs(pitched), short() / Math.max(lever, 0.1));
+            // Which way is "down" depends on the file's axes: try it, keep the side that lowers her hands.
+            const y0 = handsY();
+            pitch(angle);
+            if (y0 != null && handsY() != null && handsY() > y0) {
+                pitch(-2 * angle);
+                angle = -angle;
+            }
+            pitched += angle;
+            for (const handKey of reach) gaps[handKey] = reachDown(handKey).gap;
+        }
+        if (pitched) report.chestPitchDeg = +((pitched * 180) / Math.PI).toFixed(1);
+        for (const handKey of reach) {
             report.hands[handKey] = {
-                palmBeforeMm: before == null ? null : Math.round((before - floor) * 1000),
-                palmAfterMm: gap == null ? null : Math.round(gap * 1000),
+                palmBeforeMm: before[handKey] == null ? null : Math.round((before[handKey] - floor) * 1000),
+                palmAfterMm: gaps[handKey] == null ? null : Math.round(gaps[handKey] * 1000),
             };
         }
         if (this._own && this._own.isClaimed()) this._own.sync();
@@ -3122,6 +3182,29 @@ export class VRPoseSystem {
      * @param {string} presetName
      * @param {number} [duration=0.5] - Blend duration in seconds
      */
+    /**
+     * VS2. Every preset here was written on VRM 0.x bodies, whose bones face -Z. A VRM 1.0 body
+     * faces +Z (VA1, `vrmForwardNegZ` false), so the same local rotation turns the other way about
+     * X and Z: on AvatarSample_O and Model_Girl (both VRM 1.0) "arms down" raised her arms over
+     * her head while standing, all fours left her palms 864 mm off the floor, and bent over bent
+     * her backwards so the camera "behind" her saw her front (measured 2026-11-21). The fix is the
+     * frame change itself: conjugating by a half turn about Y maps (x, y, z, w) to (-x, y, -z, w).
+     * VRM 0.x and plain glTF bodies are returned untouched.
+     */
+    _facesPlusZ() {
+        const ud = (this.avatarRoot && this.avatarRoot.userData) || {};
+        return !!ud.isVRM && ud.vrmForwardNegZ === false;
+    }
+
+    _facingQuat(q) {
+        const out = q.clone();
+        if (this._facesPlusZ()) {
+            out.x = -out.x;
+            out.z = -out.z;
+        }
+        return out;
+    }
+
     applyPreset(presetName, duration = 0.5) {
         const preset = POSE_PRESETS[presetName];
         if (!preset) {
@@ -3146,7 +3229,7 @@ export class VRPoseSystem {
                 // Apply directly — do NOT multiply onto rest pose, because rest may
                 // already include NaturalPosePlugin T-pose correction, which would
                 // compound (e.g. rest 32° + preset 65° = 97° — hands overlap body).
-                this._blendTo.set(key, presetQuat.clone());
+                this._blendTo.set(key, this._facingQuat(presetQuat));
             } else {
                 // No preset for this bone — blend back to rest
                 this._blendTo.set(key, this._restPoses.get(key)?.clone() || new THREE.Quaternion());
@@ -3161,11 +3244,13 @@ export class VRPoseSystem {
                 // hipsPosition is a Y-offset relative to rest position
                 this._hipsPositionTo = this._hipsRestPosition.clone();
                 this._hipsPositionTo.y += preset.hipsPosition.y;
+                // VS2. Forward and sideways are the other way round on a VRM 1.0 body (below).
+                const flip = this._facesPlusZ() ? -1 : 1;
                 if (preset.hipsPosition.z) {
-                    this._hipsPositionTo.z += preset.hipsPosition.z;
+                    this._hipsPositionTo.z += flip * preset.hipsPosition.z;
                 }
                 if (preset.hipsPosition.x) {
-                    this._hipsPositionTo.x += preset.hipsPosition.x;
+                    this._hipsPositionTo.x += flip * preset.hipsPosition.x;
                 }
             } else {
                 // No position override — return to rest position
