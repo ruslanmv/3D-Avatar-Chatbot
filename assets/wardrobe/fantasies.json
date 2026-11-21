@@ -45,7 +45,7 @@
     {
       "id": "nurse",
       "title": "Nurse",
-      "outfits": ["roleplay-nurse"],
+      "outfits": ["roleplay-nurse", "roleplay-nurse-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["nurse"],
@@ -62,7 +62,7 @@
     {
       "id": "doctor",
       "title": "Doctor",
-      "outfits": ["roleplay-doctor"],
+      "outfits": ["roleplay-doctor", "roleplay-doctor-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["doctor", "physician"],
@@ -79,7 +79,7 @@
     {
       "id": "teacher",
       "title": "Teacher",
-      "outfits": ["roleplay-teacher"],
+      "outfits": ["roleplay-teacher", "roleplay-teacher-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["teacher", "professor"],
@@ -96,7 +96,7 @@
     {
       "id": "boss",
       "title": "The boss",
-      "outfits": ["roleplay-boss"],
+      "outfits": ["roleplay-boss", "roleplay-boss-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["boss", "ceo", "manager"],
@@ -113,7 +113,7 @@
     {
       "id": "secretary",
       "title": "Secretary",
-      "outfits": ["roleplay-secretary", "roleplay-secretary-glam"],
+      "outfits": ["roleplay-secretary", "roleplay-secretary-glam", "roleplay-secretary-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["secretary"],
@@ -130,7 +130,7 @@
     {
       "id": "police",
       "title": "Police officer",
-      "outfits": ["roleplay-police"],
+      "outfits": ["roleplay-police", "roleplay-police-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["police", "policewoman", "cop"],
@@ -147,7 +147,7 @@
     {
       "id": "firefighter",
       "title": "Firefighter",
-      "outfits": ["roleplay-firefighter", "roleplay-firefighter-glam"],
+      "outfits": ["roleplay-firefighter", "roleplay-firefighter-glam", "roleplay-firefighter-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["firefighter"],
@@ -164,7 +164,7 @@
     {
       "id": "flight-attendant",
       "title": "Flight attendant",
-      "outfits": ["roleplay-flight-attendant", "roleplay-flight-attendant-glam"],
+      "outfits": ["roleplay-flight-attendant", "roleplay-flight-attendant-glam", "roleplay-flight-attendant-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["flight attendant", "stewardess"],
@@ -181,7 +181,7 @@
     {
       "id": "maid",
       "title": "French maid",
-      "outfits": ["roleplay-maid"],
+      "outfits": ["roleplay-maid", "roleplay-maid-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["maid", "french maid"],
@@ -198,7 +198,7 @@
     {
       "id": "waitress",
       "title": "Waitress",
-      "outfits": ["roleplay-waitress"],
+      "outfits": ["roleplay-waitress", "roleplay-waitress-naughty"],
       "scenes": ["role-play"],
       "words": {
         "en": ["waitress"],
@@ -215,7 +215,7 @@
     {
       "id": "bride",
       "title": "Wedding night",
-      "outfits": ["roleplay-bride"],
+      "outfits": ["roleplay-bride", "roleplay-bride-naughty"],
       "scenes": ["candlelit-suite", "bright-hotel"],
       "words": {
         "en": ["bride", "wedding night"],
@@ -249,7 +249,7 @@
     {
       "id": "santa",
       "title": "Santa's helper",
-      "outfits": ["roleplay-santa"],
+      "outfits": ["roleplay-santa", "roleplay-santa-naughty"],
       "scenes": ["role-play", "apartment"],
       "words": {
         "en": ["santa", "christmas"],
