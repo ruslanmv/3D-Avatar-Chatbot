@@ -1170,9 +1170,17 @@
         // BD38. In the order of `want`: the look holding the most fitting state, not the first
         // look that holds any of them.
         const looks = ((s.closet && s.closet.looks) || []).filter((l) => l && l.body && Array.isArray(l.body.states));
+        // BD38. Among looks holding the same state, the newest build: a look repainted by a fixed
+        // painter is listed beside the one it replaces until the dataset drops it, and the first
+        // listed was the old one (red bands down her thighs on the Space, 2026-11-21).
+        // Forge's wardrobe list carries no build time and appends each new look, so with no time
+        // (or the same) the later one in the list wins.
+        const when = (l) => String(l.builtAt || l.createdAt || '');
+        const newest = (a, b) => (when(b) >= when(a) ? b : a);
         let look = null;
         for (const n of want) {
-            look = looks.find((l) => l.body.states.includes(n)) || null;
+            const holding = looks.filter((l) => l.body.states.includes(n));
+            look = holding.length ? holding.reduce(newest) : null;
             if (look) break;
         }
         if (!look || !s.closet || typeof s.closet.wearLook !== 'function') return false;
@@ -3042,6 +3050,11 @@
                 ? { status: s.music.status, why: s.music.why, query: s.music.params.query || '' }
                 : null,
             outfit: s.closet ? s.closet.snapshot() : null,
+            // BD38. Her bare looks' skin packs (states only): what a body request can change into.
+            // Read by the live checks to say why a request found nothing.
+            bareStates: ((s.closet && s.closet.looks) || [])
+                .filter((l) => l && l.body && Array.isArray(l.body.states))
+                .map((l) => l.body.states.slice()),
             // UN19. original | look | lingerie | bare — what is on her, never what was asked for.
             outfitState: wardrobeState(s),
             outfitAction: s.wardrobe

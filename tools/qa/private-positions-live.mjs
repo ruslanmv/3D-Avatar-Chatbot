@@ -113,6 +113,10 @@ async function main() {
         }, LANG);
         // `--avatar <file>`: another character from vendor/avatars, chosen as the avatar menu keeps it.
         if (AVATAR) await ctx.addInitScript((file) => localStorage.setItem('nexus_selected_avatar_file', file), AVATAR);
+        // NL2. `--normal-light`: the person's saved choice (Settings ▸ Private Mode, or the ⋯ chip),
+        // so the room is checked in normal light the way the app applies it, not by a test event.
+        if (process.argv.includes('--normal-light'))
+            await ctx.addInitScript(() => localStorage.setItem('nexus_private_room_light', 'normal'));
         if (REAL_GRANT)
             await ctx.addInitScript((grant) => localStorage.setItem('wardrobe_forge_grant', grant), REAL_GRANT);
         // `--forge-url`: another Forge than the default Space (a local one with looks just built),
@@ -529,9 +533,12 @@ async function main() {
                 await canvas.screenshot({ path: path.join(out, `${key}-say-${i + 1}.png`) }).catch(() => {});
                 report.said = [...(report.said || []), { key, line, sent, did, skin }];
                 const body = did.find((a) => a.name.startsWith('body.'));
-                if (!sent || !body || body.status !== 'completed')
+                if (!sent || !body || body.status !== 'completed') {
                     fail(`say "${line}" on ${key}: ${JSON.stringify(body || did)}`);
-                else console.log(`ok   say "${line}" on ${key} → ${body.name} ${JSON.stringify(body.result)}`);
+                    // What she could have changed into: each bare look's states, as the bridge sees them.
+                    const packs = await page.evaluate(() => window.NEXUS_PRIVATE_ACTIONS.snapshot().bareStates || []);
+                    console.log(`     her bare looks: ${packs.map((p) => p.join('+')).join(' | ') || 'none'}`);
+                } else console.log(`ok   say "${line}" on ${key} → ${body.name} ${JSON.stringify(body.result)}`);
             }
             if (HAIR_ASIDE) await page.evaluate(() => window.NEXUS_HAIR_ASIDE && window.NEXUS_HAIR_ASIDE.release());
             if (!now.last || now.last.pose !== key || now.last.status !== 'completed' || !now.last.seen)

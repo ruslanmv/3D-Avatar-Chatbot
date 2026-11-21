@@ -97,6 +97,8 @@
             'position.on-knees.say': 'Get on your knees in front of me',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Hair aside',
+            'light.normal.label': '💡 Normal light',
+            'light.room.label': '💡 Room light',
             'hair.aside.say': 'Move your hair aside',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -313,6 +315,8 @@
             'position.on-knees.say': 'De rodillas delante de mí',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Pelo a un lado',
+            'light.normal.label': '💡 Luz normal',
+            'light.room.label': '💡 Luz de la habitación',
             'hair.aside.say': 'Aparta el pelo a un lado',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -530,6 +534,8 @@
             'position.on-knees.say': 'Mettiti in ginocchio davanti a me',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Capelli da parte',
+            'light.normal.label': '💡 Luce normale',
+            'light.room.label': '💡 Luce della stanza',
             'hair.aside.say': 'Sposta i capelli da parte',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -746,6 +752,8 @@
             'position.on-knees.say': 'À genoux devant moi',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Cheveux de côté',
+            'light.normal.label': '💡 Lumière normale',
+            'light.room.label': '💡 Lumière de la chambre',
             'hair.aside.say': 'Écarte tes cheveux sur le côté',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -964,6 +972,8 @@
             'position.on-knees.say': 'Knie dich vor mich',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Haare zur Seite',
+            'light.normal.label': '💡 Normales Licht',
+            'light.room.label': '💡 Raumlicht',
             'hair.aside.say': 'Nimm die Haare zur Seite',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -1182,6 +1192,8 @@
             'position.on-knees.say': 'De joelhos na minha frente',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': 'Cabelo de lado',
+            'light.normal.label': '💡 Luz normal',
+            'light.room.label': '💡 Luz do quarto',
             'hair.aside.say': 'Afasta o cabelo para o lado',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -1399,6 +1411,8 @@
             'position.on-knees.say': '私の前でひざまずいて',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': '髪をよけて',
+            'light.normal.label': '💡 普通の明かり',
+            'light.room.label': '💡 部屋の明かり',
             'hair.aside.say': '髪をよけて',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -1614,6 +1628,8 @@
             'position.on-knees.say': '내 앞에 무릎 꿇어',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': '머리 넘기기',
+            'light.normal.label': '💡 일반 조명',
+            'light.room.label': '💡 방 조명',
             'hair.aside.say': '머리카락을 옆으로 넘겨',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
@@ -1830,6 +1846,8 @@
             'position.on-knees.say': '跪在我面前',
             // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
             'hair.aside.label': '头发拨开',
+            'light.normal.label': '💡 普通灯光',
+            'light.room.label': '💡 房间灯光',
             'hair.aside.say': '把头发拨开',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.

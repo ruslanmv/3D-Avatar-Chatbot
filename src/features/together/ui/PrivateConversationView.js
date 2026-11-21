@@ -259,14 +259,14 @@ const PrivateConversationView = (() => {
 /* UN27. The closer positions, first in the menu, only at the top of the pace. */
 #${ROW_ID} .nexus-private-positions{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
 #${ROW_ID} .nexus-private-positions-title{flex:0 0 100%;font-size:.66rem;letter-spacing:.06em;color:#f3bbcd;opacity:.75}
-#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair{
+#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair,#${ROW_ID} .nexus-private-light{
   min-height:32px;padding:.3rem .7rem;border-radius:999px;border:1px solid rgba(240,143,182,.45);
   background:rgba(240,143,182,.1);color:#eef3f8;font:600 .74rem/1.2 system-ui,sans-serif;cursor:pointer
 }
-#${ROW_ID} .nexus-private-position:hover,#${ROW_ID} .nexus-private-hair:hover{background:rgba(240,143,182,.22)}
-#${ROW_ID} .nexus-private-position:focus-visible,#${ROW_ID} .nexus-private-hair:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
-#${ROW_ID} .nexus-private-hair{border-style:dashed}
-@media (pointer:coarse){#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair{min-height:44px}}
+#${ROW_ID} .nexus-private-position:hover,#${ROW_ID} .nexus-private-hair:hover,#${ROW_ID} .nexus-private-light:hover{background:rgba(240,143,182,.22)}
+#${ROW_ID} .nexus-private-position:focus-visible,#${ROW_ID} .nexus-private-hair:focus-visible,#${ROW_ID} .nexus-private-light:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
+#${ROW_ID} .nexus-private-hair,#${ROW_ID} .nexus-private-light{border-style:dashed}
+@media (pointer:coarse){#${ROW_ID} .nexus-private-position,#${ROW_ID} .nexus-private-hair,#${ROW_ID} .nexus-private-light{min-height:44px}}
 #${ROW_ID} #nexus-playground-bar{
   position:static;display:flex;width:100%;max-width:100%;margin:0;padding:0;
   background:none;box-shadow:none;border:0;border-radius:0;
@@ -1433,6 +1433,13 @@ const PrivateConversationView = (() => {
                 hair.className = 'nexus-private-hair';
                 hair.dataset.privateHair = 'aside';
                 group.appendChild(hair);
+                // NL2. The room's light: normal or its own, flipped here and remembered
+                // (PrivateRoomLight). A setting, not a line: nothing is said to her.
+                const light = this.doc.createElement('button');
+                light.type = 'button';
+                light.className = 'nexus-private-light';
+                light.dataset.privateLight = 'toggle';
+                group.appendChild(light);
                 slot.insertBefore(group, slot.firstChild);
             }
             // Words are set on every paint: the person can change the language mid-session.
@@ -1445,6 +1452,22 @@ const PrivateConversationView = (() => {
                 hairChip.onclick = () => {
                     if (this._onPosition) this._onPosition(t('hair.aside.say'), 'hair-aside');
                 };
+            }
+            const lightChip = group.querySelector('.nexus-private-light');
+            const RL = this.win && this.win.NEXUS_PRIVATE_ROOM_LIGHT;
+            if (lightChip) {
+                lightChip.hidden = !RL;
+                if (RL) {
+                    const paint = () => {
+                        lightChip.textContent = t(RL.isNormal() ? 'light.room.label' : 'light.normal.label');
+                        lightChip.setAttribute('aria-pressed', RL.isNormal() ? 'true' : 'false');
+                    };
+                    paint();
+                    lightChip.onclick = () => {
+                        RL.setNormal(!RL.isNormal(), this.win);
+                        paint();
+                    };
+                }
             }
             for (const button of group.querySelectorAll('.nexus-private-position')) {
                 const key = button.dataset.privatePosition;
