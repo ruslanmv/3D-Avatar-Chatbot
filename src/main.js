@@ -3396,6 +3396,14 @@ function updateProviderFields() {
     if (!modelSelect) return;
     modelSelect.innerHTML = '<option value="">Select a model...</option>';
 
+    // K1. The API key row belongs to every provider that takes a key. OllaBridge's auth mode
+    // hides it (pairing, local trust) and nothing ever showed it again: with OllaBridge paired
+    // once, choosing OpenAI, Claude or WatsonX left no field to paste a key into (reported
+    // 2026-11-21, reproduced from a saved `auth_mode: pairing`). Shown here first, for every
+    // provider; only OllaBridge's own branch below hides it again, and only while it is chosen.
+    const apiKeyRow = apiKeyInput ? apiKeyInput.closest('.input-group') : null;
+    if (apiKeyRow) apiKeyRow.style.display = '';
+
     // Load provider-specific API key from unified settings
     try {
         const unified = localStorage.getItem('nexus_llm_settings');
