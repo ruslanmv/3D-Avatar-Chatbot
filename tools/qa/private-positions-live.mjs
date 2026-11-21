@@ -335,7 +335,12 @@ async function main() {
                         l && l.body && Array.isArray(l.body.states)
                             ? want.filter((x) => l.body.states.includes(x)).length
                             : 0;
-                    const best = looks.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a))[0];
+                    // A tie goes to the newest build: after a repaint (BD25) the fresh paint is what to see.
+                    const best = looks
+                        .filter((l) => score(l) > 0)
+                        .sort(
+                            (a, b) => score(b) - score(a) || String(b.builtAt || '').localeCompare(a.builtAt || '')
+                        )[0];
                     if (!best) return { ok: false, looks: looks.length };
                     // As the closet hands it over (TryOnHaulActivity): the hash Forge listed, so the
                     // download is verified and carries the read grant. Without it the loader

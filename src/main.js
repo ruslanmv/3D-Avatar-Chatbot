@@ -3856,54 +3856,13 @@ function saveSettings() {
         if (typeof window.LLMManager === 'function') {
             window._nexusLLM = window._nexusLLM || new window.LLMManager();
 
-            // Build the unified settings object that matches LLMManager defaults structure.
-            const patch = {
-                provider: provider,
-                system_prompt: systemPrompt,
-
-                // Enable proxy for production to avoid CORS (VR browsers need this)
-                proxy: {
-                    enable_proxy: true,
-                    proxy_url: '/api/proxy',
-                },
-            };
-
-            if (provider === 'openai') {
-                patch.openai = {
-                    api_key: apiKey,
-                    model: model || 'gpt-4o',
-                    base_url: baseUrl || '',
-                };
-            } else if (provider === 'claude') {
-                patch.claude = {
-                    api_key: apiKey,
-                    model: model || 'claude-3-5-sonnet-20240620',
-                    base_url: baseUrl || '',
-                };
-            } else if (provider === 'watsonx') {
-                patch.watsonx = {
-                    api_key: apiKey,
-                    project_id: watsonxProjectId || '',
-                    model_id: model || 'ibm/granite-13b-chat-v2',
-                    base_url: baseUrl || 'https://us-south.ml.cloud.ibm.com',
-                };
-            } else if (provider === 'ollama') {
-                patch.ollama = {
-                    base_url: baseUrl || 'http://localhost:11434',
-                    model: model || 'llama3',
-                };
-            } else if (provider === 'ollabridge') {
-                const authModeSelect = $('ollabridge-auth-mode');
-                const authMode = authModeSelect ? authModeSelect.value : 'pairing';
-                const remotePromptCb = $('ollabridge-use-remote-prompt');
-                patch.ollabridge = {
-                    api_key: authMode === 'apikey' ? apiKey : '',
-                    base_url: (baseUrl || '').trim(),
-                    model: model || 'default',
-                    auth_mode: authMode,
-                    use_remote_prompt: remotePromptCb ? remotePromptCb.checked : true,
-                };
-            }
+            const patch = __nexusProviderPatch(provider, {
+                apiKey,
+                model,
+                baseUrl,
+                watsonxProjectId,
+                systemPrompt,
+            });
 
             window._nexusLLM.updateSettings(patch);
             console.log('[Main] ✅ Unified LLM settings saved to nexus_llm_settings for VR:', provider);
@@ -6541,6 +6500,70 @@ async function callWatsonX(userMessage) {
 // ---- Test Connection button (Settings modal) ----
 
 /**
+ * K2. The LLMManager settings for one provider, from what Settings shows: what Save writes, and
+ * what Test Connection tries without writing anything (see __nexusTestConnection).
+ *
+ * Why it is one function. Test Connection used to fill `config` from the form and then call
+ * the manager, which still held the *saved* provider and key. Pick OpenAI on a page whose saved
+ * provider was OllaBridge, paste a key, press Test: the request went to OllaBridge and came back
+ * "Failed at completion: OllaBridge is unreachable (HTTP 503)", about a provider nobody chose.
+ * Building the patch in one place keeps the test and the save from ever disagreeing on what a
+ * provider's settings are.
+ */
+function __nexusProviderPatch(provider, values) {
+    const { apiKey, model, baseUrl, watsonxProjectId, systemPrompt } = values;
+    const $ = (id) => document.getElementById(id);
+    const patch = {
+        provider: provider,
+        system_prompt: systemPrompt,
+
+        // Enable proxy for production to avoid CORS (VR browsers need this)
+        proxy: {
+            enable_proxy: true,
+            proxy_url: '/api/proxy',
+        },
+    };
+
+    if (provider === 'openai') {
+        patch.openai = {
+            api_key: apiKey,
+            model: model || 'gpt-4o',
+            base_url: baseUrl || '',
+        };
+    } else if (provider === 'claude') {
+        patch.claude = {
+            api_key: apiKey,
+            model: model || 'claude-3-5-sonnet-20240620',
+            base_url: baseUrl || '',
+        };
+    } else if (provider === 'watsonx') {
+        patch.watsonx = {
+            api_key: apiKey,
+            project_id: watsonxProjectId || '',
+            model_id: model || 'ibm/granite-13b-chat-v2',
+            base_url: baseUrl || 'https://us-south.ml.cloud.ibm.com',
+        };
+    } else if (provider === 'ollama') {
+        patch.ollama = {
+            base_url: baseUrl || 'http://localhost:11434',
+            model: model || 'llama3',
+        };
+    } else if (provider === 'ollabridge') {
+        const authModeSelect = $('ollabridge-auth-mode');
+        const authMode = authModeSelect ? authModeSelect.value : 'pairing';
+        const remotePromptCb = $('ollabridge-use-remote-prompt');
+        patch.ollabridge = {
+            api_key: authMode === 'apikey' ? apiKey : '',
+            base_url: (baseUrl || '').trim(),
+            model: model || 'default',
+            auth_mode: authMode,
+            use_remote_prompt: remotePromptCb ? remotePromptCb.checked : true,
+        };
+    }
+    return patch;
+}
+
+/**
  * Does the selected provider have the credential it actually needs?
  *
  * The old check was `!config.apiKey` for everyone, which is wrong for two of
@@ -6582,6 +6605,24 @@ async function __nexusTestConnection() {
 
     const ping = 'Respond with the single word: OK';
 
+    // K2. Test what the form shows, not what was saved: the manager is given the form's provider,
+    // key and model in memory for the length of the test, then has its own settings back.
+    const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
+    if (manager && typeof manager.withSettings === 'function') {
+        const trial = __nexusProviderPatch(config.provider, {
+            apiKey: config.apiKey,
+            model: config.model,
+            baseUrl: config.baseUrl,
+            watsonxProjectId: config.watsonxProjectId,
+            systemPrompt: config.systemPrompt,
+        });
+        return manager.withSettings(trial, () => __nexusRunConnectionCheck(ping));
+    }
+    return __nexusRunConnectionCheck(ping);
+}
+
+/** The check itself, against whatever settings the manager holds while it runs (K2). */
+async function __nexusRunConnectionCheck(ping) {
     // M11. Walk the stages a round trip actually passes through, rather than reporting the
     // whole journey as one boolean. `✅ Connected. Reply: [object Object]` was the old best
     // case — a success that could not show what came back — and every failure, from being
