@@ -107,6 +107,11 @@ takes each position at the top of the pace and frames her from behind; writes `s
   pack built on a local Forge that never publishes, worn here by id. Forge's
   `tools/qa/compare_frames.py` puts runs side by side.
 
+The level-5 stories (BD31, BD32: Valentina's `fist-then-inside` and `fist-then-ass`, Chiara's
+`worse-than-last-time`) need their states in the look she wears (Forge's fist and ring packs);
+Forge's `tools/qa/verify_set.sh tools/qa/checks/painter.txt <out>` renders them on a real avatar.
+What a finish shows after a fist is `AFTER_ANAL_FIST` in `PrivateActionBridge.js`.
+
 `node tools/qa/provider-keys-check.mjs` (K1, K2): every provider's key field can be typed into,
 and Test Connection tries the provider the form shows (after Fetch Models), not the saved one.
 

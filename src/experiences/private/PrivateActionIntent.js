@@ -517,6 +517,10 @@
             'first the fist,? then inside|prima il pugno,? poi dentro|primero el puño,? luego dentro|primero el puno,? luego dentro|d.abord le poing,? (?:et )?puis dedans|erst die faust,? dann rein|primeiro o punho,? depois dentro|先に拳、それから中に|먼저 주먹, 그다음 안에|先拳交再内射',
         ],
         [
+            'fist-then-ass',
+            'the fist,? then the ass|prima il pugno,? poi il culo|primero el puño,? luego el culo|primero el puno,? luego el culo|d.abord le poing,? (?:et )?puis le cul|erst die faust,? dann der arsch|primeiro o punho,? depois o cu|先に拳、それからお尻に|먼저 주먹, 그다음 엉덩이에|先拳交再射屁股',
+        ],
+        [
             'worse-than-last-time',
             'worse than last time|peggio dell.ultima volta|peor que la última vez|peor que la ultima vez|pire que la dernière fois|schlimmer als letztes mal|pior do que da última vez|pior do que da ultima vez|前よりもっとひどく|지난번보다 더 심하게|比上次更狠',
         ],
@@ -699,7 +703,7 @@
         return null;
     }
 
-    const STORY_SHOWS = ['fist-then-inside', 'worse-than-last-time'];
+    const STORY_SHOWS = ['fist-then-inside', 'worse-than-last-time', 'fist-then-ass'];
     function storyShowFrom(body) {
         for (const [id, words] of ROUTINE_NAMES) {
             if (!STORY_SHOWS.includes(id)) continue;

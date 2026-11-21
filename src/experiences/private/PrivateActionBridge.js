@@ -2059,6 +2059,9 @@
             ass: 'doggy-anal-fisted-cum',
         },
         'doggy-anal-ring': { inside: 'doggy-ring-creampie', both: 'doggy-both-ring-cum', ass: 'doggy-anal-ring-cum' },
+        // BD32. Their fist in her pussy, then they finish in her ass: her pussy left gaping, her
+        // ass full (Forge's doggy-fisted-anal-cum). "Inside" keeps the plain filled state.
+        'doggy-fisted': { ass: 'doggy-fisted-anal-cum', inside: 'doggy-fisted-cum', both: 'doggy-both-fisted-cum' },
     });
     function filledAfterFist(s, where) {
         if (!s.fist || !['inside', 'ass', 'both', 'choose'].includes(where)) return null;

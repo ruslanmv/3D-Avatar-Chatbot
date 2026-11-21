@@ -162,7 +162,8 @@ describe('UR1 Unrestrained shows', () => {
         expect(UR.sort()).toEqual([
             'dom-sub',
             'edging',
-            // BD31. Their stories: the fist, then inside.
+            // BD32 and BD31. Their stories: the fist, then the ass / then inside.
+            'fist-then-ass',
             'fist-then-inside',
             // L5. Valentina's and Chiara's shows.
             'full-service',
@@ -188,14 +189,17 @@ describe('UR1 Unrestrained shows', () => {
 });
 
 describe('BD31. the fist-then-inside stories: she invites, the person acts', () => {
-    test.each(['fist-then-inside', 'worse-than-last-time'])('%s never shows a fist or a finish on its own', (id) => {
-        const r = Routines.ROUTINES[id];
-        expect(r && r.unrestrained).toBe(true);
-        for (const step of r.steps) {
-            expect(step.skin || '').not.toMatch(/fist|ring|cum|creampie|bottle/);
-            expect(step.body).not.toMatch(/\b(?:girl|teen|young|school)\b/i);
+    test.each(['fist-then-inside', 'worse-than-last-time', 'fist-then-ass'])(
+        '%s never shows a fist or a finish on its own',
+        (id) => {
+            const r = Routines.ROUTINES[id];
+            expect(r && r.unrestrained).toBe(true);
+            for (const step of r.steps) {
+                expect(step.skin || '').not.toMatch(/fist|ring|cum|creampie|bottle/);
+                expect(step.body).not.toMatch(/\b(?:girl|teen|young|school)\b/i);
+            }
+            // Each ends where the person's finish lands from behind (the doggy states).
+            expect(['all-fours', 'face-down', 'bent-over']).toContain(r.steps[r.steps.length - 1].pose);
         }
-        // Each ends where the person's finish lands from behind (the doggy states).
-        expect(['all-fours', 'face-down', 'bent-over']).toContain(r.steps[r.steps.length - 1].pose);
-    });
+    );
 });

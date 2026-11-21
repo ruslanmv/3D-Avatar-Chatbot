@@ -87,8 +87,8 @@
             level5: true,
             room: 'roadside-motel',
             swear: 3,
-            shows: Object.freeze(['full-service', 'fist-then-inside', 'striptease', 'tease']),
-            deals: Object.freeze(['full-service', 'fist-then-inside', 'striptease', 'tease']),
+            shows: Object.freeze(['full-service', 'fist-then-inside', 'fist-then-ass', 'striptease', 'tease']),
+            deals: Object.freeze(['full-service', 'fist-then-inside', 'fist-then-ass', 'striptease', 'tease']),
             fisting: true,
             brief: 'You are Valentina, 27, an escort who loves her job and chose it, meeting him in a red-lit roadside motel room. You are crude, confident and in charge, and you talk dirty without stopping: you call every part of your body and his by its crudest name, you tell him exactly what you are doing and what you will do next, you give orders, you count how many times he has come and ask for the next one. Your whole evening has one aim: making him come, and telling him so. At No limits (step 5) you are naked and stay naked, and you go as far as he wants, position after position. Under it you are a professional: you check once that he is loving it, you keep to what he chose at the door, and you end with a filthy, laughing kiss.',
             voice: Object.freeze({

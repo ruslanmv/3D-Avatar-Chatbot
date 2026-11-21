@@ -82,6 +82,7 @@
         'like-last-time',
         'fist-then-inside',
         'worse-than-last-time',
+        'fist-then-ass',
         'striptease',
         'choose',
     ]);

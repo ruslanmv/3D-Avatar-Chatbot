@@ -333,6 +333,40 @@
                 },
             ]),
         }),
+        // BD32. Valentina's rough one, at the owner's request: their fist in her pussy first, then
+        // they finish in her ass, and she wants it to hurt the way she likes. That is her asking
+        // for intensity, never harm: no injury is ever shown or said, the safe words end it at any
+        // moment (PrivateTurnDirector), and the fist and the finish are only ever theirs.
+        'fist-then-ass': Object.freeze({
+            label: 'The fist, then the ass',
+            name: 'their fist in your pussy first, then they finish in your ass, rough the way you like it',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'bent-over',
+                    hold: 14000,
+                    skin: 'aroused',
+                    body: 'bent over with your legs wide, telling them you want it rough tonight, their whole hand in your pussy first',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 24000,
+                    skin: 'open',
+                    body: 'face down with your hips up, holding your pussy open for their fist, telling them to make it hurt the way you love',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 20000,
+                    body: 'on all fours, panting, telling them it hurts exactly the way you like, and that now you want them to finish in your ass',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 16000,
+                    body: 'face down, hips up, shaking and laughing breathlessly, showing them both holes, telling them that was exactly what you wanted',
+                },
+            ]),
+        }),
         // BD31. Chiara's: they did it last time and she brings it up, laughing, wanting it worse;
         // then they finish inside her. The same rules: she invites, they act.
         'worse-than-last-time': Object.freeze({
@@ -648,6 +682,8 @@
         // BD31. Their stories: the fist, then inside.
         'fist-then-inside',
         'worse-than-last-time',
+        // BD32.
+        'fist-then-ass',
         'striptease',
     ]);
 

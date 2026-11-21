@@ -158,6 +158,7 @@
         show('like-last-time', 'L5', 'Spooning, astride, legs up, knees up, curled on her side'),
         show('fist-then-inside', 'BD31', 'All fours, face down, bent over, face down'),
         show('worse-than-last-time', 'BD31', 'Spooning, all fours, face down, bent over, face down'),
+        show('fist-then-ass', 'BD32', 'Bent over, face down, all fours, face down'),
         show('edging', 'UR1', 'Kneels wide, sits open, astride, knees up — each held on the edge'),
         show('dom-sub', 'UR1', 'Kneels, kneels wide, all fours, astride'),
         show('oil-everything', 'UR1', 'On her front, lounging, knees up, all fours'),
