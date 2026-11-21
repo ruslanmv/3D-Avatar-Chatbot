@@ -71,6 +71,10 @@ const AVATAR = arg('--avatar', '');
 // HA1. `--hair-aside`: after each plain frame from behind, her hair is moved aside (the mode the
 // ⋯ chip turns on, NEXUS_HAIR_ASIDE) and framed again; the state frames are then taken with it on.
 const HAIR_ASIDE = process.argv.includes('--hair-aside');
+// BD25. `--look-id <id>`: wear exactly this look (a rebuild Forge holds but has not listed, since
+// bare looks are keep-existing), dressed with the listed look of the same body: same states, its
+// own files. Without it, the best listed match is worn.
+const LOOK_ID = arg('--look-id', '');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -330,7 +334,9 @@ async function main() {
                     const c = window.NEXUS_WARDROBE.service.controller;
                     const listed = await c.forge.request('/v1/library/' + encodeURIComponent(want.slug) + '/prebuilt');
                     const looks = (listed && listed.looks) || [];
+                    const lookId = want.lookId;
                     want = want.states;
+                    want.lookId = lookId;
                     const score = (l) =>
                         l && l.body && Array.isArray(l.body.states)
                             ? want.filter((x) => l.body.states.includes(x)).length
@@ -342,6 +348,10 @@ async function main() {
                             (a, b) => score(b) - score(a) || String(b.builtAt || '').localeCompare(a.builtAt || '')
                         )[0];
                     if (!best) return { ok: false, looks: looks.length };
+                    if (want.lookId) {
+                        best.lookId = best.id = want.lookId;
+                        best.vrmUrl = '/v1/assets/looks/' + want.lookId + '/look.vrm';
+                    }
                     // As the closet hands it over (TryOnHaulActivity): the hash Forge listed, so the
                     // download is verified and carries the read grant. Without it the loader
                     // fetches a private file bare and Forge answers 404.
@@ -358,7 +368,7 @@ async function main() {
                         holds: want.filter((x) => best.body.states.includes(x)),
                     };
                 },
-                { slug: SLUG, states: STATES }
+                { slug: SLUG, states: STATES, lookId: LOOK_ID }
             );
             report.stateLook = worn;
             if (!worn.ok) fail(`states: no listed look holds ${STATES.join(',')} (${worn.looks} looks)`);
