@@ -75,6 +75,8 @@ const HAIR_ASIDE = process.argv.includes('--hair-aside');
 // bare looks are keep-existing), dressed with the listed look of the same body: same states, its
 // own files. Without it, the best listed match is worn.
 const LOOK_ID = arg('--look-id', '');
+// With `--look-id`, the SHA-256 of that look's file (the listed look's hash is another file's).
+const LOOK_SHA = arg('--look-sha', '');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -334,9 +336,10 @@ async function main() {
                     const c = window.NEXUS_WARDROBE.service.controller;
                     const listed = await c.forge.request('/v1/library/' + encodeURIComponent(want.slug) + '/prebuilt');
                     const looks = (listed && listed.looks) || [];
-                    const lookId = want.lookId;
+                    const { lookId, lookSha } = want;
                     want = want.states;
                     want.lookId = lookId;
+                    want.lookSha = lookSha;
                     const score = (l) =>
                         l && l.body && Array.isArray(l.body.states)
                             ? want.filter((x) => l.body.states.includes(x)).length
@@ -351,6 +354,7 @@ async function main() {
                     if (want.lookId) {
                         best.lookId = best.id = want.lookId;
                         best.vrmUrl = '/v1/assets/looks/' + want.lookId + '/look.vrm';
+                        if (want.lookSha) best.outputSha256 = best.sha256 = want.lookSha;
                     }
                     // As the closet hands it over (TryOnHaulActivity): the hash Forge listed, so the
                     // download is verified and carries the read grant. Without it the loader
@@ -368,7 +372,7 @@ async function main() {
                         holds: want.filter((x) => best.body.states.includes(x)),
                     };
                 },
-                { slug: SLUG, states: STATES, lookId: LOOK_ID }
+                { slug: SLUG, states: STATES, lookId: LOOK_ID, lookSha: LOOK_SHA }
             );
             report.stateLook = worn;
             if (!worn.ok) fail(`states: no listed look holds ${STATES.join(',')} (${worn.looks} looks)`);
