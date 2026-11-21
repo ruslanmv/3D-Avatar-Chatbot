@@ -18,7 +18,7 @@ Look at the frames, not only the numbers: every bug below was found by looking.
 
 | Tool | What it answers |
 | --- | --- |
-| `node tools/qa/idle-pose-check.mjs [--vrm a.vrm,b.vrm] [--preset naturalIdle] [--talk "line"]` | How her arms hang at rest: angle from vertical, elbow bends (asymmetric?), hand gap outside the thigh, which preset; front, side and both-hand close-ups; then frames while she "speaks" a line (co-speech gestures) |
+| `node tools/qa/idle-pose-check.mjs [--vrm a.vrm,b.vrm] [--preset naturalIdle] [--talk "line"] [--mobile]` | How her arms hang at rest: angle from vertical, elbow bends (asymmetric?), hand gap outside the thigh, which preset; front, side and both-hand close-ups; then frames while she "speaks" a line (co-speech gestures) |
 
 The idle is solved per body in `src/gltf-viewer/RelaxedIdle.js` and applied as
 NaturalPosePlugin's default `relaxedIdle` (`tests/relaxed-idle.test.js`). Measured
@@ -159,3 +159,6 @@ use a token only in one command's environment, never in a file.
   positions in fitted clothes.
 - Talk mode lapses without real audio in a headless page: hold it
   (`setMode('talk', …)`) while capturing.
+
+Gestures while speaking: the 2026-11-21 audit (robotic hands on a phone), its measurements,
+likely causes and the next steps are in `docs/qa/GESTURE_AUDIT.md` (SG6).

@@ -197,3 +197,6 @@ It reports how far each bone moved, each hand's miss by place, the lean and the
 layer's cost per frame, with frames and the hands' targets marked. Thighs and
 between her legs are out of reach of the arm (0.54–0.68 m against 0.46 m) and
 are not offered until a lean that looks right is found.
+
+SG6: the audit of co-speech gestures and hands (owner: "robotic flexion of the hands") is
+`docs/qa/GESTURE_AUDIT.md` — read it before changing SpeechGestures, the talk styles or the idle.

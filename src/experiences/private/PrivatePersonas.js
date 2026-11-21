@@ -21,6 +21,19 @@
 (function (global) {
     'use strict';
 
+    /*
+     * PL1. Her clothes at levels 1–3 (owner, 2026-11-21: "she starts teasing but still has the
+     * original clothes … for the escorts we need something good, realistic"). A woman working her
+     * own window or meeting a client in a motel is already dressed for it when he arrives: a short
+     * dress at level 1, stockings or fishnets at 2, lingerie at 3. Level 4 and above stay as they
+     * are — undressing layer by layer, then bare — so these plans stop at 3.
+     *
+     * Each level lists Forge outfit dictionary ids, best first. The bridge (`dressForPace`) puts on
+     * the first she already has; if she has none, it offers the first to be made — the person's
+     * yes makes it. Never when the person chose her clothes this evening, never on easing down.
+     */
+    const LOOKS_AT = Object.freeze([1, 2, 3]);
+
     const PERSONAS = Object.freeze({
         gina: Object.freeze({
             id: 'gina',
@@ -28,6 +41,12 @@
             age: 32,
             minLevel: 4,
             room: 'window-room',
+            // PL1. What she wears as the evening warms (Forge outfit ids, best first): see LOOKS_AT.
+            looks: Object.freeze({
+                1: Object.freeze(['red-bodycon', 'corset-mini']),
+                2: Object.freeze(['fishnets-mini', 'stockings-mini-dress', 'show-strip-red']),
+                3: Object.freeze(['guepiere', 'plunge-thong', 'balconette-set']),
+            }),
             swear: 3,
             shows: Object.freeze(['window-evening', 'striptease', 'tease']),
             deals: Object.freeze(['window-evening', 'striptease', 'tease']),
@@ -46,6 +65,12 @@
             age: 29,
             minLevel: 3,
             room: 'candlelit-suite',
+            // PL1. What she wears as the evening warms (Forge outfit ids, best first): see LOOKS_AT.
+            looks: Object.freeze({
+                1: Object.freeze(['evening-gown', 'little-black-dress']),
+                2: Object.freeze(['slip-dress', 'show-strip-lbd']),
+                3: Object.freeze(['balconette-set', 'lace-lingerie-set', 'bodysuit']),
+            }),
             swear: 1,
             shows: Object.freeze(['striptease', 'ride', 'tease']),
             deals: Object.freeze(['striptease', 'ride', 'tease']),
@@ -64,6 +89,12 @@
             age: 26,
             minLevel: 3,
             room: 'tokyo-club',
+            // PL1. What she wears as the evening warms (Forge outfit ids, best first): see LOOKS_AT.
+            looks: Object.freeze({
+                1: Object.freeze(['anime-serpent-empress', 'skater-dress']),
+                2: Object.freeze(['roleplay-maid', 'roleplay-nurse']),
+                3: Object.freeze(['bodysuit', 'plunge-thong']),
+            }),
             swear: 1,
             shows: Object.freeze(['striptease', 'table-dance', 'tease']),
             deals: Object.freeze(['striptease', 'table-dance', 'tease']),
@@ -86,6 +117,12 @@
             minLevel: 4,
             level5: true,
             room: 'roadside-motel',
+            // PL1. What she wears as the evening warms (Forge outfit ids, best first): see LOOKS_AT.
+            looks: Object.freeze({
+                1: Object.freeze(['corset-mini', 'red-bodycon']),
+                2: Object.freeze(['stockings-mini-dress', 'fishnets-mini', 'sheer-blouse']),
+                3: Object.freeze(['guepiere', 'plunge-thong']),
+            }),
             swear: 3,
             shows: Object.freeze([
                 'full-service',
@@ -119,6 +156,12 @@
             minLevel: 4,
             level5: true,
             room: 'apartment',
+            // PL1. What she wears as the evening warms (Forge outfit ids, best first): see LOOKS_AT.
+            looks: Object.freeze({
+                1: Object.freeze(['crop-top-jeans', 'tee-jeans']),
+                2: Object.freeze(['slip-dress', 'skater-dress']),
+                3: Object.freeze(['lace-lingerie-set', 'plunge-thong']),
+            }),
             swear: 2,
             memory: true,
             shows: Object.freeze(['like-last-time', 'worse-than-last-time', 'ride', 'tease']),
@@ -248,7 +291,17 @@
         ];
     }
 
-    const api = { PERSONAS, MEMORY_KEY, forLevel, get, script, promptLines, recall, remember };
+    const api = {
+        LOOKS_AT,
+        PERSONAS,
+        MEMORY_KEY,
+        forLevel,
+        get,
+        script,
+        promptLines,
+        recall,
+        remember,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_PERSONAS = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
