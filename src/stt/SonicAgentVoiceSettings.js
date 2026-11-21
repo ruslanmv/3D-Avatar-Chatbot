@@ -57,6 +57,18 @@
             '<h3 class="config-title">ADVANCED VOICE — SONICAGENT STREAMING</h3>' +
             '<div class="input-group">' +
             `<label style="${ROW}"><input type="checkbox" id="sonic-enabled" /> Enable remote voice through OllaBridge Cloud</label>` +
+            // VL1. The voice's own link to OllaBridge, whatever AI PROVIDER answers the chat:
+            // pair once here and SonicAgent speaks and listens with OpenAI, Claude or any other.
+            '<div id="sonic-link" style="margin-top: 8px; padding: 8px 10px; border: 1px solid' +
+            ' rgba(0, 229, 255, 0.25); border-radius: 6px">' +
+            '<p id="sonic-link-state" role="status" style="margin: 0; font-size: 0.76rem"></p>' +
+            '<div id="sonic-link-pair" style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap">' +
+            '<input type="text" id="sonic-pair-code" class="text-input" maxlength="24" autocomplete="off"' +
+            ' placeholder="Pairing code from OllaBridge" style="flex: 1; min-width: 140px" />' +
+            '<button type="button" id="sonic-pair" class="secondary-btn" style="padding: 6px 12px; font-size: 0.72rem">' +
+            '🔗 Pair</button>' +
+            '</div>' +
+            '</div>' +
             `<p style="${HINT}">Speech-to-text and her voice can run on SonicAgent (Hugging Face) through the` +
             ' OllaBridge Cloud this app is paired with — useful on a Meta Quest. Off by default; on-device' +
             ' Whisper, Piper and the browser voices stay as they are. Choose it under STT PROVIDER and TTS' +
@@ -106,6 +118,59 @@
         select.appendChild(opt);
     }
 
+    /**
+     * VL1. Paint the voice's link to OllaBridge and wire its Pair button (once). Linked: say so,
+     * and that it works whatever AI PROVIDER is chosen. Not linked: the code box. Pairing goes
+     * through the page's one pairing function (main.js), and the chosen SonicAgent voice is
+     * started again at once, so nothing else has to be clicked.
+     */
+    function paintLink(doc, C) {
+        const state = doc.getElementById('sonic-link-state');
+        const pairRow = doc.getElementById('sonic-link-pair');
+        if (!state) return;
+        const info = C && typeof C.gatewayInfo === 'function' ? C.gatewayInfo() : null;
+        if (info) {
+            let host = info.baseUrl;
+            try {
+                host = new URL(info.baseUrl).host;
+            } catch (_) {}
+            state.textContent = `✅ Linked to OllaBridge (${host}). Her SonicAgent voice and listening work with any AI provider — OpenAI, Claude or OllaBridge.`;
+            state.style.color = '#22c55e';
+            if (pairRow) pairRow.style.display = 'none';
+        } else {
+            state.textContent =
+                'Not linked to OllaBridge yet. Enter the pairing code from OllaBridge once; the chat can stay on OpenAI or any other provider.';
+            state.style.color = '#fbbf24';
+            if (pairRow) pairRow.style.display = 'flex';
+        }
+        const btn = doc.getElementById('sonic-pair');
+        const box = doc.getElementById('sonic-pair-code');
+        if (!btn || btn.__nexusWired) return;
+        btn.__nexusWired = true;
+        if (box)
+            box.addEventListener('input', () => {
+                const tidy = box.value.replace(/\s+/g, '').toUpperCase();
+                if (tidy !== box.value) box.value = tidy;
+            });
+        btn.addEventListener('click', async () => {
+            const pair = global.__nexusPairOllaBridgeCode;
+            if (typeof pair !== 'function') return;
+            btn.disabled = true;
+            state.textContent = 'Pairing with OllaBridge…';
+            state.style.color = '';
+            const result = await pair((box && box.value) || '').catch((e) => ({ ok: false, error: e && e.message }));
+            btn.disabled = false;
+            if (result && result.ok) {
+                if (box) box.value = '';
+                paintLink(doc, C);
+                if (typeof global.__nexusVoiceRetry === 'function') global.__nexusVoiceRetry();
+            } else {
+                state.textContent = `❌ ${(result && result.error) || 'Pairing failed'}`;
+                state.style.color = '#ef4444';
+            }
+        });
+    }
+
     function attach(options) {
         const o = options || {};
         const doc = o.doc || global.document;
@@ -126,6 +191,8 @@
         const ttsSelect = doc.getElementById('tts-engine');
         addOption(sttSelect, C.ENGINE, 'SonicAgent — Cloud streaming (via OllaBridge)');
         addOption(ttsSelect, C.ENGINE, 'SonicAgent Piper — Cloud streaming (via OllaBridge)');
+        paintLink(doc, C); // VL1
+        if (typeof global.__nexusVoiceRetry === 'function') global.__nexusVoiceRetry(); // VL1
         // The saved choices may be the remote ones, set before these options existed.
         try {
             const TP = global.TTSProvider;

@@ -112,6 +112,9 @@
     }
 
     /** The OllaBridge Cloud this app chats through, if it is set up: { baseUrl, token } or null. */
+    /** VL1. OllaBridge Cloud, where pairing happens when no other address was given. */
+    const DEFAULT_GATEWAY = 'https://app.ollabridge.com';
+
     function gatewayInfo() {
         const s = storage();
         let ob = {};
@@ -120,9 +123,14 @@
         } catch (_) {
             ob = {};
         }
-        const baseUrl = String(ob.base_url || '')
-            .trim()
-            .replace(/\/+$/, '');
+        // VL1. A pairing token with no saved address is OllaBridge Cloud's (the address the
+        // pairing itself used). An empty address made the voice count as "not configured" and
+        // fall back silently while the chat ran on another provider (OpenAI, 2026-11-21).
+        const baseUrl = (
+            String(ob.base_url || '')
+                .trim()
+                .replace(/\/+$/, '') || DEFAULT_GATEWAY
+        ).replace(/\/+$/, '');
         const pair = String(ob.pair_token || '').trim();
         const key = String(ob.api_key || '').trim();
         const token = ob.auth_mode === 'apikey' ? key || pair : pair || key;
