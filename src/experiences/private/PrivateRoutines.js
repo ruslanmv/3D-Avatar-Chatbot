@@ -299,6 +299,77 @@
                 },
             ]),
         }),
+        // BD31. Valentina's story, the owner's: their fist in her ass first, then they come in her
+        // pussy. She invites each moment; the fist and the finish are only ever theirs (their words
+        // or tap): her body then shows the gape (doggy-anal-fisted / the ring), and after "inside"
+        // her ass still gaping and empty with her pussy full (doggy-anal-fisted-creampie).
+        'fist-then-inside': Object.freeze({
+            label: 'First the fist, then inside',
+            name: 'first their fist in your ass, then they come in your pussy',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'all-fours',
+                    hold: 14000,
+                    skin: 'aroused',
+                    body: 'naked on all fours, looking back over your shoulder, telling them in the filthiest words that first you want their whole hand in your ass',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 24000,
+                    skin: 'anus-open',
+                    body: 'face down with your hips up, reaching back to hold yourself open, begging for their fist in your ass',
+                },
+                {
+                    pose: 'bent-over',
+                    hold: 20000,
+                    body: 'bent over with your legs apart, telling them that now you want them to come deep in your pussy',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 18000,
+                    body: 'face down, hips still up, looking back at them, showing them what they did to you and asking for more',
+                },
+            ]),
+        }),
+        // BD31. Chiara's: they did it last time and she brings it up, laughing, wanting it worse;
+        // then they finish inside her. The same rules: she invites, they act.
+        'worse-than-last-time': Object.freeze({
+            label: 'Worse than last time',
+            name: 'like last time, but worse: their fist, then inside her',
+            level: 4,
+            unrestrained: true,
+            steps: Object.freeze([
+                {
+                    pose: 'spoon',
+                    hold: 14000,
+                    skin: 'aroused',
+                    body: 'pressed back against them, laughing, reminding them how last time they had their whole hand in your ass and you loved it',
+                },
+                {
+                    pose: 'all-fours',
+                    hold: 18000,
+                    skin: 'anus-open',
+                    body: 'on all fours, grinning back at them, daring them to do it again, worse than last time',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 24000,
+                    body: 'face down, hips up, reaching back to hold yourself open for their fist, telling them you have thought about it all week',
+                },
+                {
+                    pose: 'bent-over',
+                    hold: 18000,
+                    body: 'bent over, still open for them, asking them to come inside your pussy this time',
+                },
+                {
+                    pose: 'face-down',
+                    hold: 15000,
+                    body: 'face down, hips up, giggling, showing them what they did and asking if it was worse than last time',
+                },
+            ]),
+        }),
         // L5. Chiara's show: their favourite positions as friends who know each other's bodies,
         // face to face most of the way, ending curled up together in her afterglow.
         'like-last-time': Object.freeze({
@@ -574,6 +645,9 @@
         // L5. The No-limits personas' own shows (Valentina, Chiara).
         'full-service',
         'like-last-time',
+        // BD31. Their stories: the fist, then inside.
+        'fist-then-inside',
+        'worse-than-last-time',
         'striptease',
     ]);
 

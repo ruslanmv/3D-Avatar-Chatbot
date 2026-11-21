@@ -144,6 +144,8 @@ const PrivateConversationView = (() => {
         // L5. Valentina's and Chiara's shows (No limits only, like the UR1 ones).
         'full-service',
         'like-last-time',
+        'fist-then-inside',
+        'worse-than-last-time',
         'striptease',
     ]);
 

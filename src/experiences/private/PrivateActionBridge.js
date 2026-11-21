@@ -1344,7 +1344,8 @@
             }
             // UR1. Her body at this step (arousal, the edge, oil, rope), when her look's pack has
             // it. Never a finish (those are the person's), and never over a finish still on her.
-            if (ok && step.skin && s.skin && !s.finish && Array.isArray(s.skinStates)) {
+            // BD31. Nor over their fist: once they have given it, the gape stays until they finish.
+            if (ok && step.skin && s.skin && !s.finish && !s.fist && Array.isArray(s.skinStates)) {
                 if (s.skinStates.some((x) => x && x.name === step.skin))
                     Promise.resolve(s.skin.apply(step.skin)).catch(() => {});
             }

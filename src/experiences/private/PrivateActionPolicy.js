@@ -80,6 +80,8 @@
         // L5. Valentina's and Chiara's shows.
         'full-service',
         'like-last-time',
+        'fist-then-inside',
+        'worse-than-last-time',
         'striptease',
         'choose',
     ]);
