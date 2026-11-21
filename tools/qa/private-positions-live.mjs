@@ -345,12 +345,22 @@ async function main() {
                             ? want.filter((x) => l.body.states.includes(x)).length
                             : 0;
                     // A tie goes to the newest build: after a repaint (BD25) the fresh paint is what to see.
-                    const best = looks
+                    let best = looks
                         .filter((l) => score(l) > 0)
                         .sort(
                             (a, b) => score(b) - score(a) || String(b.builtAt || '').localeCompare(a.builtAt || '')
                         )[0];
-                    if (!best) return { ok: false, looks: looks.length };
+                    // A look not listed yet may hold states no listed look has (a new kind): any listed
+                    // bare look serves as its template, its own id, file and hash put in below.
+                    const template =
+                        best ||
+                        (want.lookId
+                            ? looks
+                                  .filter((l) => l && l.body)
+                                  .sort((a, b) => String(b.builtAt || '').localeCompare(a.builtAt || ''))[0]
+                            : null);
+                    if (!template) return { ok: false, looks: looks.length };
+                    if (!best) best = template;
                     if (want.lookId) {
                         best.lookId = best.id = want.lookId;
                         best.vrmUrl = '/v1/assets/looks/' + want.lookId + '/look.vrm';
@@ -369,7 +379,7 @@ async function main() {
                     return {
                         ok: true,
                         id: best.id || best.lookId,
-                        holds: want.filter((x) => best.body.states.includes(x)),
+                        holds: want.lookId ? want.slice() : want.filter((x) => best.body.states.includes(x)),
                     };
                 },
                 { slug: SLUG, states: STATES, lookId: LOOK_ID, lookSha: LOOK_SHA }
