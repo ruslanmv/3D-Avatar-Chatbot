@@ -110,7 +110,7 @@ takes each position at the top of the pace and frames her from behind; writes `s
   reaches her body; `--states` alone uses a QA switcher.
 - `node tools/qa/private-setup-shot.mjs [--lang it-IT] [--out dir]` (UI1): Private's setup
   screens (step 1 mood, step 2 "Scegli l'atmosfera") on desktop and iPhone, for a design
-  review. Plan and findings: `docs/claude/lighting-and-private-setup-plan.md`.
+  review. Plan and findings: `docs/qa/LIGHTING_AND_PRIVATE_SETUP_PLAN.md`.
 - `--normal-light` (NL2) saves the person's choice "Normal room light in Private" before the
   page opens, so the room is checked in normal light exactly as the app applies it (the
   Settings switch, or the ⋯ chip 💡). Prefer it to `--mood` for Private rooms.
