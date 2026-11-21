@@ -66,6 +66,7 @@ if (process.argv.includes('--forge-grant') && !REAL_GRANT) {
 const STATES = arg('--states', '').split(',').filter(Boolean);
 // The library character whose prebuilt list holds those looks (Avatar A by default).
 const SLUG = arg('--slug', 'avatar-sample-a');
+const FORGE_URL = arg('--forge-url', '');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -95,6 +96,13 @@ async function main() {
         }, LANG);
         if (REAL_GRANT)
             await ctx.addInitScript((grant) => localStorage.setItem('wardrobe_forge_grant', grant), REAL_GRANT);
+        // `--forge-url`: another Forge than the default Space (a local one with looks just built),
+        // chosen the way Settings stores a custom Forge.
+        if (FORGE_URL)
+            await ctx.addInitScript((url) => {
+                localStorage.setItem('wardrobe_forge_mode', 'custom');
+                localStorage.setItem('wardrobe_forge_url', url);
+            }, FORGE_URL);
         const page = await ctx.newPage();
         page.on('pageerror', (e) => report.errors.push(String(e.message || e).slice(0, 240)));
         await page.goto(server.base + '/', { waitUntil: 'domcontentloaded' });
