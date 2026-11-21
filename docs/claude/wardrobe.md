@@ -285,3 +285,15 @@ when Forge answers the registry as a grant reader (gate 2). So at gate 1 alone
 Try-On's lists, "surprise me" and typed requests never offer them. Private's
 in-scene wardrobe reads with `includeGranted: true`: it only recognises looks
 she already has (her striptease sets, so the show, PP2, still changes her).
+
+## WM: choosing her clothes by meaning (2026-11-21)
+
+Forge's wardrobe list says what each look is (WM1, Forge's `wardrobe/registry/look_meta.py`):
+`pieces` (each garment's type and colour; `hidden` for the foundation under an outfit),
+`types`, `colours` (families: Wine and Crimson are `red`), `outfitId`, `group`, `occasions`
+(`night-out/discoteca`…), `level` (the lowest Private pace step it suits) and `coverage`.
+`OutfitDecisionEngine.score` reads them before the words in a name: a colour Forge stated
+decides (a different one scores against), a style matches by type, group and occasion. Looks
+without these fields match by name as before. The plan for the rest (Forge's `suggest`, the
+shortlist in the prompt, story costume plans at steps 4–5) is Forge's `docs/WARDROBE_RAG.md`.
+Test: `tests/behavior/private-wardrobe-meaning-wm1.test.js`.

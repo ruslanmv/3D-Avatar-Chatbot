@@ -229,19 +229,19 @@ will be rewrapped; files under `docs/` are exempt.
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
-Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
-Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
-the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
-`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
-`IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
-the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `LW` for Living
-Worlds (`docs/LIVING_WORLDS.md`), `PG` for the playgrounds (PG1–PG2 the V4
-release, PG3 the V5 reactive context; never a VRoid `V` batch — the V5 release's
-first four commits say `V5:` by mistake), `DX` for desktop control layout and
-`PW` for the Private World (`docs/engine/PRIVATE_WORLD_ENGINE.md`), `AX` for the
-adult experience configuration
-(`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md`) and `PX` for Private
-3.0's in-session actions
+Try-On, `OD` the outfit dictionary shared with Forge, `WM` her clothes chosen by
+meaning), `V` for VRoid Hub in the Avatar Library, `VP` for the VR puppet, `AR`
+for the AR conversation, `VR` for the VR chat panel, `ST` for on-device
+speech-to-text (`docs/QUEST_STT.md`) and `HV` for SonicAgent voice through
+OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`), `IC` for
+Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for the
+Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `LW` for Living Worlds
+(`docs/LIVING_WORLDS.md`), `PG` for the playgrounds (PG1–PG2 the V4 release, PG3
+the V5 reactive context; never a VRoid `V` batch — the V5 release's first four
+commits say `V5:` by mistake), `DX` for desktop control layout and `PW` for the
+Private World (`docs/engine/PRIVATE_WORLD_ENGINE.md`), `AX` for the adult
+experience configuration (`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md`)
+and `PX` for Private 3.0's in-session actions
 (`docs/NEXUS_PRIVATE_3_SEAMLESS_COMPANION_IMPLEMENTATION.md`), `UN` for
 undressing and poses in Private (same doc, §14), `PMA` for Private's
 more-actions menu (the Playground chips behind one ⋯), `BI` for private
