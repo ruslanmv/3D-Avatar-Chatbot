@@ -19,6 +19,12 @@
  *            makes the second gate real (the grant from FORGE_GRANT in the environment, never a
  *            file); `--behind` adds each position from behind her; `--world <id>` picks the room
  *            (`window-room` has a bed and nothing behind her). Writes sheet.png with every frame.
+ *   states   `--states doggy-fisted,doggy-anal-fisted-cum,…` (with the level-5 run): before the
+ *            positions she changes into her bare look whose skin pack holds the most of them (as
+ *            Forge lists it, `look.body.states`); after each position her skin is switched to each
+ *            state in turn and framed from behind (`<key>-<state>.png`, on the sheet). The look is
+ *            worn through the wardrobe controller and the state painted by the app's own
+ *            SkinStateSwitcher, the way the bridge shows a fist or a finish.
  *   ease     Holding the last position, Ease up is pressed until the evening is below its step:
  *            she must be standing again (UN28 `fitPoseToPace`).
  *
@@ -56,6 +62,10 @@ if (process.argv.includes('--forge-grant') && !REAL_GRANT) {
     console.error('--forge-grant needs the grant in FORGE_GRANT');
     process.exit(2);
 }
+// L5. Skin states to show on her after each position (see `states` above). Empty: none.
+const STATES = arg('--states', '').split(',').filter(Boolean);
+// The library character whose prebuilt list holds those looks (Avatar A by default).
+const SLUG = arg('--slug', 'avatar-sample-a');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -292,6 +302,47 @@ async function main() {
             else console.log('ok   level 5: Ease back to 4');
         }
 
+        // states: wear the bare look whose skin pack holds the most of the states asked for.
+        if (STATES.length) {
+            const worn = await page.evaluate(
+                async (want) => {
+                    // Her looks as the closet reads them: the library character's prebuilt list (the
+                    // read grant opens its private entries), each bare one with Forge's `body`.
+                    const c = window.NEXUS_WARDROBE.service.controller;
+                    const listed = await c.forge.request('/v1/library/' + encodeURIComponent(want.slug) + '/prebuilt');
+                    const looks = (listed && listed.looks) || [];
+                    want = want.states;
+                    const score = (l) =>
+                        l && l.body && Array.isArray(l.body.states)
+                            ? want.filter((x) => l.body.states.includes(x)).length
+                            : 0;
+                    const best = looks.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a))[0];
+                    if (!best) return { ok: false, looks: looks.length };
+                    window.__qaStateLook = best;
+                    await c.applyLook(best);
+                    return {
+                        ok: true,
+                        id: best.id || best.lookId,
+                        holds: want.filter((x) => best.body.states.includes(x)),
+                    };
+                },
+                { slug: SLUG, states: STATES }
+            );
+            report.stateLook = worn;
+            if (!worn.ok) fail(`states: no listed look holds ${STATES.join(',')} (${worn.looks} looks)`);
+            else console.log(`ok   wearing ${worn.id}: ${worn.holds.join(', ')}`);
+            await page
+                .waitForFunction(
+                    () => window.NEXUS_VIEWER?.avatarManager?.currentRoot && window.vrPoseSystem?.avatarRoot,
+                    null,
+                    {
+                        timeout: 240000,
+                    }
+                )
+                .catch(() => {});
+            await page.waitForTimeout(4000);
+        }
+
         // take: every key at the top, from the menu.
         for (const key of KEYS) {
             await openMenu();
@@ -328,6 +379,27 @@ async function main() {
                 });
                 await page.waitForTimeout(500);
                 await canvas.screenshot({ path: path.join(out, `${key}-behind.png`) }).catch(() => {});
+                // L5. Each state asked for, painted by the app's own switcher on the look she wears.
+                for (const st of report.stateLook && report.stateLook.ok ? STATES : []) {
+                    const shown = await page.evaluate(async (st) => {
+                        const look = window.__qaStateLook;
+                        const root = window.NEXUS_VIEWER.avatarManager.currentRoot;
+                        if (!window.__qaSkin || window.__qaSkinRoot !== root) {
+                            const forge = window.NEXUS_WARDROBE.service.controller.forge;
+                            window.__qaSkin = window.NEXUS_SKIN_STATES.create({
+                                fetch: window.fetch.bind(window),
+                                headersFor: async (url) =>
+                                    forge && forge.downloadHeadersNow ? forge.downloadHeadersNow(url) : {},
+                            });
+                            window.__qaSkinRoot = root;
+                            await window.__qaSkin.attach(root, look);
+                        }
+                        return window.__qaSkin.apply(st);
+                    }, st);
+                    if (!shown) fail(`state ${st}: not shown on ${key}`);
+                    await page.waitForTimeout(700);
+                    await canvas.screenshot({ path: path.join(out, `${key}-${st}.png`) }).catch(() => {});
+                }
             }
             if (!now.last || now.last.pose !== key || now.last.status !== 'completed' || !now.last.seen)
                 fail(`take ${key}: ${JSON.stringify(now.last)}`);
@@ -373,6 +445,7 @@ async function sheet(browser) {
         ...KEYS.flatMap((k) => [
             [k, k],
             [`${k}-behind`, `${k} · behind`],
+            ...STATES.map((st) => [`${k}-${st}`, `${k} · ${st}`]),
         ]),
         ['level-5', 'The card at step 5'],
     ].filter(([f]) => fs.existsSync(path.join(out, `${f}.png`)));
