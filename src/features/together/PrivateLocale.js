@@ -69,6 +69,7 @@
             'controls.end': 'End',
             'controls.aria.forward': 'One step more intense',
             'controls.aria.ease': 'One step gentler',
+            'controls.aria.end': 'End chat',
             'actions.more': 'More actions',
             'actions.close': 'Close',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -287,6 +288,7 @@
             'controls.end': 'Terminar',
             'controls.aria.forward': 'Un paso más intenso',
             'controls.aria.ease': 'Un paso más suave',
+            'controls.aria.end': 'Terminar chat',
             'actions.more': 'Más acciones',
             'actions.close': 'Cerrar',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -506,6 +508,7 @@
             'controls.end': 'Fine',
             'controls.aria.forward': 'Un passo più intenso',
             'controls.aria.ease': 'Un passo più delicato',
+            'controls.aria.end': 'Termina chat',
             'actions.more': 'Altre azioni',
             'actions.close': 'Chiudi',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -724,6 +727,7 @@
             'controls.end': 'Terminer',
             'controls.aria.forward': 'Un cran plus intense',
             'controls.aria.ease': 'Un cran plus doux',
+            'controls.aria.end': 'Terminer le chat',
             'actions.more': 'Plus d’actions',
             'actions.close': 'Fermer',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -944,6 +948,7 @@
             'controls.end': 'Beenden',
             'controls.aria.forward': 'Eine Stufe intensiver',
             'controls.aria.ease': 'Eine Stufe sanfter',
+            'controls.aria.end': 'Chat beenden',
             'actions.more': 'Weitere Aktionen',
             'actions.close': 'Schließen',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -1164,6 +1169,7 @@
             'controls.end': 'Encerrar',
             'controls.aria.forward': 'Um passo mais intenso',
             'controls.aria.ease': 'Um passo mais suave',
+            'controls.aria.end': 'Encerrar chat',
             'actions.more': 'Mais ações',
             'actions.close': 'Fechar',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -1383,6 +1389,7 @@
             'controls.end': '終わる',
             'controls.aria.forward': 'ひとつ強く',
             'controls.aria.ease': 'ひとつ穏やかに',
+            'controls.aria.end': 'チャットを終了',
             'actions.more': 'その他の操作',
             'actions.close': '閉じる',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -1600,6 +1607,7 @@
             'controls.end': '끝내기',
             'controls.aria.forward': '한 단계 더 강하게',
             'controls.aria.ease': '한 단계 더 부드럽게',
+            'controls.aria.end': '채팅 종료',
             'actions.more': '더 많은 동작',
             'actions.close': '닫기',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.
@@ -1818,6 +1826,7 @@
             'controls.end': '结束',
             'controls.aria.forward': '强一档',
             'controls.aria.ease': '柔和一档',
+            'controls.aria.end': '结束聊天',
             'actions.more': '更多操作',
             'actions.close': '关闭',
             // UN27. The ⋯ menu's closer positions: the chip, and the line it sends as their turn.

@@ -238,7 +238,7 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
             canEase: true,
         });
 
-        expect(ids()).toEqual(['ease', 'closer', 'end']);
+        expect(ids()).toEqual(['end', 'ease', 'closer']);
         const forward = document.querySelector('[data-private-action="closer"]');
         const ease = document.querySelector('[data-private-action="ease"]');
         expect(forward.textContent).toBe('More →');
@@ -260,7 +260,7 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
             forward: 'Closer',
             canEase: false,
         });
-        expect(ids()).toEqual(['closer', 'end']);
+        expect(ids()).toEqual(['end', 'closer']);
 
         view.setPace({
             pace: 'Sensual',
@@ -271,7 +271,7 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
             forward: '',
             canEase: true,
         });
-        expect(ids()).toEqual(['ease', 'end']);
+        expect(ids()).toEqual(['end', 'ease']);
     });
 
     test('the ladder is dots, and the header badge carries the word (P26)', () => {
@@ -375,8 +375,8 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
         // The words stay; the buttons stop being controls.
         expect(document.body.textContent).toContain('Quieter, or closer?');
         expect([...document.querySelectorAll('[data-private-action]')].map((b) => b.dataset.privateAction)).toEqual([
-            'closer',
             'end',
+            'closer',
         ]);
         for (const button of document.querySelectorAll('.nexus-private-actions button')) {
             expect(button.disabled).toBe(true);
