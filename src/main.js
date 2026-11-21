@@ -6471,7 +6471,7 @@ async function callOpenAI(userMessage) {
                 { role: 'system', content: __nexusBasePrompt() + __nexusMediaSuffix() },
                 { role: 'user', content: userMessage },
             ],
-            max_tokens: 500,
+            max_completion_tokens: 500, // MC1: current OpenAI models refuse `max_tokens`
         }),
     });
 
@@ -6846,7 +6846,12 @@ function __nexusWireTestButton() {
         btn.textContent = LABEL;
         // MC1. The model was retired: load what the provider offers now; the newest is chosen,
         // saved and said (fetchAndPopulateModels), ready to test again.
-        if (!result.ok && /model_not_found|has been deprecated|does not exist|not_found_error/i.test(result.message)) {
+        if (
+            !result.ok &&
+            /model_not_found|has been deprecated|does not exist|not_found_error|not a chat model|not supported in the v1\/chat\/completions/i.test(
+                result.message
+            )
+        ) {
             const modelSelect = document.getElementById('model-select');
             const selected = document.querySelector('input[name="provider"]:checked');
             if (modelSelect && selected && (selected.value === 'openai' || selected.value === 'claude'))
