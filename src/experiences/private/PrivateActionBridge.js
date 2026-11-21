@@ -1167,9 +1167,14 @@
     async function wearLookHolding(s, want, alive) {
         const ready = () => (s.skinStates || []).some((x) => x && want.includes(x.name));
         if (ready()) return true;
-        const look = ((s.closet && s.closet.looks) || []).find(
-            (l) => l && l.body && Array.isArray(l.body.states) && want.some((n) => l.body.states.includes(n))
-        );
+        // BD38. In the order of `want`: the look holding the most fitting state, not the first
+        // look that holds any of them.
+        const looks = ((s.closet && s.closet.looks) || []).filter((l) => l && l.body && Array.isArray(l.body.states));
+        let look = null;
+        for (const n of want) {
+            look = looks.find((l) => l.body.states.includes(n)) || null;
+            if (look) break;
+        }
         if (!look || !s.closet || typeof s.closet.wearLook !== 'function') return false;
         const out = await keepingPose(s, () => s.closet.wearLook(look, alive || (() => state === s)));
         if (!out || !out.ok) return false;
@@ -2154,13 +2159,43 @@
         return null;
     }
 
+    /**
+     * BD38. Every state `fistState` could show for this request, best first, whatever pack holds
+     * them: what her look must hold. Sado states at the evening's strength or lighter, never
+     * stronger (BD36).
+     */
+    function fistCandidates(s, where, tool) {
+        const group = poseGroup(s);
+        if (tool === 'hands') return [...((HANDS_STATES[group] || {}).anal || [])];
+        if (tool === 'bottle') {
+            const target = where && where !== 'choose' ? where : 'anal';
+            return [...((BOTTLE_STATES[group] || {})[target] || [])];
+        }
+        const byPose = FIST_STATES[group] || null;
+        const asked = where && where !== 'choose' ? where : null;
+        const targets = asked ? [asked] : group === 'doggy' ? ['anal', 'both', 'front'] : ['front', 'anal', 'both'];
+        const out = [];
+        for (const target of targets) {
+            for (const n of [...((byPose && byPose[target]) || []), ...FIST_BY_TARGET[target]]) {
+                if (!/^sado-/.test(n)) out.push(n);
+                else for (let l = Math.min(s.marks || 1, MAX_MARKS); l >= 1; l -= 1) out.push(atMarks(n, l));
+            }
+        }
+        return [...new Set(out)];
+    }
+
     async function fistOn(s, action) {
-        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
         const tool = action.params && action.params.with;
-        // BD35. Two hands live in their own pack: from behind, she changes into that look first.
-        if (tool === 'hands' && poseGroup(s) === 'doggy' && !fistState(s, 'anal', tool))
-            await wearLookHolding(s, HANDS_STATES.doggy.anal).catch(() => false);
-        const chosen = fistState(s, action.params && action.params.where, tool);
+        const where = action.params && action.params.where;
+        // BD38. Asked in the chat at level 5, her bare look often had no skin pack at all
+        // (`no-skin-pack`, the deployed Space, 2026-11-21): their fist was answered in words only.
+        // Like two hands (BD35), she now changes into the look whose pack holds it, keeping her pose.
+        if (!fistState(s, where, tool)) {
+            const want = fistCandidates(s, where, tool);
+            if (want.length) await wearLookHolding(s, want).catch(() => false);
+        }
+        if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
+        const chosen = fistState(s, where, tool);
         if (!chosen) return settle(action, 'failed', 'no-fist-state');
         s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
         action.result = { state: chosen };

@@ -2823,6 +2823,69 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             }
         });
 
+        test('BD38. asked in the chat, the fist changes her into the look whose pack holds it', async () => {
+            const calls = stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                // Only the fisted look's pack holds the fist (Forge's bare looks each hold a pack).
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    ...(look && look.body
+                        ? [{ name: 'doggy-anal-fisted', body: 'your ass gaping after their fist' }]
+                        : []),
+                ];
+                return skin;
+            };
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const looks = [
+                ...LOOKS_UN32,
+                {
+                    lookId: 'f',
+                    name: 'Bare, fisted',
+                    prompt: 'bare authored body',
+                    vrmUrl: 'fisted.vrm',
+                    private: true,
+                    body: { detail: 'natural', states: ['closed', 'doggy-anal-fisted'] },
+                },
+            ];
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                expect(calls).not.toContain('attach:Bare, fisted');
+                held = 'all-fours';
+                await say('fammi il pugno nel culo');
+                await flush();
+                await flush(80); // a look change first: more ticks than a skin switch
+                const fist = Actions.log()
+                    .filter((a) => a.name === 'body.fist')
+                    .at(-1);
+                expect(fist).toMatchObject({ status: 'completed', result: { state: 'doggy-anal-fisted' } });
+                expect(calls).toContain('attach:Bare, fisted');
+                expect(calls[calls.length - 1]).toBe('apply:doggy-anal-fisted');
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
+
         test('L5. from behind (face down, bent over, all fours): fist, then filled; a bottle, then filled', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
