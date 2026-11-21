@@ -1150,9 +1150,17 @@
         return names.includes(atMarks('sado-roped-open', level)) || names.includes(atMarks('sado-both-fisted', level));
     }
     /** Her bare look holding the marks at `level`, put on keeping her pose; true once its pack is on. */
-    async function wearMarksLook(s, level, alive) {
-        if (marksReady(s, level)) return true;
-        const want = [atMarks('sado-roped-open', level), atMarks('sado-both-fisted', level)];
+    function wearMarksLook(s, level, alive) {
+        return wearLookHolding(s, [atMarks('sado-roped-open', level), atMarks('sado-both-fisted', level)], alive);
+    }
+    /**
+     * BD34/BD35. Her bare look whose skin pack holds one of `want`, put on keeping her pose; true
+     * once that pack is on her. A pack holds at most ten states, so a body state another pack
+     * holds (a mark strength, two hands) means changing into that look, never painting it here.
+     */
+    async function wearLookHolding(s, want, alive) {
+        const ready = () => (s.skinStates || []).some((x) => x && want.includes(x.name));
+        if (ready()) return true;
         const look = ((s.closet && s.closet.looks) || []).find(
             (l) => l && l.body && Array.isArray(l.body.states) && want.some((n) => l.body.states.includes(n))
         );
@@ -1160,11 +1168,11 @@
         const out = await keepingPose(s, () => s.closet.wearLook(look, alive || (() => state === s)));
         if (!out || !out.ok) return false;
         syncSkin(s);
-        for (let i = 0; i < 60 && !marksReady(s, level); i += 1) {
+        for (let i = 0; i < 60 && !ready(); i += 1) {
             await new Promise((resolve) => (s.win.setTimeout || setTimeout)(resolve, 200));
             if (state !== s) return false;
         }
-        return marksReady(s, level);
+        return ready();
     }
     /** BD34. "Mark me more" / "fewer marks": their words only; the same moment at the new strength. */
     async function marksTo(s, action) {
@@ -2111,9 +2119,17 @@
         doggy: { front: ['doggy-bottle'], anal: ['doggy-bottle-anal'], both: ['doggy-bottle-anal', 'doggy-bottle'] },
     });
 
+    const HANDS_STATES = Object.freeze({ doggy: { anal: ['doggy-anal-fisted-wide'] } });
+
     function fistState(s, where, tool) {
         const names = (s.skinStates || []).map((x) => x.name);
         const group = poseGroup(s);
+        // BD35. Two hands in her ass: Forge's wider gape, from behind only. Never the one-fist
+        // state standing in for it, and never her pussy: "le due mani" is shown in her ass.
+        if (tool === 'hands') {
+            const byPose = HANDS_STATES[group] || null;
+            return ((byPose && byPose.anal) || []).find((n) => names.includes(n)) || null;
+        }
         if (tool === 'bottle') {
             const byPose = BOTTLE_STATES[group] || null;
             const target = where && where !== 'choose' ? where : 'anal';
@@ -2132,9 +2148,13 @@
         return null;
     }
 
-    function fistOn(s, action) {
+    async function fistOn(s, action) {
         if (!s.skin || !s.skinStates || !s.skinStates.length) return settle(action, 'failed', 'no-skin-pack');
-        const chosen = fistState(s, action.params && action.params.where, action.params && action.params.with);
+        const tool = action.params && action.params.with;
+        // BD35. Two hands live in their own pack: from behind, she changes into that look first.
+        if (tool === 'hands' && poseGroup(s) === 'doggy' && !fistState(s, 'anal', tool))
+            await wearLookHolding(s, HANDS_STATES.doggy.anal).catch(() => false);
+        const chosen = fistState(s, action.params && action.params.where, tool);
         if (!chosen) return settle(action, 'failed', 'no-fist-state');
         s.fist = { state: chosen, turnId: action.turnId, at: Date.now() };
         action.result = { state: chosen };
@@ -2181,6 +2201,12 @@
         // ass full (Forge's doggy-fisted-anal-cum). "Inside" keeps the plain filled state.
         'doggy-fisted': { ass: 'doggy-fisted-anal-cum', inside: 'doggy-fisted-cum', both: 'doggy-both-fisted-cum' },
         // BD33. Tied, marked, both their hands: wherever they finish, both holes stay open, filled.
+        // BD35. Two hands in her ass: filled, it stays as wide.
+        'doggy-anal-fisted-wide': {
+            inside: 'doggy-anal-fisted-wide-cum',
+            ass: 'doggy-anal-fisted-wide-cum',
+            both: 'doggy-anal-fisted-wide-cum',
+        },
         'sado-both-fisted': {
             inside: 'sado-both-fisted-cum',
             ass: 'sado-both-fisted-cum',
@@ -3560,7 +3586,9 @@
             now.push(
                 lastFist.params && lastFist.params.with === 'bottle'
                     ? 'They used a bottle on you, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
-                    : 'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+                    : lastFist.params && lastFist.params.with === 'hands'
+                      ? 'Both their hands are in your ass now, as your body shows, stretched wider than a fist: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
+                      : 'Their fist is inside you now, as your body shows: stay in it, feel it, react in your own voice and in proportion, and check in with them.'
             );
         else if (lastFist && lastFist.status !== 'pending')
             now.push(

@@ -2756,6 +2756,67 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             }
         });
 
+        test('BD35. "mettimi le due mani": both their hands in her ass, a wider gape, filled stays as wide', async () => {
+            stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    { name: 'doggy-anal-fisted', body: 'your ass gaping after their fist' },
+                    { name: 'doggy-anal-fisted-wide', body: 'your ass gaping wider than a fist' },
+                    { name: 'doggy-anal-fisted-wide-cum', body: 'your ass gaping wide and full' },
+                ];
+                return skin;
+            };
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            const last = (name) =>
+                Actions.log()
+                    .filter((a) => a.name === name && a.status === 'completed' && !(a.result && a.result.same))
+                    .at(-1) || {};
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                held = 'all-fours';
+                // One fist is the fist they always had.
+                await say('fammi il pugno nel culo');
+                await flush();
+                expect(last('body.fist').result).toMatchObject({ state: 'doggy-anal-fisted' });
+                // Two hands: the wider gape, never the one-fist state standing in for it.
+                await say('mettimi le due mani');
+                await flush();
+                await flush(20);
+                expect(last('body.fist')).toMatchObject({
+                    params: { where: 'anal', with: 'hands' },
+                    result: { state: 'doggy-anal-fisted-wide' },
+                });
+                expect(Actions.promptLines().join('\n')).toMatch(/Both their hands are in your ass/);
+                await say('vengo dentro di te');
+                await flush();
+                expect(last('body.finish').result).toMatchObject({ state: 'doggy-anal-fisted-wide-cum' });
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
+
         test('L5. from behind (face down, bent over, all fours): fist, then filled; a bottle, then filled', async () => {
             const calls = stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
