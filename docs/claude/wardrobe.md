@@ -285,3 +285,38 @@ when Forge answers the registry as a grant reader (gate 2). So at gate 1 alone
 Try-On's lists, "surprise me" and typed requests never offer them. Private's
 in-scene wardrobe reads with `includeGranted: true`: it only recognises looks
 she already has (her striptease sets, so the show, PP2, still changes her).
+
+## WM: choosing her clothes by meaning (2026-11-21)
+
+Forge's wardrobe list says what each look is (WM1, Forge's `wardrobe/registry/look_meta.py`):
+`pieces` (each garment's type and colour; `hidden` for the foundation under an outfit),
+`types`, `colours` (families: Wine and Crimson are `red`), `outfitId`, `group`, `occasions`
+(`night-out/discoteca`…), `level` (the lowest Private pace step it suits) and `coverage`.
+`OutfitDecisionEngine.score` reads them before the words in a name: a colour Forge stated
+decides (a different one scores against), a style matches by type, group and occasion. Looks
+without these fields match by name as before. The plan for the rest (Forge's `suggest`, the
+shortlist in the prompt, story costume plans at steps 4–5) is Forge's `docs/WARDROBE_RAG.md`.
+Test: `tests/behavior/private-wardrobe-meaning-wm1.test.js`.
+
+WM3: in Private the bridge asks Forge's `POST /v1/wardrobes/{slug}/suggest` for the scene
+(`refreshLooksFit`: room from the renderer, persona, pace step, what she wears, the last thing
+said about clothes; asked again only when one of those changes, never awaited) and puts Forge's
+`prompt` (≤ 5 numbered looks, ≤ 2 lettered outfits to make) in place of the ten names. The
+model answers `look="2"` or `look="A"`; `fitParams` maps the number to that look's id and the
+letter to the outfit to make (offered on the person's yes; she says she ordered it online). A
+number not on the last list matches nothing. Test: `tests/behavior/private-looks-fit-wm3.test.js`.
+Note: `nexus_private_wardrobe_autonomy` defaults to `off`, which tells her to change only when
+asked; under `suggest` she offers looks from the list.
+
+## FN: one fantasy catalogue with Forge (2026-11-21)
+
+`assets/wardrobe/fantasies.json` is Forge's `assets/fantasies/fantasies.json`, copied verbatim by
+`node tools/wardrobe/sync-fantasies.mjs [forge checkout]` — never edited here. Each fantasy (nurse,
+doctor, teacher, maid, bride, striptease, table dance, …) has its outfits and its words in nine
+languages; `PrivateActionIntent.fantasyFrom` reads it, so "vestiti da infermiera" is a request to
+wear the nurse look (`PrivateActionBridge.onUserTurn`; a wear request that is only a name gives way
+to the fantasy it names). Only with a cue to dress or play the part: talk about a nurse is not a
+request. `tests/wardrobe/fantasy-contract.test.js` fails when a persona, show, room or locale text
+names a costume Forge has no fantasy for, or anything in `banned` (words that read as a minor).
+Adding a fantasy: in Forge first (`docs/WARDROBE_FANTASIES.md`), then sync.
+

@@ -127,6 +127,13 @@
             session,
             win,
             turnId: 0,
+            // WM3. Forge's ranked looks for the scene (see refreshLooksFit), and what it was asked.
+            looksFit: null,
+            looksFitKey: '',
+            looksFitText: '',
+            looksFitBusy: false,
+            // FN1. Forge's fantasy catalogue (assets/wardrobe/fantasies.json), loaded once.
+            fantasies: (o.deps && o.deps.fantasies) || null,
             turnText: '',
             asked: {},
             lastFamily: null,
@@ -157,6 +164,7 @@
         };
         const s = state;
         startStory(s, o.deps && o.deps.story);
+        loadFantasies(s);
         // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
         // evening (position, step, finish) each frame; never moves any of it.
         s.living = startLiving(s, o.deps && o.deps.living);
@@ -303,6 +311,17 @@
      * never replaces the evening they are already in. Every deal carries a generation, so a
      * catalogue that resolves late, or after the session ended, cannot overwrite a newer one.
      */
+    /** FN1. Forge's fantasy catalogue, imported beside the outfits (never edited here). */
+    function loadFantasies(s) {
+        if (s.fantasies || !s.win || typeof s.win.fetch !== 'function') return;
+        Promise.resolve(s.win.fetch('assets/wardrobe/fantasies.json'))
+            .then((r) => (r && r.ok ? r.json() : null))
+            .then((json) => {
+                if (state === s && json && Array.isArray(json.fantasies)) s.fantasies = json;
+            })
+            .catch(() => null);
+    }
+
     function startStory(s, injected) {
         const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
         const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
@@ -2492,13 +2511,105 @@
         return words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}` : words[0] || '';
     }
 
+    /*
+     * WM3. The looks that fit the scene, ranked by Forge (`POST /v1/wardrobes/{slug}/suggest`).
+     *
+     * Why (owner, 2026-11-21). She hardly ever changed clothes in Private, and when she did the
+     * choice ignored where she was. The model was shown ten of her ~500 look names, picked by
+     * nothing, and companions here run on small local models (Ollama 8B) that cannot be handed
+     * the whole wardrobe. Forge knows what every look is and what each room wants, so it ranks;
+     * she is shown at most five numbered lines and two lettered ones for what she does not have
+     * yet (made on the person's yes, while she says she ordered it online).
+     *
+     * Asked again only when the scene changes (room, persona, pace step, what she wears, the
+     * last thing said about clothes), never per turn, and never awaited: a prompt uses the last
+     * list that arrived, and a list that never comes leaves the old names line in its place.
+     */
+    function refreshLooksFit(s, text) {
+        if (!s || !s.closet || typeof s.closet.suggest !== 'function' || s.looksFitBusy) return;
+        let current = null;
+        try {
+            current = typeof s.closet.current === 'function' ? s.closet.current() : null;
+        } catch (_) {
+            current = null;
+        }
+        const activity = s.session && s.session.activity;
+        const body = {
+            room: shownWorld(s.win) || null,
+            persona: (activity && activity.personaChoice) || null,
+            level: Math.max(1, Math.min(5, Number(levelOf(s)) || 1)),
+            text: String(text || '').slice(0, 600),
+            wearing: current ? current.lookId || current.id || null : null,
+            worn: (Array.isArray(s.closet.recent) ? s.closet.recent : []).slice(-20).map(String),
+            k: 5,
+            budget: 600,
+        };
+        const key = JSON.stringify([body.room, body.persona, body.level, body.wearing, body.text]);
+        if (key === s.looksFitKey) return;
+        s.looksFitKey = key;
+        s.looksFitBusy = true;
+        Promise.resolve(s.closet.suggest(body))
+            .then((res) => {
+                if (state !== s || !res || !Array.isArray(res.looks)) return;
+                s.looksFit = {
+                    looks: res.looks,
+                    make: Array.isArray(res.make) ? res.make : [],
+                    prompt: typeof res.prompt === 'string' ? res.prompt : '',
+                    key,
+                };
+            })
+            .catch(() => null)
+            .finally(() => {
+                s.looksFitBusy = false;
+            });
+    }
+
+    /**
+     * WM3. A model's `look="2"` or `look="A"` is a line of the last list it was shown: a number
+     * is that look by id, a letter that outfit to make. Anything else passes through as before
+     * (a name). A number or letter the list does not have matches nothing: she never wears a
+     * look she was not offered.
+     */
+    function fitParams(s, params) {
+        const ref = params && typeof params.look === 'string' ? params.look.trim() : '';
+        if (!/^([1-8]|[ABab])$/.test(ref)) return params;
+        const fit = s.looksFit;
+        const out = Object.assign({}, params);
+        delete out.look;
+        if (/^\d$/.test(ref)) {
+            const item = fit && fit.looks.find((x) => String(x.ref) === ref);
+            out.id = item ? String(item.id) : '\u0000none';
+            return out;
+        }
+        const m = fit && fit.make.find((x) => String(x.ref).toUpperCase() === ref.toUpperCase());
+        if (!m) {
+            out.id = '\u0000none';
+            return out;
+        }
+        out.outfit = m.outfitId;
+        out.made = { prompt: m.prompt || '', title: m.title || m.line || '' };
+        return out;
+    }
+
+    /** WM3. Something Forge offered to make (by its letter) that her dictionary here does not list. */
+    function fitMakeSpec(params) {
+        return params && params.made && params.made.prompt
+            ? { prompt: params.made.prompt, outfitId: params.outfit, label: params.made.title, private: true }
+            : null;
+    }
+
     async function wear(s, action, alive) {
         if (!s.closet) return settle(action, 'failed', 'wardrobe-not-ready');
         const opened = await s.closet.open();
         if (!alive()) return settle(action, 'blocked', 'stale');
         if (!opened.ok) return settle(action, 'failed', opened.why);
-        const planned = s.closet.plan(action.params);
-        if (!planned.ok) return settle(action, 'failed', planned.why);
+        const params = fitParams(s, action.params);
+        const planned = s.closet.plan(params);
+        if (!planned.ok) {
+            const spec = fitMakeSpec(params);
+            if (spec && planned.why === 'no-match') return make(s, action, alive, spec);
+            return settle(action, 'failed', planned.why);
+        }
         const choice = planned.choice;
         if (!choice.generate) {
             const out = await s.closet.wearLook(choice.look, alive);
@@ -2587,8 +2698,20 @@
                         from: action.id,
                     };
             } else if (action.name === 'wardrobe.wear') {
-                const planned = s.closet.plan(action.params);
-                if (!planned.ok) return;
+                const params = fitParams(s, action.params);
+                const planned = s.closet.plan(params);
+                if (!planned.ok) {
+                    const spec = fitMakeSpec(params);
+                    if (spec && planned.why === 'no-match')
+                        s.offer = {
+                            kind: 'create',
+                            spec,
+                            name: spec.label,
+                            turnId: s.turnId,
+                            from: action.id,
+                        };
+                    return;
+                }
                 const c = planned.choice;
                 s.offer = c.generate
                     ? {
@@ -2821,6 +2944,20 @@
         const Intent = pick(s.win, 'NEXUS_PRIVATE_ACTION_INTENT', './PrivateActionIntent.js');
         if (!Intent) return null;
 
+        // WM3. Words about clothes re-rank her looks for the replies that follow.
+        try {
+            const about =
+                (Intent.garmentsIn && Intent.garmentsIn(s.turnText).length) ||
+                (Intent.stylesIn && Intent.stylesIn(s.turnText).length) ||
+                (Intent.coloursIn && Intent.coloursIn(s.turnText).length);
+            if (about) {
+                s.looksFitText = s.turnText;
+                refreshLooksFit(s, s.looksFitText);
+            }
+        } catch (_) {
+            /* the list stays as it was */
+        }
+
         // UN9. The evening's own cues move nothing in the world: the epilogue changes how she
         // speaks, and forgetting erases only the between-evenings outline history.
         const cue = typeof Intent.storyCue === 'function' ? Intent.storyCue(s.turnText) : null;
@@ -2876,6 +3013,28 @@
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
         s.topicTurn = s.turnId;
+        // FN1. A fantasy in their words ("vestiti da infermiera"): their request to wear it — the
+        // look of hers made for it, or Forge's outfit for it, made on their yes.
+        // "Vestiti da infermiera" parses as a look named "da infermiera", which no look is: a
+        // wear request with nothing but a name gives way to the fantasy it names.
+        const vague =
+            parsed &&
+            parsed.name === 'wardrobe.wear' &&
+            !['style', 'colour', 'garment', 'outfit', 'choose', 'different'].some((k) => parsed.params[k]);
+        const fantasy =
+            (!parsed || vague) && typeof Intent.fantasyFrom === 'function'
+                ? Intent.fantasyFrom(s.turnText, s.fantasies)
+                : null;
+        if (fantasy && fantasy.outfits.length) {
+            const looks = (s.closet && s.closet.looks) || [];
+            const outfit =
+                fantasy.outfits.find((id) => looks.some((l) => l && l.outfitId === id)) || fantasy.outfits[0];
+            s.asked.wardrobe = s.turnId;
+            s.lastFamily = 'wardrobe';
+            s.looksFitText = s.turnText;
+            refreshLooksFit(s, s.looksFitText);
+            return request('wardrobe.wear', { outfit }, { source: 'user', turnId: s.turnId });
+        }
         if (!parsed) {
             // Talk about music or clothes: remembered, so "you choose" next has a subject — and a
             // statement (not a question) about music lets a tag she writes for it run.
@@ -3193,9 +3352,18 @@
         const names = ready.names;
         const outfit = closet ? closet.snapshot() : null;
         if (closet && closet.availability().ok) {
+            refreshLooksFit(s, s.looksFitText);
+            const fit = s.looksFit && s.looksFit.prompt ? s.looksFit : null;
             lines.push(
-                `- Your outfit: you can change clothes right here, without leaving. You are wearing: ${(outfit && outfit.name) || 'your own outfit'}.${names.length ? ` Your saved looks: ${names.join('; ')}.` : ''}`
+                `- Your outfit: you can change clothes right here, without leaving. You are wearing: ${(outfit && outfit.name) || 'your own outfit'}.${!fit && names.length ? ` Your saved looks: ${names.join('; ')}.` : ''}`
             );
+            // WM3. Forge's few lines for this scene instead of ten names picked by nothing.
+            if (fit) {
+                for (const ln of fit.prompt.split('\n')) lines.push(`  ${ln}`);
+                lines.push(
+                    '  To put one on use its number or letter, e.g. <wardrobe action="wear" look="2"/>. Only these; describe a look with the words above, never invent one.'
+                );
+            }
             // PB5. "¿Quieres lencería?" — "Sí" — "No tengo lencería guardada", while a prebuilt
             // lingerie set was hers all along: the ten names she was shown happened not to include
             // one. She is told every kind she has ready, so a kind she has is never denied.

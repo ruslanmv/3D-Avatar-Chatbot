@@ -1,0 +1,376 @@
+{
+  "schemaVersion": 1,
+  "about": "FN1. One fantasy catalogue for Forge and the chatbot (docs/WARDROBE_FANTASIES.md). Forge owns it; the chatbot imports a copy. Every fantasy is an adult character by her own choice.",
+  "fantasies": [
+    {
+      "id": "striptease",
+      "title": "Striptease",
+      "outfits": ["show-strip-red", "show-strip-office", "show-strip-trench", "show-strip-lbd", "show-strip-robe"],
+      "scenes": ["strip-stage"],
+      "words": {
+        "en": ["striptease", "strip"],
+        "it": ["spogliarello", "striptease"],
+        "es": ["estriptis", "striptease"],
+        "fr": ["strip-tease", "striptease"],
+        "de": ["striptease", "strip"],
+        "pt": ["striptease"],
+        "ja": ["ストリップ"],
+        "ko": ["스트립쇼"],
+        "zh": ["脱衣舞"]
+      }
+    },
+    {
+      "id": "table-dance",
+      "title": "Table dance",
+      "outfits": [
+        "show-table-sequin",
+        "show-table-leather",
+        "show-table-lace-body",
+        "show-table-sheer-crop",
+        "show-table-pink-bikini"
+      ],
+      "scenes": ["dance-lounge"],
+      "words": {
+        "en": ["table dance", "lap dance", "pole dance"],
+        "it": ["lap dance", "table dance", "lapdance"],
+        "es": ["baile erotico", "lap dance"],
+        "fr": ["lap dance", "danse contact"],
+        "de": ["lapdance", "tabledance"],
+        "pt": ["lap dance"],
+        "ja": ["ラップダンス"],
+        "ko": ["랩댄스"],
+        "zh": ["艳舞"]
+      }
+    },
+    {
+      "id": "nurse",
+      "title": "Nurse",
+      "outfits": ["roleplay-nurse"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["nurse"],
+        "it": ["infermiera"],
+        "es": ["enfermera"],
+        "fr": ["infirmiere"],
+        "de": ["krankenschwester", "pflegerin"],
+        "pt": ["enfermeira"],
+        "ja": ["ナース", "看護師"],
+        "ko": ["간호사"],
+        "zh": ["护士"]
+      }
+    },
+    {
+      "id": "doctor",
+      "title": "Doctor",
+      "outfits": ["roleplay-doctor"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["doctor", "physician"],
+        "it": ["dottoressa", "medico"],
+        "es": ["doctora", "medica"],
+        "fr": ["docteure", "medecin"],
+        "de": ["arztin"],
+        "pt": ["medica", "doutora"],
+        "ja": ["女医", "医者"],
+        "ko": ["의사"],
+        "zh": ["医生"]
+      }
+    },
+    {
+      "id": "teacher",
+      "title": "Teacher",
+      "outfits": ["roleplay-teacher"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["teacher", "professor"],
+        "it": ["insegnante", "professoressa"],
+        "es": ["profesora", "maestra"],
+        "fr": ["professeure", "enseignante"],
+        "de": ["lehrerin"],
+        "pt": ["professora"],
+        "ja": ["女教師", "先生"],
+        "ko": ["선생님"],
+        "zh": ["老师"]
+      }
+    },
+    {
+      "id": "boss",
+      "title": "The boss",
+      "outfits": ["roleplay-boss"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["boss", "ceo", "manager"],
+        "it": ["capa", "direttrice"],
+        "es": ["jefa"],
+        "fr": ["patronne"],
+        "de": ["chefin"],
+        "pt": ["chefe"],
+        "ja": ["社長", "上司"],
+        "ko": ["사장님"],
+        "zh": ["老板"]
+      }
+    },
+    {
+      "id": "secretary",
+      "title": "Secretary",
+      "outfits": ["roleplay-secretary", "roleplay-secretary-glam"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["secretary"],
+        "it": ["segretaria"],
+        "es": ["secretaria"],
+        "fr": ["secretaire"],
+        "de": ["sekretarin"],
+        "pt": ["secretaria"],
+        "ja": ["秘書"],
+        "ko": ["비서"],
+        "zh": ["秘书"]
+      }
+    },
+    {
+      "id": "police",
+      "title": "Police officer",
+      "outfits": ["roleplay-police"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["police", "policewoman", "cop"],
+        "it": ["poliziotta"],
+        "es": ["policia"],
+        "fr": ["policiere"],
+        "de": ["polizistin"],
+        "pt": ["policial"],
+        "ja": ["婦警", "警察"],
+        "ko": ["경찰"],
+        "zh": ["警察"]
+      }
+    },
+    {
+      "id": "firefighter",
+      "title": "Firefighter",
+      "outfits": ["roleplay-firefighter", "roleplay-firefighter-glam"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["firefighter"],
+        "it": ["pompiera", "vigile del fuoco"],
+        "es": ["bombera"],
+        "fr": ["pompiere"],
+        "de": ["feuerwehrfrau"],
+        "pt": ["bombeira"],
+        "ja": ["消防士"],
+        "ko": ["소방관"],
+        "zh": ["消防员"]
+      }
+    },
+    {
+      "id": "flight-attendant",
+      "title": "Flight attendant",
+      "outfits": ["roleplay-flight-attendant", "roleplay-flight-attendant-glam"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["flight attendant", "stewardess"],
+        "it": ["hostess", "assistente di volo"],
+        "es": ["azafata"],
+        "fr": ["hotesse de l'air", "hotesse"],
+        "de": ["stewardess", "flugbegleiterin"],
+        "pt": ["comissaria de bordo", "aeromoca"],
+        "ja": ["キャビンアテンダント", "スチュワーデス"],
+        "ko": ["승무원"],
+        "zh": ["空姐"]
+      }
+    },
+    {
+      "id": "maid",
+      "title": "French maid",
+      "outfits": ["roleplay-maid"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["maid", "french maid"],
+        "it": ["domestica", "cameriera francese"],
+        "es": ["criada", "sirvienta"],
+        "fr": ["soubrette", "femme de chambre"],
+        "de": ["hausangestellte"],
+        "pt": ["empregada"],
+        "ja": ["メイド"],
+        "ko": ["메이드"],
+        "zh": ["女仆"]
+      }
+    },
+    {
+      "id": "waitress",
+      "title": "Waitress",
+      "outfits": ["roleplay-waitress"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["waitress"],
+        "it": ["cameriera"],
+        "es": ["camarera", "mesera"],
+        "fr": ["serveuse"],
+        "de": ["kellnerin"],
+        "pt": ["garconete"],
+        "ja": ["ウェイトレス"],
+        "ko": ["웨이트리스"],
+        "zh": ["女服务员"]
+      }
+    },
+    {
+      "id": "bride",
+      "title": "Wedding night",
+      "outfits": ["roleplay-bride"],
+      "scenes": ["candlelit-suite", "bright-hotel"],
+      "words": {
+        "en": ["bride", "wedding night"],
+        "it": ["sposa", "prima notte di nozze"],
+        "es": ["novia", "noche de bodas"],
+        "fr": ["mariee", "nuit de noces"],
+        "de": ["braut", "hochzeitsnacht"],
+        "pt": ["noiva", "noite de nupcias"],
+        "ja": ["花嫁"],
+        "ko": ["신부"],
+        "zh": ["新娘"]
+      }
+    },
+    {
+      "id": "trainer",
+      "title": "Personal trainer",
+      "outfits": ["roleplay-trainer"],
+      "scenes": ["role-play"],
+      "words": {
+        "en": ["personal trainer", "fitness instructor", "yoga instructor"],
+        "it": ["personal trainer", "istruttrice"],
+        "es": ["entrenadora"],
+        "fr": ["coach sportive"],
+        "de": ["trainerin"],
+        "pt": ["personal trainer", "instrutora"],
+        "ja": ["トレーナー"],
+        "ko": ["트레이너"],
+        "zh": ["健身教练"]
+      }
+    },
+    {
+      "id": "santa",
+      "title": "Santa's helper",
+      "outfits": ["roleplay-santa"],
+      "scenes": ["role-play", "apartment"],
+      "words": {
+        "en": ["santa", "christmas"],
+        "it": ["babbo natale", "natalizia"],
+        "es": ["mama noel", "navidena"],
+        "fr": ["mere noel"],
+        "de": ["weihnachtsfrau"],
+        "pt": ["mamae noel"],
+        "ja": ["サンタ"],
+        "ko": ["산타"],
+        "zh": ["圣诞"]
+      }
+    },
+    {
+      "id": "massage",
+      "title": "Massage",
+      "outfits": ["erotic-massage"],
+      "scenes": ["roadside-motel", "candlelit-suite"],
+      "words": {
+        "en": ["massage", "masseuse"],
+        "it": ["massaggio", "massaggiatrice"],
+        "es": ["masaje", "masajista"],
+        "fr": ["massage", "masseuse"],
+        "de": ["massage", "masseurin"],
+        "pt": ["massagem", "massagista"],
+        "ja": ["マッサージ"],
+        "ko": ["마사지"],
+        "zh": ["按摩"]
+      }
+    },
+    {
+      "id": "dominatrix",
+      "title": "Dominatrix",
+      "outfits": ["fetish-leather-mistress", "erotic-dominant", "fetish-buckle-leather"],
+      "scenes": ["window-room", "role-play"],
+      "words": {
+        "en": ["dominatrix", "mistress", "domme"],
+        "it": ["dominatrice", "padrona", "mistress"],
+        "es": ["dominatrix", "ama"],
+        "fr": ["dominatrice", "maitresse"],
+        "de": ["domina", "herrin"],
+        "pt": ["dominadora"],
+        "ja": ["女王様"],
+        "ko": ["여왕님"],
+        "zh": ["女王"]
+      }
+    },
+    {
+      "id": "latex",
+      "title": "Latex",
+      "outfits": ["fetish-latex-black", "fetish-latex-red", "fetish-catsuit"],
+      "scenes": ["window-room", "role-play"],
+      "words": {
+        "en": ["latex", "rubber"],
+        "it": ["latex", "lattice"],
+        "es": ["latex"],
+        "fr": ["latex"],
+        "de": ["latex", "gummi"],
+        "pt": ["latex"],
+        "ja": ["ラテックス"],
+        "ko": ["라텍스"],
+        "zh": ["乳胶"]
+      }
+    },
+    {
+      "id": "heroine",
+      "title": "Fantasy heroine (cosplay)",
+      "outfits": ["anime-serpent-empress"],
+      "scenes": ["tokyo-club"],
+      "words": {
+        "en": ["cosplay", "fantasy heroine", "heroine"],
+        "it": ["cosplay", "eroina"],
+        "es": ["cosplay", "heroina"],
+        "fr": ["cosplay", "heroine"],
+        "de": ["cosplay", "heldin"],
+        "pt": ["cosplay", "heroina"],
+        "ja": ["コスプレ"],
+        "ko": ["코스프레"],
+        "zh": ["角色扮演"]
+      }
+    },
+    {
+      "id": "morning-after",
+      "title": "The morning after",
+      "outfits": ["after-his-shirt", "after-robe-open"],
+      "scenes": ["apartment", "candlelit-suite"],
+      "words": {
+        "en": ["his shirt", "morning after"],
+        "it": ["la tua camicia", "mattina dopo"],
+        "es": ["tu camisa", "manana siguiente"],
+        "fr": ["ta chemise", "lendemain matin"],
+        "de": ["dein hemd", "morgen danach"],
+        "pt": ["sua camisa", "manha seguinte"],
+        "ja": ["彼シャツ"],
+        "ko": ["남친 셔츠"],
+        "zh": ["男友衬衫"]
+      }
+    }
+  ],
+  "banned": {
+    "en": [
+      "schoolgirl",
+      "school girl",
+      "school uniform",
+      "student",
+      "cheerleader",
+      "teen",
+      "teenager",
+      "young girl",
+      "little girl",
+      "loli",
+      "underage",
+      "minor"
+    ],
+    "it": ["scolaretta", "studentessa", "liceale", "ragazzina", "minorenne", "uniforme scolastica"],
+    "es": ["colegiala", "estudiante", "nina", "adolescente", "menor"],
+    "fr": ["ecoliere", "etudiante", "lyceenne", "adolescente", "mineure"],
+    "de": ["schulmadchen", "schulerin", "teenagerin", "minderjahrig"],
+    "pt": ["colegial", "estudante", "adolescente", "menor de idade"],
+    "ja": ["女子高生", "JK", "女子校生", "ロリ"],
+    "ko": ["여고생", "교복"],
+    "zh": ["女学生", "校服", "萝莉"]
+  }
+}

@@ -326,6 +326,13 @@
             return look;
         }
 
+        /** WM3. Forge's ranked looks for a scene; null when there is no Forge or no avatar yet. */
+        async suggestLooks(body) {
+            if (!this.avatarId) this.snapshot();
+            if (!this.avatarId || !this.forge || typeof this.forge.suggestLooks !== 'function') return null;
+            return this.forge.suggestLooks(this.avatarId, body);
+        }
+
         async getLooks() {
             if (!this.avatarId) this.snapshot();
             if (!this.avatarId) return this.looks.slice();

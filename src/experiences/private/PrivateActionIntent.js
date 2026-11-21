@@ -1563,7 +1563,88 @@
         return null;
     }
 
+    /*
+     * FN1. A fantasy asked for in words: "vestiti da infermiera", "fai la dottoressa", "be my
+     * maid". The catalogue is Forge's (`assets/wardrobe/fantasies.json`, imported, never edited),
+     * so a word means here exactly the outfits it means there. Only with a cue that asks her to
+     * dress or play the part: "mia sorella è infermiera" is talk, not a request. The longest
+     * phrase wins where two overlap ("cameriera francese" is the maid, not also the waitress).
+     */
+    const FANTASY_CUE = new RegExp(
+        [
+            'dress (?:up )?as',
+            'be my',
+            'play (?:the|my|a)',
+            'put on',
+            'wear',
+            'vestiti da',
+            'travestiti da',
+            'fai (?:la|il|da)',
+            'fammi (?:la|il|da)',
+            'sii (?:la mia|il mio|una)',
+            'facciamo',
+            'mettiti',
+            'disfr[aá]zate de',
+            'v[ií]stete de',
+            's[eé] mi',
+            'haz de',
+            'habille-toi en',
+            'd[eé]guise-toi en',
+            'sois ma',
+            'joue (?:la|le)',
+            'verkleide dich als',
+            'zieh dich an als',
+            'sei meine',
+            'spiel (?:die|meine)',
+            'vista-se de',
+            'fantasia de',
+            'seja minha',
+            'になって',
+            'のコスプレ',
+            '해줘',
+            '扮演',
+            '穿',
+        ].join('|'),
+        'iu'
+    );
+
+    function foldText(text) {
+        return String(text || '')
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function fantasyFrom(text, catalogue) {
+        const list = catalogue && Array.isArray(catalogue.fantasies) ? catalogue.fantasies : [];
+        const t = foldText(text);
+        if (!list.length || !FANTASY_CUE.test(t)) return null;
+        const hits = [];
+        for (const f of list) {
+            for (const words of Object.values(f.words || {})) {
+                for (const w of words || []) {
+                    const word = foldText(w);
+                    if (!word) continue;
+                    const cjk = /[^\x00-\u024f]/.test(word);
+                    const re = cjk
+                        ? new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u')
+                        : new RegExp(`(?<![\\p{L}])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'u');
+                    const m = re.exec(t);
+                    if (m) hits.push({ f, at: m.index, end: m.index + m[0].length });
+                }
+            }
+        }
+        const kept = hits.filter(
+            (a) => !hits.some((b) => b.f !== a.f && b.at <= a.at && a.end <= b.end && b.end - b.at > a.end - a.at)
+        );
+        if (!kept.length) return null;
+        kept.sort((a, b) => a.at - b.at);
+        const f = kept[0].f;
+        return { id: f.id, title: f.title, outfits: (f.outfits || []).slice() };
+    }
+
     const api = {
+        fantasyFrom,
         parse,
         topic,
         affirms,

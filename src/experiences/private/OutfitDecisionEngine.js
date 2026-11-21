@@ -59,12 +59,23 @@
     }
 
     function textOf(item) {
-        return [item && (item.name || item.title), item && item.id, item && item.outfitId, item && item.prompt]
-            .concat((item && item.tags) || [])
-            .concat(item && item.request ? [item.request.prompt] : [])
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
+        return (
+            [item && (item.name || item.title), item && item.id, item && item.outfitId, item && item.prompt]
+                .concat((item && item.tags) || [])
+                // WM1. Forge's garment templates ("legwear-fishnet-tights-v1"), so a garment asked by
+                // name is found in a look whose name only says "Black Bodystocking".
+                .concat(
+                    Array.isArray(item && item.pieces)
+                        ? item.pieces
+                              .filter((p) => p && !p.hidden && p.template)
+                              .map((p) => String(p.template).replace(/[-_]/g, ' '))
+                        : []
+                )
+                .concat(item && item.request ? [item.request.prompt] : [])
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase()
+        );
     }
 
     /** A word (or two-word phrase) as itself: "dress" is not in "sundress". */
@@ -72,13 +83,64 @@
         return ` ${text.replace(/[^\p{L}\p{N}]+/gu, ' ')} `.includes(` ${phrase} `);
     }
 
+    /*
+     * WM1. What Forge says a look is (`types`, `colours`, `occasions`, `group`; docs in Forge's
+     * docs/WARDROBE_RAG.md). Asked for "la lingerie rossa", she put on black lingerie: her red
+     * sets are named Wine, Crimson and Burgundy, and a lingerie request only knew the word "red".
+     * Forge now folds those into the family `red`, and says `lingerie` of what shows (not the
+     * foundation under a dress), so meaning outranks words in a name when Forge says it.
+     */
+    const STYLE_TYPES = Object.freeze({
+        elegant: ['dresses', 'formal'],
+        formal: ['formal', 'outerwear'],
+        casual: ['tshirts', 'trousers', 'shorts'],
+        comfy: ['sleepwear', 'knitwear'],
+        lingerie: ['lingerie'],
+        sexy: ['lingerie', 'hosiery'],
+        sporty: ['activewear', 'leggings'],
+        cute: ['skirts'],
+        summer: ['swimwear', 'shorts'],
+        night: ['sleepwear'],
+        party: [],
+    });
+    const STYLE_GROUPS = Object.freeze({
+        elegant: ['dressy'],
+        formal: ['smart'],
+        casual: ['casual'],
+        comfy: ['cozy'],
+        lingerie: ['lingerie', 'erotic'],
+        sexy: ['lingerie', 'sheer', 'erotic', 'legwear'],
+        sporty: ['active'],
+        summer: ['summer', 'swim'],
+        party: ['discoteca'],
+    });
+    /** Occasion styles (`occasion/style`) that answer a style asked in words: "per ballare" is a night out. */
+    const STYLE_OCCASIONS = Object.freeze({ party: ['night-out/'], elegant: ['date-night/', 'gala/'] });
+
+    function meaning(item, request) {
+        let total = 0;
+        const types = Array.isArray(item.types) ? item.types : null;
+        const colours = Array.isArray(item.colours) ? item.colours : null;
+        if (request.colour && colours) total += colours.includes(request.colour) ? 3 : -3;
+        if (request.style) {
+            const style = request.style;
+            if (types && (STYLE_TYPES[style] || []).some((t) => types.includes(t))) total += 4;
+            if (item.group && (STYLE_GROUPS[style] || []).includes(item.group)) total += 2;
+            const occ = Array.isArray(item.occasions) ? item.occasions : [];
+            if ((STYLE_OCCASIONS[style] || []).some((pre) => occ.some((o) => String(o).startsWith(pre)))) total += 3;
+        }
+        return total;
+    }
+
     function score(item, request) {
         const text = textOf(item);
         if (!text) return 0;
-        let total = 0;
+        let total = meaning(item, request);
+        // When Forge said the colour, its family decides; a name's word only for looks it did not.
+        const colourKnown = Array.isArray(item.colours) && item.colours.length > 0;
         if (request.style) for (const w of STYLE_WORDS[request.style] || []) if (has(text, w)) total += 2;
         if (request.style && has(text, request.style)) total += 2;
-        if (request.colour && has(text, request.colour)) total += 3;
+        if (request.colour && !colourKnown && has(text, request.colour)) total += 3;
         // PX15. The garment they named, by its English name: the strongest single signal.
         if (request.garment && has(text, request.garment)) total += 4;
         return total;
@@ -134,6 +196,12 @@
         const worn = (look) => Boolean(wornKey) && keyOf(look) === wornKey;
         const recent = Array.isArray(i.recent) ? i.recent : [];
 
+        // WM3. A look Forge ranked for the scene, chosen by its number: by id, exactly.
+        if (request.id) {
+            const exact = looks.find((l) => keyOf(l) === request.id || l.id === request.id || l.lookId === request.id);
+            if (exact && !worn(exact)) return { kind: 'look', look: exact, generate: false, reason: 'named' };
+            return null;
+        }
         if (request.look) {
             const named = byName(request.look, looks);
             if (named) return { kind: 'look', look: named, generate: false, reason: 'named' };

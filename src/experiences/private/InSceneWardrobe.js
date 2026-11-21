@@ -314,6 +314,22 @@
             return worn && !worn.original ? worn : null;
         }
 
+        /**
+         * WM3. Forge's ranked looks for the scene (`POST /v1/wardrobes/{slug}/suggest`), or null
+         * when there is no Forge to ask. Never throws: a list that does not come is no list.
+         */
+        async suggest(body) {
+            try {
+                const service = this._service();
+                const controller = service && service.controller;
+                if (!controller || typeof controller.suggestLooks !== 'function') return null;
+                return await controller.suggestLooks(body);
+            } catch (error) {
+                console.warn('[Private] Forge could not rank her looks for the scene', error);
+                return null;
+            }
+        }
+
         /** Her saved looks by name, for the prompt — private ones only while the gate is open. */
         names() {
             return this.looks.map((l) => String(l.name || '')).filter(Boolean);

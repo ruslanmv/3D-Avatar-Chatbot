@@ -305,6 +305,18 @@
             return this.request('/v1/wardrobes/' + encodeURIComponent(avatarId));
         }
 
+        /**
+         * WM3. Her looks ranked by Forge for the scene the app has set up (room, persona, pace,
+         * the person's words, what she wears): a few numbered lines for a small model's prompt.
+         * Gated by Forge exactly as her list (the grant travels in `request`).
+         */
+        suggestLooks(avatarId, body) {
+            return this.request('/v1/wardrobes/' + encodeURIComponent(avatarId) + '/suggest', {
+                method: 'POST',
+                body: JSON.stringify(body || {}),
+            });
+        }
+
         resolveUrl(url) {
             if (!url) return null;
             if (/^https?:\/\//i.test(url)) return url;
