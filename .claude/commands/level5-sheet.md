@@ -66,6 +66,9 @@ state or a position, and put the two sheets side by side (step 5).
       behind is taken after each: proof the words reach her body. Without it the
       `--states` frames are painted by a separate QA switcher and prove only the
       look.
+    - `--normal-light`: the room in normal light through the person's own saved
+      choice (Settings ▸ Private Mode, ⋯ chip 💡), the way the owner prefers her
+      rooms.
     - `--mood normal-room`: the room in ordinary light (sky, fog and floor too,
       not only the lamps), the way 💡 Light chooses it; any playground mood id
       works.

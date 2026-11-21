@@ -2852,6 +2852,15 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
             const looks = [
                 ...LOOKS_UN32,
+                // The old build first, its repaint after it: the list's order, as Forge appends.
+                {
+                    lookId: 'old',
+                    name: 'Bare, fisted (old)',
+                    prompt: 'bare authored body',
+                    vrmUrl: 'fisted-old.vrm',
+                    private: true,
+                    body: { detail: 'natural', states: ['closed', 'doggy-anal-fisted', 'doggy-bottle'] },
+                },
                 {
                     lookId: 'f',
                     name: 'Bare, fisted',
@@ -2880,6 +2889,7 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                     .at(-1);
                 expect(fist).toMatchObject({ status: 'completed', result: { state: 'doggy-anal-fisted' } });
                 expect(calls).toContain('attach:Bare, fisted');
+                expect(calls).not.toContain('attach:Bare, fisted (old)'); // the newer build, never the old
                 expect(calls[calls.length - 1]).toBe('apply:doggy-anal-fisted');
             } finally {
                 window.NEXUS_PRIVATE_POSES = real;

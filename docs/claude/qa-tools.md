@@ -108,6 +108,9 @@ takes each position at the top of the pace and frames her from behind; writes `s
   would, and logs what the bridge did with it (`body.fist` completed with its state, or why
   not), with a frame from behind: `<key>-say-<n>.png`. The way to prove a request in words
   reaches her body; `--states` alone uses a QA switcher.
+- `--normal-light` (NL2) saves the person's choice "Normal room light in Private" before the
+  page opens, so the room is checked in normal light exactly as the app applies it (the
+  Settings switch, or the ⋯ chip 💡). Prefer it to `--mood` for Private rooms.
 - `--mood <id>` (NL1) puts the room in a playground mood after it loads: `normal-room` is any
   place in ordinary light, sky, fog and floor included (the Window Room without its red).
 - `--look-id <id> --look-sha <sha256>` wears exactly that look, even one Forge has not listed
