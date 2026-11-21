@@ -171,8 +171,7 @@ Know the coverage gaps, because they are not intuitive:
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
 — lint clean, format clean, **6318 tests in 290 suites, all passing**
-(2026-11-15: 6705 in 311; 2026-11-16: 6851 in 317, then 6978 in 320 with `NL`,
-6982 in 321 with `RP2`, 7004 in 322 with `UN20`, 7020 in 323 with `CG1`/`CV1`).
+(2026-11-21: 7775 in 346).
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -290,29 +289,25 @@ room is moved under her, never her; beds measured by `tools/vr/measure-bed.mjs`,
 never typed). `ID` for her standing idle (`src/gltf-viewer/RelaxedIdle.js`: arms
 solved per body so the hands rest beside the thighs, one elbow bent more,
 fingers curled; the default `relaxedIdle` preset; check with
-`tools/qa/idle-pose-check.mjs`). `HA` for her hair aside
-(`src/gltf-viewer/HairAside.js`: a mode added beside the positions, never a
-change to one; the person's ⋯ chip or words only, `avatar.hair`; her spring-bone
-hair falls along her forward, and the snapshot is written back on "back", when
-she stands and when the evening ends; see it with `--hair-aside` in
-`tools/qa/private-positions-live.mjs`). `PB` for what she knows of her body
-(`PrivateBodyKnowledge.js`, bridge `packLines`: a short index of families
-always, a family's names only when the person's words touch it, filtered by her
-position, under budgets a test enforces; extras come with a look, so she names
-looks she can change into; information never an action). `EA` for evening audits
-(`tools/qa/evening-stages.mjs`: one show played in its room on a real avatar, a
-frame per step with what moved, which clothes changed and what she says;
-`docs/claude/visual-review.md`). `SW` for the safety words and the moments
-around them (`PrivateTurnDirector.js`: end and ease-off in all nine languages,
-hesitation eases off and checks in once; the bridge's proportionate finish and
-three replies of aftercare). `OL` for her held position against everything else:
-"open your legs" changes the position she holds (on her back it is `knees-up`,
-kneeling `kneel-wide`; `sit-open` is now a floor seat), and a reply's mood never
-moves a body `vrPoseSystem.isHoldingBones()` says is held (no clip from
-`handleIntent` or `_intent`, no `setMode` override; OL3: "apri", "chiudi le
-gambe" go through `PrivatePoseController.transition` from the position she
-holds, one table). Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+`tools/qa/idle-pose-check.mjs`). `HA` her hair aside. `PB` for what she knows of
+her body (`PrivateBodyKnowledge.js`, bridge `packLines`: a short index of
+families always, a family's names only when the person's words touch it,
+filtered by her position, under budgets a test enforces; extras come with a
+look, so she names looks she can change into; information never an action). `EA`
+for evening audits (`tools/qa/evening-stages.mjs`: one show played in its room
+on a real avatar, a frame per step with what moved, which clothes changed and
+what she says; `docs/claude/visual-review.md`). `SW` for the safety words and
+the moments around them (`PrivateTurnDirector.js`: end and ease-off in all nine
+languages, hesitation eases off and checks in once; the bridge's proportionate
+finish and three replies of aftercare). `OL` for her held position against
+everything else: "open your legs" changes the position she holds (on her back it
+is `knees-up`, kneeling `kneel-wide`; `sit-open` is now a floor seat), and a
+reply's mood never moves a body `vrPoseSystem.isHoldingBones()` says is held (no
+clip from `handleIntent` or `_intent`, no `setMode` override; OL3: "apri",
+"chiudi le gambe" go through `PrivatePoseController.transition` from the
+position she holds, one table). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of

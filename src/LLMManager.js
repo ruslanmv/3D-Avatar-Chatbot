@@ -267,6 +267,25 @@
         }
 
         /**
+         * K2. Run `fn` with `updates` merged over the settings in memory only, then put back
+         * exactly what was there (snapshot and restore). Nothing is written to storage, so a
+         * test of a provider nobody has saved yet never becomes the saved provider, even if the
+         * page closes mid-test. Used by Settings ▸ Test Connection, which must try what the form
+         * shows (provider, key, model), not what was last saved.
+         * @param {object} updates
+         * @param {Function} fn - async; its result is returned
+         */
+        async withSettings(updates, fn) {
+            const before = this._settings;
+            this._settings = this._deepMerge(this.getSettings(), updates || {});
+            try {
+                return await fn();
+            } finally {
+                this._settings = before;
+            }
+        }
+
+        /**
          * Main API Router: Send message to active provider
          * @param {string} userMessage - User's input text
          * @param {string} systemPrompt - System/persona prompt (optional)
