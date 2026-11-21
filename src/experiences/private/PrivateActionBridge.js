@@ -3027,8 +3027,13 @@
                 : null;
         if (fantasy && fantasy.outfits.length) {
             const looks = (s.closet && s.closet.looks) || [];
-            const outfit =
-                fantasy.outfits.find((id) => looks.some((l) => l && l.outfitId === id)) || fantasy.outfits[0];
+            // FN2. At the top of the pace the naughty version comes first (lingerie, garters,
+            // stockings); below it, the dressed costume. A version she already has beats one to make.
+            const top = (Number(levelOf(s)) || 1) >= 4;
+            const order = fantasy.outfits
+                .slice()
+                .sort((a, b) => (top ? 1 : -1) * (Number(/-naughty$/.test(b)) - Number(/-naughty$/.test(a))));
+            const outfit = order.find((id) => looks.some((l) => l && l.outfitId === id)) || order[0];
             s.asked.wardrobe = s.turnId;
             s.lastFamily = 'wardrobe';
             s.looksFitText = s.turnText;
