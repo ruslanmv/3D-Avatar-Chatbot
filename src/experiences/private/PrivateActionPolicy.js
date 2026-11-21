@@ -38,10 +38,13 @@
 
     const AUTONOMY = Object.freeze(['off', 'suggest', 'autonomous']);
     const AUTONOMY_KEY = 'nexus_private_wardrobe_autonomy';
-    // UN21. "She changes her clothes by herself, nobody asked, and it ruins the moment." The
-    // default is the person's words only: she changes when they ask, never on her own, and
-    // never offers unprompted. "She suggests" and "She chooses" stay in setup for whoever wants them.
-    const DEFAULT_AUTONOMY = 'off';
+    // UN21. "She changes her clothes by herself, nobody asked, and it ruins the moment." She never
+    // changes on her own by default — "She chooses" (autonomous) stays opt-in in setup.
+    // WM4 (owner, 2026-11-21): "for Private make it on, but you can also set it up in settings".
+    // The default is now "She suggests": she may offer a look that fits the scene (Forge's ranked
+    // list, WM3), and nothing changes until the person says yes — the same tap as any offer. "Only
+    // when I ask" (off) stays one choice away in setup.
+    const DEFAULT_AUTONOMY = 'suggest';
 
     /** Who may be the reason an action runs. */
     const SOURCES = Object.freeze(['user', 'user-approved', 'control', 'model']);
