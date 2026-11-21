@@ -6938,6 +6938,62 @@ window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
    - Exchanges a pairing code for a persistent bearer token
    - Stores the token in LLMManager settings (ollabridge.pair_token)
    ===================================================================== */
+/**
+ * VL1. Pair this browser with OllaBridge: the one function both Pair buttons use (API
+ * CONFIGURATION with OllaBridge selected, and ADVANCED VOICE whatever the provider). The token
+ * goes where it always went (`ollabridge.pair_token`); the selected AI provider is untouched,
+ * so pairing for her voice never moves the chat off OpenAI. `{ ok, error, device_id }`.
+ */
+async function __nexusPairOllaBridgeCode(rawCode, options = {}) {
+    const code = String(rawCode || '')
+        .trim()
+        .toUpperCase()
+        .replace(/-/g, '')
+        .replace(/\s+/g, '');
+    if (!code || code.length < 4) return { ok: false, error: 'Please enter a valid OllaBridge pairing code.' };
+    if (!window._nexusLLM) {
+        if (typeof window.LLMManager !== 'function') throw new Error('LLMManager script not loaded. Refresh the page.');
+        window._nexusLLM = new window.LLMManager();
+    }
+    // The proxy avoids CORS when pairing from a different origin.
+    const pairPatch = { proxy: { enable_proxy: true, proxy_url: '/api/proxy' } };
+    if (options.baseUrl) pairPatch.ollabridge = { base_url: options.baseUrl };
+    window._nexusLLM.updateSettings(pairPatch);
+    const result = await window._nexusLLM.pairWithOllaBridge(code);
+    if (result && result.ok) {
+        try {
+            _updateOllaBridgePairUI();
+        } catch (_) {
+            /* the API CONFIGURATION view may not be drawn */
+        }
+    }
+    return result || { ok: false, error: 'Pairing failed' };
+}
+window.__nexusPairOllaBridgeCode = __nexusPairOllaBridgeCode;
+
+/**
+ * VL1. Her chosen SonicAgent voice, started again when it is not the one speaking: after a
+ * pairing, and each time Settings opens. A fallback chosen at page load (not paired yet, the
+ * gateway asleep) stayed for the whole session with no reason shown; now the reason is shown
+ * next to TTS ENGINE (`_renderEngineState`), and a fixed cause fixes it at once.
+ */
+async function __nexusVoiceRetry() {
+    const tp = window.TTSProvider;
+    const engineEl = document.getElementById('tts-engine');
+    if (!tp || !tp.getStoredEngine || typeof tp.setEngine !== 'function') return false;
+    const stored = tp.getStoredEngine();
+    if (stored !== 'sonicagent-stream' || tp.getEngine() === stored) return true;
+    let ok = false;
+    try {
+        ok = await tp.setEngine(stored);
+    } catch (_) {
+        ok = false;
+    }
+    if (engineEl) _renderEngineState(engineEl);
+    return ok;
+}
+window.__nexusVoiceRetry = __nexusVoiceRetry;
+
 function __nexusWireOllaBridgePairButton() {
     const btn = document.getElementById('ollabridge-pair-btn');
     if (!btn) return;
@@ -6978,26 +7034,12 @@ function __nexusWireOllaBridgePairButton() {
         }
 
         try {
-            // Auto-create LLMManager if not yet instantiated
-            if (!window._nexusLLM) {
-                if (typeof window.LLMManager !== 'function') {
-                    throw new Error('LLMManager script not loaded. Refresh the page.');
-                }
-                window._nexusLLM = new window.LLMManager();
-            }
-
-            // Apply the current base_url and enable proxy before pairing
-            // (proxy avoids CORS when pairing from a different origin)
+            // Apply the current base_url (the OllaBridge field is showing: its provider is
+            // selected) and pair through the one shared function.
             const baseUrlInput = document.getElementById('base-url');
-            const pairPatch = {
-                proxy: { enable_proxy: true, proxy_url: '/api/proxy' },
-            };
-            if (baseUrlInput && baseUrlInput.value.trim()) {
-                pairPatch.ollabridge = { base_url: baseUrlInput.value.trim() };
-            }
-            window._nexusLLM.updateSettings(pairPatch);
-
-            const result = await window._nexusLLM.pairWithOllaBridge(code);
+            const result = await __nexusPairOllaBridgeCode(code, {
+                baseUrl: baseUrlInput && baseUrlInput.value.trim(),
+            });
 
             if (result.ok) {
                 codeInput.value = '';
@@ -7015,6 +7057,8 @@ function __nexusWireOllaBridgePairButton() {
                 if (modelSelect) {
                     fetchAndPopulateModels('ollabridge', modelSelect);
                 }
+                // VL1. Her SonicAgent voice, if chosen, starts now rather than at the next reload.
+                __nexusVoiceRetry();
             } else {
                 if (statusDiv) {
                     statusDiv.textContent = `❌ ${result.error || 'Pairing failed'}`;
