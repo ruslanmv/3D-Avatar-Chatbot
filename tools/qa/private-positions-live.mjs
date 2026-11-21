@@ -67,6 +67,7 @@ const STATES = arg('--states', '').split(',').filter(Boolean);
 // The library character whose prebuilt list holds those looks (Avatar A by default).
 const SLUG = arg('--slug', 'avatar-sample-a');
 const FORGE_URL = arg('--forge-url', '');
+const AVATAR = arg('--avatar', '');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = path.resolve(arg('--out', path.join(ROOT, 'audits/private-positions/runs', `${stamp}-${LANG}`)));
 
@@ -94,6 +95,8 @@ async function main() {
             localStorage.setItem('nexus_spicy_verified', 'true');
             localStorage.setItem('npc_enabled', 'false');
         }, LANG);
+        // `--avatar <file>`: another character from vendor/avatars, chosen as the avatar menu keeps it.
+        if (AVATAR) await ctx.addInitScript((file) => localStorage.setItem('nexus_selected_avatar_file', file), AVATAR);
         if (REAL_GRANT)
             await ctx.addInitScript((grant) => localStorage.setItem('wardrobe_forge_grant', grant), REAL_GRANT);
         // `--forge-url`: another Forge than the default Space (a local one with looks just built),
