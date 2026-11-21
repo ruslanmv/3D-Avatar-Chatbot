@@ -349,7 +349,10 @@ describe('PX2. permission is separate from intent', () => {
         const create = { name: 'wardrobe.create', source: 'model' };
         expect(Policy.decide(create, facts({ autonomy: 'autonomous' })).allow).toBe(false);
         expect(Policy.decide(create, facts({ asked: { wardrobe: true } })).allow).toBe(true);
-        expect(Policy.autonomy(window)).toBe('off'); // UN21: only when the person asks
+        // WM4: by default she may offer (never change on her own); "only when I ask" is one choice away.
+        expect(Policy.autonomy(window)).toBe('suggest');
+        expect(Policy.setAutonomy('off', window)).toBe(true);
+        expect(Policy.autonomy(window)).toBe('off');
         expect(Policy.setAutonomy('everything', window)).toBe(false);
     });
 
