@@ -178,6 +178,28 @@ describe('FN1. a fantasy in their words dresses her', () => {
         expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.wear', source: 'user', status: 'completed' });
     });
 
+    test('at level 4 the naughty nurse is the one put on', async () => {
+        const c = closet();
+        const dressed = { id: 'nurse', name: 'White Bodycon Mini Dress', outfitId: 'roleplay-nurse', vrmUrl: 'n.vrm' };
+        const naughty = {
+            id: 'nurse-4',
+            name: 'White Lace Plunge Bra + White G-String + White Garter Set',
+            outfitId: 'roleplay-nurse-naughty',
+            vrmUrl: 'n4.vrm',
+        };
+        c.looks = LOOKS.concat([dressed, naughty]);
+        c.plan = (params) => {
+            const choice = Engine.choose({ request: params, looks: c.looks, entries: [], canCreate: true });
+            return choice ? { ok: true, choice } : { ok: false, why: 'no-match' };
+        };
+        const s = session();
+        s.adult.level = 4;
+        Actions.begin(s, { win: window, deps: { wardrobe: c, fantasies: catalogue } });
+        await Actions.onUserTurn('vestiti da infermiera');
+        await flush();
+        expect(c.wearLook).toHaveBeenCalledWith(expect.objectContaining({ id: 'nurse-4' }), expect.anything());
+    });
+
     test('talk about a nurse is not a request', async () => {
         const c = closet();
         Actions.begin(session(), { win: window, deps: { wardrobe: c, fantasies: catalogue } });
