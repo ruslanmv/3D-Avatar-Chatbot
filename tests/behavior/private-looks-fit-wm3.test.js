@@ -154,3 +154,35 @@ function resolve(fit, ref) {
     }
     return { look: ref };
 }
+
+describe('FN1. a fantasy in their words dresses her', () => {
+    const catalogue = require('../../assets/wardrobe/fantasies.json');
+
+    test('"vestiti da infermiera" puts on her nurse look', async () => {
+        const c = closet();
+        const nurse = {
+            id: 'nurse-look',
+            name: 'White Bodycon Mini Dress',
+            outfitId: 'roleplay-nurse',
+            vrmUrl: 'n.vrm',
+        };
+        c.looks = LOOKS.concat([nurse]);
+        c.plan = (params) => {
+            const choice = Engine.choose({ request: params, looks: c.looks, entries: [], canCreate: true });
+            return choice ? { ok: true, choice } : { ok: false, why: 'no-match' };
+        };
+        Actions.begin(session(), { win: window, deps: { wardrobe: c, fantasies: catalogue } });
+        await Actions.onUserTurn('vestiti da infermiera');
+        await flush();
+        expect(c.wearLook).toHaveBeenCalledWith(expect.objectContaining({ id: 'nurse-look' }), expect.anything());
+        expect(Actions.snapshot().last).toMatchObject({ name: 'wardrobe.wear', source: 'user', status: 'completed' });
+    });
+
+    test('talk about a nurse is not a request', async () => {
+        const c = closet();
+        Actions.begin(session(), { win: window, deps: { wardrobe: c, fantasies: catalogue } });
+        await Actions.onUserTurn('mia sorella è infermiera');
+        await flush();
+        expect(c.wearLook).not.toHaveBeenCalled();
+    });
+});

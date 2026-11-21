@@ -132,6 +132,8 @@
             looksFitKey: '',
             looksFitText: '',
             looksFitBusy: false,
+            // FN1. Forge's fantasy catalogue (assets/wardrobe/fantasies.json), loaded once.
+            fantasies: (o.deps && o.deps.fantasies) || null,
             turnText: '',
             asked: {},
             lastFamily: null,
@@ -162,6 +164,7 @@
         };
         const s = state;
         startStory(s, o.deps && o.deps.story);
+        loadFantasies(s);
         // LM1. Her body alive in a held position: breathing, rocking, her hands. Reads the
         // evening (position, step, finish) each frame; never moves any of it.
         s.living = startLiving(s, o.deps && o.deps.living);
@@ -308,6 +311,17 @@
      * never replaces the evening they are already in. Every deal carries a generation, so a
      * catalogue that resolves late, or after the session ended, cannot overwrite a newer one.
      */
+    /** FN1. Forge's fantasy catalogue, imported beside the outfits (never edited here). */
+    function loadFantasies(s) {
+        if (s.fantasies || !s.win || typeof s.win.fetch !== 'function') return;
+        Promise.resolve(s.win.fetch('assets/wardrobe/fantasies.json'))
+            .then((r) => (r && r.ok ? r.json() : null))
+            .then((json) => {
+                if (state === s && json && Array.isArray(json.fantasies)) s.fantasies = json;
+            })
+            .catch(() => null);
+    }
+
     function startStory(s, injected) {
         const Weaver = pick(s.win, 'NEXUS_STORY_WEAVER', '../../features/together/StoryWeaver.js');
         const Director = pick(s.win, 'NEXUS_STORY_DIRECTOR', '../../features/together/StoryDirector.js');
@@ -2999,6 +3013,28 @@
         const topic = typeof Intent.topic === 'function' ? Intent.topic(s.turnText) : null;
         s.topic = topic;
         s.topicTurn = s.turnId;
+        // FN1. A fantasy in their words ("vestiti da infermiera"): their request to wear it — the
+        // look of hers made for it, or Forge's outfit for it, made on their yes.
+        // "Vestiti da infermiera" parses as a look named "da infermiera", which no look is: a
+        // wear request with nothing but a name gives way to the fantasy it names.
+        const vague =
+            parsed &&
+            parsed.name === 'wardrobe.wear' &&
+            !['style', 'colour', 'garment', 'outfit', 'choose', 'different'].some((k) => parsed.params[k]);
+        const fantasy =
+            (!parsed || vague) && typeof Intent.fantasyFrom === 'function'
+                ? Intent.fantasyFrom(s.turnText, s.fantasies)
+                : null;
+        if (fantasy && fantasy.outfits.length) {
+            const looks = (s.closet && s.closet.looks) || [];
+            const outfit =
+                fantasy.outfits.find((id) => looks.some((l) => l && l.outfitId === id)) || fantasy.outfits[0];
+            s.asked.wardrobe = s.turnId;
+            s.lastFamily = 'wardrobe';
+            s.looksFitText = s.turnText;
+            refreshLooksFit(s, s.looksFitText);
+            return request('wardrobe.wear', { outfit }, { source: 'user', turnId: s.turnId });
+        }
         if (!parsed) {
             // Talk about music or clothes: remembered, so "you choose" next has a subject — and a
             // statement (not a question) about music lets a tag she writes for it run.

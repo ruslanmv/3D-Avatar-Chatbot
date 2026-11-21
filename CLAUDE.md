@@ -230,10 +230,10 @@ will be rewrapped; files under `docs/` are exempt.
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge, `WM` her clothes chosen by
-meaning), `V` for VRoid Hub in the Avatar Library, `VP` for the VR puppet, `AR`
-for the AR conversation, `VR` for the VR chat panel, `ST` for on-device
-speech-to-text (`docs/QUEST_STT.md`) and `HV` for SonicAgent voice through
-OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`), `IC` for
+meaning, `FN` Forge's fantasy catalogue), `V` for VRoid Hub in the Avatar
+Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for the VR
+chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and `HV` for
+SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`), `IC` for
 Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for the
 Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `LW` for Living Worlds
 (`docs/LIVING_WORLDS.md`), `PG` for the playgrounds (PG1–PG2 the V4 release, PG3

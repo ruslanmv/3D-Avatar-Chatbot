@@ -307,3 +307,16 @@ letter to the outfit to make (offered on the person's yes; she says she ordered 
 number not on the last list matches nothing. Test: `tests/behavior/private-looks-fit-wm3.test.js`.
 Note: `nexus_private_wardrobe_autonomy` defaults to `off`, which tells her to change only when
 asked; under `suggest` she offers looks from the list.
+
+## FN: one fantasy catalogue with Forge (2026-11-21)
+
+`assets/wardrobe/fantasies.json` is Forge's `assets/fantasies/fantasies.json`, copied verbatim by
+`node tools/wardrobe/sync-fantasies.mjs [forge checkout]` — never edited here. Each fantasy (nurse,
+doctor, teacher, maid, bride, striptease, table dance, …) has its outfits and its words in nine
+languages; `PrivateActionIntent.fantasyFrom` reads it, so "vestiti da infermiera" is a request to
+wear the nurse look (`PrivateActionBridge.onUserTurn`; a wear request that is only a name gives way
+to the fantasy it names). Only with a cue to dress or play the part: talk about a nurse is not a
+request. `tests/wardrobe/fantasy-contract.test.js` fails when a persona, show, room or locale text
+names a costume Forge has no fantasy for, or anything in `banned` (words that read as a minor).
+Adding a fantasy: in Forge first (`docs/WARDROBE_FANTASIES.md`), then sync.
+
