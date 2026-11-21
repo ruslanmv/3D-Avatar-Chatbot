@@ -167,6 +167,11 @@ async function main() {
                               status: l.status,
                               why: l.why,
                               seen: !!(l.result && l.result.seen),
+                              // What the check measured when it refused (palms, hips, who held her).
+                              measured:
+                                  l.status === 'failed'
+                                      ? JSON.stringify(l.result || l.measured || null).slice(0, 1500)
+                                      : undefined,
                           }
                         : null,
                     preset: window.vrPoseSystem.getCurrentPreset(),
