@@ -37,6 +37,15 @@ On desktop, locally, the idle is right: arms hang, elbows bent, fingers curled
 frames (half a second apart) the arms barely change: on desktop the strokes are
 too small to read at full-body framing.
 
+## Update: the app-open idle (2026-11-21, later)
+
+The owner clarified the A-pose frame is what the app shows **when it opens**. A fresh load of the
+local `ultimate` build on a phone viewport (412×915, touch), default avatar AvatarSample_A — the
+same white-cardigan avatar — measured every 2 s for 32 s: `relaxedIdle` active from the first
+sample, arms 5–9° from vertical, idle mode. So current code opens relaxed; the deployed Vercel
+site is serving an older build. First step next time: confirm which branch Vercel deploys and
+redeploy from `ultimate`, then repeat the owner's check on the phone.
+
 ## Likely causes, most likely first
 
 1. **The phone is not running the relaxed idle.** Either the Vercel deploy is from
