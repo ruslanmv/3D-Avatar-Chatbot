@@ -297,11 +297,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the twenty-one names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the twenty-two names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist, HA1 avatar.hair;
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist, HA1 avatar.hair, BD34 avatar.marks;
         // nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(21);
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(22);
         expect(Policy.ACTIONS['body.fist']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
@@ -2678,6 +2678,83 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 }
             }
         );
+
+        test('BD34. tied and marked: barely there by default, stronger only when they ask', async () => {
+            stubSkin();
+            const create = window.NEXUS_SKIN_STATES.create;
+            window.NEXUS_SKIN_STATES.create = () => {
+                const skin = create();
+                const attach = skin.attach;
+                skin.attach = async (root, look) => [
+                    ...(await attach(root, look)),
+                    ...['sado-soft-', 'sado-light-', 'sado-'].flatMap((p) => [
+                        { name: `${p}both-fisted`, body: 'both holes open after their hands' },
+                        { name: `${p}both-fisted-cum`, body: 'both full' },
+                        { name: `${p}roped-open`, body: 'tied' },
+                    ]),
+                ];
+                return skin;
+            };
+            let held = null;
+            const real = window.NEXUS_PRIVATE_POSES;
+            window.NEXUS_PRIVATE_POSES = {
+                create: () => ({
+                    held: () => held,
+                    apply: () => ({ ok: true }),
+                    release: () => {},
+                    back: () => ({ ok: true }),
+                    describe: () => null,
+                }),
+            };
+            window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+            // What the bridge decided for each action. A line heard twice is answered `same` the second
+            // time (no change): skip those, they repeat the decision before them.
+            const last = (name) =>
+                Actions.log()
+                    .filter((a) => a.name === name && a.status === 'completed' && !(a.result && a.result.same))
+                    .at(-1) || {};
+            const { allureOf } = require('../../src/wardrobe/TryOnHaulActivity.js');
+            try {
+                const w = await begin({ adult: true, looks: LOOKS_UN32 });
+                window.NEXUS_TRY_ON_HAUL_ACTIVITY.allureOf = allureOf;
+                w.adult.level = 4;
+                await say('Mettiti il vestito da cocktail nero');
+                await flush();
+                await say('spogliati');
+                await flush();
+                held = 'all-fours';
+                await say('fammi il pugno in tutti e due');
+                await flush();
+                // By default the marks are barely there, never the strong ones.
+                expect(last('body.fist').result).toMatchObject({ state: 'sado-soft-both-fisted' });
+                await say('segnami di più');
+                await flush();
+                await flush(80); // the strength may change her look first: more ticks than a skin switch
+                expect(last('avatar.marks').result).toMatchObject({ marks: 2, state: 'sado-light-both-fisted' });
+                await say('segnami di più');
+                await flush();
+                await flush(80); // the strength may change her look first: more ticks than a skin switch
+                expect(last('avatar.marks').result).toMatchObject({ marks: 3, state: 'sado-both-fisted' });
+                // The finish keeps the strength they chose.
+                await say('vengo dentro di te');
+                await flush();
+                expect(last('body.finish').result).toMatchObject({ state: 'sado-both-fisted-cum' });
+                // And "meno segni" brings it back down, keeping the moment.
+                await say('meno segni');
+                await flush();
+                await flush(80);
+                expect(
+                    Actions.log()
+                        .filter((a) => a.name === 'avatar.marks')
+                        .at(-1)
+                ).toMatchObject({
+                    status: 'completed',
+                    params: { move: 'less' },
+                });
+            } finally {
+                window.NEXUS_PRIVATE_POSES = real;
+            }
+        });
 
         test('L5. from behind (face down, bent over, all fours): fist, then filled; a bottle, then filled', async () => {
             const calls = stubSkin();
