@@ -176,6 +176,8 @@
         'src/experiences/private/PrivateBodyKnowledge.js',
         // ID1. The standing idle's arms, solved for her body; read by NaturalPosePlugin on load.
         'src/gltf-viewer/RelaxedIdle.js',
+        // HA1. Her hair aside, a mode the person turns on (⋯ chip, their words); the bridge calls it.
+        'src/gltf-viewer/HairAside.js',
         // LM1. Her body alive in a held position (breathing, rocking, her hands), read by the bridge.
         'src/experiences/private/PrivateLivingMotion.js',
         // UN3. Una Notte: the evening's outline and its narrative state, read by the bridge.

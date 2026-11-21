@@ -271,6 +271,13 @@
             },
             required: ['move'],
         },
+        // HA1. Her hair aside (from behind it hangs between them and her) or back as it was. A mode
+        // added beside the positions, never a change to one; the person's words or tap only.
+        'avatar.hair': {
+            family: 'avatar',
+            params: { move: oneOf(['aside', 'back']), side: oneOf(['front', 'left', 'right']) },
+            required: ['move'],
+        },
         // UN34. The person finishing, and where: shown on her skin. Their words or their tap only.
         'body.finish': { family: 'body', params: { where: oneOf(FINISH_PLACES) }, required: ['where'] },
         // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
@@ -400,6 +407,8 @@
 
         // LM7. Her body moves because they asked, never because the model wrote it.
         if (action.name === 'avatar.move' && action.source === 'model') return { allow: false, why: 'user-only' };
+        // HA1. Her hair moves because they asked, never because the model wrote it.
+        if (action.name === 'avatar.hair' && action.source === 'model') return { allow: false, why: 'user-only' };
 
         // Their words, their yes, or their tap: the person is the authorization.
         if (action.source !== 'model') return { allow: true };

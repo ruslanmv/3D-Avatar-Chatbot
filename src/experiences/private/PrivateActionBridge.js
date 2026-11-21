@@ -142,6 +142,9 @@
                 (o.deps && o.deps.wardrobe) ||
                 (Wardrobe ? new Wardrobe.InSceneWardrobe({ win, deps: (o.deps && o.deps.wardrobeDeps) || {} }) : null),
             motion: (o.deps && o.deps.motion) || null,
+            // HA1. Her hair aside (tests inject it; the page's NEXUS_HAIR_ASIDE otherwise).
+            hairDeps: (o.deps && o.deps.hair) || null,
+            hairAside: null,
             unwatch: [],
             // UN3. The evening's outline and narrative state (StoryWeaver / StoryDirector).
             story: null,
@@ -208,6 +211,8 @@
         clearFinish(s);
         stopDoggy(s);
         stopRoutine(s);
+        // HA1. Her hair as it was modelled, whatever ended the evening.
+        releaseHair(s);
         // BS1. The room back where it was if she was on its bed.
         syncBed(s, null);
         state = null;
@@ -918,12 +923,17 @@
                 return routine(s, action);
             case 'avatar.move':
                 return move(s, action);
+            case 'avatar.hair':
+                return hair(s, action);
             case 'avatar.pose': {
                 // UN36. A position they ask for ends any show she is giving: their words lead.
                 stopRoutine(s);
                 // UN35. Whatever position she ends up in, the doggy sweat clock follows it.
                 const out = await pose(s, action);
                 watchDoggy(s);
+                // HA1. Standing again, her hair falls as it was modelled.
+                const still = s.poses && typeof s.poses.held === 'function' ? s.poses.held() : null;
+                if (!still) releaseHair(s);
                 return out;
             }
             case 'wardrobe.undo': {
@@ -1091,6 +1101,42 @@
         s.moving = { pose: held, tempo, at: Date.now() };
         emit();
         return settle(action, 'completed', null, { move: p.move, tempo });
+    }
+
+    /**
+     * HA1. Her hair aside (NEXUS_HAIR_ASIDE, src/gltf-viewer/HairAside.js): the spring-bone hair
+     * falls along her forward instead of over her back, and back as it was on "back", when she
+     * stands, or when the evening ends. A body without spring hair answers `no-hair`, and the
+     * model is told the truth rather than a hair move that did not happen.
+     */
+    function hairApi(s) {
+        return (s && s.hairDeps) || (s && s.win && s.win.NEXUS_HAIR_ASIDE) || null;
+    }
+    function hair(s, action) {
+        const H = hairApi(s);
+        if (!H) return settle(action, 'failed', 'no-hair-mode');
+        const p = action.params || {};
+        if (p.move === 'back') {
+            const was = Boolean(H.release());
+            s.hairAside = null;
+            emit();
+            return settle(action, 'completed', null, { move: 'back', was });
+        }
+        const moved = H.applyCurrent(p.side || 'front');
+        if (!(moved > 0)) return settle(action, 'failed', 'no-hair');
+        s.hairAside = { side: p.side || 'front', at: Date.now() };
+        emit();
+        return settle(action, 'completed', null, { move: 'aside', side: s.hairAside.side, joints: moved });
+    }
+    function releaseHair(s) {
+        if (!s || !s.hairAside) return;
+        s.hairAside = null;
+        try {
+            const H = hairApi(s);
+            if (H) H.release();
+        } catch (_) {
+            /* the avatar is gone, and its hair with it */
+        }
     }
 
     function routine(s, action) {
@@ -3439,6 +3485,16 @@
             now.push('They asked you to move, but you are not holding a position yet: say so warmly, and invite one.');
         else if (s.poses && typeof s.poses.held === 'function' && s.poses.held())
             now.push('You hold that position still; you move in it only if they ask you to.');
+        // HA1. Her hair, as the person asked: her words match it, and a body without it says so.
+        const askedHair = [...s.log].reverse().find((a) => a.name === 'avatar.hair' && a.turnId === s.turnId);
+        if (s.hairAside)
+            now.push(
+                `Your hair is swept ${s.hairAside.side === 'front' ? 'forward' : `over your ${s.hairAside.side} shoulder`}, out of the way, because they asked: nothing hides your back or your body from them.`
+            );
+        else if (askedHair && askedHair.why === 'no-hair')
+            now.push(
+                'They asked you to move your hair aside, but it is short and already out of the way: say so lightly.'
+            );
         if (now.length) lines.push('', 'RIGHT NOW:', ...now.map((n) => `- ${n}`));
         lines.push('');
         return lines;

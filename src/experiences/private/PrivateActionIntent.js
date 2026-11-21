@@ -658,6 +658,38 @@
     const MOVE_YES_DESPITE_NO =
         /don[’']?t stop|do not stop|non fermarti|non smettere|no pares|ne t[’']arrête pas|hör nicht auf|hor nicht auf|não pares|nao pares|não pare|止めないで|멈추지 마|别停/iu;
 
+    /**
+     * HA1. Her hair aside, in the nine languages, and back as it was. Explicit phrases only: "hair"
+     * alone is talk ("I love your hair"), and pulling it is not this (that is never a hair move).
+     * The ⋯ chip speaks the first English/Italian/… phrase of each list.
+     */
+    const HAIR_ASIDE = new RegExp(
+        word(
+            'hair aside|move your hair|your hair out of the way|hair out of the way|hair over your shoulder|hair forward|capelli da parte|sposta i capelli|scosta i capelli|capelli in avanti|togli i capelli dalla schiena|pelo a un lado|aparta el pelo|aparta tu pelo|cabello a un lado|aparta el cabello|cheveux sur le côté|écarte tes cheveux|écarte les cheveux|dégage tes cheveux|haare zur seite|nimm die haare zur seite|haare nach vorne|cabelo para o lado|afasta o cabelo|tira o cabelo das costas'
+        ),
+        'iu'
+    );
+    const HAIR_ASIDE_CJK =
+        /髪をよけて|髪をどけて|髪を横に|髪を前に|머리카락 치워|머리 넘겨|머리카락을 옆으로|把头发拨开|头发拨到一边|把头发撩开/u;
+    const HAIR_BACK = new RegExp(
+        word(
+            'hair back|hair down again|let your hair down|let your hair fall|capelli come prima|lascia cadere i capelli|rimetti i capelli|pelo como antes|suelta el pelo|cheveux comme avant|lâche tes cheveux|haare wieder zurück|haare wie vorher|cabelo como antes|solta o cabelo'
+        ),
+        'iu'
+    );
+    const HAIR_BACK_CJK = /髪を戻して|머리 원래대로|头发放下|头发恢复/u;
+    const HAIR_LEFT = new RegExp(word('left|sinistra|izquierda|gauche|links|esquerda'), 'iu');
+    const HAIR_RIGHT = new RegExp(word('right|destra|derecha|droite|rechts|direita'), 'iu');
+
+    function hairFrom(body) {
+        if (HAIR_BACK.test(body) || HAIR_BACK_CJK.test(body)) return action('avatar.hair', { move: 'back' }, 'avatar');
+        if (HAIR_ASIDE.test(body) || HAIR_ASIDE_CJK.test(body)) {
+            const side = HAIR_LEFT.test(body) ? 'left' : HAIR_RIGHT.test(body) ? 'right' : 'front';
+            return action('avatar.hair', { move: 'aside', side }, 'avatar');
+        }
+        return null;
+    }
+
     function motionFrom(body, context) {
         const c = context || {};
         if (!c.poseHeld || c.routine === 'running') return null;
@@ -1278,6 +1310,10 @@
         // PS2. Their fist, asked for in words: after the finish (its words win), before shows.
         const fisted = !NEGATED.test(body) ? fistFrom(body) : null;
         if (fisted) return fisted;
+        // HA1. Her hair aside or back: its own words, before shows and moving ("move your hair"
+        // is not "move for me").
+        const hair = !NEGATED.test(body) ? hairFrom(body) : null;
+        if (hair) return hair;
         // UN36. A show, after positions (their words win) and finishing.
         const show = !NEGATED.test(body) ? routineFrom(body, c) : null;
         if (show) return show;
@@ -1441,6 +1477,7 @@
         fistFrom,
         routineFrom,
         motionFrom,
+        hairFrom,
         queryFrom,
         stylesIn,
         coloursIn,

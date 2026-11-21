@@ -95,6 +95,9 @@
             'position.reverse.say': 'Ride me facing away',
             'position.on-knees.label': 'On your knees',
             'position.on-knees.say': 'Get on your knees in front of me',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Hair aside',
+            'hair.aside.say': 'Move your hair aside',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Shows',
@@ -300,6 +303,9 @@
             'position.reverse.say': 'Móntame de espaldas',
             'position.on-knees.label': 'De rodillas',
             'position.on-knees.say': 'De rodillas delante de mí',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Pelo a un lado',
+            'hair.aside.say': 'Aparta el pelo a un lado',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Shows',
@@ -506,6 +512,9 @@
             'position.reverse.say': 'Cavalcami di spalle',
             'position.on-knees.label': 'In ginocchio',
             'position.on-knees.say': 'Mettiti in ginocchio davanti a me',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Capelli da parte',
+            'hair.aside.say': 'Sposta i capelli da parte',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Spettacoli',
@@ -711,6 +720,9 @@
             'position.reverse.say': 'Chevauche-moi dos à moi',
             'position.on-knees.label': 'À genoux',
             'position.on-knees.say': 'À genoux devant moi',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Cheveux de côté',
+            'hair.aside.say': 'Écarte tes cheveux sur le côté',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Shows',
@@ -918,6 +930,9 @@
             'position.reverse.say': 'Reite mich rückwärts',
             'position.on-knees.label': 'Auf die Knie',
             'position.on-knees.say': 'Knie dich vor mich',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Haare zur Seite',
+            'hair.aside.say': 'Nimm die Haare zur Seite',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Shows',
@@ -1125,6 +1140,9 @@
             'position.reverse.say': 'Monta em mim de costas',
             'position.on-knees.label': 'De joelhos',
             'position.on-knees.say': 'De joelhos na minha frente',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': 'Cabelo de lado',
+            'hair.aside.say': 'Afasta o cabelo para o lado',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'Shows',
@@ -1331,6 +1349,9 @@
             'position.reverse.say': '後ろ向きでまたがって',
             'position.on-knees.label': 'ひざまずいて',
             'position.on-knees.say': '私の前でひざまずいて',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': '髪をよけて',
+            'hair.aside.say': '髪をよけて',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': 'ショー',
@@ -1535,6 +1556,9 @@
             'position.reverse.say': '등을 보이며 올라타',
             'position.on-knees.label': '내 앞에 무릎',
             'position.on-knees.say': '내 앞에 무릎 꿇어',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': '머리 넘기기',
+            'hair.aside.say': '머리카락을 옆으로 넘겨',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': '쇼',
@@ -1740,6 +1764,9 @@
             'position.reverse.say': '背对着我跨坐',
             'position.on-knees.label': '跪在面前',
             'position.on-knees.say': '跪在我面前',
+            // HA1. Her hair aside: a mode beside the positions (the bridge's avatar.hair).
+            'hair.aside.label': '头发拨开',
+            'hair.aside.say': '把头发拨开',
             // UN35. The ⋯ menu's finish chips: the chip, and the line it sends as their turn.
             // UN36. The ⋯ menu's shows: the chip, and the line it sends as their turn.
             'routines.title': '表演',

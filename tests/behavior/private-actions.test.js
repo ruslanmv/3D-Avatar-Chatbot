@@ -297,11 +297,11 @@ describe('PX1. what the person asked for, read from their words', () => {
 describe('PX2. permission is separate from intent', () => {
     const facts = (extra) => ({ active: true, care: false, asked: {}, autonomy: 'suggest', ...extra });
 
-    test('only the twenty names exist, and parameters are cleaned, bounded and typed', () => {
+    test('only the twenty-one names exist, and parameters are cleaned, bounded and typed', () => {
         // Owner decisions: UN1 wardrobe.undress, UN4 world.travel, UN5 avatar.pose and
-        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist;
+        // wardrobe.redress, UN34 body.finish, UN36 avatar.routine, LM7 avatar.move, PS2 body.fist, HA1 avatar.hair;
         // nothing else joined.
-        expect(Object.keys(Policy.ACTIONS)).toHaveLength(20);
+        expect(Object.keys(Policy.ACTIONS)).toHaveLength(21);
         expect(Policy.ACTIONS['body.fist']).toBeTruthy();
         expect(Policy.ACTIONS['avatar.routine']).toBeTruthy();
         expect(Policy.ACTIONS['body.finish']).toBeTruthy();
@@ -3310,5 +3310,63 @@ describe('UR1 Unrestrained: the grant, the closest step, their tap', () => {
     test('setUnrestrained turns on only with the grant at the closest step; off is always allowed', () => {
         expect(typeof Actions.setUnrestrained).toBe('function');
         expect(Actions.setUnrestrained(true)).toBe(false); // no evening running
+    });
+});
+
+describe('HA1. her hair aside: a mode beside the positions, their words or tap only', () => {
+    const turn = async (text) => {
+        Surface.renderUser(text);
+        for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    };
+
+    test('asked in words it moves her hair, she is told, and standing puts it back', async () => {
+        const realPoses = window.NEXUS_PRIVATE_POSES;
+        const realHair = window.NEXUS_HAIR_ASIDE;
+        let held = null;
+        window.NEXUS_PRIVATE_POSES = {
+            create: () => ({
+                held: () => held,
+                apply: (key) => {
+                    held = key;
+                    return { ok: true, pose: key };
+                },
+                release: () => {
+                    held = null;
+                },
+                back: () => ({ ok: true }),
+                describe: () => null,
+            }),
+        };
+        window.NEXUS_VIEWER = { avatarManager: { currentRoot: { traverse: () => {} } } };
+        const hair = { applyCurrent: jest.fn(() => 12), release: jest.fn(() => true) };
+        window.NEXUS_HAIR_ASIDE = hair;
+        try {
+            const w = await begin({ adult: true });
+            w.adult.level = 4;
+            await turn('Mettiti a quattro zampe');
+            await turn('Sposta i capelli da parte');
+            expect(hair.applyCurrent).toHaveBeenCalledWith('front');
+            expect(
+                Actions.log()
+                    .filter((a) => a.name === 'avatar.hair')
+                    .at(-1)
+            ).toMatchObject({
+                status: 'completed',
+            });
+            expect(Actions.promptLines().join('\n')).toMatch(/hair is swept forward/);
+            // Her position is untouched by it.
+            expect(held).toBe('all-fours');
+            await turn('Alzati');
+            expect(hair.release).toHaveBeenCalled();
+        } finally {
+            window.NEXUS_PRIVATE_POSES = realPoses;
+            window.NEXUS_HAIR_ASIDE = realHair;
+        }
+    });
+
+    test('the model never moves her hair on its own', () => {
+        expect(Policy.decide({ name: 'avatar.hair', source: 'model', params: { move: 'aside' } }, {})).toMatchObject({
+            allow: false,
+        });
     });
 });

@@ -176,6 +176,15 @@
             ],
             remove: 'Delete PrivateLivingMotion.js (and its boot.js / index.html lines), startLiving in PrivateActionBridge.js, and setLayer/_layerApply/_layerUndo in VRPoseSystem.js.',
         }),
+        Object.freeze({
+            id: 'layer:hair-aside',
+            name: 'hair-aside',
+            method: 'procedural-layer',
+            batch: 'HA1',
+            what: 'Her spring-bone hair falls along her forward instead of over her back, when the person asks (⋯ chip or words); released exactly as it was',
+            files: ['src/gltf-viewer/HairAside.js', 'tests/hair-aside.test.js', 'tools/qa/private-positions-live.mjs'],
+            remove: 'Delete HairAside.js (and its boot.js line), avatar.hair in PrivateActionPolicy.js, hairFrom in PrivateActionIntent.js, hair/releaseHair in PrivateActionBridge.js, and the hair chip in PrivateConversationView.js.',
+        }),
     ]);
 
     const STORAGE_KEY = 'nexus_motion_methods_off';
