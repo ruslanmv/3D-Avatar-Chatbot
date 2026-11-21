@@ -876,9 +876,46 @@
         return action('body.fist', { where, with: 'bottle' }, 'body');
     }
 
+    /*
+     * BD35. Both their hands in her ass, asked for: "mettimi le due mani", "two hands in me".
+     * Two hands and a verb that puts them in, in each language; never hands ON her ("addosso",
+     * "sui fianchi", "on my hips"), never a question, never with a negation anywhere. From behind
+     * it is a wider gape in her ass (Forge's doggy-anal-fisted-wide); her pussy is not asked.
+     */
+    const HANDS = new RegExp(
+        word(
+            'two hands|both hands|both your hands|due mani|tutte e due le mani|entrambe le mani|dos manos|las dos manos|ambas manos|deux mains|les deux mains|zwei hände|beide hände|beiden hände|duas mãos|as duas mãos|ambas as mãos'
+        ),
+        'iu'
+    );
+    const HANDS_CJK = /両手|두 손|양손|两只手|双手/u;
+    const HANDS_IN = new RegExp(
+        word(
+            'mettimi|mettile|mettici|infilami|infila|ficcami|dentro|nel culo|put|stick|push|shove|in me|inside|in my ass|métete|meteme|méteme|mete|dentro de|mets|mets-moi|enfonce|en moi|steck|schieb|in mich|rein|enfia|mete|mete-me|em mim'
+        ),
+        'iu'
+    );
+    const HANDS_IN_CJK = /入れ|넣|插/u;
+    const HANDS_ON = new RegExp(
+        word(
+            'addosso|sui|sulle|sul|sopra|on me|on my|onto|over me|encima|sobre|sur moi|sur mes|auf mich|auf meine|em cima'
+        ),
+        'iu'
+    );
+
+    function handsFrom(body) {
+        if (!HANDS.test(body) && !HANDS_CJK.test(body)) return null;
+        if (!HANDS_IN.test(body) && !HANDS_IN_CJK.test(body)) return null;
+        if (HANDS_ON.test(body)) return null;
+        if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
+        return action('body.fist', { where: 'anal', with: 'hands' }, 'body');
+    }
+
     function fistFrom(body) {
         const bottle = bottleFrom(body);
         if (bottle) return bottle;
+        const hands = handsFrom(body);
+        if (hands) return hands;
         if (!FIST.test(body) && !FIST_CJK.test(body)) return null;
         if (/[?？]/.test(body) || FIST_NOT.test(body) || FIST_NOT_CJK.test(body)) return null;
         if (!FIST_REQUEST.test(body) && !FIST_REQUEST_CJK.test(body)) return null;

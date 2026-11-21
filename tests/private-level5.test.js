@@ -48,3 +48,37 @@ describe('L5 No limits', () => {
             }
     });
 });
+
+describe('BD35. two hands in her ass, asked in words', () => {
+    test.each([
+        'mettimi le due mani',
+        'mettimi le due mani nel culo',
+        'put both hands in me',
+        'mets-moi les deux mains',
+        'méteme las dos manos',
+        'steck beide Hände rein',
+        'enfia as duas mãos em mim',
+        '両手を入れて',
+    ])('"%s" asks for both hands in her ass', (line) => {
+        expect(Intent.fistFrom(line)).toMatchObject({
+            name: 'body.fist',
+            params: { where: 'anal', with: 'hands' },
+        });
+    });
+    test.each([
+        'mettimi le due mani addosso',
+        'mettimi le due mani sui fianchi',
+        'put both hands on my hips',
+        'non mettermi le due mani dentro',
+        'mi metti le due mani dentro?',
+    ])('"%s" is not a request for them inside her', (line) => {
+        const out = Intent.fistFrom(line);
+        expect(out && out.params && out.params.with).not.toBe('hands');
+    });
+    test('a valid action, theirs to ask and never the model', () => {
+        const params = { where: 'anal', with: 'hands' };
+        expect(Policy.validate('body.fist', params).ok).toBe(true);
+        expect(Policy.decide({ name: 'body.fist', params, source: 'model' }, base)).toMatchObject({ allow: false });
+        expect(Policy.decide({ name: 'body.fist', params, source: 'user' }, base)).toMatchObject({ allow: true });
+    });
+});

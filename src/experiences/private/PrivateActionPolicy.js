@@ -289,9 +289,10 @@
         // PS2. Their fist, shown on her body (Forge's fisted states) for the position she holds.
         // Their words only, at step 4, like the finish.
         // L5. `with`: their hand (the default) or a bottle (Forge paints it from behind only).
+        // BD35. Or both their hands in her ass ("mettimi le due mani"), a wider gape.
         'body.fist': {
             family: 'body',
-            params: { where: oneOf(['front', 'anal', 'both', 'choose']), with: oneOf(['hand', 'bottle']) },
+            params: { where: oneOf(['front', 'anal', 'both', 'choose']), with: oneOf(['hand', 'bottle', 'hands']) },
             required: [],
         },
         // UN4. A different room for the evening: one of the places this device can show, and

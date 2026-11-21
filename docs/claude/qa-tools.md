@@ -91,6 +91,9 @@ heels (`tools/qa/body-detail-render.mjs`), and the motion gallery
 
 ## Her body from behind, and one exact Forge look (L5, HA, BD25–BD29)
 
+Step by step from a pairing code, with what to look for in the sheet:
+`/level5-sheet` (`.claude/commands/level5-sheet.md`).
+
 `node tools/qa/private-positions-live.mjs --level5 --behind --keys all-fours,face-down,bent-over`
 takes each position at the top of the pace and frames her from behind; writes `sheet.png`.
 
