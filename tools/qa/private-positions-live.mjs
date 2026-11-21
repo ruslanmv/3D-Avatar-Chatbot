@@ -334,8 +334,12 @@ async function main() {
                             : 0;
                     const best = looks.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a))[0];
                     if (!best) return { ok: false, looks: looks.length };
-                    window.__qaStateLook = best;
-                    await c.applyLook(best);
+                    // As the closet hands it over (TryOnHaulActivity): the hash Forge listed, so the
+                    // download is verified and carries the read grant. Without it the loader
+                    // fetches a private file bare and Forge answers 404.
+                    const wear = best.outputSha256 && !best.sha256 ? { ...best, sha256: best.outputSha256 } : best;
+                    window.__qaStateLook = wear;
+                    await c.applyLook(wear);
                     return {
                         ok: true,
                         id: best.id || best.lookId,
