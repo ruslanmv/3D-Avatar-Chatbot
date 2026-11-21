@@ -2679,7 +2679,7 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
             }
         );
 
-        test('BD34. tied and marked: barely there by default, stronger only when they ask', async () => {
+        test('BD34. tied and marked: barely there by default, light when they ask, never strong (BD36)', async () => {
             stubSkin();
             const create = window.NEXUS_SKIN_STATES.create;
             window.NEXUS_SKIN_STATES.create = () => {
@@ -2731,14 +2731,20 @@ describe('UN32. her skin follows the pace live when the look has a skin pack', (
                 await flush();
                 await flush(80); // the strength may change her look first: more ticks than a skin switch
                 expect(last('avatar.marks').result).toMatchObject({ marks: 2, state: 'sado-light-both-fisted' });
+                // BD36. Light is as strong as the app goes: asked again, nothing grows.
                 await say('segnami di più');
                 await flush();
-                await flush(80); // the strength may change her look first: more ticks than a skin switch
-                expect(last('avatar.marks').result).toMatchObject({ marks: 3, state: 'sado-both-fisted' });
-                // The finish keeps the strength they chose.
+                await flush(80);
+                expect(
+                    Actions.log()
+                        .filter((a) => a.name === 'avatar.marks')
+                        .at(-1)
+                ).toMatchObject({ status: 'completed', result: { marks: 2, same: true } });
+                expect(Actions.promptLines().join('\n')).toMatch(/as strong as they go tonight/);
+                // The finish keeps the strength they chose, never the strong state.
                 await say('vengo dentro di te');
                 await flush();
-                expect(last('body.finish').result).toMatchObject({ state: 'sado-both-fisted-cum' });
+                expect(last('body.finish').result).toMatchObject({ state: 'sado-light-both-fisted-cum' });
                 // And "meno segni" brings it back down, keeping the moment.
                 await say('meno segni');
                 await flush();
